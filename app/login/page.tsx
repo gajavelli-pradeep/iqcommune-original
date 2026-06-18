@@ -137,6 +137,7 @@ export default function LoginPage() {
   );
 }
 
+// outline removed — globals.css :focus-visible provides the gold ring
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
@@ -144,7 +145,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
-  outline: "none",
   background: "#fff",
   boxSizing: "border-box",
 };

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { RequestModal } from "@/components/public/RequestModal";
 
 export const metadata: Metadata = {
-  title: "iqcommune — Finance Learning Sessions",
+  title: { absolute: "iqcommune — Finance Learning Sessions" },
   description:
     "In-person finance sessions led by practitioners. No products. No pitch. Just knowledge.",
 };
@@ -51,9 +51,28 @@ const WHY_LINES = [
   "Separate per-session consent from the practitioner before you confirm.",
 ];
 
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "iqcommune",
+  url: process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
+  description:
+    "In-person finance sessions led by practitioners. No products. No pitch. Just knowledge.",
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "hello@iqcommune.com",
+    contactType: "customer service",
+  },
+};
+
 export default function HomePage() {
   return (
     <main style={{ background: "#fafaf9", minHeight: "100vh" }}>
+      {/* JSON-LD inside the single root so React never duplicates it on client navigation */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+      />
       {/* Nav */}
       <nav
         style={{
@@ -74,7 +93,7 @@ export default function HomePage() {
           iqcommune
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <Link href="/practitioners" style={{ fontSize: 13, color: "#4a4d5c", fontWeight: 500 }}>
+          <Link href="/practitioners" className="nav-secondary" style={{ fontSize: 13, color: "#4a4d5c", fontWeight: 500 }}>
             Become a Practitioner
           </Link>
           <RequestModal />

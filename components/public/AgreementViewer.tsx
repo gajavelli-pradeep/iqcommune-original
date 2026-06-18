@@ -89,7 +89,21 @@ export function AgreementViewer() {
     formState: { errors, isSubmitting },
   } = useForm<AgreementSign>({
     resolver: zodResolver(AgreementSignSchema),
-    defaultValues: { ref: refCode, sigMode: "drawn" },
+    defaultValues: {
+      ref: refCode,
+      sigMode: "drawn",
+      // Pre-populate HMAC verification fields from the URL
+      linkSig: params.get("sig") ?? "",
+      linkParams: {
+        name: pName,
+        role: pRole,
+        org: pOrg,
+        module: pModule,
+        city: params.get("city") ?? "",
+        ref: pRef,
+        email: params.get("email") ?? "",
+      },
+    },
   });
 
   const initCanvas = useCallback(() => {
@@ -153,67 +167,120 @@ export function AgreementViewer() {
     setHasSig(false);
   }
 
-  async function onSubmit(data: AgreementSign) {
-    setServerError("");
-
-    let sigData = data.sigData;
+  // Sync local signature state into RHF before Zod validates so sigData/sigMode pass validation.
+  function handleFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (sigMode === "drawn") {
-      if (!hasSig) {
-        setServerError("Please draw your signature");
-        return;
-      }
-      sigData = canvasRef.current!.toDataURL("image/png");
+      if (!hasSig) { setServerError("Please draw your signature"); return; }
+      setValue("sigData", canvasRef.current!.toDataURL("image/png"));
     } else {
-      if (!typedSig.trim()) {
-        setServerError("Please type your name as signature");
-        return;
-      }
-      sigData = typedSig;
+      if (!typedSig.trim()) { setServerError("Please type your name as signature"); return; }
+      setValue("sigData", typedSig);
     }
+    setValue("sigMode", sigMode);
+    setServerError("");
+    handleSubmit(onSubmit)();
+  }
 
-    const res = await fetch("/api/onboarding/sign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...data,
-        ref: refCode,
-        sigMode,
-        sigData,
-      }),
-    });
-
-    if (res.ok) {
-      setResult(await res.json());
-    } else {
-      const body = await res.json();
-      setServerError(body.error ?? "Signing failed. Please try again.");
+  async function onSubmit(data: AgreementSign) {
+    try {
+      const res = await fetch("/api/onboarding/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        setResult(await res.json());
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setServerError(body.error ?? "Signing failed. Please try again.");
+      }
+    } catch {
+      setServerError("Network error. Please try again.");
     }
   }
 
   if (result) {
     return (
       <div style={{ maxWidth: 700, margin: "3rem auto", padding: "0 1.5rem" }}>
-        <div style={{ background: "#fff", border: "1px solid rgba(15,17,23,.1)", borderRadius: 12, padding: "3rem 2rem", textAlign: "center" }}>
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid rgba(15,17,23,.1)",
+            borderRadius: 12,
+            padding: "3rem 2rem",
+            textAlign: "center",
+          }}
+        >
           <div style={checkCircle}>
-            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg
+              width="32"
+              height="32"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Agreement signed. Welcome to iqcommune.</h1>
-          <p style={{ fontSize: 14, color: "#4a4d5c", marginBottom: "2rem", lineHeight: 1.65 }}>
-            Your empanelment is confirmed. We&apos;ll be in touch with your first session details within 2–3 working days.
+          <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+            Agreement signed. Welcome to iqcommune.
+          </h1>
+          <p
+            style={{
+              fontSize: 14,
+              color: "#4a4d5c",
+              marginBottom: "2rem",
+              lineHeight: 1.65,
+            }}
+          >
+            Your empanelment is confirmed. We&apos;ll be in touch with your first
+            session details within 2–3 working days.
           </p>
-          <div style={{ background: "#f8f7f4", border: "1px solid rgba(15,17,23,.1)", borderRadius: 10, padding: "1.25rem 1.5rem", maxWidth: 440, margin: "0 auto", textAlign: "left" }}>
+          <div
+            style={{
+              background: "#f8f7f4",
+              border: "1px solid rgba(15,17,23,.1)",
+              borderRadius: 10,
+              padding: "1.25rem 1.5rem",
+              maxWidth: 440,
+              margin: "0 auto",
+              textAlign: "left",
+            }}
+          >
             {[
               ["Signed by", result.signedBy],
               ["Agreement ref.", result.refCode],
               ["Module assigned", pModule],
-              ["Timestamp", new Date(result.timestamp).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })],
+              [
+                "Timestamp",
+                new Date(result.timestamp).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                }),
+              ],
               ["Status", "✓ Digitally signed"],
             ].map(([label, value]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid rgba(15,17,23,.08)", fontSize: 13 }}>
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0.4rem 0",
+                  borderBottom: "1px solid rgba(15,17,23,.08)",
+                  fontSize: 13,
+                }}
+              >
                 <span style={{ color: "#9496a1" }}>{label}</span>
-                <span style={{ fontWeight: 500, color: label === "Status" ? "#2a6b2a" : "#0f1117" }}>{value}</span>
+                <span
+                  style={{
+                    fontWeight: 500,
+                    color: label === "Status" ? "#2a6b2a" : "#0f1117",
+                  }}
+                >
+                  {value}
+                </span>
               </div>
             ))}
           </div>
@@ -226,16 +293,24 @@ export function AgreementViewer() {
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem 4rem" }}>
       {/* Header */}
       <div style={{ marginBottom: "1.5rem" }}>
-        <div style={{ fontSize: 13, color: "#9496a1", marginBottom: 8 }}>Step 3 of 4 — Review &amp; Sign</div>
-        <h1 style={{ fontSize: 22, fontWeight: 600 }}>Practitioner Empanelment Agreement</h1>
+        <div style={{ fontSize: 13, color: "#9496a1", marginBottom: 8 }}>
+          Step 3 of 4 — Review &amp; Sign
+        </div>
+        <h1 style={{ fontSize: 22, fontWeight: 600 }}>
+          Practitioner Empanelment Agreement
+        </h1>
         <p style={{ fontSize: 14, color: "#4a4d5c", marginTop: 6, lineHeight: 1.65 }}>
-          Hi {pName.split(" ")[0]}, please read the agreement below in full before signing.
-          Your details: <strong>{pRole}</strong>{pOrg ? ` · ${pOrg}` : ""} · Module: <strong>{pModule}</strong>
+          Hi {pName.split(" ")[0]}, please read the agreement below in full before
+          signing. Your details: <strong>{pRole}</strong>
+          {pOrg ? ` · ${pOrg}` : ""} · Module: <strong>{pModule}</strong>
         </p>
       </div>
 
       {/* Agreement scroll area */}
       <div
+        role="region"
+        aria-label="Agreement text — scroll to bottom to unlock signing"
+        tabIndex={0}
         onScroll={(e) => {
           const el = e.currentTarget;
           if (!hasScrolled && el.scrollTop + el.clientHeight >= el.scrollHeight - 60) {
@@ -261,42 +336,97 @@ export function AgreementViewer() {
       </div>
 
       {!hasScrolled && (
-        <p style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginBottom: 20 }}>
+        <p
+          aria-live="polite"
+          style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginBottom: 20 }}
+        >
           ↓ Scroll to the bottom of the agreement to unlock the signature section
         </p>
       )}
 
       {/* Signature section */}
       {hasScrolled && (
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div style={{ background: "#fff", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10, padding: "1.5rem", marginTop: 8 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Sign the agreement</h3>
+        <form onSubmit={handleFormSubmit} noValidate>
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid rgba(15,17,23,.12)",
+              borderRadius: 10,
+              padding: "1.5rem",
+              marginTop: 8,
+            }}
+          >
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>
+              Sign the agreement
+            </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}
+            >
               <div>
-                <label style={labelStyle}>Full legal name</label>
-                <input {...register("fullName")} style={inputStyle} placeholder={pName} />
-                {errors.fullName && <p style={errStyle}>{errors.fullName.message}</p>}
+                <label htmlFor="sig-fullname" style={labelStyle}>
+                  Full legal name
+                </label>
+                <input
+                  {...register("fullName")}
+                  id="sig-fullname"
+                  style={inputStyle}
+                  placeholder={pName}
+                />
+                {errors.fullName && (
+                  <p style={errStyle} role="alert">{errors.fullName.message}</p>
+                )}
               </div>
               <div>
-                <label style={labelStyle}>Designation</label>
-                <input {...register("designation")} style={inputStyle} placeholder={pRole} />
-                {errors.designation && <p style={errStyle}>{errors.designation.message}</p>}
+                <label htmlFor="sig-designation" style={labelStyle}>
+                  Designation
+                </label>
+                <input
+                  {...register("designation")}
+                  id="sig-designation"
+                  style={inputStyle}
+                  placeholder={pRole}
+                />
+                {errors.designation && (
+                  <p style={errStyle} role="alert">{errors.designation.message}</p>
+                )}
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <button type="button" onClick={() => setSigMode("drawn")} style={tabBtn(sigMode === "drawn")}>Draw signature</button>
-              <button type="button" onClick={() => setSigMode("typed")} style={tabBtn(sigMode === "typed")}>Type signature</button>
+              <button
+                type="button"
+                onClick={() => setSigMode("drawn")}
+                aria-pressed={sigMode === "drawn"}
+                style={tabBtn(sigMode === "drawn")}
+              >
+                Draw signature
+              </button>
+              <button
+                type="button"
+                onClick={() => setSigMode("typed")}
+                aria-pressed={sigMode === "typed"}
+                style={tabBtn(sigMode === "typed")}
+              >
+                Type signature
+              </button>
             </div>
 
             {sigMode === "drawn" ? (
               <div>
                 <div
-                  style={{ border: "1.5px dashed rgba(15,17,23,.2)", borderRadius: 8, overflow: "hidden", background: "#fafaf9", position: "relative" }}
+                  style={{
+                    border: "1.5px dashed rgba(15,17,23,.2)",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "#fafaf9",
+                    position: "relative",
+                  }}
                 >
                   <canvas
                     ref={canvasRef}
+                    role="img"
+                    aria-label="Signature drawing area — draw your signature here"
                     style={{ display: "block", touchAction: "none", cursor: "crosshair" }}
                     onMouseDown={startDraw}
                     onMouseMove={draw}
@@ -307,37 +437,91 @@ export function AgreementViewer() {
                     onTouchEnd={endDraw}
                   />
                   {!hasSig && (
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#c4c5cc", fontSize: 13, pointerEvents: "none" }}>
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#c4c5cc",
+                        fontSize: 13,
+                        pointerEvents: "none",
+                      }}
+                    >
                       Draw your signature here
                     </div>
                   )}
                 </div>
                 {hasSig && (
-                  <button type="button" onClick={clearCanvas} style={{ fontSize: 12, color: "#9496a1", border: "none", background: "none", cursor: "pointer", marginTop: 6, fontFamily: "inherit" }}>
+                  <button
+                    type="button"
+                    onClick={clearCanvas}
+                    aria-label="Clear drawn signature"
+                    style={{
+                      fontSize: 12,
+                      color: "#9496a1",
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      marginTop: 6,
+                      fontFamily: "inherit",
+                    }}
+                  >
                     Clear
                   </button>
                 )}
               </div>
             ) : (
               <div>
+                <label htmlFor="sig-typed" style={labelStyle}>
+                  Type your full name
+                </label>
                 <input
+                  id="sig-typed"
                   value={typedSig}
                   onChange={(e) => {
                     setTypedSig(e.target.value);
                     setValue("sigData", e.target.value);
                   }}
-                  style={{ ...inputStyle, fontFamily: "Georgia, serif", fontSize: 18, fontStyle: "italic" }}
+                  style={{
+                    ...inputStyle,
+                    fontFamily: "Georgia, serif",
+                    fontSize: 18,
+                    fontStyle: "italic",
+                  }}
                   placeholder="Type your full name"
                 />
               </div>
             )}
 
+            {/* Hidden fields — HMAC verification pass-through */}
             <input type="hidden" {...register("ref")} value={refCode} />
-            <input type="hidden" {...register("sigMode")} value={sigMode as "drawn" | "typed"} />
+            <input type="hidden" {...register("sigMode")} value={sigMode} />
             <input type="hidden" {...register("sigData")} />
+            <input type="hidden" {...register("linkSig")} />
+            <input type="hidden" {...register("linkParams.name")} />
+            <input type="hidden" {...register("linkParams.role")} />
+            <input type="hidden" {...register("linkParams.org")} />
+            <input type="hidden" {...register("linkParams.module")} />
+            <input type="hidden" {...register("linkParams.city")} />
+            <input type="hidden" {...register("linkParams.ref")} />
+            <input type="hidden" {...register("linkParams.email")} />
 
             {serverError && (
-              <div role="alert" style={{ background: "#fdf0f0", border: "1px solid #f0b0b0", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#a32d2d", marginTop: 12 }}>
+              <div
+                role="alert"
+                style={{
+                  background: "#fdf0f0",
+                  border: "1px solid #f0b0b0",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  color: "#a32d2d",
+                  marginTop: 12,
+                }}
+              >
                 {serverError}
               </div>
             )}
@@ -345,13 +529,36 @@ export function AgreementViewer() {
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{ width: "100%", marginTop: 20, padding: "13px", background: "#0f1117", color: "#fff", border: "none", borderRadius: 100, fontSize: 15, fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.6 : 1, fontFamily: "inherit" }}
+              style={{
+                width: "100%",
+                marginTop: 20,
+                padding: "13px",
+                background: "#0f1117",
+                color: "#fff",
+                border: "none",
+                borderRadius: 100,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: isSubmitting ? "not-allowed" : "pointer",
+                opacity: isSubmitting ? 0.6 : 1,
+                fontFamily: "inherit",
+              }}
             >
               {isSubmitting ? "Signing…" : "I agree — sign & complete empanelment →"}
             </button>
 
-            <p style={{ fontSize: 11, color: "#9496a1", textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>
-              By signing, you confirm you have read and agree to the agreement above. Your IP address and a server timestamp are recorded for audit purposes.
+            <p
+              style={{
+                fontSize: 11,
+                color: "#9496a1",
+                textAlign: "center",
+                marginTop: 10,
+                lineHeight: 1.5,
+              }}
+            >
+              By signing, you confirm you have read and agree to the agreement
+              above. Your IP address and a server timestamp are recorded for
+              audit purposes.
             </p>
           </div>
         </form>
@@ -360,11 +567,46 @@ export function AgreementViewer() {
   );
 }
 
-const checkCircle: React.CSSProperties = { width: 68, height: 68, borderRadius: "50%", background: "#eef7ee", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", color: "#2a6b2a" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid rgba(15,17,23,.18)", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff", boxSizing: "border-box" };
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5 };
+const checkCircle: React.CSSProperties = {
+  width: 68,
+  height: 68,
+  borderRadius: "50%",
+  background: "#eef7ee",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  margin: "0 auto 1.5rem",
+  color: "#2a6b2a",
+};
+// outline removed — globals.css :focus-visible provides the gold ring
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1px solid rgba(15,17,23,.18)",
+  borderRadius: 8,
+  fontSize: 14,
+  fontFamily: "inherit",
+  background: "#fff",
+  boxSizing: "border-box",
+};
+const labelStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 500,
+  display: "block",
+  marginBottom: 5,
+};
 const errStyle: React.CSSProperties = { fontSize: 12, color: "#a32d2d", marginTop: 4 };
 
 function tabBtn(active: boolean): React.CSSProperties {
-  return { padding: "7px 16px", borderRadius: 6, border: active ? "1.5px solid #0f1117" : "1px solid rgba(15,17,23,.15)", background: active ? "#0f1117" : "#fff", color: active ? "#fff" : "#4a4d5c", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: active ? 500 : 400 };
+  return {
+    padding: "7px 16px",
+    borderRadius: 6,
+    border: active ? "1.5px solid #0f1117" : "1px solid rgba(15,17,23,.15)",
+    background: active ? "#0f1117" : "#fff",
+    color: active ? "#fff" : "#4a4d5c",
+    fontSize: 13,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontWeight: active ? 500 : 400,
+  };
 }

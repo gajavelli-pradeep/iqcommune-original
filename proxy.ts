@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // Refresh Supabase session cookies on every request (required by @supabase/ssr)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,13 +25,20 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Guard both sides: if ADMIN_EMAIL is unset, process.env.ADMIN_EMAIL is undefined,
+  // and null?.email is also undefined — undefined === undefined would be true without !!user.
+  const isAdmin =
+    !!user &&
+    (user.app_metadata?.role === "admin" ||
+      (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL));
+
   const isConsole = request.nextUrl.pathname.startsWith("/console");
   const isLogin = request.nextUrl.pathname === "/login";
 
-  if (isConsole && !user) {
+  if (isConsole && !isAdmin) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  if (isLogin && user) {
+  if (isLogin && isAdmin) {
     return NextResponse.redirect(new URL("/console", request.url));
   }
 

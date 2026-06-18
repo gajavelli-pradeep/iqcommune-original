@@ -11,7 +11,14 @@ export default async function AdminLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  // Guard both sides: if ADMIN_EMAIL is unset, process.env.ADMIN_EMAIL is undefined,
+  // and null?.email is also undefined — undefined === undefined would be true without the !!user guard.
+  const isAdmin =
+    !!user &&
+    (user.app_metadata?.role === "admin" ||
+      (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL));
+
+  if (!isAdmin) {
     redirect("/login");
   }
 
@@ -54,7 +61,7 @@ export default async function AdminLayout({
           </span>
         </div>
         <span style={{ fontSize: 13, color: "rgba(255,255,255,.5)" }}>
-          {user.email}
+          {user!.email}
         </span>
       </header>
       <main style={{ padding: "2rem", maxWidth: 1280, margin: "0 auto" }}>

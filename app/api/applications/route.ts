@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApplicationSchema } from "@/lib/schemas/application";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/ip";
+import { log } from "@/lib/logger";
 import type { Database } from "@/lib/supabase/database.types";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = clientIp(req);
   if (!rateLimit(ip, { max: 5, windowMs: 60_000 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -30,11 +32,12 @@ export async function POST(req: NextRequest) {
   const d = parsed.data;
   const supabase = createAdminClient();
 
-  const { count } = await supabase
-    .from("practitioners")
-    .select("*", { count: "exact", head: true });
-
-  const refCode = String((count ?? 0) + 1).padStart(4, "0");
+  // Use DB sequence for atomic, race-condition-free ref_code generation.
+  const { data: refCode, error: refErr } = await supabase.rpc("next_practitioner_ref");
+  if (refErr || !refCode) {
+    log.error("Failed to generate practitioner ref code", { error: refErr?.message, ip });
+    return NextResponse.json({ error: "Failed to generate reference code" }, { status: 500 });
+  }
 
   const { data, error } = await supabase
     .from("practitioners")
@@ -58,14 +61,14 @@ export async function POST(req: NextRequest) {
       family_relation: d.familyRelation ?? null,
       family_upi: d.familyUpi ?? null,
       family_ifsc: d.familyIfsc ?? null,
-      ref_code: refCode,
+      ref_code: refCode as string,
       status: "Applied",
     })
-    .select("*")
+    .select("id, ref_code")
     .single();
 
   if (error) {
-    console.error("[POST /api/applications]", error.message);
+    log.error("Failed to insert practitioner application", { error: error.message, code: error.code, ip });
     if (error.code === "23505") {
       return NextResponse.json(
         { error: "An application with this email already exists" },
@@ -75,6 +78,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
   }
 
-  const row = data as PractitionerRow;
+  const row = data as Pick<PractitionerRow, "id" | "ref_code">;
   return NextResponse.json({ id: row.id, refCode: row.ref_code }, { status: 201 });
 }

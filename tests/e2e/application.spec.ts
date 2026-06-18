@@ -16,7 +16,8 @@ test.describe("Practitioner application flow", () => {
   });
 
   test("module toggle selects and deselects", async ({ page }) => {
-    const btn = page.getByRole("button", { name: /mutual funds/i });
+    // "Investment Basics" is the first module in MODULES — "Mutual Funds" was never in the schema
+    const btn = page.getByRole("button", { name: /investment basics/i });
     await expect(btn).toBeVisible();
     await btn.click();
     await expect(btn).toHaveCSS("background-color", "rgb(15, 17, 23)");
@@ -32,9 +33,9 @@ test.describe("Practitioner application flow", () => {
   });
 
   test("successful submission shows confirmation screen", async ({ page, context }) => {
-    // Mock the API to return 200 so we don't need a real Supabase connection
+    // Mock matches the real API response shape: { id, refCode }
     await context.route("/api/applications", (route) =>
-      route.fulfill({ status: 201, body: JSON.stringify({ success: true }) })
+      route.fulfill({ status: 201, body: JSON.stringify({ id: "prac_001", refCode: "IQC-EMP-0001" }) })
     );
 
     await page.fill('input[placeholder="Priya"]', "Priya");
@@ -43,15 +44,49 @@ test.describe("Practitioner application flow", () => {
     await page.fill('input[placeholder="+91 98765 43210"]', "+91 98765 43210");
     await page.fill('input[placeholder="Certified Financial Planner"]', "CFP");
     await page.fill('input[placeholder="Mumbai"]', "Mumbai");
-    await page.selectOption('select:has-text("Select range")', { label: /3 – 5 years/ });
+    await page.selectOption('select:has-text("Select range")', { label: "5 – 8 years" });
     await page.click('button:has-text("Stock Market Basics")');
-    await page.selectOption('select:has-text("Select frequency")', { label: /Once/ });
+    await page.selectOption('select:has-text("Select frequency")', { label: "Once a month" });
     await page.fill("textarea", "I want to share my knowledge and give back.");
-    await page.check('input[type=checkbox]:near(:text("iqcommune may disclose"))');
-    await page.check('input[type=checkbox]:near(:text("cross-sell"))');
-    await page.check('input[type=checkbox]:near(:text("employer"))');
+
+    // Use getByRole for checkboxes — :near() is not a native Playwright selector
+    await page.getByRole("checkbox", { name: /iqcommune may disclose/i }).check();
+    await page.getByRole("checkbox", { name: /cross-sell/i }).check();
+    await page.getByRole("checkbox", { name: /employer/i }).check();
 
     await page.click("button[type=submit]");
     await expect(page.getByText(/application received/i)).toBeVisible({ timeout: 5000 });
+    // Confirm success screen replaced the form (submit button is gone)
+    await expect(page.locator("button[type=submit]")).not.toBeVisible();
+  });
+
+  test("duplicate email shows 409 error message", async ({ page, context }) => {
+    await context.route("/api/applications", (route) =>
+      route.fulfill({
+        status: 409,
+        body: JSON.stringify({ error: "An application with this email already exists" }),
+      })
+    );
+
+    await page.fill('input[placeholder="Priya"]', "Priya");
+    await page.fill('input[placeholder="Sharma"]', "Sharma");
+    await page.fill('input[type="email"]', "existing@gmail.com");
+    await page.fill('input[placeholder="+91 98765 43210"]', "+91 98765 43210");
+    await page.fill('input[placeholder="Certified Financial Planner"]', "CFP");
+    await page.fill('input[placeholder="Mumbai"]', "Mumbai");
+    await page.selectOption('select:has-text("Select range")', { label: "5 – 8 years" });
+    await page.click('button:has-text("Stock Market Basics")');
+    await page.selectOption('select:has-text("Select frequency")', { label: "Once a month" });
+    await page.fill("textarea", "I want to share my knowledge.");
+    await page.getByRole("checkbox", { name: /iqcommune may disclose/i }).check();
+    await page.getByRole("checkbox", { name: /cross-sell/i }).check();
+    await page.getByRole("checkbox", { name: /employer/i }).check();
+
+    await page.click("button[type=submit]");
+    await expect(
+      page.getByText(/application with this email already exists/i)
+    ).toBeVisible({ timeout: 5000 });
+    // Form should still be visible (not replaced by success screen)
+    await expect(page.locator("button[type=submit]")).toBeVisible();
   });
 });

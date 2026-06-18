@@ -77,6 +77,13 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 4px;
 }
 
+/* Hide secondary nav links on small screens to prevent overflow */
+@media (max-width: 480px) {
+  .nav-secondary {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

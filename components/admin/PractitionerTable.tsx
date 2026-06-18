@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useId, useRef } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -23,6 +23,8 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
   const [selected, setSelected] = useState<Practitioner | null>(null);
   const [genLink, setGenLink] = useState<{ url: string; refCode: string } | null>(null);
   const [toast, setToast] = useState("");
+  // Track which row triggered a modal so focus can be restored on close
+  const lastFocusRef = useRef<HTMLElement | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -78,7 +80,6 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
         }),
       });
       if (res.ok) {
-        // Only advance status after email is confirmed sent
         await updateStatus(p.id, "Agreement Sent");
         setGenLink(null);
         showToast("Agreement link sent via email");
@@ -88,6 +89,21 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
     },
     [updateStatus, showToast]
   );
+
+  function openDetail(p: Practitioner, trigger: HTMLElement) {
+    lastFocusRef.current = trigger;
+    setSelected(p);
+  }
+
+  function closeDetail() {
+    setSelected(null);
+    setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
+  }
+
+  function closeGenLink() {
+    setGenLink(null);
+    setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
+  }
 
   const counts = STATUSES.reduce(
     (acc, s) => ({ ...acc, [s]: data.filter((p) => p.status === s).length }),
@@ -101,18 +117,11 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
     <div>
       {/* Pipeline chips */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-        <button
-          onClick={() => setFilter("all")}
-          style={chipStyle(filter === "all")}
-        >
+        <button onClick={() => setFilter("all")} style={chipStyle(filter === "all")}>
           All ({data.length})
         </button>
         {PIPELINE_ORDER.map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            style={chipStyle(filter === s)}
-          >
+          <button key={s} onClick={() => setFilter(s)} style={chipStyle(filter === s)}>
             {s} ({counts[s] ?? 0})
           </button>
         ))}
@@ -131,7 +140,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
             <tr>
               {["Ref", "Name", "Role / Org", "City", "Modules", "Status", "Actions"].map(
                 (h) => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} scope="col" style={thStyle}>{h}</th>
                 )
               )}
             </tr>
@@ -140,8 +149,15 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
             {visible.map((p) => (
               <tr
                 key={p.id}
+                tabIndex={0}
                 style={{ borderBottom: "1px solid rgba(15,17,23,.07)", cursor: "pointer" }}
-                onClick={() => setSelected(p)}
+                onClick={(e) => openDetail(p, e.currentTarget)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openDetail(p, e.currentTarget);
+                  }
+                }}
               >
                 <td style={tdStyle}>{p.ref_code ? `#${p.ref_code}` : "—"}</td>
                 <td style={{ ...tdStyle, fontWeight: 500 }}>{p.name}</td>
@@ -169,7 +185,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
                     </select>
                     {p.status === "Screening Done" && (
                       <button
-                        onClick={() => generateLink(p)}
+                        onClick={(e) => { lastFocusRef.current = e.currentTarget; generateLink(p); }}
                         style={btnStyle("#c9982a", "#fff")}
                       >
                         Gen. link
@@ -192,7 +208,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
 
       {/* Generated link modal */}
       {genLink && (
-        <Modal onClose={() => setGenLink(null)} title="Agreement link generated">
+        <Modal onClose={closeGenLink} title="Agreement link generated">
           <p style={{ fontSize: 13, marginBottom: 12 }}>
             Copy this link and send manually, or click &ldquo;Send via email&rdquo; to deliver automatically.
           </p>
@@ -201,7 +217,14 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={() => { navigator.clipboard.writeText(genLink.url); showToast("Copied!"); }}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(genLink.url);
+                  showToast("Copied!");
+                } catch {
+                  showToast("Copy failed — select and copy manually");
+                }
+              }}
               style={btnStyle("rgba(15,17,23,.07)", "#0f1117")}
             >
               Copy link
@@ -220,7 +243,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
 
       {/* Detail drawer */}
       {selected && (
-        <Modal onClose={() => setSelected(null)} title={selected.name}>
+        <Modal onClose={closeDetail} title={selected.name}>
           <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
             {[
               ["Email", selected.email],
@@ -249,23 +272,83 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
         </Modal>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
-          {toast}
-        </div>
-      )}
+      {/* Persistent aria-live region — must stay in DOM even when empty so announcements fire reliably */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          background: toast ? "#0f1117" : "transparent",
+          color: "#fff",
+          padding: toast ? "10px 18px" : 0,
+          borderRadius: 8,
+          fontSize: 13,
+          zIndex: 9999,
+          transition: "background .15s",
+          pointerEvents: "none",
+        }}
+      >
+        {toast}
+      </div>
     </div>
   );
 }
 
 function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus first focusable element on open
+  useEffect(() => {
+    const el = dialogRef.current?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), a[href]'
+    );
+    el?.focus();
+  }, []);
+
+  // Close on Escape; trap Tab within dialog
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ background: "#fff", borderRadius: 12, padding: "1.5rem", maxWidth: 560, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        style={{ background: "#fff", borderRadius: 12, padding: "1.5rem", maxWidth: 560, width: "100%", maxHeight: "80vh", overflowY: "auto" }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h3 style={{ fontWeight: 600, fontSize: 16 }}>{title}</h3>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 20, color: "#9496a1" }}>×</button>
+          <h3 id={titleId} style={{ fontWeight: 600, fontSize: 16 }}>{title}</h3>
+          <button onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 20, color: "#9496a1" }}>×</button>
         </div>
         {children}
       </div>

@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AgreementSignSchema } from "@/lib/schemas/agreement";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyOnboardingParams } from "@/lib/hmac";
+import { rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/ip";
+import { log } from "@/lib/logger";
 import type { Database } from "@/lib/supabase/database.types";
 
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
 
 export async function POST(req: NextRequest) {
+  const ip = clientIp(req);
+  if (!rateLimit(ip, { max: 5, windowMs: 60_000 })) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -21,12 +30,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { ref, fullName, designation, sigMode, sigData } = parsed.data;
+  const { ref, fullName, designation, sigMode, sigData, linkSig, linkParams } = parsed.data;
+
+  // Verify the HMAC signature from the original onboarding URL.
+  // This prevents anyone who guesses a ref_code from signing without the link.
+  const sp = new URLSearchParams({ ...linkParams, sig: linkSig });
+  if (!verifyOnboardingParams(sp)) {
+    return NextResponse.json({ error: "Invalid or tampered link" }, { status: 403 });
+  }
+
   const supabase = createAdminClient();
 
   const { data, error: fetchErr } = await supabase
     .from("agreements")
-    .select("*")
+    .select("id, status, practitioner_id")
     .eq("ref_code", ref)
     .single();
 
@@ -40,11 +57,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Agreement already signed" }, { status: 409 });
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for") ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  const signedAt = new Date().toISOString(); // server-side timestamp — never trust client
+  // ip already resolved at top of handler
+  const signedAt = new Date().toISOString(); // server-side — never trust client
 
   const { error: updateErr } = await supabase
     .from("agreements")
@@ -58,15 +72,28 @@ export async function POST(req: NextRequest) {
     .eq("id", agreement.id);
 
   if (updateErr) {
-    console.error("[POST /api/onboarding/sign]", updateErr.message);
+    log.error("Failed to record agreement signature", {
+      error: updateErr.message,
+      agreementId: agreement.id,
+    });
     return NextResponse.json({ error: "Failed to record signature" }, { status: 500 });
   }
 
-  // Promote practitioner to Empanelled
-  await supabase
+  // Promote practitioner to Empanelled — check the error so partial failure is visible.
+  const { error: promoteErr } = await supabase
     .from("practitioners")
     .update({ status: "Empanelled" })
     .eq("id", agreement.practitioner_id);
+
+  if (promoteErr) {
+    // Agreement is already Active — log but don't fail the response.
+    // Admin can manually correct the practitioner status.
+    log.error("Agreement signed but practitioner status promotion failed", {
+      error: promoteErr.message,
+      practitionerId: agreement.practitioner_id,
+      agreementId: agreement.id,
+    });
+  }
 
   return NextResponse.json({
     timestamp: signedAt,

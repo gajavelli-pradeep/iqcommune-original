@@ -25,11 +25,12 @@ type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
 async function getData() {
   const db = createAdminClient();
 
+  // Limit to 200 rows per table. Full pagination is a future improvement.
   const [practitioners, sessions, requests, payouts] = await Promise.all([
-    db.from("practitioners").select("*").order("created_at", { ascending: false }),
-    db.from("sessions").select("*, practitioner:practitioners(name, email)").order("session_date", { ascending: false }),
-    db.from("session_requests").select("*, assigned_practitioner:practitioners(name)").order("created_at", { ascending: false }),
-    db.from("payouts").select("*, session:sessions(ref_code, module), practitioner:practitioners(name)").order("created_at", { ascending: false }),
+    db.from("practitioners").select("*").order("created_at", { ascending: false }).limit(200),
+    db.from("sessions").select("*, practitioner:practitioners(name, email)").order("session_date", { ascending: false }).limit(200),
+    db.from("session_requests").select("*, assigned_practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
+    db.from("payouts").select("*, session:sessions(ref_code, module), practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
   ]);
 
   return {
