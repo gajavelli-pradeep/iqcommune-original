@@ -65,7 +65,7 @@ export function RequestTable({ initialData }: { initialData: SessionRequest[] })
       <table style={tableStyle}>
         <thead>
           <tr>
-            {["Client", "Topic", "Audience", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
+            {["Client", "Topic", "Audience", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
               <th key={h} style={thStyle}>{h}</th>
             ))}
           </tr>
@@ -76,12 +76,21 @@ export function RequestTable({ initialData }: { initialData: SessionRequest[] })
               <td style={tdStyle}>
                 <div style={{ fontWeight: 500 }}>{r.name}</div>
                 <div style={{ fontSize: 11, color: "#9496a1" }}>{r.org} · {r.email}</div>
+                {r.phone && <div style={{ fontSize: 11, color: "#9496a1" }}>{r.phone}</div>}
+                <div style={{ fontSize: 10, color: "#c9c9c9", marginTop: 2 }}>
+                  {new Date(r.created_at).toLocaleDateString("en-IN")}
+                </div>
               </td>
               <td style={tdStyle}>{r.topic}</td>
               <td style={tdStyle}>
                 <div>{r.audience_type}</div>
-                <div style={{ fontSize: 11, color: "#9496a1" }}>{r.group_size} participants</div>
+                <div style={{ fontSize: 11, color: "#9496a1" }}>{r.group_size} total</div>
               </td>
+              <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
+                {r.min_commit}
+                <div style={{ fontSize: 11, color: "#9496a1", fontWeight: 400 }}>guaranteed</div>
+              </td>
+              <td style={tdStyle}>{r.venue ?? "—"}</td>
               <td style={tdStyle}>{r.preferred_dates}</td>
               <td style={tdStyle}>{r.assigned_practitioner?.name ?? "—"}</td>
               <td style={tdStyle}><StatusPill status={r.status} /></td>
@@ -92,7 +101,7 @@ export function RequestTable({ initialData }: { initialData: SessionRequest[] })
                     onChange={(e) => updateStatus(r.id, e.target.value)}
                     style={selectStyle}
                   >
-                    {["New", "Matched", "Confirmed", "Completed"].map((s) => (
+                    {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -105,7 +114,7 @@ export function RequestTable({ initialData }: { initialData: SessionRequest[] })
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+              <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
                 No session requests yet
               </td>
             </tr>

@@ -16,22 +16,30 @@ interface Payout {
   practitioner: { name: string } | null;
 }
 
+const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
+
 export function PayoutTable({ initialData }: { initialData: Payout[] }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
+  const [methodMap, setMethodMap] = useState<Record<string, string>>({});
 
   const markPaid = useCallback(async (id: string) => {
-    const res = await fetch(`/api/admin/payouts/${id}`, { method: "PATCH" });
+    const payment_method = methodMap[id] || "UPI";
+    const res = await fetch(`/api/admin/payouts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payment_method }),
+    });
     if (res.ok) {
       setData((prev) =>
         prev.map((p) =>
-          p.id === id ? { ...p, status: "Paid", paid_at: new Date().toISOString() } : p
+          p.id === id ? { ...p, status: "Paid", paid_at: new Date().toISOString(), payment_method } : p
         )
       );
       setToast("Payout marked as paid");
       setTimeout(() => setToast(""), 3000);
     }
-  }, []);
+  }, [methodMap]);
 
   const pending = data.filter((p) => p.status === "Pending");
   const totalPending = pending.reduce((sum, p) => sum + p.net_amount, 0);
@@ -47,7 +55,7 @@ export function PayoutTable({ initialData }: { initialData: Payout[] }) {
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Invoice", "Practitioner", "Session", "Gross", "Net", "Status", "Actions"].map((h) => (
+              {["Invoice", "Practitioner", "Session", "Gross", "Net", "Method", "Status", "Actions"].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -63,6 +71,19 @@ export function PayoutTable({ initialData }: { initialData: Payout[] }) {
                 </td>
                 <td style={tdStyle}>{formatInr(p.gross_amount)}</td>
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{formatInr(p.net_amount)}</td>
+                <td style={tdStyle}>
+                  {p.status === "Pending" ? (
+                    <select
+                      value={methodMap[p.id] ?? "UPI"}
+                      onChange={(e) => setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))}
+                      style={{ fontSize: 12, padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(15,17,23,.15)", background: "#fff", fontFamily: "inherit" }}
+                    >
+                      {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
+                    </select>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "#4a4d5c" }}>{p.payment_method ?? "—"}</span>
+                  )}
+                </td>
                 <td style={tdStyle}><StatusPill status={p.status} /></td>
                 <td style={tdStyle}>
                   {p.status === "Pending" ? (
@@ -82,7 +103,7 @@ export function PayoutTable({ initialData }: { initialData: Payout[] }) {
             ))}
             {data.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
                   No payouts yet
                 </td>
               </tr>

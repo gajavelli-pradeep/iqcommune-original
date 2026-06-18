@@ -138,7 +138,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Ref", "Name", "Role / Org", "City", "Modules", "Status", "Actions"].map(
+              {["Ref", "Name", "Role / Org", "City", "Modules", "Applied", "Status", "Actions"].map(
                 (h) => (
                   <th key={h} scope="col" style={thStyle}>{h}</th>
                 )
@@ -169,6 +169,9 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
                 </td>
                 <td style={tdStyle}>{p.city}</td>
                 <td style={tdStyle}>{p.modules.join(", ")}</td>
+                <td style={{ ...tdStyle, fontSize: 12, color: "#9496a1", whiteSpace: "nowrap" }}>
+                  {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
+                </td>
                 <td style={tdStyle}>
                   <StatusPill status={p.status} />
                 </td>
@@ -197,7 +200,7 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
                   No practitioners in this stage
                 </td>
               </tr>
@@ -266,6 +269,37 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
               <div>
                 <div style={{ color: "#9496a1", marginBottom: 4 }}>Why teach</div>
                 <div style={{ lineHeight: 1.6 }}>{selected.why}</div>
+              </div>
+            )}
+            {/* Consent flags */}
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(15,17,23,.08)" }}>
+              <div style={{ color: "#9496a1", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Consents</div>
+              {[
+                ["Operational", selected.consent_operational],
+                ["No-sell", selected.consent_nosell],
+                ["Employer", selected.consent_employer],
+              ].map(([label, val]) => (
+                <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
+                  <span style={{ color: "#9496a1", minWidth: 100 }}>{label}</span>
+                  <span style={{ color: val ? "#2a6b2a" : "#a32d2d", fontWeight: 500 }}>{val ? "✓ Yes" : "✗ No"}</span>
+                </div>
+              ))}
+            </div>
+            {/* Payment info */}
+            {(selected.upi_id || selected.bank_account) && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(15,17,23,.08)" }}>
+                <div style={{ color: "#9496a1", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Payment details</div>
+                {[
+                  ["UPI", selected.upi_id],
+                  ["Bank", selected.bank_name],
+                  ["Account", selected.bank_account],
+                  ["IFSC", selected.ifsc],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
+                    <span style={{ color: "#9496a1", minWidth: 100 }}>{label}</span>
+                    <span style={{ fontWeight: 500, fontFamily: "monospace", fontSize: 12 }}>{value}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
