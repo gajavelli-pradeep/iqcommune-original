@@ -1,6 +1,7 @@
 "use client";
 
 import { cloneElement, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -101,11 +102,12 @@ export function RequestModal() {
         Request a Session →
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
           style={overlayStyle}
           onClick={(e) => e.target === e.currentTarget && handleClose()}
         >
+          <div style={overlayInnerStyle}>
           <div
             ref={dialogRef}
             role="dialog"
@@ -273,7 +275,9 @@ export function RequestModal() {
               </form>
             )}
           </div>
-        </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -334,15 +338,22 @@ const triggerStyle: React.CSSProperties = {
   cursor: "pointer",
   fontFamily: "inherit",
 };
+// Overlay scrolls so the dialog header is always at the top on mobile.
+// Dialog uses margin: 24px auto so it's horizontally centered and has breathing room.
 const overlayStyle: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   background: "rgba(15,17,23,.5)",
   zIndex: 1000,
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+};
+const overlayInnerStyle: React.CSSProperties = {
   display: "flex",
-  alignItems: "center",
   justifyContent: "center",
   padding: 24,
+  minHeight: "100%",
+  boxSizing: "border-box",
 };
 const dialogStyle: React.CSSProperties = {
   background: "#fff",
@@ -350,8 +361,8 @@ const dialogStyle: React.CSSProperties = {
   padding: "1.75rem",
   maxWidth: 560,
   width: "100%",
-  maxHeight: "90vh",
-  overflowY: "auto",
+  height: "fit-content",
+  alignSelf: "flex-start",
 };
 // auto-fit so columns collapse to single-column on narrow mobile viewports
 const rowTwo: React.CSSProperties = {

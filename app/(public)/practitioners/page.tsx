@@ -3,7 +3,7 @@ import { ApplicationForm } from "@/components/public/ApplicationForm";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Become a Practitioner | iqcommune",
+  title: "Become a Practitioner",
   description:
     "Join iqcommune as a finance practitioner. Share your expertise in in-person sessions. No products, no pitch — just knowledge transfer.",
 };
