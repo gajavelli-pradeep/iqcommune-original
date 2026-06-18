@@ -16,7 +16,7 @@ export const AgreementSignSchema = z.object({
   fullName: z.string().min(2, "Enter your full legal name"),
   designation: z.string().min(1, "Enter your designation"),
   sigMode: z.enum(["drawn", "typed"]),
-  sigData: z.string().min(1, "Signature is required"),
+  sigData: z.string().min(1, "Signature is required").max(600_000, "Signature data too large"),
   // HMAC verification — the original signed URL params are sent back
   // so the server can re-verify the signature before recording consent.
   linkSig: z.string().min(1),

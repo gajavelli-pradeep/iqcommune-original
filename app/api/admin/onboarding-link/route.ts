@@ -35,11 +35,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!p.modules || p.modules.length === 0) {
+    return NextResponse.json(
+      { error: "Practitioner has no modules assigned — add at least one before sending the empanelment link" },
+      { status: 422 }
+    );
+  }
+
   const url = signOnboardingUrl({
     name: p.name,
     role: p.role,
     org: p.org ?? "Independent",
-    module: p.modules[0] ?? "",
+    module: p.modules[0],
     city: p.city,
     ref: p.ref_code ?? "",
     email: p.email,
@@ -47,15 +54,22 @@ export async function POST(req: NextRequest) {
 
   // Create agreement record (idempotent — upsert by ref_code)
   const refCode = `IQC-EMP-${p.ref_code}`;
-  await supabase.from("agreements").upsert(
+  const { error: upsertErr } = await supabase.from("agreements").upsert(
     {
       practitioner_id: practitionerId,
       ref_code: refCode,
-      module: p.modules[0] ?? "",
+      module: p.modules[0],
       status: "Pending signature",
     },
     { onConflict: "ref_code" }
   );
+
+  if (upsertErr) {
+    return NextResponse.json(
+      { error: "Failed to create agreement record", detail: upsertErr.message },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ url, refCode });
 }

@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
   // ip already resolved at top of handler
   const signedAt = new Date().toISOString(); // server-side — never trust client
 
-  const { error: updateErr } = await supabase
+  // Atomic guard: the WHERE status = 'Pending signature' ensures only one
+  // concurrent request wins the race. If another request signed first,
+  // updatedAgreement will be null and we return 409.
+  const { data: updatedAgreement, error: updateErr } = await supabase
     .from("agreements")
     .update({
       signed_at: signedAt,
@@ -69,7 +72,10 @@ export async function POST(req: NextRequest) {
       signer_ip: ip,
       status: "Active",
     })
-    .eq("id", agreement.id);
+    .eq("id", agreement.id)
+    .eq("status", "Pending signature")
+    .select("id")
+    .maybeSingle();
 
   if (updateErr) {
     log.error("Failed to record agreement signature", {
@@ -77,6 +83,11 @@ export async function POST(req: NextRequest) {
       agreementId: agreement.id,
     });
     return NextResponse.json({ error: "Failed to record signature" }, { status: 500 });
+  }
+
+  if (!updatedAgreement) {
+    // Another concurrent request already activated this agreement.
+    return NextResponse.json({ error: "Agreement already signed" }, { status: 409 });
   }
 
   // Promote practitioner to Empanelled — check the error so partial failure is visible.

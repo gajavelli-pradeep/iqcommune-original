@@ -11,11 +11,14 @@ export async function requireAdmin(): Promise<NextResponse | null> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Support both Supabase app_metadata role claim and ADMIN_EMAIL env var.
-  // Set app_metadata.role = 'admin' via Supabase dashboard for production.
+  // Primary check: app_metadata.role is set by the service role only (not user-modifiable).
+  // Fallback: ADMIN_EMAIL env var — dev/bootstrap convenience only. Uses case-insensitive
+  // comparison since email is case-insensitive by spec. Do not rely on this in production;
+  // set app_metadata.role = 'admin' via Supabase dashboard instead.
   const isAdmin =
     user.app_metadata?.role === "admin" ||
-    (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL);
+    (!!process.env.ADMIN_EMAIL &&
+      user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase());
 
   if (!isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { SessionRequestSchema } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/ip";
+import { log } from "@/lib/logger";
 import type { Database } from "@/lib/supabase/database.types";
 
 type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"];
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = clientIp(req);
   if (!rateLimit(ip, { max: 10, windowMs: 60_000 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    console.error("[POST /api/session-requests]", error.message);
+    log.error("Failed to save session request", { error: error.message, ip });
     return NextResponse.json({ error: "Failed to save request" }, { status: 500 });
   }
 

@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       family_name: d.familyName ?? null,
       family_relation: d.familyRelation ?? null,
       family_upi: d.familyUpi ?? null,
+      family_bank: d.familyBank ?? null,
       family_ifsc: d.familyIfsc ?? null,
       ref_code: refCode as string,
       status: "Applied",
