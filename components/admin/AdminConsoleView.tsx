@@ -28,6 +28,17 @@ interface Counts {
   pendingSessions: number;
   pendingPayouts: number;
   pendingAgreements?: number;
+  pendingPayoutGross?: number;
+  pendingPayoutNet?: number;
+  confirmedSessions?: number;
+  completedSessions?: number;
+  totalRequests?: number;
+  matchedRequests?: number;
+  confirmedRequests?: number;
+  totalPractitioners?: number;
+  totalSessions?: number;
+  totalPayouts?: number;
+  paidPayouts?: number;
 }
 
 interface Props {
@@ -57,39 +68,40 @@ type StatDef = {
   deltaRed?: boolean;
 };
 
-const TAB_STATS: Record<string, StatDef[]> = {
-  // Gap 45: 'New — unreviewed' lowercase u; Gap 17: delta on 'New'
-  requests: [
-    { label: "Total requests",    value: 0 },
-    { label: "New — unreviewed",  value: 0, delta: "↑ needs action", deltaRed: true },
-    { label: "Matched",           value: 0 },
-    { label: "Confirmed",         value: 0 },
-  ],
-  // Gap 17: delta on 'Screening done' and 'Empanelled'
-  practitioners: [
-    { label: "Total",            value: 0 },
-    { label: "Applied",          value: 0 },
-    { label: "Screening done",   value: 0, delta: "↑ action needed" },
-    { label: "Agreement sent",   value: 0 },
-    { label: "Empanelled",       value: 0, delta: "Active" },
-  ],
-  // Gap 47: lowercase; Gap 44: delta on Upcoming and Consent pending
-  sessions: [
-    { label: "Total sessions",  value: 0 },
-    { label: "Upcoming",        value: 0, delta: "Next: 28 Jun" },
-    { label: "Consent pending", value: 0, delta: "↑ action needed", deltaRed: true },
-    { label: "Completed",       value: 0 },
-  ],
-  agreements: [], // Gap 27 & 28: AgreementTable has NO stats row — handled there
-  // Gap 46: lowercase labels
-  payouts: [
-    { label: "Total paid out",     value: 0 },
-    { label: "Pending payment",    value: 0, delta: "↑ 2 sessions", deltaRed: true },
-    { label: "Sessions invoiced",  value: 0 },
-    { label: "Paid this month",    value: 0 },
-  ],
-  settings: [],
-};
+function buildTabStats(counts: Counts): Record<string, StatDef[]> {
+  const fmt = (n: number) =>
+    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(0)}K` : `₹${n}`;
+
+  return {
+    requests: [
+      { label: "Total requests",    value: counts.totalRequests ?? 0 },
+      { label: "New — unreviewed",  value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0 },
+      { label: "Matched",           value: counts.matchedRequests ?? 0 },
+      { label: "Confirmed",         value: counts.confirmedRequests ?? 0 },
+    ],
+    practitioners: [
+      { label: "Total",            value: counts.totalPractitioners ?? 0 },
+      { label: "Applied",          value: counts.applied },
+      { label: "Screening done",   value: 0, delta: counts.applied > 0 ? "↑ action needed" : undefined },
+      { label: "Agreement sent",   value: 0 },
+      { label: "Empanelled",       value: counts.empanelled, delta: counts.empanelled > 0 ? "Active" : undefined },
+    ],
+    sessions: [
+      { label: "Total sessions",  value: counts.totalSessions ?? 0 },
+      { label: "Upcoming",        value: counts.confirmedSessions ?? counts.pendingSessions, delta: counts.confirmedSessions ? `${counts.confirmedSessions} scheduled` : undefined },
+      { label: "Consent pending", value: 0, delta: "↑ action needed", deltaRed: true },
+      { label: "Completed",       value: counts.completedSessions ?? 0 },
+    ],
+    agreements: [],
+    payouts: [
+      { label: "Total paid out",    value: counts.paidPayouts ?? 0 },
+      { label: "Pending payment",   value: counts.pendingPayouts, delta: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) + " gross" : counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0 },
+      { label: "Sessions invoiced", value: counts.totalPayouts ?? 0 },
+      { label: "Net pending",       value: counts.pendingPayoutNet ? fmt(counts.pendingPayoutNet) : "—" },
+    ],
+    settings: [],
+  };
+}
 
 // Gap 15: corrected button labels, removed 'Draft message', correct variants, sessions only 'Create session'
 type ActionButton = {
@@ -299,8 +311,9 @@ function TabHeader({ tab }: { tab: string }) {
 
 // ─── Per-tab stats row — Gap 9, 10, 11, 12, 17, 44, 45, 46, 47 ──────────────
 // Full-width, no outer border/radius, background acts as gap colour
-function TabStatsRow({ tab }: { tab: string }) {
-  const stats = TAB_STATS[tab];
+function TabStatsRow({ tab, counts }: { tab: string; counts: Counts }) {
+  const allStats = buildTabStats(counts);
+  const stats = allStats[tab];
   if (!stats || stats.length === 0) return null;
 
   return (
@@ -519,10 +532,10 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
             {/* Gap 6: white page-hdr with border-bottom */}
             <TabHeader tab="requests" />
             {/* Gap 7: stats row is full-width, no horizontal padding */}
-            <TabStatsRow tab="requests" />
+            <TabStatsRow tab="requests" counts={counts} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requests} />
+              <RequestTable initialData={requests} practitioners={practitioners} />
             </div>
           </div>
         )}
@@ -530,7 +543,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
         {activeTab === "practitioners" && (
           <div>
             <TabHeader tab="practitioners" />
-            <TabStatsRow tab="practitioners" />
+            <TabStatsRow tab="practitioners" counts={counts} />
             {/* Gap 16: filter bar */}
             <PractitionerFilterBar active={prFilter} onChange={setPrFilter} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
@@ -542,7 +555,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
         {activeTab === "sessions" && (
           <div>
             <TabHeader tab="sessions" />
-            <TabStatsRow tab="sessions" />
+            <TabStatsRow tab="sessions" counts={counts} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <SessionTable initialData={sessions} />
             </div>
@@ -562,7 +575,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
         {activeTab === "payouts" && (
           <div>
             <TabHeader tab="payouts" />
-            <TabStatsRow tab="payouts" />
+            <TabStatsRow tab="payouts" counts={counts} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <PayoutTable initialData={payouts} />
             </div>

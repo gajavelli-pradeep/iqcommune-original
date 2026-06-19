@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 
 interface SessionRequest {
   id: string;
@@ -15,14 +16,74 @@ interface SessionRequest {
   min_commit: number;
   venue: string | null;
   preferred_dates: string;
+  venue_notes?: string | null;
+  notes?: string | null;
   status: string;
+  assigned_to?: string | null;
   assigned_practitioner: { name: string } | null;
   created_at: string;
 }
 
-export function RequestTable({ initialData }: { initialData: SessionRequest[] }) {
+interface Practitioner {
+  id: string;
+  name: string;
+  modules?: string[] | null;
+  status: string;
+}
+
+interface DraftState {
+  open: boolean;
+  title?: string;
+  subject?: string;
+  emailBody?: string;
+  waBody?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+}
+
+function buildRequestFollowupEmail(r: SessionRequest): string {
+  return `Dear ${r.name},
+
+Thank you for reaching out to iqcommune.
+
+We have received your session request for "${r.topic}" and are reviewing the details below:
+
+• Topic: ${r.topic}
+• Audience: ${r.audience_type}
+• Group size: ${r.group_size}
+• Preferred dates: ${r.preferred_dates}${r.venue ? `\n• Venue: ${r.venue}` : ""}${r.notes ? `\n• Notes: ${r.notes}` : ""}
+
+Our team will match you with a suitable practitioner and confirm the session details within 2–3 working days.
+
+Please feel free to reply to this email if you have any questions.
+
+Warm regards,
+The iqcommune Team`;
+}
+
+function buildRequestFollowupWA(r: SessionRequest): string {
+  return `Hi ${r.name}! 👋
+
+This is the iqcommune team. We've received your session request for *${r.topic}* (${r.group_size} participants, ${r.preferred_dates}).
+
+We're reviewing your request and will confirm the practitioner match within 2–3 working days.
+
+Feel free to reach out if you have any questions!`;
+}
+
+export function RequestTable({
+  initialData,
+  practitioners = [],
+}: {
+  initialData: SessionRequest[];
+  practitioners?: Practitioner[];
+}) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [draft, setDraft] = useState<DraftState>({ open: false });
+
+  const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -43,89 +104,191 @@ export function RequestTable({ initialData }: { initialData: SessionRequest[] })
     }
   }, []);
 
-  const sendFollowup = useCallback(async (r: SessionRequest) => {
-    await fetch("/api/email", {
-      method: "POST",
+  const assignPractitioner = useCallback(async (id: string, practitionerId: string) => {
+    const res = await fetch(`/api/admin/session-requests?id=${id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "client-followup",
-        to: r.email,
-        name: r.name,
-        topic: r.topic,
-        groupSize: r.group_size,
-        audienceType: r.audience_type,
-        preferredDates: r.preferred_dates,
-      }),
+      body: JSON.stringify({ assignedTo: practitionerId }),
     });
-    showToast("Follow-up email sent");
+    if (res.ok) {
+      const pr = empanelled.find((p) => p.id === practitionerId);
+      setData((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, assigned_to: practitionerId, assigned_practitioner: pr ? { name: pr.name } : r.assigned_practitioner }
+            : r
+        )
+      );
+      showToast("Practitioner assigned");
+    } else {
+      showToast("Assignment failed");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empanelled]);
+
+  const openDraft = useCallback((r: SessionRequest) => {
+    setDraft({
+      open: true,
+      title: `Follow-up: ${r.name}`,
+      subject: `Your iqcommune session request — ${r.topic}`,
+      emailBody: buildRequestFollowupEmail(r),
+      waBody: buildRequestFollowupWA(r),
+      recipientName: r.name,
+      recipientEmail: r.email,
+    });
   }, []);
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            {["Client", "Topic", "Audience", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
-              <th key={h} style={thStyle}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((r) => (
-            <tr key={r.id} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
-              <td style={tdStyle}>
-                <div style={{ fontWeight: 500 }}>{r.name}</div>
-                <div style={{ fontSize: 11, color: "#9496a1" }}>{r.org} · {r.email}</div>
-                {r.phone && <div style={{ fontSize: 11, color: "#9496a1" }}>{r.phone}</div>}
-                <div style={{ fontSize: 10, color: "#c9c9c9", marginTop: 2 }}>
-                  {new Date(r.created_at).toLocaleDateString("en-IN")}
-                </div>
-              </td>
-              <td style={tdStyle}>{r.topic}</td>
-              <td style={tdStyle}>
-                <div>{r.audience_type}</div>
-                <div style={{ fontSize: 11, color: "#9496a1" }}>{r.group_size} total</div>
-              </td>
-              <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
-                {r.min_commit}
-                <div style={{ fontSize: 11, color: "#9496a1", fontWeight: 400 }}>guaranteed</div>
-              </td>
-              <td style={tdStyle}>{r.venue ?? "—"}</td>
-              <td style={tdStyle}>{r.preferred_dates}</td>
-              <td style={tdStyle}>{r.assigned_practitioner?.name ?? "—"}</td>
-              <td style={tdStyle}><StatusPill status={r.status} /></td>
-              <td style={tdStyle}>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <select
-                    value={r.status}
-                    onChange={(e) => updateStatus(r.id, e.target.value)}
-                    style={selectStyle}
-                  >
-                    {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  <button onClick={() => sendFollowup(r)} style={btnStyle}>
-                    Follow-up
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {data.length === 0 && (
+    <div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={tableStyle}>
+          <thead>
             <tr>
-              <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
-                No session requests yet
-              </td>
+              {["Client", "Topic", "Audience", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
+                <th key={h} style={thStyle}>{h}</th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.map((r) => {
+              const isExpanded = expandedRow === r.id;
+              return (
+                <>
+                  <tr
+                    key={r.id}
+                    onClick={() => setExpandedRow(isExpanded ? null : r.id)}
+                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
+                  >
+                    <td style={tdStyle}>
+                      <div style={{ fontWeight: 500 }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: "#9496a1" }}>{r.org} · {r.email}</div>
+                      {r.phone && <div style={{ fontSize: 11, color: "#9496a1" }}>{r.phone}</div>}
+                      <div style={{ fontSize: 10, color: "#c9c9c9", marginTop: 2 }}>
+                        {new Date(r.created_at).toLocaleDateString("en-IN")}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>{r.topic}</td>
+                    <td style={tdStyle}>
+                      <div>{r.audience_type}</div>
+                      <div style={{ fontSize: 11, color: "#9496a1" }}>{r.group_size} total</div>
+                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
+                      {r.min_commit}
+                      <div style={{ fontSize: 11, color: "#9496a1", fontWeight: 400 }}>guaranteed</div>
+                    </td>
+                    <td style={tdStyle}>{r.venue ?? "—"}</td>
+                    <td style={tdStyle}>{r.preferred_dates}</td>
+                    <td style={tdStyle}>{r.assigned_practitioner?.name ?? "—"}</td>
+                    <td style={tdStyle}><StatusPill status={r.status} /></td>
+                    <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select
+                          value={r.status}
+                          onChange={(e) => updateStatus(r.id, e.target.value)}
+                          style={selectStyle}
+                        >
+                          {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => openDraft(r)} style={btnStyle}>
+                          Email draft
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {isExpanded && (
+                    <tr key={`${r.id}-expand`} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                      <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                        <div
+                          style={{
+                            border: "1px solid rgba(15,17,23,.10)",
+                            borderRadius: 8,
+                            background: "#fff",
+                            padding: "1rem 1.25rem",
+                          }}
+                        >
+                          {/* Header */}
+                          <div style={{ marginBottom: "0.9rem" }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "#0f1117" }}>{r.name}</div>
+                            <div style={{ fontSize: 12, color: "#4a4d5c" }}>{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
+                          </div>
+
+                          {/* Detail grid */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem 2rem", marginBottom: "1rem" }}>
+                            <Field label="Topic" value={r.topic} />
+                            <Field label="Audience type" value={r.audience_type} />
+                            <Field label="Group size" value={r.group_size} />
+                            <Field label="Preferred dates" value={r.preferred_dates} />
+                            <Field label="Venue" value={r.venue ?? "—"} />
+                            <Field label="Venue notes" value={r.venue_notes ?? "—"} />
+                            {r.notes && <Field label="Additional notes" value={r.notes} />}
+                          </div>
+
+                          {/* Assign practitioner */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderTop: "1px solid rgba(15,17,23,.08)", paddingTop: "0.85rem" }}>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: "#0f1117", whiteSpace: "nowrap" }}>Assign to:</span>
+                            <select
+                              value={r.assigned_to ?? ""}
+                              onChange={(e) => { if (e.target.value) assignPractitioner(r.id, e.target.value); }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ ...selectStyle, flex: 1, maxWidth: 280 }}
+                            >
+                              <option value="">— select practitioner —</option>
+                              {empanelled.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                            </select>
+                            {r.assigned_practitioner && (
+                              <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>
+                                ✓ {r.assigned_practitioner.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                  No session requests yet
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       {toast && (
         <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
           {toast}
         </div>
       )}
+
+      <ContactDraftModal
+        open={draft.open}
+        onClose={() => setDraft({ open: false })}
+        title={draft.title}
+        subject={draft.subject}
+        emailBody={draft.emailBody}
+        waBody={draft.waBody}
+        recipientName={draft.recipientName}
+        recipientEmail={draft.recipientEmail}
+      />
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9496a1", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, color: "#0f1117" }}>{value}</div>
     </div>
   );
 }

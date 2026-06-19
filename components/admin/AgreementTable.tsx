@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -13,13 +14,55 @@ export type Agreement = AgreementRow & {
   practitioner_ini?: string;
 };
 
+function isThisMonth(d: Date): boolean {
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
 export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
-  // Gap 27 & 28: NO stats row, NO filter bar — removed entirely
+  const [toast, setToast] = useState("");
+
+  const total     = initialData.length;
+  const thisMonth = initialData.filter((a) => a.signed_at && isThisMonth(new Date(a.signed_at))).length;
+  const signed    = initialData.filter((a) => a.status === "signed" || a.status === "Signed").length;
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  async function handleDownload(id: string) {
+    const res = await fetch(`/api/admin/agreements/${id}/download`);
+    if (!res.ok) { showToast("Download failed"); return; }
+    const { url } = await res.json();
+    window.open(url, "_blank");
+  }
 
   return (
     <div>
-      {/* Gap 27 & 48: Stats row REMOVED */}
-      {/* Gap 28: Filter bar REMOVED */}
+      {/* Stats row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 1,
+          background: "rgba(15,17,23,.10)",
+          borderRadius: "10px 10px 0 0",
+          overflow: "hidden",
+          marginBottom: 0,
+        }}
+      >
+        {[
+          { label: "Total agreements", value: total },
+          { label: "This month",       value: thisMonth },
+          { label: "Signed",           value: signed },
+        ].map((s) => (
+          <div key={s.label} style={{ background: "#fff", padding: "1rem 1.5rem" }}>
+            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "#0f1117", lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: "#9496a1", marginTop: 3 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>
@@ -29,7 +72,8 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
             borderCollapse: "collapse",
             background: "#fff",
             border: "1px solid rgba(15,17,23,.10)",
-            borderRadius: 10,
+            borderTop: "none",
+            borderRadius: "0 0 10px 10px",
             overflow: "hidden",
           }}
         >
@@ -176,7 +220,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      /* placeholder — no download logic yet */
+                      handleDownload(row.id);
                     }}
                   >
                     <svg
@@ -216,6 +260,12 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
           </tbody>
         </table>
       </div>
+
+      {toast && (
+        <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

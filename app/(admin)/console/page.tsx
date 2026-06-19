@@ -37,12 +37,30 @@ async function getData() {
 export default async function ConsolePage() {
   const { practitioners, sessions, requests, payouts } = await getData();
 
+  const pendingPayouts = payouts.filter((p) => p.status === "Pending");
+  const pendingPayoutGross = pendingPayouts.reduce((s, p) => s + ((p as unknown as { gross_amount?: number }).gross_amount ?? 0), 0);
+  const pendingPayoutNet   = pendingPayouts.reduce((s, p) => s + ((p as unknown as { net_amount?: number }).net_amount ?? 0), 0);
+
+  const confirmedSessions  = sessions.filter((s) => s.status === "Upcoming").length;
+  const completedSessions  = sessions.filter((s) => s.status === "Completed").length;
+
   const counts = {
-    applied:         practitioners.filter((p) => p.status === "Applied").length,
-    empanelled:      practitioners.filter((p) => p.status === "Empanelled").length,
-    pendingRequests: requests.filter((r) => r.status === "New").length,
-    pendingSessions: sessions.filter((s) => s.status === "Upcoming").length,
-    pendingPayouts:  payouts.filter((p) => p.status === "Pending").length,
+    applied:          practitioners.filter((p) => p.status === "Applied").length,
+    empanelled:       practitioners.filter((p) => p.status === "Empanelled").length,
+    pendingRequests:  requests.filter((r) => r.status === "New").length,
+    pendingSessions:  sessions.filter((s) => s.status === "Upcoming").length,
+    pendingPayouts:   pendingPayouts.length,
+    pendingPayoutGross,
+    pendingPayoutNet,
+    confirmedSessions,
+    completedSessions,
+    totalRequests:    requests.length,
+    matchedRequests:  requests.filter((r) => r.status === "Matched").length,
+    confirmedRequests: requests.filter((r) => r.status === "Confirmed").length,
+    totalPractitioners: practitioners.length,
+    totalSessions:    sessions.length,
+    totalPayouts:     payouts.length,
+    paidPayouts:      payouts.filter((p) => p.status === "Paid").length,
   };
 
   return (
