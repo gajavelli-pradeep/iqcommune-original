@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iqcommune — Side-by-side comparison</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #fff;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      height: 44px;
+      background: #1a1c24;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+      gap: 0;
+      min-width: 0;
+    }
+
+    .toolbar-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #c9982a;
+      margin-right: 1rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tab {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #9496a1;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      white-space: nowrap;
+      transition: background 0.12s, color 0.12s;
+      flex-shrink: 0;
+    }
+    .tab:hover  { background: rgba(255,255,255,0.07); color: #fff; }
+    .tab.active { background: rgba(201,152,42,0.18); color: #f0c84a; }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .sync-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: none;
+      color: #9496a1;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .sync-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+    .sync-btn.on    { border-color: #c9982a; color: #c9982a; }
+
+    /* ── col headers row ── */
+    .col-headers {
+      display: flex;
+      flex-shrink: 0;
+      height: 26px;
+      background: #13151d;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .col-label {
+      padding: 0 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #5a5d6e;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .col-label span { color: #c9982a; margin-right: 4px; }
+
+    /* ── main split area ── */
+    .split {
+      flex: 1;
+      display: flex;
+      min-height: 0; /* critical — lets flex child shrink below content size */
+      overflow: hidden;
+    }
+
+    .pane {
+      min-width: 80px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* iframe wrapper clips the scaled content */
+    .iframe-wrap {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .pane iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border: none;
+      display: block;
+      /* width/height and transform-scale set dynamically by JS */
+    }
+
+    /* ── draggable divider ── */
+    .divider {
+      width: 5px;
+      background: rgba(255,255,255,0.06);
+      cursor: col-resize;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.12s;
+    }
+    .divider:hover,
+    .divider.dragging { background: #c9982a; }
+
+    .divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 1px;
+      height: 40px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <span class="toolbar-title">iqcommune compare</span>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-page="home">Home</button>
+      <button class="tab" data-page="practitioners">Practitioners</button>
+      <button class="tab" data-page="onboarding">Onboarding</button>
+      <button class="tab" data-page="admin">Admin</button>
+    </div>
+    <div class="toolbar-right">
+      <button class="sync-btn on" id="syncBtn">↕ Sync</button>
+    </div>
+  </div>
+
+  <div class="col-headers" id="colHeaders">
+    <div class="col-label" id="labelImpl" style="flex:1"><span>Implementation</span> localhost:3000</div>
+    <div style="width:5px;flex-shrink:0"></div>
+    <div class="col-label" id="labelSrc"  style="flex:1"><span>Source</span> client HTML</div>
+  </div>
+
+  <div class="split" id="split">
+    <div class="pane" id="paneImpl">
+      <div class="iframe-wrap">
+        <iframe id="implFrame" src="/" title="Implementation"></iframe>
+      </div>
+    </div>
+    <div class="divider" id="divider"></div>
+    <div class="pane" id="paneSrc">
+      <div class="iframe-wrap">
+        <iframe id="srcFrame" src="http://localhost:3001/iqcommune-real-deal-training.html" title="Source"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Virtual render width (px) — both iframes render at this width then scale down
+    const RENDER_W = 1440;
+
+    function scaleFrame(frame, pane) {
+      const paneW = pane.clientWidth;
+      const paneH = pane.clientHeight;
+      if (!paneW || !paneH) return;
+      const scale = paneW / RENDER_W;
+      frame.style.width  = RENDER_W + 'px';
+      frame.style.height = Math.ceil(paneH / scale) + 'px';
+      frame.style.transformOrigin = 'top left';
+      frame.style.transform = `scale(${scale})`;
+    }
+
+    function scaleAll() {
+      scaleFrame(implFrame, paneImpl);
+      scaleFrame(srcFrame,  paneSrc);
+    }
+
+    // ── Page map ──────────────────────────────────────────────────────────────
+    const PAGES = {
+      home:          { impl: '/',              src: 'http://localhost:3001/iqcommune-real-deal-training.html' },
+      practitioners: { impl: '/practitioners', src: 'http://localhost:3001/iqcommune-empanelment.html' },
+      onboarding:    { impl: '/onboarding',    src: 'http://localhost:3001/iqcommune-onboarding.html' },
+      admin:         { impl: '/console',       src: 'http://localhost:3001/iqcommune-admin-console.html' },
+    };
+
+    const split     = document.getElementById('split');
+    const paneImpl  = document.getElementById('paneImpl');
+    const paneSrc   = document.getElementById('paneSrc');
+    const divider   = document.getElementById('divider');
+    const implFrame = document.getElementById('implFrame');
+    const srcFrame  = document.getElementById('srcFrame');
+    const syncBtn   = document.getElementById('syncBtn');
+    const tabsEl    = document.getElementById('tabs');
+
+    // ── Initial 50/50 split ──────────────────────────────────────────────────
+    paneImpl.style.flex = '1 1 0';
+    paneSrc.style.flex  = '1 1 0';
+
+    // ── Draggable divider ────────────────────────────────────────────────────
+    let dragging = false;
+
+    divider.addEventListener('mousedown', e => {
+      e.preventDefault();
+      dragging = true;
+      divider.classList.add('dragging');
+      // Overlay to capture mouse during drag (iframes eat mouse events)
+      const overlay = document.createElement('div');
+      overlay.id = 'drag-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:col-resize;';
+      document.body.appendChild(overlay);
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const rect   = split.getBoundingClientRect();
+      const divW   = divider.offsetWidth;
+      const totalW = rect.width - divW;
+      const leftW  = Math.max(80, Math.min(totalW - 80, e.clientX - rect.left));
+      const rightW = totalW - leftW;
+      paneImpl.style.flex = `0 0 ${leftW}px`;
+      paneSrc.style.flex  = `0 0 ${rightW}px`;
+      scaleAll();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      divider.classList.remove('dragging');
+      const overlay = document.getElementById('drag-overlay');
+      if (overlay) overlay.remove();
+      scaleAll();
+    });
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+    tabsEl.addEventListener('click', e => {
+      const btn = e.target.closest('.tab');
+      if (!btn) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const page = PAGES[btn.dataset.page];
+      implFrame.src = page.impl;
+      srcFrame.src  = page.src;
+    });
+
+    // ── Scroll sync ───────────────────────────────────────────────────────────
+    let syncScroll = true;
+    let isSyncing  = false;
+
+    syncBtn.addEventListener('click', () => {
+      syncScroll = !syncScroll;
+      syncBtn.classList.toggle('on', syncScroll);
+      syncBtn.textContent = syncScroll ? '↕ Sync' : '↕ Off';
+    });
+
+    function trySync(sourceFrame, targetFrame) {
+      if (!syncScroll || isSyncing) return;
+      try {
+        const srcDoc   = sourceFrame.contentDocument || sourceFrame.contentWindow.document;
+        const tgtDoc   = targetFrame.contentDocument || targetFrame.contentWindow.document;
+        const scrollEl = srcDoc.scrollingElement  || srcDoc.documentElement;
+        const tgtEl    = tgtDoc.scrollingElement  || tgtDoc.documentElement;
+        const pct      = scrollEl.scrollTop / Math.max(1, scrollEl.scrollHeight - scrollEl.clientHeight);
+        isSyncing      = true;
+        tgtEl.scrollTop = pct * (tgtEl.scrollHeight - tgtEl.clientHeight);
+        setTimeout(() => { isSyncing = false; }, 50);
+      } catch (_) { /* cross-origin — silent */ }
+    }
+
+    function attachScrollListeners(frame, other) {
+      frame.addEventListener('load', () => {
+        try {
+          const doc      = frame.contentDocument || frame.contentWindow.document;
+          const scrollEl = doc.scrollingElement  || doc.documentElement;
+          scrollEl.addEventListener('scroll', () => trySync(frame, other), { passive: true });
+        } catch (_) {}
+      });
+    }
+
+    attachScrollListeners(implFrame, srcFrame);
+    attachScrollListeners(srcFrame,  implFrame);
+
+    // Scale on load and window resize
+    implFrame.addEventListener('load', scaleAll);
+    srcFrame.addEventListener('load', scaleAll);
+    window.addEventListener('resize', scaleAll);
+
+    // Initial scale after layout settles
+    requestAnimationFrame(() => { requestAnimationFrame(scaleAll); });
+  </script>
+</body>
+</html>

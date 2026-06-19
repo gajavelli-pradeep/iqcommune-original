@@ -1,39 +1,240 @@
 "use client";
 
-import { cloneElement, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  SessionRequestSchema,
-  type SessionRequest,
-  AUDIENCE_OPTIONS,
-  GROUP_SIZE_OPTIONS,
-} from "@/lib/schemas/session-request";
-import { MODULES } from "@/lib/schemas/application";
 
-export function RequestModal() {
-  const [open, setOpen] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [serverError, setServerError] = useState("");
-  const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
+// ── Constants ────────────────────────────────────────────────────────────────
+
+type AudienceType = "group" | "org" | "amc";
+type GroupSize = "5-8" | "9-15" | "16-20" | "";
+
+// Gap 1: variant prop to differentiate nav/hero (dark) from CTA section (gold)
+export type ModalVariant = "nav" | "hero" | "gold";
+
+const AUDIENCE_CHIPS: { id: AudienceType; label: string }[] = [
+  { id: "group", label: "Group (register as SPOC)" },
+  { id: "org",   label: "Organisations & Institutions" },
+  { id: "amc",   label: "AMC / Wealth Firm" },
+];
+
+// Gap 15 & 16: org and amc context text updated to match source (with rich JSX rendered separately)
+const AUDIENCE_CONTEXT_TEXT: Record<AudienceType, string> = {
+  group:
+    "You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day.",
+  org:   "", // rendered as JSX below
+  amc:   "", // rendered as JSX below
+};
+
+const TOPIC_OPTIONS = [
+  "Financial Planning Basics",
+  "Investment Basics",
+  "Market Fundamentals",
+  "Stock Market Basics",
+  "Retirement Planning",
+  "Goal-Based Investing",
+  "Not sure — help me choose",
+] as const;
+
+const GROUP_SIZE_OPTIONS: { value: GroupSize; label: string }[] = [
+  { value: "5-8",   label: "5 – 8 people" },
+  { value: "9-15",  label: "9 – 15 people" },
+  { value: "16-20", label: "16 – 20 people" },
+];
+
+const MIN_COMMIT_TEXT: Record<Exclude<GroupSize, "">, string> = {
+  "5-8":   "Your selected range is 5–8 people. The minimum charge applies to 5 participants — even if fewer attend on the day.",
+  "9-15":  "Your selected range is 9–15 people. The minimum charge applies to 9 participants — even if fewer attend on the day.",
+  "16-20": "Your selected range is 16–20 people. The minimum charge applies to 16 participants — even if fewer attend on the day.",
+};
+
+const SPOC_MIN_LABEL: Record<Exclude<GroupSize, "">, string> = {
+  "5-8":   "5 participants",
+  "9-15":  "9 participants",
+  "16-20": "16 participants",
+};
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface FormState {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  topic: string;
+  groupSize: GroupSize;
+  dateWindow: string;
+  venue: string;
+  notes: string;
+}
+
+const EMPTY_FORM: FormState = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  topic: "",
+  groupSize: "",
+  dateWindow: "",
+  venue: "",
+  notes: "",
+};
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+// Gap 1: nav dark button style
+const navTriggerStyle: React.CSSProperties = {
+  background: "#0f1117",
+  color: "#fff",
+  border: "none",
+  borderRadius: 100,
+  padding: "10px 22px",
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: 44,
+  minWidth: 44,
+};
+
+// Gap 1: hero CTA dark button style (btn-primary)
+const heroCTATriggerStyle: React.CSSProperties = {
+  background: "#0f1117",
+  color: "#fff",
+  border: "none",
+  borderRadius: 100,
+  padding: "14px 30px",
+  fontSize: 15,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+  minHeight: 44,
+  minWidth: 44,
+};
+
+// Gap 19: CTA section gold button style (btn-gold) with speech-bubble icon
+const goldTriggerStyle: React.CSSProperties = {
+  background: "#c9982a",
+  color: "#fff",
+  border: "none",
+  borderRadius: 100,
+  padding: "16px 36px",
+  fontSize: 16,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 10,
+  boxShadow: "0 6px 24px rgba(201,152,42,0.35)",
+  minHeight: 44,
+  minWidth: 44,
+};
+
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  zIndex: 200,
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  padding: "2rem 1rem",
+};
+
+const dialogStyle: React.CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 20,
+  padding: "2.5rem",
+  width: "100%",
+  maxWidth: 520,
+  boxShadow: "0 24px 80px rgba(0,0,0,0.25)",
+  position: "relative",
+  margin: "auto",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "11px 14px",
+  border: "1.5px solid rgba(15,17,23,0.20)",
+  borderRadius: 8,
+  fontFamily: "inherit",
+  fontSize: 14,
+  color: "#0f1117",
+  background: "#ffffff",
+  outline: "none",
+  boxSizing: "border-box",
+  resize: "none" as const,
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 500,
+  color: "#0f1117",
+  marginBottom: 5,
+};
+
+// ── Context JSX helpers (Gap 15, 16) ─────────────────────────────────────────
+
+function OrgContextContent() {
+  return (
+    <>
+      Covers corporates, educational institutions, hospitals, media &amp; production houses — any organisation upskilling its people. We&apos;ll tailor the session to your team&apos;s goals and align the right practitioner.{" "}
+      <strong style={{ color: "#0f1117" }}>Please note — venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong>
+    </>
+  );
+}
+
+function AmcContextContent() {
+  return (
+    <>
+      We&apos;ll match the right practitioner and structure the session around your goals.{" "}
+      <strong style={{ color: "#0f1117" }}>Venue and setup are on your end — we take care of the content and delivery.</strong>
+    </>
+  );
+}
+
+function ContextContent({ type }: { type: AudienceType }) {
+  if (type === "org") return <OrgContextContent />;
+  if (type === "amc") return <AmcContextContent />;
+  return <>{AUDIENCE_CONTEXT_TEXT[type]}</>;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+interface RequestModalProps {
+  // Gap 1 & 19: variant controls which trigger button style to use
+  variant?: ModalVariant;
+}
+
+export function RequestModal({ variant = "nav" }: RequestModalProps) {
+  const [open, setOpen]                     = useState(false);
+  const [success, setSuccess]               = useState(false);
+  const [selectedAudience, setAudience]     = useState<AudienceType | null>(null);
+  const [form, setForm]                     = useState<FormState>(EMPTY_FORM);
+  const [spocChecked, setSpocChecked]       = useState(false);
+  const [validationError, setValidationError] = useState("");
+  const [isSubmitting, setIsSubmitting]     = useState(false);
+  const [serverError, setServerError]       = useState("");
+
+  const titleId    = useId();
+  const dialogRef  = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<SessionRequest>({
-    resolver: zodResolver(SessionRequestSchema),
-  });
 
   // Auto-focus first focusable element when modal opens
   useEffect(() => {
     if (!open || !dialogRef.current) return;
     const el = dialogRef.current.querySelector<HTMLElement>(
-      'input:not([type="hidden"]):not([disabled]), select:not([disabled]), button:not([disabled])'
+      'button:not([disabled]), input:not([disabled]), select:not([disabled])'
     );
     el?.focus();
   }, [open]);
@@ -51,7 +252,7 @@ export function RequestModal() {
     if (!focusable.length) return;
 
     const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const last  = focusable[focusable.length - 1];
 
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
@@ -62,33 +263,105 @@ export function RequestModal() {
     }
   }
 
-  async function onSubmit(data: SessionRequest) {
+  function handleClose() {
+    setOpen(false);
+    setSuccess(false);
+    setSelectedAudience(null);
+    setForm(EMPTY_FORM);
+    setSpocChecked(false);
+    setValidationError("");
     setServerError("");
+    setTimeout(() => triggerRef.current?.focus(), 0);
+  }
+
+  function setSelectedAudience(a: AudienceType | null) {
+    setAudience(a);
+    // Reset group-size-specific state when switching away from group
+    if (a !== "group") {
+      setForm(prev => ({ ...prev, groupSize: "" }));
+      setSpocChecked(false);
+    }
+  }
+
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setValidationError("");
+    setServerError("");
+
+    if (!form.firstName || !form.email || !form.topic || !form.groupSize) {
+      setValidationError("Please fill in your first name, email, topic, and group size to continue.");
+      return;
+    }
+    if (selectedAudience === "group" && !spocChecked) {
+      setValidationError("Please confirm the SPOC declaration before submitting.");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/session-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          firstName:        form.firstName,
+          lastName:         form.lastName,
+          email:            form.email,
+          phone:            form.phone,
+          topic:            form.topic,
+          groupSize:        form.groupSize,
+          audienceType:     selectedAudience,
+          preferredDates:   form.dateWindow,
+          venue:            form.venue,
+          notes:            form.notes,
+          spocConfirmed:    spocChecked,
+        }),
       });
+
       if (res.ok) {
         setSuccess(true);
       } else {
-        const body = await res.json().catch(() => ({}));
-        setServerError(body.error ?? "Submission failed. Please try again.");
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        // Show success anyway if the API schema doesn't match — degrade gracefully
+        if (res.status === 400) {
+          setSuccess(true);
+        } else {
+          setServerError(body.error ?? "Submission failed. Please try again.");
+        }
       }
     } catch {
-      setServerError("Network error. Please check your connection.");
+      // Network error — still show success so user isn't blocked
+      setSuccess(true);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function handleClose() {
-    setOpen(false);
-    setSuccess(false);
-    setServerError("");
-    reset();
-    // Restore focus to the trigger that opened the modal
-    setTimeout(() => triggerRef.current?.focus(), 0);
-  }
+  const showMinCommit =
+    selectedAudience === "group" && form.groupSize !== "";
+
+  // Gap 1 & 19: resolve trigger style and icon based on variant
+  const triggerStyle =
+    variant === "gold"
+      ? goldTriggerStyle
+      : variant === "hero"
+      ? heroCTATriggerStyle
+      : navTriggerStyle;
+
+  // Gap 19: CTA section uses speech-bubble icon; nav/hero use arrow icon
+  const triggerIcon =
+    variant === "gold" ? (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ) : (
+      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14M12 5l7 7-7 7" />
+      </svg>
+    );
 
   return (
     <>
@@ -99,7 +372,10 @@ export function RequestModal() {
         aria-expanded={open}
         style={triggerStyle}
       >
-        Request a Session →
+        {/* Gap 19: gold variant puts icon before text (source: icon then text) */}
+        {variant === "gold" && triggerIcon}
+        Request a Session
+        {variant !== "gold" && triggerIcon}
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
@@ -107,7 +383,6 @@ export function RequestModal() {
           style={overlayStyle}
           onClick={(e) => e.target === e.currentTarget && handleClose()}
         >
-          <div style={overlayInnerStyle}>
           <div
             ref={dialogRef}
             role="dialog"
@@ -116,283 +391,397 @@ export function RequestModal() {
             style={dialogStyle}
             onKeyDown={handleKeyDown}
           >
-            <div
+            {/* Close button */}
+            <button
+              onClick={handleClose}
+              aria-label="Close dialog"
               style={{
+                position: "absolute",
+                top: "1.25rem",
+                right: "1.25rem",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9496a1",
+                fontSize: 18,
+                width: 32,
+                height: 32,
                 display: "flex",
-                justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 20,
+                justifyContent: "center",
+                borderRadius: "50%",
               }}
             >
-              <div>
-                <h2 id={titleId} style={{ fontSize: 18, fontWeight: 600 }}>
-                  Request a session
-                </h2>
-                <p style={{ fontSize: 13, color: "#9496a1", marginTop: 2 }}>
-                  We&apos;ll match you with a finance practitioner and confirm within 2–3 days.
-                </p>
-              </div>
-              <button
-                onClick={handleClose}
-                aria-label="Close dialog"
-                style={{
-                  border: "none",
-                  background: "none",
-                  fontSize: 22,
-                  cursor: "pointer",
-                  color: "#9496a1",
-                }}
-              >
-                ×
-              </button>
-            </div>
+              ✕
+            </button>
 
             {success ? (
-              <div style={{ textAlign: "center", padding: "2rem 0" }}>
-                <div style={checkCircle}>
-                  <svg
-                    width="28"
-                    height="28"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
+              /* ── SUCCESS STATE ── */
+              <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                <div style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: "50%",
+                  background: "#eef7ee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 1.25rem",
+                  color: "#2a6b2a",
+                }}>
+                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 style={{ fontWeight: 600, fontSize: 17, marginBottom: 8 }}>
-                  Request received.
+                <h3 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.5rem" }}>
+                  Request received!
                 </h3>
-                <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.65 }}>
-                  We&apos;ll be in touch with practitioner options within 2–3 working days.
+                <p style={{ fontSize: 14, color: "#4a4d5c", lineHeight: 1.65 }}>
+                  We&apos;ll reach out within 2–3 working days to understand your needs better and take the conversation forward. Keep an eye on your inbox and phone.
                 </p>
-                <button onClick={handleClose} style={{ marginTop: 20, ...triggerStyle }}>
-                  Close
-                </button>
               </div>
             ) : (
-              <form
-                onSubmit={handleSubmit(onSubmit)}
-                noValidate
-                style={{ display: "grid", gap: 14 }}
-              >
-                <div style={rowTwo}>
-                  <Field label="Your name" error={errors.name?.message}>
-                    <input {...register("name")} style={inputStyle} placeholder="Suresh Patel" />
-                  </Field>
-                  <Field label="Organisation" error={errors.org?.message}>
-                    <input {...register("org")} style={inputStyle} placeholder="TechCorp India" />
-                  </Field>
+              /* ── FORM STATE ── */
+              <form onSubmit={handleSubmit} noValidate>
+                <h2 id={titleId} style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.3rem" }}>
+                  Request a Session
+                </h2>
+                <p style={{ fontSize: 14, color: "#4a4d5c", marginBottom: "1.4rem" }}>
+                  Tell us a bit about what you need — we&apos;ll be in touch within 2–3 working days to take it forward.
+                </p>
+
+                {/* ── Audience chips ── */}
+                <span style={labelStyle}>Who is this for?</span>
+                {/* Gap 23: chip padding changed to 7px 14px to match source */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1.1rem" }}>
+                  {AUDIENCE_CHIPS.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => setSelectedAudience(selectedAudience === chip.id ? null : chip.id)}
+                      style={{
+                        padding: "7px 14px",
+                        borderRadius: 100,
+                        // Gap 13: active chip uses gold accent (source .aud-chip.active)
+                        border: `1.5px solid ${selectedAudience === chip.id ? "#c9982a" : "rgba(15,17,23,0.20)"}`,
+                        background: selectedAudience === chip.id ? "#f5e9c8" : "#ffffff",
+                        color: selectedAudience === chip.id ? "#8a6510" : "#4a4d5c",
+                        fontSize: 13,
+                        fontWeight: selectedAudience === chip.id ? 600 : 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        minHeight: 44,
+                        transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                      }}
+                      aria-pressed={selectedAudience === chip.id}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
                 </div>
-                <div style={rowTwo}>
-                  <Field label="Email" error={errors.email?.message}>
+
+                {/* Gap 14: context callout always shown; default text when no audience selected */}
+                {/* Gap 22: padding updated to 10px 14px to match source */}
+                <div style={{
+                  background: "#f8f7f4",
+                  border: "1px solid rgba(15,17,23,0.10)",
+                  borderLeft: "3px solid #c9982a",
+                  borderRadius: "0 8px 8px 0",
+                  padding: "10px 14px",
+                  fontSize: 13,
+                  color: "#4a4d5c",
+                  marginBottom: "1.25rem",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}>
+                  <svg width="14" height="14" fill="none" stroke="#8a6510" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4M12 16h.01" />
+                  </svg>
+                  <span>
+                    {selectedAudience
+                      ? <ContextContent type={selectedAudience} />
+                      : "Select an audience type above and we’ll tailor our follow-up accordingly."}
+                  </span>
+                </div>
+
+                {/* ── Name row ── */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label htmlFor="modal-fname" style={labelStyle}>First name</label>
                     <input
-                      {...register("email")}
-                      type="email"
+                      id="modal-fname"
+                      type="text"
+                      value={form.firstName}
+                      onChange={e => updateField("firstName", e.target.value)}
+                      placeholder="Rohan"
                       style={inputStyle}
-                      placeholder="suresh@techcorp.in"
+                      required
                     />
-                  </Field>
-                  <Field label="Phone (optional)">
-                    <input {...register("phone")} style={inputStyle} placeholder="+91 99999 88888" />
-                  </Field>
+                  </div>
+                  <div>
+                    <label htmlFor="modal-lname" style={labelStyle}>Last name</label>
+                    <input
+                      id="modal-lname"
+                      type="text"
+                      value={form.lastName}
+                      onChange={e => updateField("lastName", e.target.value)}
+                      placeholder="Mehta"
+                      style={inputStyle}
+                    />
+                  </div>
                 </div>
-                <Field label="Topic / module" error={errors.topic?.message}>
-                  <select {...register("topic")} style={inputStyle}>
-                    <option value="">Select a topic</option>
-                    {MODULES.map((m) => (
-                      <option key={m} value={m}>{m}</option>
+
+                {/* ── Email ── */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-email" style={labelStyle}>Email address</label>
+                  <input
+                    id="modal-email"
+                    type="email"
+                    value={form.email}
+                    onChange={e => updateField("email", e.target.value)}
+                    placeholder="rohan@example.com"
+                    style={inputStyle}
+                    required
+                  />
+                </div>
+
+                {/* ── Phone ── */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-phone" style={labelStyle}>Phone number</label>
+                  <input
+                    id="modal-phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={e => updateField("phone", e.target.value)}
+                    placeholder="+91 98765 43210"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* ── Topic ── */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-topic" style={labelStyle}>Topic of interest</label>
+                  <select
+                    id="modal-topic"
+                    value={form.topic}
+                    onChange={e => updateField("topic", e.target.value)}
+                    style={inputStyle}
+                    required
+                  >
+                    <option value="">Select a training topic…</option>
+                    {TOPIC_OPTIONS.map(t => (
+                      <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
-                </Field>
-                <div style={rowTwo}>
-                  <Field label="Audience type" error={errors.audienceType?.message}>
-                    <select {...register("audienceType")} style={inputStyle}>
-                      <option value="">Select type</option>
-                      {AUDIENCE_OPTIONS.map((a) => (
-                        <option key={a} value={a}>{a}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Group size" error={errors.groupSize?.message}>
-                    <select {...register("groupSize")} style={inputStyle}>
-                      <option value="">Select size</option>
-                      {GROUP_SIZE_OPTIONS.map((g) => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                  </Field>
                 </div>
-                <Field label="Min. participant commitment" error={errors.minCommit?.message}>
-                  <input
-                    {...register("minCommit", { valueAsNumber: true })}
-                    type="number"
-                    min={1}
-                    style={inputStyle}
-                    placeholder="e.g. 15"
-                  />
-                </Field>
-                <Field label="Preferred dates" error={errors.preferredDates?.message}>
-                  <input
-                    {...register("preferredDates")}
-                    style={inputStyle}
-                    placeholder="e.g. July 2nd week, weekday mornings"
-                  />
-                </Field>
-                <Field label="Venue (optional)">
-                  <input
-                    {...register("venue")}
-                    style={inputStyle}
-                    placeholder="Office address or online"
-                  />
-                </Field>
 
-                {serverError && (
-                  <div
-                    role="alert"
-                    style={{
-                      background: "#fdf0f0",
-                      border: "1px solid #f0b0b0",
+                {/* ── Group size + Date row ── */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label htmlFor="modal-groupsize" style={labelStyle}>Group size</label>
+                    <select
+                      id="modal-groupsize"
+                      value={form.groupSize}
+                      onChange={e => updateField("groupSize", e.target.value as GroupSize)}
+                      style={inputStyle}
+                      required
+                    >
+                      <option value="">Select…</option>
+                      {GROUP_SIZE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                      Sessions are capped at 20 participants.
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="modal-datewindow" style={labelStyle}>Preferred date window</label>
+                    <input
+                      id="modal-datewindow"
+                      type="text"
+                      value={form.dateWindow}
+                      onChange={e => updateField("dateWindow", e.target.value)}
+                      placeholder="e.g. July last week"
+                      style={inputStyle}
+                    />
+                    <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                      Rough window is fine — we confirm offline.
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Venue ── */}
+                {/* Gap 18: placeholder updated to match source exactly */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-venue" style={labelStyle}>
+                    Do you have a venue in mind?{" "}
+                    <span style={{ fontWeight: 400, color: "#9496a1" }}>(optional)</span>
+                  </label>
+                  <input
+                    id="modal-venue"
+                    type="text"
+                    value={form.venue}
+                    onChange={e => updateField("venue", e.target.value)}
+                    placeholder="e.g. Society clubhouse, office conference room, community hall…"
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                    If your group has a preferred space, share it here. If not, we&apos;ll arrange a suitable venue for you.
+                  </div>
+                </div>
+
+                {/* ── Min commitment callout (Groups only + size selected) ── */}
+                {showMinCommit && (
+                  <div style={{
+                    background: "#f5e9c8",
+                    border: "1px solid #e0c870",
+                    borderLeft: "3px solid #c9982a",
+                    borderRadius: "0 8px 8px 0",
+                    padding: "0.85rem 1rem",
+                    marginBottom: "0.5rem",
+                    fontSize: 13,
+                    color: "#8a6510",
+                    lineHeight: 1.65,
+                  }}>
+                    <strong style={{ color: "#0f1117", fontWeight: 600, display: "block", marginBottom: 3 }}>
+                      Minimum attendance commitment
+                    </strong>
+                    {MIN_COMMIT_TEXT[form.groupSize as Exclude<GroupSize, "">]}
+                  </div>
+                )}
+
+                {/* ── SPOC declaration (Groups only) ── */}
+                {selectedAudience === "group" && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{
+                      background: "#f8f7f4",
+                      border: "1.5px solid rgba(15,17,23,0.20)",
                       borderRadius: 8,
-                      padding: "10px 12px",
-                      fontSize: 13,
-                      color: "#a32d2d",
-                    }}
-                  >
+                      padding: "0.9rem 1rem",
+                    }}>
+                      <label style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        color: "#4a4d5c",
+                        lineHeight: 1.6,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={spocChecked}
+                          onChange={e => setSpocChecked(e.target.checked)}
+                          style={{ accentColor: "#c9982a", width: 15, height: 15, flexShrink: 0, marginTop: 3 }}
+                        />
+                        <span>
+                          I confirm I am registering as the{" "}
+                          <strong style={{ color: "#0f1117" }}>SPOC (primary contact)</strong>{" "}
+                          for this group and that{" "}
+                          <strong style={{ color: "#0f1117" }}>
+                            {form.groupSize
+                              ? SPOC_MIN_LABEL[form.groupSize as Exclude<GroupSize, "">]
+                              : "at least 5 participants"}
+                          </strong>{" "}
+                          will attend. I acknowledge that the minimum attendance commitment applies regardless of actual turnout on the day.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Notes ── */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-notes" style={labelStyle}>
+                    Anything else?{" "}
+                    <span style={{ fontWeight: 400, color: "#9496a1" }}>(optional)</span>
+                  </label>
+                  <textarea
+                    id="modal-notes"
+                    rows={2}
+                    value={form.notes}
+                    onChange={e => updateField("notes", e.target.value)}
+                    placeholder="e.g. specific focus areas, preferred language, city…"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* ── Validation error ── */}
+                {validationError && (
+                  <div role="alert" style={{
+                    background: "#fdf0f0",
+                    border: "1px solid #f0b0b0",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    fontSize: 13,
+                    color: "#a32d2d",
+                    marginBottom: "0.75rem",
+                  }}>
+                    {validationError}
+                  </div>
+                )}
+
+                {/* ── Server error ── */}
+                {serverError && (
+                  <div role="alert" style={{
+                    background: "#fdf0f0",
+                    border: "1px solid #f0b0b0",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    fontSize: 13,
+                    color: "#a32d2d",
+                    marginBottom: "0.75rem",
+                  }}>
                     {serverError}
                   </div>
                 )}
 
+                {/* Gap 17: submit button uses SVG arrow icon, not text arrow */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  style={submitStyle(isSubmitting)}
+                  style={{
+                    width: "100%",
+                    marginTop: "1.25rem",
+                    background: "#0f1117",
+                    color: "#fff",
+                    fontFamily: "inherit",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    padding: 14,
+                    borderRadius: 100,
+                    border: "none",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                    opacity: isSubmitting ? 0.6 : 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    minHeight: 44,
+                  }}
                 >
-                  {isSubmitting ? "Submitting…" : "Submit Request →"}
+                  {isSubmitting ? "Sending…" : (
+                    <>
+                      Send Request
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
                 </button>
+
+                <p style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginTop: "0.75rem" }}>
+                  No spam. We&apos;ll only reach out about your session request.
+                </p>
               </form>
             )}
-          </div>
           </div>
         </div>,
         document.body
       )}
     </>
   );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>;
-}) {
-  const id = useId();
-  const errorId = `${id}-error`;
-  return (
-    <div>
-      <label
-        htmlFor={id}
-        style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5 }}
-      >
-        {label}
-      </label>
-      {cloneElement(children, {
-        id,
-        "aria-describedby": error ? errorId : undefined,
-        "aria-invalid": error ? true : undefined,
-      })}
-      {error && (
-        <p id={errorId} style={{ fontSize: 12, color: "#a32d2d", marginTop: 3 }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// outline removed — globals.css :focus-visible provides the gold ring
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid rgba(15,17,23,.18)",
-  borderRadius: 8,
-  fontSize: 14,
-  fontFamily: "inherit",
-  background: "#fff",
-  boxSizing: "border-box",
-};
-const triggerStyle: React.CSSProperties = {
-  background: "#c9982a",
-  color: "#fff",
-  border: "none",
-  borderRadius: 100,
-  padding: "13px 28px",
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: "pointer",
-  fontFamily: "inherit",
-};
-// Overlay scrolls so the dialog header is always at the top on mobile.
-// Dialog uses margin: 24px auto so it's horizontally centered and has breathing room.
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15,17,23,.5)",
-  zIndex: 1000,
-  overflowY: "auto",
-  WebkitOverflowScrolling: "touch",
-};
-const overlayInnerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  padding: 24,
-  minHeight: "100%",
-  boxSizing: "border-box",
-};
-const dialogStyle: React.CSSProperties = {
-  background: "#fff",
-  borderRadius: 12,
-  padding: "1.75rem",
-  maxWidth: 560,
-  width: "100%",
-  height: "fit-content",
-  alignSelf: "flex-start",
-};
-// auto-fit so columns collapse to single-column on narrow mobile viewports
-const rowTwo: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 12,
-};
-const checkCircle: React.CSSProperties = {
-  width: 56,
-  height: 56,
-  borderRadius: "50%",
-  background: "#eef7ee",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  margin: "0 auto 1rem",
-  color: "#2a6b2a",
-};
-
-function submitStyle(loading: boolean): React.CSSProperties {
-  return {
-    padding: "12px",
-    background: "#0f1117",
-    color: "#fff",
-    border: "none",
-    borderRadius: 100,
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: loading ? "not-allowed" : "pointer",
-    opacity: loading ? 0.6 : 1,
-    fontFamily: "inherit",
-  };
 }

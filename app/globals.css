@@ -19,7 +19,7 @@
   --color-amber-light: #faeeda;
   --color-purple: #534ab7;
   --color-purple-light: #eeedfe;
-  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
   --radius: 12px;
   --radius-sm: 6px;
 }
@@ -47,6 +47,15 @@
   --border-strong: rgba(15, 17, 23, 0.20);
   --admin-nav-h: 64px;
   --admin-sidebar-w: 220px;
+  /* tint variants used in admin panels and status indicators */
+  --ink-m: rgba(15, 17, 23, 0.70);
+  --ink-f: rgba(15, 17, 23, 0.45);
+  --amber-m: rgba(201, 152, 42, 0.15);
+  --amber-f: rgba(201, 152, 42, 0.30);
+  --blue-m: rgba(24, 95, 165, 0.15);
+  --purple-m: rgba(83, 74, 183, 0.15);
+  --red-m: rgba(163, 45, 45, 0.15);
+  --green-m: rgba(42, 107, 42, 0.15);
 }
 
 *,
@@ -65,7 +74,7 @@ html {
 body {
   background: var(--surface-soft);
   color: var(--ink);
-  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
   font-size: 16px;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
@@ -76,6 +85,44 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ── Card hover interactions ──────────────────────────────────────────────── */
+.topic-card,
+.walkout-card,
+.audience-card-inner,
+.tool-card {
+  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+.topic-card:hover        { border-color: #c9982a !important; transform: translateY(-3px); }
+.walkout-card:hover      { border-color: #c9982a !important; transform: translateY(-3px); }
+.audience-card-inner:hover { border-color: #c9982a !important; transform: translateY(-3px); }
+.tool-card:hover         { background: rgba(255,255,255,0.09) !important; border-color: rgba(201,152,42,0.4) !important; }
+
+/* ── Scroll-triggered entrance animation ─────────────────────────────────── */
+@keyframes iq-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.iq-animate {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.iq-animate.iq-visible {
+  animation: iq-fade-up 0.45s ease both;
+}
+.iq-animate.iq-visible:nth-child(1) { animation-delay: 0.00s; }
+.iq-animate.iq-visible:nth-child(2) { animation-delay: 0.06s; }
+.iq-animate.iq-visible:nth-child(3) { animation-delay: 0.12s; }
+.iq-animate.iq-visible:nth-child(4) { animation-delay: 0.18s; }
+.iq-animate.iq-visible:nth-child(5) { animation-delay: 0.24s; }
+.iq-animate.iq-visible:nth-child(6) { animation-delay: 0.30s; }
+
+/* ── FAQ accordion ───────────────────────────────────────────────────────── */
+details summary::-webkit-details-marker { display: none; }
+details summary { list-style: none; }
+details summary:hover { background: #f8f7f4; }
+.faq-chevron { transition: transform 0.22s ease; }
+details[open] .faq-chevron { transform: rotate(180deg); }
 
 button,
 input,

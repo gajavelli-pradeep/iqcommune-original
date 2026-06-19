@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Teach What You Practice — iqcommune — practitioner network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0f1117;
+    --ink-muted: #4a4d5c;
+    --ink-faint: #9496a1;
+    --surface: #ffffff;
+    --surface-soft: #f8f7f4;
+    --gold: #c9982a;
+    --gold-light: #f5e9c8;
+    --gold-dark: #8a6510;
+    --green: #2a6b2a;
+    --green-light: #eef7ee;
+    --border: rgba(15,17,23,0.10);
+    --border-strong: rgba(15,17,23,0.20);
+    --radius: 12px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── UTILITIES ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--gold-dark); background: var(--gold-light); border: 1px solid #e0c870;
+    padding: 5px 14px; border-radius: 100px;
+  }
+  .section-tag { text-align: center; margin-bottom: 1rem; }
+  .section-headline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(26px, 3.8vw, 40px); font-weight: 600; line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-align: center; color: var(--ink); margin-bottom: 1rem;
+  }
+  .section-sub {
+    font-size: 16px; color: var(--ink-muted);
+    text-align: center; max-width: 520px; margin: 0 auto 3rem;
+  }
+  section { padding: 5rem 2rem; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; height: 68px;
+  }
+  .nav-logo {
+    font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 10px;
+  }
+  .nav-logo-sub {
+    font-size: 11px; font-weight: 500; color: var(--ink-faint);
+    letter-spacing: 0; border-left: 1px solid var(--border-strong); padding-left: 10px;
+    margin-left: 2px;
+  }
+  .nav-back {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 500; color: var(--ink-muted);
+    text-decoration: none; transition: color 0.18s;
+    background: none; border: none; cursor: pointer;
+  }
+  .nav-back:hover { color: var(--ink); }
+  .btn-nav {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ink); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; padding: 10px 22px; border-radius: 100px;
+    border: none; cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-nav:hover { opacity: 0.82; }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--ink);
+    padding: 5.5rem 2rem 5rem; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -160px; right: -120px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(201,152,42,0.12) 0%, transparent 68%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -80px; left: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(201,152,42,0.06) 0%, transparent 68%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 420px; gap: 4rem; align-items: center;
+    position: relative; z-index: 1;
+  }
+  .hero-badge { margin-bottom: 1.5rem; }
+  .hero-badge .pill {
+    background: rgba(201,152,42,0.15); color: #f0c84a; border-color: rgba(201,152,42,0.3);
+  }
+  .hero-headline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(32px, 4.5vw, 54px); font-weight: 600; line-height: 1.12;
+    letter-spacing: -0.02em; color: #fff; margin-bottom: 1.25rem;
+  }
+  .hero-headline em { font-style: normal; color: var(--gold); }
+  .hero-sub {
+    font-size: 17px; color: rgba(255,255,255,0.6);
+    max-width: 460px; margin-bottom: 2rem; line-height: 1.65;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--gold); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 600; padding: 14px 30px; border-radius: 100px;
+    border: none; cursor: pointer;
+    transition: filter 0.18s, transform 0.18s;
+    box-shadow: 0 6px 24px rgba(201,152,42,0.35);
+  }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); }
+  .hero-note {
+    font-size: 13px; color: rgba(255,255,255,0.35);
+    display: flex; align-items: center; gap: 6px; margin-top: 1rem;
+  }
+
+  /* ── HERO RIGHT: WHAT YOU GET CARD ── */
+  .hero-card {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px; padding: 2rem;
+    animation: fadeUp 0.55s 0.3s ease both;
+  }
+  .hero-card-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.4); margin-bottom: 1.1rem;
+  }
+  .perks-list { display: flex; flex-direction: column; gap: 0; }
+  .perk-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 0.85rem 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .perk-item:last-child { border-bottom: none; }
+  .perk-icon {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+    background: rgba(201,152,42,0.15); display: flex; align-items: center; justify-content: center;
+    color: var(--gold); margin-top: 1px;
+  }
+  .perk-title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+  .perk-desc { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+
+  /* ── TRUST BAR ── */
+  .trust-bar {
+    background: rgba(201,152,42,0.10); border-top: 1px solid rgba(201,152,42,0.2);
+    border-bottom: 1px solid rgba(201,152,42,0.2); padding: 0.9rem 2rem;
+  }
+  .trust-bar-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap;
+  }
+  .trust-item { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--gold-dark); font-weight: 500; }
+  .trust-item svg { flex-shrink: 0; }
+
+  /* ── WHO WE WANT ── */
+  .who-section { background: var(--surface-soft); }
+  .roles-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;
+  }
+  .role-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .role-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+  .role-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--gold-light); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem; color: var(--gold-dark);
+  }
+  .role-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .role-desc { font-size: 13px; color: var(--ink-muted); line-height: 1.55; }
+  .roles-note {
+    text-align: center; margin-top: 1.75rem;
+    font-size: 12px; color: var(--ink-faint);
+  }
+  .roles-note svg { display: inline; vertical-align: middle; margin-right: 5px; margin-top: -2px; }
+
+  /* ── HOW IT WORKS FOR PRACTITIONER ── */
+  .how-section { background: var(--surface); }
+  .steps {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 2rem; max-width: 960px; margin: 0 auto;
+  }
+  .step { text-align: center; flex: 1 1 180px; max-width: 210px; }
+  .step-num {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--ink); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
+  }
+  .step-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
+  .step-desc { font-size: 13.5px; color: var(--ink-muted); line-height: 1.6; }
+
+  /* ── WHAT WE HANDLE ── */
+  .handle-section { background: var(--surface-soft); }
+  .handle-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    overflow: hidden; max-width: 860px; margin: 0 auto;
+  }
+  .handle-col { background: var(--surface); }
+  .handle-header {
+    padding: 1.1rem 1.75rem; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--border-strong);
+  }
+  .handle-col.us .handle-header { background: var(--ink); color: #fff; }
+  .handle-col.them .handle-header { background: var(--surface-soft); color: var(--ink-faint); }
+  .handle-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 1rem 1.75rem; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .handle-item:last-child { border-bottom: none; }
+  .handle-col.us .handle-item { color: var(--ink); font-weight: 500; }
+  .handle-col.them .handle-item { color: var(--ink-muted); }
+  .handle-icon { flex-shrink: 0; margin-top: 3px; }
+
+  /* ── MODULES ── */
+  .modules-section { background: var(--surface); }
+  .modules-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;
+  }
+  .module-card {
+    border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .module-card:hover { border-color: var(--gold); }
+  .module-icon {
+    width: 40px; height: 40px; border-radius: 9px;
+    background: var(--gold-light); display: flex; align-items: center;
+    justify-content: center; margin-bottom: 0.85rem; color: var(--gold-dark);
+  }
+  .module-name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .module-ideal { font-size: 12px; color: var(--gold-dark); font-weight: 500; margin-bottom: 6px; }
+  .module-desc { font-size: 12.5px; color: var(--ink-muted); line-height: 1.55; }
+
+  /* ── HONEST SECTION ── */
+  .honest-section { background: var(--ink); padding: 4rem 2rem; }
+  .honest-section .section-headline { color: #fff; }
+  .honest-section .pill { background: rgba(201,152,42,0.15); color: #f0c84a; border-color: rgba(201,152,42,0.3); }
+  .honest-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    max-width: 820px; margin: 0 auto;
+  }
+  .honest-card {
+    border-radius: var(--radius); padding: 1.25rem 1.5rem;
+  }
+  .honest-card.good { background: rgba(42,107,42,0.15); border: 1px solid rgba(42,107,42,0.25); }
+  .honest-card.notgood { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+  .honest-head { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .honest-card.good .honest-head { color: #6fcf6f; }
+  .honest-card.notgood .honest-head { color: rgba(255,255,255,0.35); }
+  .honest-item { display: flex; gap: 10px; font-size: 13px; line-height: 1.55; margin-bottom: 0.55rem; }
+  .honest-card.good .honest-item { color: rgba(255,255,255,0.8); }
+  .honest-card.notgood .honest-item { color: rgba(255,255,255,0.4); }
+  .honest-item svg { flex-shrink: 0; margin-top: 3px; }
+
+  /* ── APPLY SECTION ── */
+  .apply-section { background: var(--surface-soft); }
+
+  /* ── APPLY FORM ── */
+  .apply-form-wrap {
+    max-width: 640px; margin: 0 auto;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 20px; padding: 2.5rem;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.06);
+  }
+  .form-section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold-dark); margin-bottom: 1rem; margin-top: 1.5rem; display: block;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+  }
+  .form-section-label:first-child { margin-top: 0; }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 5px; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink);
+    background: var(--surface); outline: none; transition: border-color 0.15s; resize: none;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--gold); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .form-hint { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
+
+  /* module checkbox grid */
+  .module-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem; }
+  .module-check {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 12px; border-radius: 8px;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    font-size: 13px; color: var(--ink-muted); user-select: none;
+  }
+  .module-check:hover { border-color: var(--gold); color: var(--ink); }
+  .module-check input[type="checkbox"] { accent-color: var(--gold); width: 15px; height: 15px; flex-shrink: 0; }
+  .module-check.checked { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 500; }
+
+  .form-submit {
+    width: 100%; margin-top: 1.5rem;
+    background: var(--ink); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    padding: 14px; border-radius: 100px; border: none; cursor: pointer;
+    transition: opacity 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .form-submit:hover { opacity: 0.87; }
+  .form-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 0.75rem; }
+
+  /* success */
+  .form-success { display: none; text-align: center; padding: 1.5rem 0; }
+  .success-tick {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--green-light); display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem; color: var(--green);
+  }
+  .form-success h3 {
+    font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 600;
+    letter-spacing: -0.01em; margin-bottom: 0.5rem; color: var(--ink);
+  }
+  .form-success p { font-size: 14px; color: var(--ink-muted); line-height: 1.65; }
+
+  /* ── FAQ ── */
+  .faq-section { background: var(--surface); }
+  .faq-list { max-width: 720px; margin: 0 auto; }
+  .faq-item { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 0.75rem; overflow: hidden; }
+  .faq-q {
+    width: 100%; background: none; border: none; cursor: pointer; text-align: left;
+    padding: 1.1rem 1.4rem; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    transition: background 0.15s;
+  }
+  .faq-q:hover, .faq-q.open { background: var(--surface-soft); }
+  .faq-chevron { flex-shrink: 0; color: var(--ink-faint); transition: transform 0.22s; }
+  .faq-q.open .faq-chevron { transform: rotate(180deg); }
+  .faq-a {
+    display: none; padding: 1rem 1.4rem 1.1rem;
+    font-size: 14px; color: var(--ink-muted); line-height: 1.7;
+    border-top: 1px solid var(--border);
+  }
+  .faq-a.open { display: block; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #080a0e; color: rgba(255,255,255,0.3);
+    padding: 2rem; text-align: center; font-size: 13px;
+  }
+  footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+  footer a:hover { color: rgba(255,255,255,0.75); }
+  footer strong { color: rgba(255,255,255,0.7); font-weight: 500; }
+  .footer-inner { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+  .footer-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: rgba(255,255,255,0.35); text-decoration: none;
+    margin-bottom: 0.5rem; transition: color 0.15s;
+  }
+  .footer-back:hover { color: rgba(255,255,255,0.6); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero-left > * { animation: fadeUp 0.5s ease both; }
+  .hero-left > *:nth-child(1) { animation-delay: 0.05s; }
+  .hero-left > *:nth-child(2) { animation-delay: 0.14s; }
+  .hero-left > *:nth-child(3) { animation-delay: 0.23s; }
+  .hero-left > *:nth-child(4) { animation-delay: 0.32s; }
+  .hero-left > *:nth-child(5) { animation-delay: 0.40s; }
+
+  /* ── DISCLOSURE SECTION ── */
+  .disclosure-section { background: var(--surface); }
+  .disclosure-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+    max-width: 880px; margin: 0 auto;
+  }
+  .disclosure-card {
+    border-radius: var(--radius); padding: 1.75rem;
+    border: 1px solid var(--border);
+  }
+  .disclosure-card.public { background: var(--surface-soft); }
+  .disclosure-card.operational { background: var(--gold-light); border-color: #e0c870; }
+  .disc-head {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .disclosure-card.public .disc-head { color: var(--ink-faint); }
+  .disclosure-card.operational .disc-head { color: var(--gold-dark); }
+  .disc-title {
+    font-size: 17px; font-weight: 600; color: var(--ink); margin-bottom: 0.75rem;
+    letter-spacing: -0.01em; line-height: 1.25;
+  }
+  .disc-body { font-size: 13.5px; color: var(--ink-muted); line-height: 1.65; }
+  .disc-items { margin-top: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .disc-item { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+  .disc-item svg { flex-shrink: 0; margin-top: 3px; }
+  .disclosure-card.public .disc-item svg { color: var(--ink-faint); }
+  .disclosure-card.operational .disc-item svg { color: var(--gold-dark); }
+  .disclosure-note {
+    max-width: 880px; margin: 1.5rem auto 0;
+    background: var(--surface-soft); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold); border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.25rem; font-size: 13.5px; color: var(--ink-muted); line-height: 1.65;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .disclosure-note svg { flex-shrink: 0; margin-top: 3px; color: var(--gold-dark); }
+
+  /* ── CONSENT & BILLING FORM ELEMENTS ── */
+  .consent-box {
+    background: var(--surface-soft); border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem; margin-bottom: 0.85rem;
+  }
+  .consent-box.highlighted { border-color: var(--gold); background: var(--gold-light); }
+  .consent-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    font-size: 13px; color: var(--ink-muted); line-height: 1.6; cursor: pointer;
+  }
+  .consent-row input[type="checkbox"] {
+    width: 16px; height: 16px; flex-shrink: 0; margin-top: 3px;
+    accent-color: var(--gold); cursor: pointer;
+  }
+  .billing-toggle {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--ink-muted);
+    margin-bottom: 0.5rem;
+  }
+  .billing-toggle input[type="checkbox"] { accent-color: var(--gold); width: 15px; height: 15px; }
+  .billing-fields { display: none; margin-top: 0.85rem; }
+  .billing-fields.visible { display: block; }
+  @media (max-width: 720px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    .hero::before, .hero::after { display: none; }
+    .handle-grid { grid-template-columns: 1fr; }
+    .handle-col.them { display: none; }
+    .roles-grid { grid-template-columns: 1fr 1fr; }
+    .modules-grid { grid-template-columns: 1fr 1fr; }
+    .honest-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .module-checks { grid-template-columns: 1fr; }
+    .trust-bar-inner { gap: 1.25rem; }
+  }
+  @media (max-width: 480px) {
+    .roles-grid { grid-template-columns: 1fr; }
+    .modules-grid { grid-template-columns: 1fr; }
+    .module-checks { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="iqcommune-real-deal-training.html" style="text-decoration:none;">
+      <span style="display:flex;align-items:center;gap:14px;">
+        <span style="display:flex;flex-direction:column;gap:3px;">
+          <span style="display:flex;align-items:baseline;gap:0;line-height:1;">
+            <span style="color:var(--gold);font-weight:700;font-size:26px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">iq</span><span style="color:var(--ink);font-weight:300;font-size:26px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">commune</span>
+          </span>
+          <span style="font-size:9.5px;font-weight:500;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase;line-height:1;">Where financial intelligence connects</span>
+        </span>
+        <span style="border-left:1px solid var(--border-strong);padding-left:14px;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-dark);">Practitioner</span>
+          <span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-dark);">Network</span>
+        </span>
+      </span>
+    </a>
+    <a class="nav-back" href="iqcommune-real-deal-training.html">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back to main site
+    </a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="pill">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          For Finance Professionals
+        </span>
+      </div>
+      <h1 class="hero-headline">
+        You spend your days<br/>managing real money.<br/><em>Most people will never<br/>learn from someone like you.</em>
+      </h1>
+      <p class="hero-sub">
+        iqcommune connects working finance professionals with people who want to learn from someone still in the field. You bring the knowledge. We handle everything else.
+      </p>
+      <button class="btn-primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Apply to Join the Network
+      </button>
+      <p class="hero-note">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        No upfront fees. No sales work. We'll reach out within 2–3 working days.
+      </p>
+    </div>
+
+    <div class="hero-card">
+      <div class="hero-card-label">What this means for you</div>
+      <div class="perks-list">
+        <div class="perk-item">
+          <div class="perk-icon">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div>
+            <div class="perk-title">Earn on the side — without selling</div>
+            <div class="perk-desc">Revenue share per session. We bring the audience. You just show up and teach.</div>
+          </div>
+        </div>
+        <div class="perk-item">
+          <div class="perk-icon">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <div class="perk-title">2–3 hours. Your schedule.</div>
+            <div class="perk-desc">Sessions are short, infrequent, and confirmed with you before anything is committed.</div>
+          </div>
+        </div>
+        <div class="perk-item">
+          <div class="perk-icon">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div class="perk-title">Your identity stays protected</div>
+            <div class="perk-desc">We never publish your name or organisation publicly. Your participation is entirely on your terms.</div>
+          </div>
+        </div>
+        <div class="perk-item">
+          <div class="perk-icon">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <div class="perk-title">Small, serious groups only</div>
+            <div class="perk-desc">Max 20 participants per session. Curated. In-person. No webinar crowds.</div>
+          </div>
+        </div>
+        <div class="perk-item">
+          <div class="perk-icon">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="perk-title">No content creation required</div>
+            <div class="perk-desc">You teach from your own experience. No slides to build, no curriculum to write.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TRUST BAR ── -->
+<div class="trust-bar" style="background:var(--gold-light); border-top:1px solid #e0c870; border-bottom:1px solid #e0c870;">
+  <div class="trust-bar-inner">
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Your name & identity are never published
+    </div>
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      No upfront fees — ever
+    </div>
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      No sales or business development required
+    </div>
+  </div>
+</div>
+
+<!-- ── WHO WE WANT ── -->
+<section class="who-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Who we're looking for</span></div>
+    <h2 class="section-headline">Currently in the field.<br/>That's the only requirement that matters.</h2>
+    <p class="section-sub">We don't shortlist by credentials alone. What qualifies you is that you're actively doing the work — right now.</p>
+
+    <div class="roles-grid">
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="role-title">Equity Analysts</div>
+        <div class="role-desc">Currently writing research, tracking companies, and forming views on markets every trading day.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <div class="role-title">Portfolio Managers</div>
+        <div class="role-desc">Actively managing equity, debt, or hybrid portfolios — with a live P&L attached to every call you make.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="role-title">Certified Financial Planners</div>
+        <div class="role-desc">SEBI-registered, currently advising clients on goal-based investing, retirement, or financial planning.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="role-title">Wealth Advisors & RMs</div>
+        <div class="role-desc">Working with HNI or retail clients every day — structuring portfolios, having money conversations for real.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="role-title">Fund & Product Specialists</div>
+        <div class="role-desc">Deep expertise in specific instruments — fixed income, derivatives, structured products — actively working with these today, whether in a firm or independently.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="role-title">Corporate Finance Professionals</div>
+        <div class="role-desc">CFOs, treasury managers, or finance controllers with hands-on exposure to capital allocation and planning.</div>
+      </div>
+    </div>
+
+    <p class="roles-note">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Minimum 5 years of active, hands-on experience in your domain. Employed or independent — what matters is that you are actively practising, not that you work for an organisation.
+    </p>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="how-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">The process</span></div>
+    <h2 class="section-headline">Simple from your end.<br/>Deliberately so.</h2>
+    <p class="section-sub">We've structured this so your time investment is minimal — until you're actually in the room teaching.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Apply in 5 minutes</div>
+        <div class="step-desc">Tell us your current role, years of experience, and which module you'd teach. A short note on why you want to do this.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">We reach out</div>
+        <div class="step-desc">Within 2–3 working days. A brief conversation — no formal interview, no audition. Just a check for fit and intent.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Get matched</div>
+        <div class="step-desc">We align you to a module that fits your active expertise. When a session is requested, we check your availability first.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Teach & earn</div>
+        <div class="step-desc">Show up, teach from your own experience, answer real questions. Revenue share is paid out after each confirmed session.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT WE HANDLE ── -->
+<section class="handle-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Division of work</span></div>
+    <h2 class="section-headline">Your job is to teach.<br/>Everything else is ours.</h2>
+    <p class="section-sub">We've built the platform so you never have to do the work you didn't sign up for.</p>
+
+    <div class="handle-grid">
+      <div class="handle-col us">
+        <div class="handle-header">iqcommune handles</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>All client acquisition and marketing</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Group formation and cohort management</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Venue booking (for individual/group sessions)</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Scheduling, confirmations & logistics</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Fee collection and revenue share payout</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Your identity and privacy protection</div>
+      </div>
+      <div class="handle-col them">
+        <div class="handle-header">You bring</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Active, current expertise in your domain</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>2–3 hours for each confirmed session</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Real examples from your current work</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Willingness to take genuine questions</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Availability confirmation before each session</div>
+        <div class="handle-item"><svg class="handle-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Commitment to no product cross-selling</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MODULES ── -->
+<section class="modules-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Teaching modules</span></div>
+    <h2 class="section-headline">Six modules. One per practitioner.</h2>
+    <p class="section-sub">Each module is taught by a single practitioner currently active in that specific area. You apply for the one that fits your expertise.</p>
+
+    <div class="modules-grid">
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="module-name">Financial Planning Basics</div>
+        <div class="module-ideal">Ideal if you're a: CFP, financial planner, IFA</div>
+        <div class="module-desc">Budgeting frameworks, net worth, emergency funds. Teaching people to get their foundation right before they invest anything.</div>
+      </div>
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="module-name">Investment Basics</div>
+        <div class="module-ideal">Ideal if you're a: Wealth advisor, RM, distributor</div>
+        <div class="module-desc">Mutual funds, SIPs, equity vs. debt allocation. You've had this conversation with clients — now have it with people who are just starting.</div>
+      </div>
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="module-name">Market Fundamentals</div>
+        <div class="module-ideal">Ideal if you're a: Fund manager, macro analyst</div>
+        <div class="module-desc">How markets move, what drives sentiment, how to filter signal from noise. Taught from the desk of someone reading this every day.</div>
+      </div>
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="module-name">Stock Market Basics</div>
+        <div class="module-ideal">Ideal if you're a: Equity analyst, research head</div>
+        <div class="module-desc">P/E ratios, earnings reports, reading a balance sheet. The toolkit a retail investor needs — explained by someone using it professionally.</div>
+      </div>
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="module-name">Retirement Planning</div>
+        <div class="module-ideal">Ideal if you're a: CFP, pension specialist, RM</div>
+        <div class="module-desc">NPS, PPF, EPF, corpus calculations. The conversations most people delay until it's almost too late — you know how to make them urgent and actionable.</div>
+      </div>
+      <div class="module-card">
+        <div class="module-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <div class="module-name">Goal-Based Investing</div>
+        <div class="module-ideal">Ideal if you're a: Wealth planner, CFP, advisor</div>
+        <div class="module-desc">Mapping investments to real goals — home, education, capital. You've built these plans for clients. Now help a room of people build their own.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HONEST SECTION ── -->
+<section class="honest-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Before you apply</span></div>
+    <h2 class="section-headline" style="color:#fff;">This works well for some people.<br/>Not for everyone.</h2>
+
+    <div class="honest-grid" style="margin-top:2.5rem;">
+      <div class="honest-card good">
+        <div class="honest-head">This is a good fit if you…</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="#6fcf6f" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Are actively practising in finance — employed, self-employed, or independent</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="#6fcf6f" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Are comfortable talking about what you do without a script</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="#6fcf6f" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Want a side income without any business development work</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="#6fcf6f" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Available for at least one session every few months — and when you say yes, you see it through</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="#6fcf6f" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Comfortable with the disclosure terms — what gets shared with session organisers and when</div>
+      </div>
+      <div class="honest-card notgood">
+        <div class="honest-head">This is not for you if you…</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Have left finance and are looking to transition into training full-time</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Want to actively pitch or sell products, funds, or services during sessions</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Are looking for a regular, guaranteed monthly income</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Say yes to sessions and then become unavailable — reliability matters more than frequency</div>
+        <div class="honest-item"><svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Have fewer than 5 years of active, full-time finance experience</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW DISCLOSURE WORKS ── -->
+<section class="disclosure-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Transparency</span></div>
+    <h2 class="section-headline">How disclosure actually works.<br/>Two tiers. Both on your terms.</h2>
+    <p class="section-sub">We want to be completely honest with you — because vague privacy promises help no one.</p>
+
+    <div class="disclosure-grid">
+      <div class="disclosure-card public">
+        <div class="disc-head">Public — Never disclosed</div>
+        <div class="disc-title">What the world never sees</div>
+        <div class="disc-body">Nothing that identifies you is ever displayed on our website, marketing, or any public-facing channel.</div>
+        <div class="disc-items">
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+            Your full name
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+            Your employer's name
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+            Your personal contact details
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+            Any photos, profiles, or endorsements
+          </div>
+        </div>
+      </div>
+
+      <div class="disclosure-card operational">
+        <div class="disc-head">Operational — Shared only when a session is confirmed</div>
+        <div class="disc-title">What the session organiser receives</div>
+        <div class="disc-body">Once you confirm availability for a session, the client-side organiser receives a brief professional profile — nothing more. Because you're providing explicit consent, we include your organisation or practice name to establish credibility upfront. If you are independent, we'll describe you as an independent practitioner in your domain.</div>
+        <div class="disc-items">
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Your first name only
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Years of experience and domain
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Your organisation or practice name — shared with your consent, adds credibility with the organiser. Independent practitioners are described as such.
+          </div>
+          <div class="disc-item">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            A coordination contact through iqcommune — not your personal number
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="disclosure-note">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span>We'll be honest about one thing we can't fully control: once a session is confirmed, the organiser knows a practitioner is coming. Like any in-person engagement, your identity becomes known in the room. <strong style="color:var(--ink);">What we commit to is that this only happens after your explicit availability confirmation — and that we never facilitate direct client-to-practitioner contact outside our coordination layer.</strong> Your consent to this operational disclosure is captured during onboarding — and is entirely voluntary.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── APPLICATION ── -->
+<section class="apply-section" id="apply">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Apply</span></div>
+    <h2 class="section-headline">Five minutes.<br/>That's all we ask.</h2>
+    <p class="section-sub">No formal interview, no audition. Just tell us who you are and what you'd teach. We'll take it from there.</p>
+
+    <div class="apply-form-wrap">
+      <div id="apply-form">
+        <span class="form-section-label">About you</span>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="a-fname">First name</label>
+            <input type="text" id="a-fname" placeholder="Vikram"/>
+          </div>
+          <div class="form-group">
+            <label for="a-lname">Last name</label>
+            <input type="text" id="a-lname" placeholder="Kulkarni"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="a-email">Personal email address</label>
+          <input type="email" id="a-email" placeholder="vikram@gmail.com"/>
+          <div class="form-hint">Use your personal email — not your work email. We keep this strictly confidential.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="a-phone">Phone number</label>
+          <input type="tel" id="a-phone" placeholder="+91 98765 43210"/>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="a-role">Current job title</label>
+            <input type="text" id="a-role" placeholder="Equity Analyst"/>
+          </div>
+          <div class="form-group">
+            <label for="a-exp">Years of experience</label>
+            <select id="a-exp">
+              <option value="">Select…</option>
+              <option>5 – 8 years</option>
+              <option>9 – 12 years</option>
+              <option>13 – 18 years</option>
+              <option>18+ years</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="a-city">City you're based in</label>
+          <input type="text" id="a-city" placeholder="Mumbai"/>
+          <div class="form-hint">Sessions are in-person — city helps us match you to local requests.</div>
+        </div>
+
+        <span class="form-section-label">Your teaching preference</span>
+
+        <div class="form-group">
+          <label>Which module would you like to teach? <span style="font-weight:400;color:var(--ink-faint)">(select all that apply)</span></label>
+          <div class="module-checks">
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Financial Planning Basics"/> Financial Planning Basics
+            </label>
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Investment Basics"/> Investment Basics
+            </label>
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Market Fundamentals"/> Market Fundamentals
+            </label>
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Stock Market Basics"/> Stock Market Basics
+            </label>
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Retirement Planning"/> Retirement Planning
+            </label>
+            <label class="module-check" onclick="toggleCheck(this)">
+              <input type="checkbox" value="Goal-Based Investing"/> Goal-Based Investing
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="a-freq">How often could you teach?</label>
+          <select id="a-freq">
+            <option value="">Select…</option>
+            <option>Once a month</option>
+            <option>Once in 2 months</option>
+            <option>Once a quarter</option>
+            <option>Flexible — depends on my schedule</option>
+          </select>
+        </div>
+
+        <span class="form-section-label">One last thing</span>
+
+        <div class="form-group">
+          <label for="a-why">In your own words — why do you want to do this?</label>
+          <textarea id="a-why" rows="3" placeholder="A few honest lines is all we need. No need to sell yourself — just tell us what draws you to this."></textarea>
+          <div class="form-hint">100–150 words is plenty. This is the most important field in this form.</div>
+        </div>
+
+        <span class="form-section-label">Disclosure consent</span>
+
+        <div class="consent-box highlighted">
+          <label class="consent-row" id="consent-op-label">
+            <input type="checkbox" id="consent-operational" onchange="checkConsents()"/>
+            <span>I understand that upon confirming availability for a session, a brief professional profile (first name, organisation or practice name, domain, and years of experience) will be shared with the confirmed session organiser. If I am independent, I will be described as an independent practitioner. My personal contact details will not be shared — all coordination goes through iqcommune.</span>
+          </label>
+        </div>
+
+        <div class="consent-box">
+          <label class="consent-row">
+            <input type="checkbox" id="consent-nosell" onchange="checkConsents()"/>
+            <span>I confirm that I will not promote, recommend, or cross-sell any financial product, fund, or service <strong>during sessions</strong>. I understand I may share my own contact details or business card with attendees — any interaction outside the session is purely between me and the individual concerned, and iqcommune has no role or liability in it.</span>
+          </label>
+        </div>
+
+        <div class="consent-box">
+          <label class="consent-row">
+            <input type="checkbox" id="consent-employer" onchange="checkConsents()"/>
+            <span>I acknowledge that if I am employed, informing my employer about this engagement is my own responsibility. iqcommune does not require it and will not represent that it has been done. If I am self-employed or independent, this clause does not apply.</span>
+          </label>
+        </div>
+
+        <span class="form-section-label">Payment preferences</span>
+
+        <div class="form-group">
+          <label for="a-upi">Your UPI ID <span style="font-weight:400;color:var(--ink-faint)">(if receiving payment via UPI)</span></label>
+          <input type="text" id="a-upi" placeholder="yourname@upi"/>
+          <div class="form-hint">Used only for revenue share payouts. Kept strictly confidential.</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.75rem; margin: 0.5rem 0;">
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+          <span style="font-size:11px; color:var(--ink-faint); font-weight:500; letter-spacing:0.06em;">OR</span>
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+        </div>
+
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:0.6rem;">Bank account details</div>
+        <div class="form-group">
+          <label for="a-acname">Name as per bank account</label>
+          <input type="text" id="a-acname" placeholder="Vikram Kulkarni"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="a-acno">Account number</label>
+            <input type="text" id="a-acno" placeholder="XXXXXXXXXXXXXX"/>
+          </div>
+          <div class="form-group">
+            <label for="a-ifsc">IFSC code</label>
+            <input type="text" id="a-ifsc" placeholder="HDFC0001234"/>
+          </div>
+        </div>
+
+        <div class="consent-box" style="margin-top:0.25rem;">
+          <label class="billing-toggle" onclick="toggleBilling()">
+            <input type="checkbox" id="billing-toggle-cb"/>
+            I would like payment credited to a family member's account instead
+          </label>
+          <div class="billing-fields" id="billing-fields">
+            <div class="form-row" style="margin-top:0.5rem;">
+              <div class="form-group">
+                <label for="b-name">Family member's full name</label>
+                <input type="text" id="b-name" placeholder="Anita Kulkarni"/>
+                <div class="form-hint">As it should appear on the tax invoice.</div>
+              </div>
+              <div class="form-group">
+                <label for="b-relation">Relationship to you</label>
+                <select id="b-relation">
+                  <option value="">Select…</option>
+                  <option>Spouse</option>
+                  <option>Parent</option>
+                  <option>Sibling</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="b-upi">Their UPI ID <span style="font-weight:400;color:var(--ink-faint)">(if paying via UPI)</span></label>
+              <input type="text" id="b-upi" placeholder="familymember@upi"/>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:0.75rem; margin: 0.5rem 0;">
+              <div style="flex:1; height:1px; background:var(--border);"></div>
+              <span style="font-size:11px; color:var(--ink-faint); font-weight:500; letter-spacing:0.06em;">OR</span>
+              <div style="flex:1; height:1px; background:var(--border);"></div>
+            </div>
+
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:0.6rem;">Bank account details</div>
+            <div class="form-group">
+              <label for="b-acname">Name as per bank account</label>
+              <input type="text" id="b-acname" placeholder="Anita Kulkarni"/>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="b-acno">Account number</label>
+                <input type="text" id="b-acno" placeholder="XXXXXXXXXXXXXX"/>
+              </div>
+              <div class="form-group">
+                <label for="b-ifsc">IFSC code</label>
+                <input type="text" id="b-ifsc" placeholder="HDFC0001234"/>
+              </div>
+            </div>
+
+            <div class="consent-box" style="margin-top:0.5rem; background:var(--gold-light); border-color:#e0c870;">
+              <div style="font-size:12px; font-weight:600; color:var(--gold-dark); margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Important — please read before proceeding
+              </div>
+              <p style="font-size:12.5px; color:var(--gold-dark); line-height:1.6; margin-bottom:0.75rem;">The tax invoice for your revenue share will be generated in the name of <strong>the family member specified above</strong> — not in your name. This is a requirement of the arrangement and cannot be changed after confirmation.</p>
+              <label class="consent-row">
+                <input type="checkbox" id="consent-billing"/>
+                <span>I declare that I authorise iqcommune to credit my revenue share to the above family member's account and to generate tax invoices in their name. I understand that I remain responsible for any tax obligations arising from this income, regardless of the invoice name.</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button class="form-submit" id="submit-btn" onclick="submitApply()" style="opacity:0.45; cursor:not-allowed;">
+          Submit Application
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <p class="form-fine">All three consent boxes above must be checked before submitting. Your details are never shared with third parties.</p>
+      </div>
+
+      <div class="form-success" id="apply-success">
+        <div class="success-tick">
+          <svg width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Application received.</h3>
+        <p>Thank you for your interest. We'll go through your application and reach out within 2–3 working days to have a brief conversation.<br/><br/>No formal screening — just a short chat to understand each other better.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section class="faq-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">FAQs</span></div>
+    <h2 class="section-headline">Things practitioners ask.</h2>
+    <p class="section-sub">Honest answers — no fine print.</p>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Will my employer or clients know I'm doing this?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">We never publish your name, job title, or organisation anywhere on our platform or in any public channel. However, we want to be fully honest about what happens operationally: once you confirm availability for a session, the session organiser receives a brief profile — your first name, organisation or practice name, domain, and years of experience. This is shared with your explicit consent (captured during onboarding) and adds credibility with the organiser. If you are independent, we describe you as an independent practitioner in your domain — never as a freelancer or trainer. All coordination goes through iqcommune, not your personal contact. Whether you inform your employer (if you have one) is entirely your call — we don't require it and we don't make it necessary.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Will clients eventually find out who I am?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">We want to be honest about this too. Once a session is confirmed, the organiser knows your name and your organisation or practice — and in an in-person session, your identity becomes known in the room. We can't prevent that, and we won't pretend otherwise.<br/><br/>What we control is the layer before that: nothing appears publicly, your personal contact details are never given to clients, and employer disclosure to organisers only happens after your explicit availability confirmation and consent. Our empanelment agreement also asks participants not to seek commercial relationships with practitioners outside of the platform — but we acknowledge we can't fully control what happens after a session. The best protection is a platform worth staying on, which is what we're building.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How does the revenue sharing work?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">The exact revenue share percentage is discussed and confirmed during the onboarding conversation — before you commit to anything. We don't publish a fixed number here because it may vary based on session type, audience, and format. What we can say: you will always know the exact amount you'll earn before a session is confirmed. There are no surprises.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Do I need to prepare a presentation or course material?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">No. The entire premise of iqcommune is that you teach from your own experience — not from a scripted deck. You don't need slides, notes, or a curriculum. We'll share a loose session outline (the key areas participants expect to cover) but what happens in the room is driven by you and the questions the group asks. That's the point.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I be listed for more than one module?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">Yes — if your experience genuinely spans multiple areas, you can indicate that in the application. We'll have a conversation to understand your depth in each. We'd rather match you to one module you're excellent at than spread you across three where the quality thins out. We'll guide this together.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What if I'm approached by a participant after the session?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">That's entirely up to you. You're welcome to share your own contact details or business card with attendees during or after the session — that's your professional identity to share as you see fit.<br/><br/>What we ask is that the session itself stays clean: no product pitching, no cross-selling, and no collecting attendee contact details in bulk during the session. What happens between you and an individual after the session — a conversation, a professional connection, or anything else — is purely between the two of you. iqcommune has no role in it and places no restriction on it.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How far in advance will I know about a session?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">We typically confirm sessions 1–2 weeks in advance. Before we confirm anything, we always check your availability first. You're never committed to a session you didn't agree to. If the timing doesn't work, we find another practitioner for that request — no pressure, no obligation.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is there any exclusivity — can I do similar sessions independently?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">No exclusivity. You're free to conduct your own independent sessions or workshops. The empanelment is non-exclusive by design — we don't want to restrict what you do with your own expertise outside of our platform.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can my revenue share be paid to a family member's account?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">Yes. We understand this is a practical consideration for some professionals and we accommodate it. During the application, you can specify a family member's name, relationship, and payment details. You'll be asked to sign a simple declaration confirming you authorise this arrangement and acknowledge that the tax responsibility remains yours. We don't question the reason — we just need the authorisation documented.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-inner">
+    <a class="footer-back" href="iqcommune-real-deal-training.html">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back to iqcommune
+    </a>
+    <p><strong>iqcommune</strong> — practitioner network &nbsp;·&nbsp; <a href="mailto:practitioners@iqcommune.com">practitioners@iqcommune.com</a></p>
+    <p style="margin-top:0.4rem;">© 2025 iqcommune. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+  function toggleFaq(btn) {
+    const isOpen = btn.classList.contains('open');
+    document.querySelectorAll('.faq-q').forEach(q => q.classList.remove('open'));
+    document.querySelectorAll('.faq-a').forEach(a => a.classList.remove('open'));
+    if (!isOpen) {
+      btn.classList.add('open');
+      btn.nextElementSibling.classList.add('open');
+    }
+  }
+
+  function toggleCheck(label) {
+    setTimeout(() => {
+      const cb = label.querySelector('input[type="checkbox"]');
+      label.classList.toggle('checked', cb.checked);
+    }, 0);
+  }
+
+  function toggleBilling() {
+    setTimeout(() => {
+      const cb = document.getElementById('billing-toggle-cb');
+      const fields = document.getElementById('billing-fields');
+      fields.classList.toggle('visible', cb.checked);
+    }, 0);
+  }
+
+  function checkConsents() {
+    const c1 = document.getElementById('consent-operational').checked;
+    const c2 = document.getElementById('consent-nosell').checked;
+    const c3 = document.getElementById('consent-employer').checked;
+    const btn = document.getElementById('submit-btn');
+    const allChecked = c1 && c2 && c3;
+    btn.style.opacity = allChecked ? '1' : '0.45';
+    btn.style.cursor  = allChecked ? 'pointer' : 'not-allowed';
+  }
+
+  function submitApply() {
+    const fname = document.getElementById('a-fname').value.trim();
+    const email = document.getElementById('a-email').value.trim();
+    const role  = document.getElementById('a-role').value.trim();
+    const why   = document.getElementById('a-why').value.trim();
+    const modules   = [...document.querySelectorAll('.module-check input:checked')];
+    const c1 = document.getElementById('consent-operational').checked;
+    const c2 = document.getElementById('consent-nosell').checked;
+    const c3 = document.getElementById('consent-employer').checked;
+
+    if (!fname || !email || !role || !why || modules.length === 0) {
+      alert('Please fill in all required fields and select at least one module.');
+      return;
+    }
+    if (!c1 || !c2 || !c3) {
+      alert('Please check all three consent boxes before submitting.');
+      return;
+    }
+
+    // practitioner payment validation — require UPI or full bank details
+    const pUpi    = document.getElementById('a-upi').value.trim();
+    const pAcname = document.getElementById('a-acname').value.trim();
+    const pAcno   = document.getElementById('a-acno').value.trim();
+    const pIfsc   = document.getElementById('a-ifsc').value.trim();
+    const hasPUpi  = pUpi.length > 0;
+    const hasPBank = pAcname.length > 0 && pAcno.length > 0 && pIfsc.length > 0;
+    if (!hasPUpi && !hasPBank) {
+      alert('Please provide either your UPI ID or full bank account details for payment.');
+      return;
+    }
+
+    // billing validation — if billing toggle is checked, validate family member fields
+    const billingOn = document.getElementById('billing-toggle-cb').checked;
+    if (billingOn) {
+      const bname  = document.getElementById('b-name').value.trim();
+      const brel   = document.getElementById('b-relation').value;
+      const bupi   = document.getElementById('b-upi').value.trim();
+      const bacname= document.getElementById('b-acname').value.trim();
+      const bacno  = document.getElementById('b-acno').value.trim();
+      const bifsc  = document.getElementById('b-ifsc').value.trim();
+      const bc     = document.getElementById('consent-billing').checked;
+      // require name, relation, and either UPI or full bank details
+      const hasUpi  = bupi.length > 0;
+      const hasBank = bacname.length > 0 && bacno.length > 0 && bifsc.length > 0;
+      if (!bname || !brel) {
+        alert('Please enter the family member\'s name and relationship.');
+        return;
+      }
+      if (!hasUpi && !hasBank) {
+        alert('Please provide either a UPI ID or full bank account details for the family member.');
+        return;
+      }
+      if (!bc) {
+        alert('Please check the billing declaration before submitting.');
+        return;
+      }
+    }
+
+    document.getElementById('apply-form').style.display = 'none';
+    document.getElementById('apply-success').style.display = 'block';
+  }
+</script>
+</body>
+</html>

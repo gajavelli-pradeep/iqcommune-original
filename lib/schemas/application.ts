@@ -23,36 +23,57 @@ export const TEACH_FREQ_OPTIONS = [
   "Flexible — depends on my schedule",
 ] as const;
 
-export const ApplicationSchema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
-  email: z.string().email("Invalid email"),
-  phone: z.string().min(6, "Required"),
-  role: z.string().min(1, "Required"),
-  org: z.string().optional(),
-  experience: z.enum(EXPERIENCE_OPTIONS, { message: "Select experience range" }),
-  city: z.string().min(1, "Required"),
-  modules: z.array(z.enum(MODULES)).min(1, "Select at least one module"),
-  teachFreq: z.enum(TEACH_FREQ_OPTIONS, { message: "Select availability" }),
-  why: z.string().min(10, "Please write at least a sentence"),
-  consentOperational: z.literal(true, { message: "Required" }),
-  consentNosell: z.literal(true, { message: "Required" }),
-  consentEmployer: z.literal(true, { message: "Required" }),
-  // payment — optional at application stage
-  upiId: z.string().optional(),
-  bankName: z.string().optional(),
-  bankAccount: z.string().optional(),
-  ifsc: z
-    .string()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC")
-    .optional()
-    .or(z.literal("")),
-  payToFamily: z.boolean().default(false),
-  familyName: z.string().optional(),
-  familyRelation: z.string().optional(),
-  familyUpi: z.string().optional(),
-  familyBank: z.string().optional(),
-  familyIfsc: z.string().optional(),
-});
+export const ApplicationSchema = z
+  .object({
+    firstName: z.string().min(1, "Required"),
+    lastName: z.string().min(1, "Required"),
+    email: z.string().email("Invalid email"),
+    phone: z.string().min(6, "Required"),
+    role: z.string().min(1, "Required"),
+    experience: z.enum(EXPERIENCE_OPTIONS, { message: "Select experience range" }),
+    city: z.string().min(1, "Required"),
+    modules: z.array(z.enum(MODULES)).min(1, "Select at least one module"),
+    teachFreq: z.enum(TEACH_FREQ_OPTIONS, { message: "Select availability" }),
+    why: z.string().min(10, "Please write at least a sentence"),
+    consentOperational: z.literal(true, { message: "Required" }),
+    consentNosell: z.literal(true, { message: "Required" }),
+    consentEmployer: z.literal(true, { message: "Required" }),
+    // payment — require either UPI or full bank details (Gap 44)
+    upiId: z.string().optional(),
+    bankAccountName: z.string().optional(),
+    bankAccount: z.string().optional(),
+    ifsc: z
+      .string()
+      .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC")
+      .optional()
+      .or(z.literal("")),
+    payToFamily: z.boolean().default(false),
+    familyName: z.string().optional(),
+    familyRelation: z.string().optional(),
+    familyUpi: z.string().optional(),
+    familyAccountName: z.string().optional(),
+    familyBankAccount: z.string().optional(),
+    familyIfsc: z.string().optional(),
+    consentBilling: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Gap 44: require UPI or full bank details (name + account + IFSC)
+    const hasUpi = typeof data.upiId === "string" && data.upiId.trim().length > 0;
+    const hasBank =
+      typeof data.bankAccountName === "string" &&
+      data.bankAccountName.trim().length > 0 &&
+      typeof data.bankAccount === "string" &&
+      data.bankAccount.trim().length > 0 &&
+      typeof data.ifsc === "string" &&
+      data.ifsc.trim().length > 0;
+    if (!hasUpi && !hasBank) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Please provide either your UPI ID or full bank account details for payment.",
+        path: ["upiId"],
+      });
+    }
+  });
 
 export type Application = z.infer<typeof ApplicationSchema>;

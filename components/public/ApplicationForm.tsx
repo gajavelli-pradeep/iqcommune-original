@@ -28,6 +28,10 @@ export function ApplicationForm() {
 
   const selectedModules = watch("modules") ?? [];
   const payToFamily = watch("payToFamily");
+  const consentOperational = watch("consentOperational");
+  const consentNosell = watch("consentNosell");
+  const consentEmployer = watch("consentEmployer");
+  const allConsentsChecked = consentOperational && consentNosell && consentEmployer;
 
   function toggleModule(mod: string) {
     const current = selectedModules as string[];
@@ -55,9 +59,10 @@ export function ApplicationForm() {
     }
   }
 
+  // Gap 43: full success state copy from source
   if (success) {
     return (
-      <div style={{ textAlign: "center", padding: "3rem 0" }}>
+      <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
         <div style={checkCircle}>
           <svg
             width="30"
@@ -71,7 +76,7 @@ export function ApplicationForm() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h3 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+        <h3 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8, color: "#0f1117" }}>
           Application received.
         </h3>
         <p
@@ -79,12 +84,12 @@ export function ApplicationForm() {
             fontSize: 14,
             color: "#4a4d5c",
             lineHeight: 1.65,
-            maxWidth: 400,
-            margin: "0 auto",
           }}
         >
-          We&apos;ll go through your application and reach out within 2–3
-          working days.
+          Thank you for your interest. We&apos;ll go through your application and reach out within 2–3 working days to have a brief conversation.
+          <br />
+          <br />
+          No formal screening — just a short chat to understand each other better.
         </p>
       </div>
     );
@@ -92,213 +97,461 @@ export function ApplicationForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      {/* ── About you ── */}
+      {/* Gap 17: form-section-label as span with gold uppercase style; first child has marginTop 0 */}
+      <span style={{ ...sectionLabelStyle, marginTop: 0 }}>About you</span>
+
       <div style={sectionStyle}>
-        <h3 style={sectionHead}>Personal details</h3>
+        {/* Gap 53 & 54: placeholders Vikram / Kulkarni */}
         <div style={rowTwo}>
           <Field label="First name" error={errors.firstName?.message}>
-            <input {...register("firstName")} style={inputStyle} placeholder="Priya" />
+            <input {...register("firstName")} style={inputStyle} placeholder="Vikram" />
           </Field>
           <Field label="Last name" error={errors.lastName?.message}>
-            <input {...register("lastName")} style={inputStyle} placeholder="Sharma" />
+            <input {...register("lastName")} style={inputStyle} placeholder="Kulkarni" />
           </Field>
         </div>
+
+        {/* Gap 18: email full-width, phone full-width (not side-by-side) */}
+        {/* Gap 55: email placeholder vikram@gmail.com */}
+        <Field
+          label="Personal email address"
+          hint="Use your personal email — not your work email. We keep this strictly confidential."
+          error={errors.email?.message}
+        >
+          <input {...register("email")} type="email" style={inputStyle} placeholder="vikram@gmail.com" />
+        </Field>
+
+        {/* Gap 56: label 'Phone number' */}
+        <Field label="Phone number" error={errors.phone?.message}>
+          <input {...register("phone")} style={inputStyle} placeholder="+91 98765 43210" />
+        </Field>
+
+        {/* Gap 19: no Organisation field */}
+        {/* Gap 20: label 'Current job title', placeholder 'Equity Analyst' */}
+        {/* Gap 21: role + experience in one row, city full-width below */}
         <div style={rowTwo}>
-          <Field label="Email" error={errors.email?.message}>
-            <input {...register("email")} type="email" style={inputStyle} placeholder="priya@gmail.com" />
-          </Field>
-          <Field label="Phone" error={errors.phone?.message}>
-            <input {...register("phone")} style={inputStyle} placeholder="+91 98765 43210" />
-          </Field>
-        </div>
-        <div style={rowTwo}>
-          <Field label="Current role / title" error={errors.role?.message}>
-            <input {...register("role")} style={inputStyle} placeholder="Certified Financial Planner" />
-          </Field>
-          <Field label="Organisation (optional)">
-            <input {...register("org")} style={inputStyle} placeholder="HDFC AMC (or leave blank)" />
-          </Field>
-        </div>
-        <div style={rowTwo}>
-          <Field label="City" error={errors.city?.message}>
-            <input {...register("city")} style={inputStyle} placeholder="Mumbai" />
+          <Field label="Current job title" error={errors.role?.message}>
+            <input {...register("role")} style={inputStyle} placeholder="Equity Analyst" />
           </Field>
           <Field label="Years of experience" error={errors.experience?.message}>
+            {/* Gap 23: placeholder 'Select…' */}
             <select {...register("experience")} style={inputStyle}>
-              <option value="">Select range</option>
+              <option value="">Select…</option>
               {EXPERIENCE_OPTIONS.map((e) => (
                 <option key={e} value={e}>{e}</option>
               ))}
             </select>
           </Field>
         </div>
-      </div>
 
-      <div style={sectionStyle}>
-        <h3 style={sectionHead}>Modules you can teach</h3>
-        <div
-          role="group"
-          aria-label="Select modules"
-          style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}
+        {/* Gap 22: city full-width with hint */}
+        <Field
+          label="City you're based in"
+          hint="Sessions are in-person — city helps us match you to local requests."
+          error={errors.city?.message}
         >
-          {MODULES.map((m) => {
-            const active = (selectedModules as string[]).includes(m);
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => toggleModule(m)}
-                aria-pressed={active}
-                style={{
-                  padding: "7px 16px",
-                  borderRadius: 100,
-                  border: active ? "1.5px solid #0f1117" : "1.5px solid rgba(15,17,23,.15)",
-                  background: active ? "#0f1117" : "#fff",
-                  color: active ? "#fff" : "#0f1117",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontWeight: active ? 500 : 400,
-                  transition: "all .15s",
-                }}
-              >
-                {m}
-              </button>
-            );
-          })}
-        </div>
-        {errors.modules && (
-          <p style={errStyle} role="alert">{errors.modules.message}</p>
-        )}
+          <input {...register("city")} style={inputStyle} placeholder="Mumbai" />
+        </Field>
       </div>
 
+      {/* ── Your teaching preference ── */}
+      {/* Gap 17: span label style */}
+      <span style={sectionLabelStyle}>Your teaching preference</span>
+
       <div style={sectionStyle}>
-        <h3 style={sectionHead}>Availability</h3>
-        <Field label="How often can you teach?" error={errors.teachFreq?.message}>
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+            Which module would you like to teach?{" "}
+            <span style={{ fontWeight: 400, color: "#9496a1" }}>(select all that apply)</span>
+          </label>
+          <div
+            role="group"
+            aria-label="Select modules you can teach"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            {MODULES.map((m) => {
+              const active = (selectedModules as string[]).includes(m);
+              return (
+                <label
+                  key={m}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "9px 12px",
+                    // Gap 46: active border gold #c9982a
+                    border: active ? "1.5px solid #c9982a" : "1.5px solid rgba(15,17,23,0.20)",
+                    borderRadius: 8,
+                    background: active ? "#f5e9c8" : "#ffffff",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    // Gap 47: active color gold-dark #8a6510
+                    color: active ? "#8a6510" : "#4a4d5c",
+                    fontWeight: active ? 500 : 400,
+                    transition: "border-color 0.15s, background 0.15s",
+                    userSelect: "none",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => toggleModule(m)}
+                    style={{ accentColor: "#c9982a", width: 15, height: 15, flexShrink: 0 }}
+                    aria-label={m}
+                  />
+                  <span>{m}</span>
+                </label>
+              );
+            })}
+          </div>
+          {errors.modules && (
+            <p style={errStyle} role="alert">{errors.modules.message}</p>
+          )}
+        </div>
+
+        {/* Gap 24 & 25: frequency select in teaching preference section, label 'How often could you teach?', placeholder 'Select…' */}
+        <Field label="How often could you teach?" error={errors.teachFreq?.message}>
           <select {...register("teachFreq")} style={inputStyle}>
-            <option value="">Select frequency</option>
+            <option value="">Select…</option>
             {TEACH_FREQ_OPTIONS.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
         </Field>
+      </div>
+
+      {/* ── One last thing ── */}
+      {/* Gap 17: span label style */}
+      <span style={sectionLabelStyle}>One last thing</span>
+
+      <div style={sectionStyle}>
+        {/* Gap 26: label, placeholder, rows=3, hint */}
         <Field
-          label="Why do you want to teach through iqcommune?"
+          label="In your own words — why do you want to do this?"
+          hint="100–150 words is plenty. This is the most important field in this form."
           error={errors.why?.message}
         >
           <textarea
             {...register("why")}
-            rows={4}
-            style={{ ...inputStyle, resize: "vertical" }}
-            placeholder="Share what motivates you to give back and teach..."
+            rows={3}
+            style={{ ...inputStyle, resize: "none" }}
+            placeholder="A few honest lines is all we need. No need to sell yourself — just tell us what draws you to this."
           />
         </Field>
       </div>
 
-      <div style={sectionStyle}>
-        <h3 style={sectionHead}>Payment preferences (optional now)</h3>
-        <p style={{ fontSize: 13, color: "#9496a1", marginBottom: 12 }}>
-          You can fill these later. All payment info is stored securely and
-          never shared publicly.
-        </p>
-        <div style={rowTwo}>
-          <Field label="UPI ID">
-            <input {...register("upiId")} style={inputStyle} placeholder="priya@oksbi" />
-          </Field>
-          <Field label="IFSC code" error={errors.ifsc?.message}>
-            <input {...register("ifsc")} style={inputStyle} placeholder="SBIN0001234" />
-          </Field>
-        </div>
-        <div style={rowTwo}>
-          <Field label="Bank name">
-            <input {...register("bankName")} style={inputStyle} placeholder="State Bank of India" />
-          </Field>
-          <Field label="Account number">
-            <input {...register("bankAccount")} style={inputStyle} placeholder="••••••••" />
-          </Field>
-        </div>
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 13,
-            cursor: "pointer",
-            marginTop: 4,
-          }}
-        >
-          <input type="checkbox" {...register("payToFamily")} />
-          Pay session fees to a family member instead
-        </label>
-        {payToFamily && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: "1rem",
-              background: "#f8f7f4",
-              borderRadius: 8,
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            <div style={rowTwo}>
-              <Field label="Family member name">
-                <input {...register("familyName")} style={inputStyle} placeholder="Full name" />
-              </Field>
-              <Field label="Relation">
-                <input {...register("familyRelation")} style={inputStyle} placeholder="Spouse / Parent" />
-              </Field>
-            </div>
-            <Field label="Their UPI ID">
-              <input {...register("familyUpi")} style={inputStyle} placeholder="family@upi" />
-            </Field>
-          </div>
-        )}
-      </div>
+      {/* ── Disclosure consent ── (Gap 27: before Payment preferences) */}
+      <span style={sectionLabelStyle}>Disclosure consent</span>
 
       <div style={sectionStyle}>
-        <h3 style={sectionHead}>Consents</h3>
-        {(
-          [
-            [
-              "consentOperational",
-              errors.consentOperational?.message,
-              "I understand that iqcommune may disclose my professional identity (name, role, organisation) to the session client upon confirmation, with my consent.",
-            ],
-            [
-              "consentNosell",
-              errors.consentNosell?.message,
-              "I confirm I will not cross-sell, solicit, or recommend any financial products during sessions facilitated through iqcommune.",
-            ],
-            [
-              "consentEmployer",
-              errors.consentEmployer?.message,
-              "I confirm I have reviewed my employer's conflict-of-interest policy and confirm this engagement does not violate it.",
-            ],
-          ] as const
-        ).map(([field, errMsg, label]) => (
-          <div key={field} style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "flex",
-                gap: 10,
-                fontSize: 13,
-                lineHeight: 1.6,
-                cursor: "pointer",
-                alignItems: "flex-start",
-              }}
-            >
-              <input
-                type="checkbox"
-                {...register(field)}
-                style={{ marginTop: 3, flexShrink: 0 }}
-              />
-              <span>{label}</span>
-            </label>
-            {errMsg && (
-              <p style={errStyle} role="alert">{errMsg}</p>
-            )}
+        {/* Gap 31: consent-box wrapper; Gap 28: exact text for consentOperational with highlighted style */}
+        <div
+          style={{
+            background: "#f5e9c8",
+            border: "1.5px solid #c9982a",
+            borderRadius: 12,
+            padding: "1.1rem 1.25rem",
+            marginBottom: "0.85rem",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              fontSize: 13,
+              color: "#4a4d5c",
+              lineHeight: 1.6,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              {...register("consentOperational")}
+              style={{ marginTop: 3, width: 16, height: 16, accentColor: "#c9982a", cursor: "pointer", flexShrink: 0 }}
+            />
+            <span>
+              I understand that upon confirming availability for a session, a brief professional profile (first name, organisation or practice name, domain, and years of experience) will be shared with the confirmed session organiser. If I am independent, I will be described as an independent practitioner. My personal contact details will not be shared — all coordination goes through iqcommune.
+            </span>
+          </label>
+          {errors.consentOperational && (
+            <p style={errStyle} role="alert">{errors.consentOperational.message}</p>
+          )}
+        </div>
+
+        {/* Gap 29: consent-box wrapper for nosell; exact text */}
+        <div
+          style={{
+            background: "#f8f7f4",
+            border: "1.5px solid rgba(15,17,23,0.20)",
+            borderRadius: 12,
+            padding: "1.1rem 1.25rem",
+            marginBottom: "0.85rem",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              fontSize: 13,
+              color: "#4a4d5c",
+              lineHeight: 1.6,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              {...register("consentNosell")}
+              style={{ marginTop: 3, width: 16, height: 16, accentColor: "#c9982a", cursor: "pointer", flexShrink: 0 }}
+            />
+            <span>
+              I confirm that I will not promote, recommend, or cross-sell any financial product, fund, or service <strong>during sessions</strong>. I understand I may share my own contact details or business card with attendees — any interaction outside the session is purely between me and the individual concerned, and iqcommune has no role or liability in it.
+            </span>
+          </label>
+          {errors.consentNosell && (
+            <p style={errStyle} role="alert">{errors.consentNosell.message}</p>
+          )}
+        </div>
+
+        {/* Gap 30: consent-box wrapper for employer; exact text */}
+        <div
+          style={{
+            background: "#f8f7f4",
+            border: "1.5px solid rgba(15,17,23,0.20)",
+            borderRadius: 12,
+            padding: "1.1rem 1.25rem",
+            marginBottom: "0.85rem",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              fontSize: 13,
+              color: "#4a4d5c",
+              lineHeight: 1.6,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              {...register("consentEmployer")}
+              style={{ marginTop: 3, width: 16, height: 16, accentColor: "#c9982a", cursor: "pointer", flexShrink: 0 }}
+            />
+            <span>
+              I acknowledge that if I am employed, informing my employer about this engagement is my own responsibility. iqcommune does not require it and will not represent that it has been done. If I am self-employed or independent, this clause does not apply.
+            </span>
+          </label>
+          {errors.consentEmployer && (
+            <p style={errStyle} role="alert">{errors.consentEmployer.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Payment preferences ── */}
+      <span style={sectionLabelStyle}>Payment preferences</span>
+
+      <div style={sectionStyle}>
+        {/* Gap 40: no introductory paragraph */}
+        {/* Gap 32: 'Your UPI ID' with faint qualifier, placeholder 'yourname@upi', hint */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+            Your UPI ID{" "}
+            <span style={{ fontWeight: 400, color: "#9496a1" }}>(if receiving payment via UPI)</span>
+          </label>
+          <input
+            {...register("upiId")}
+            style={inputStyle}
+            placeholder="yourname@upi"
+          />
+          <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+            Used only for revenue share payouts. Kept strictly confidential.
           </div>
-        ))}
+          {errors.upiId && (
+            <p style={errStyle} role="alert">{errors.upiId.message}</p>
+          )}
+        </div>
+
+        {/* Gap 51: OR divider, fontSize 11, letterSpacing 0.06em */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+          <span style={{ fontSize: 11, fontWeight: 500, color: "#9496a1", letterSpacing: "0.06em" }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+        </div>
+
+        {/* Gap 50: 'Bank account details' label above bank fields */}
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#9496a1", marginBottom: "0.6rem" }}>
+          Bank account details
+        </div>
+
+        {/* Gap 33 & 34: 'Name as per bank account' full-width, then Row([Account number, IFSC]) */}
+        <Field label="Name as per bank account" error={errors.bankAccountName?.message}>
+          <input {...register("bankAccountName")} style={inputStyle} placeholder="Vikram Kulkarni" />
+        </Field>
+        {/* Gap 34 & 35: account + IFSC side-by-side; placeholder XXXXXXXXXXXXXX */}
+        <div style={rowTwo}>
+          <Field label="Account number">
+            <input {...register("bankAccount")} style={inputStyle} placeholder="XXXXXXXXXXXXXX" />
+          </Field>
+          <Field label="IFSC code" error={errors.ifsc?.message}>
+            <input {...register("ifsc")} style={inputStyle} placeholder="HDFC0001234" />
+          </Field>
+        </div>
+
+        {/* Gap 36: payToFamily toggle wrapped in consent-box, correct label text */}
+        <div
+          style={{
+            background: "#f8f7f4",
+            border: "1.5px solid rgba(15,17,23,0.20)",
+            borderRadius: 12,
+            padding: "1.1rem 1.25rem",
+            marginTop: "0.25rem",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#4a4d5c",
+              marginBottom: payToFamily ? "0.5rem" : 0,
+            }}
+          >
+            <input
+              type="checkbox"
+              {...register("payToFamily")}
+              style={{ accentColor: "#c9982a", width: 15, height: 15, cursor: "pointer" }}
+            />
+            I would like payment credited to a family member&apos;s account instead
+          </label>
+
+          {payToFamily && (
+            <div style={{ marginTop: "0.85rem" }}>
+              {/* Gap 38: family member fields with correct labels */}
+              <div style={rowTwo}>
+                {/* Gap 38: 'Family member's full name', hint, placeholder 'Anita Kulkarni' */}
+                <Field label="Family member's full name" hint="As it should appear on the tax invoice.">
+                  <input {...register("familyName")} style={inputStyle} placeholder="Anita Kulkarni" />
+                </Field>
+                {/* Gap 38: 'Relationship to you', placeholder 'Select…' */}
+                {/* Gap 37: no 'Child' option */}
+                <Field label="Relationship to you">
+                  <select {...register("familyRelation")} style={{ ...inputStyle, cursor: "pointer" }}>
+                    <option value="">Select…</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Parent">Parent</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </Field>
+              </div>
+
+              {/* Gap 38: 'Their UPI ID (if paying via UPI)' */}
+              {/* Gap 57: placeholder 'familymember@upi' */}
+              <div style={{ marginTop: 0 }}>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+                  Their UPI ID{" "}
+                  <span style={{ fontWeight: 400, color: "#9496a1" }}>(if paying via UPI)</span>
+                </label>
+                <input
+                  {...register("familyUpi")}
+                  style={inputStyle}
+                  placeholder="familymember@upi"
+                />
+              </div>
+
+              {/* Gap 51: family OR divider */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
+                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+                <span style={{ fontSize: 11, fontWeight: 500, color: "#9496a1", letterSpacing: "0.06em" }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+              </div>
+
+              {/* Gap 50: Bank account details label inside family section */}
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#9496a1", marginBottom: "0.6rem" }}>
+                Bank account details
+              </div>
+
+              {/* Gap 38: 'Name as per bank account', placeholder 'Anita Kulkarni' */}
+              <Field label="Name as per bank account">
+                <input {...register("familyAccountName")} style={inputStyle} placeholder="Anita Kulkarni" />
+              </Field>
+              {/* Gap 38: account + IFSC row, placeholder XXXXXXXXXXXXXX */}
+              <div style={rowTwo}>
+                <Field label="Account number">
+                  <input {...register("familyBankAccount")} style={inputStyle} placeholder="XXXXXXXXXXXXXX" />
+                </Field>
+                <Field label="IFSC code">
+                  <input {...register("familyIfsc")} style={inputStyle} placeholder="HDFC0001234" />
+                </Field>
+              </div>
+
+              {/* Gap 39: gold declaration box with heading, paragraph, checkbox */}
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  background: "#f5e9c8",
+                  border: "1px solid #e0c870",
+                  borderRadius: 12,
+                  padding: "1.1rem 1.25rem",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#8a6510",
+                    marginBottom: "0.5rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4M12 16h.01" />
+                  </svg>
+                  Important — please read before proceeding
+                </div>
+                <p style={{ fontSize: 12.5, color: "#8a6510", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+                  The tax invoice for your revenue share will be generated in the name of <strong>the family member specified above</strong> — not in your name. This is a requirement of the arrangement and cannot be changed after confirmation.
+                </p>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    fontSize: 13,
+                    color: "#4a4d5c",
+                    lineHeight: 1.6,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="consentBilling"
+                    {...register("consentBilling")}
+                    style={{ marginTop: 3, width: 16, height: 16, accentColor: "#c9982a", cursor: "pointer", flexShrink: 0 }}
+                  />
+                  <span>
+                    I declare that I authorise iqcommune to credit my revenue share to the above family member&apos;s account and to generate tax invoices in their name. I understand that I remain responsible for any tax obligations arising from this income, regardless of the invoice name.
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {serverError && (
@@ -318,23 +571,40 @@ export function ApplicationForm() {
         </div>
       )}
 
+      {/* Gap 41: SVG arrow instead of text arrow */}
       <button
         type="submit"
-        disabled={isSubmitting}
-        style={submitStyle(isSubmitting)}
+        disabled={isSubmitting || !allConsentsChecked}
+        style={submitStyle(isSubmitting, !allConsentsChecked)}
       >
-        {isSubmitting ? "Submitting…" : "Submit Application →"}
+        {isSubmitting ? (
+          "Submitting…"
+        ) : (
+          <>
+            Submit Application
+            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </>
+        )}
       </button>
+
+      {/* Gap 42: fine print below submit */}
+      <p style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginTop: "0.75rem" }}>
+        All three consent boxes above must be checked before submitting. Your details are never shared with third parties.
+      </p>
     </form>
   );
 }
 
 function Field({
   label,
+  hint,
   error,
   children,
 }: {
   label: string;
+  hint?: string;
   error?: string;
   children: React.ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>;
 }) {
@@ -348,7 +618,7 @@ function Field({
           fontSize: 13,
           fontWeight: 500,
           display: "block",
-          marginBottom: 5,
+          marginBottom: hint ? 3 : 5,
           color: "#0f1117",
         }}
       >
@@ -359,27 +629,47 @@ function Field({
         "aria-describedby": error ? errorId : undefined,
         "aria-invalid": error ? true : undefined,
       })}
+      {hint && (
+        <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+          {hint}
+        </div>
+      )}
       {error && (
-        <p id={errorId} style={errStyle}>{error}</p>
+        <p id={errorId} style={errStyle} role="alert">{error}</p>
       )}
     </div>
   );
 }
 
-const sectionStyle: React.CSSProperties = { marginBottom: 28, display: "grid", gap: 14 };
-const sectionHead: React.CSSProperties = { fontSize: 15, fontWeight: 600, marginBottom: 4, color: "#0f1117" };
+// Gap 17: form-section-label style — uppercase gold with border-bottom
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "#8a6510",
+  display: "block",
+  marginTop: "1.5rem",
+  marginBottom: "1rem",
+  paddingBottom: "0.5rem",
+  borderBottom: "1px solid rgba(15,17,23,0.10)",
+};
+
+const sectionStyle: React.CSSProperties = { display: "grid", gap: 14 };
 // auto-fit collapses to single column on narrow mobile viewports
 const rowTwo: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 };
-// outline removed — globals.css :focus-visible provides the gold ring
+// Gap 48: input padding 11px 14px
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "10px 12px",
-  border: "1px solid rgba(15,17,23,.18)",
+  padding: "11px 14px",
+  border: "1.5px solid rgba(15,17,23,0.20)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
   background: "#fff",
+  color: "#0f1117",
   boxSizing: "border-box",
+  outline: "none",
 };
 const errStyle: React.CSSProperties = { fontSize: 12, color: "#a32d2d", marginTop: 4 };
 const checkCircle: React.CSSProperties = {
@@ -394,18 +684,24 @@ const checkCircle: React.CSSProperties = {
   color: "#2a6b2a",
 };
 
-function submitStyle(loading: boolean): React.CSSProperties {
+function submitStyle(loading: boolean, disabled: boolean): React.CSSProperties {
   return {
     width: "100%",
-    padding: "13px",
+    marginTop: "1.5rem",
+    padding: "14px",
     background: "#0f1117",
     color: "#fff",
     border: "none",
     borderRadius: 100,
     fontSize: 15,
     fontWeight: 600,
-    cursor: loading ? "not-allowed" : "pointer",
-    opacity: loading ? 0.6 : 1,
+    cursor: loading || disabled ? "not-allowed" : "pointer",
+    opacity: loading ? 0.6 : disabled ? 0.45 : 1,
     fontFamily: "inherit",
+    transition: "opacity 0.18s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   };
 }

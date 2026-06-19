@@ -18,6 +18,8 @@ const validApplication = {
   consentNosell: true,
   consentEmployer: true,
   payToFamily: false,
+  // payment: at least UPI or bank details required (Gap 44)
+  upiId: "vikram@oksbi",
 };
 
 describe("ApplicationSchema", () => {

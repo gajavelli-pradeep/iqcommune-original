@@ -1,0 +1,252 @@
+"use client";
+
+import { StatusPill } from "@/components/shared/StatusPill";
+import type { Database } from "@/lib/supabase/database.types";
+
+// Agreements row joined with practitioner name + role
+type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
+
+export type Agreement = AgreementRow & {
+  practitioner_name: string;
+  practitioner_role: string;
+  // Gap 24: Timestamp column — separate precision datetime string
+  practitioner_ini?: string;
+};
+
+export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
+  // Gap 27 & 28: NO stats row, NO filter bar — removed entirely
+
+  return (
+    <div>
+      {/* Gap 27 & 48: Stats row REMOVED */}
+      {/* Gap 28: Filter bar REMOVED */}
+
+      {/* Table */}
+      <div style={{ overflowX: "auto" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            background: "#fff",
+            border: "1px solid rgba(15,17,23,.10)",
+            borderRadius: 10,
+            overflow: "hidden",
+          }}
+        >
+          <thead>
+            <tr>
+              {/* Gap 24: 8 columns matching source exactly — 'Agreement ref.' lowercase r with period, 'Signed on' lowercase o, + 'Timestamp' */}
+              {[
+                "Practitioner",
+                "Agreement ref.",
+                "Module",
+                "Signed on",
+                "Timestamp",
+                "Method",
+                "Status",
+                "",
+              ].map((h) => (
+                <th key={h} scope="col" style={thStyle}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {initialData.map((row) => (
+              <tr
+                key={row.id}
+                style={{ borderBottom: "1px solid rgba(15,17,23,.07)", cursor: "pointer" }}
+              >
+                {/* Gap 37: avatar circle (gold-l bg, gold-d text) + name only (no role) */}
+                <td style={tdStyle}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: "#f5e9c8",
+                        color: "#8a6510",
+                      }}
+                    >
+                      {row.practitioner_ini ?? row.practitioner_name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "#0f1117" }}>
+                        {row.practitioner_name}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                {/* Gap 38: ref color ink-m (#4a4d5c), not gold-d */}
+                <td style={tdStyle}>
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                      color: "#4a4d5c",
+                    }}
+                  >
+                    {row.ref_code ? `IQC-EMP-${row.ref_code}` : "—"}
+                  </span>
+                </td>
+
+                {/* Module */}
+                <td style={{ ...tdStyle, fontSize: 13, color: "#4a4d5c" }}>
+                  {row.module}
+                </td>
+
+                {/* Gap 39: 'Signed on' — format as '12 Jun 2025' */}
+                <td
+                  style={{
+                    ...tdStyle,
+                    fontSize: 13,
+                    color: "#4a4d5c",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.signed_at
+                    ? new Date(row.signed_at).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "—"}
+                </td>
+
+                {/* Gap 24: Timestamp column — precise datetime in monospace */}
+                <td
+                  style={{
+                    ...tdStyle,
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    color: "#9496a1",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {/* Use signed_at with time component if available, else '—' */}
+                  {row.signed_at
+                    ? new Date(row.signed_at).toLocaleString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                      })
+                    : "Pending"}
+                </td>
+
+                {/* Gap 25: Method as full plain text, not styled badge */}
+                <td style={tdStyle}>
+                  <MethodCell method={row.signature_method} />
+                </td>
+
+                {/* Status pill */}
+                <td style={tdStyle}>
+                  <StatusPill status={row.status ?? "pending"} />
+                </td>
+
+                {/* Gap 26: Download button with 'Download' text label */}
+                <td style={tdStyle}>
+                  <button
+                    aria-label="Download agreement"
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 10px",
+                      borderRadius: 100,
+                      border: "1px solid rgba(15,17,23,.18)",
+                      color: "#4a4d5c",
+                      background: "#fff",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      fontFamily: "inherit",
+                      fontWeight: 500,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      /* placeholder — no download logic yet */
+                    }}
+                  >
+                    <svg
+                      width={11}
+                      height={11}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {initialData.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  style={{
+                    textAlign: "center",
+                    padding: 40,
+                    color: "#9496a1",
+                    fontSize: 13,
+                  }}
+                >
+                  No agreements found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ────────────────────────────────────────────────────────────
+
+// Gap 25: render full method string as plain text (no styled badge)
+function MethodCell({ method }: { method: string | null }) {
+  if (!method || method === "—") {
+    return <span style={{ color: "#9496a1", fontSize: 12 }}>—</span>;
+  }
+  return <span style={{ fontSize: 12, color: "#4a4d5c" }}>{method}</span>;
+}
+
+// ─── Style helpers ─────────────────────────────────────────────────────────────
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "0.7rem 1.25rem",
+  background: "#f8f7f4",
+  fontWeight: 500,
+  fontSize: 11,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "#9496a1",
+  borderBottom: "1px solid rgba(15,17,23,.10)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "0.85rem 1.25rem",
+  verticalAlign: "middle",
+  fontSize: 13,
+};
