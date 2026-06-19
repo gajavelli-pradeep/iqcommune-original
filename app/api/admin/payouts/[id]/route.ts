@@ -21,7 +21,24 @@ export async function PATCH(
     // no body — default to UPI
   }
 
-  const { error } = await createAdminClient()
+  const db = createAdminClient();
+
+  // Validate payout exists and is Pending
+  const { data: payout } = await db
+    .from("payouts")
+    .select("status")
+    .eq("id", id)
+    .single();
+
+  if (!payout) {
+    return NextResponse.json({ error: "Payout not found" }, { status: 404 });
+  }
+
+  if (payout.status !== "Pending") {
+    return NextResponse.json({ error: "Payout already paid" }, { status: 409 });
+  }
+
+  const { error } = await db
     .from("payouts")
     .update({ status: "Paid", paid_at: new Date().toISOString(), payment_method })
     .eq("id", id);

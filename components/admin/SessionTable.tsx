@@ -20,12 +20,13 @@ interface Session {
   consent_status: string;
   status: string;
   practitioner: { name: string; email: string } | null;
+  payout_id?: string | null;
 }
 
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
 type StatusFilter = typeof STATUS_FILTERS[number];
 
-export function SessionTable({ initialData }: { initialData: Session[] }) {
+export function SessionTable({ initialData, onNavigate }: { initialData: Session[]; onNavigate?: (tab: string) => void }) {
   const [data] = useState(initialData);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [search, setSearch] = useState("");
@@ -154,7 +155,15 @@ export function SessionTable({ initialData }: { initialData: Session[] }) {
                     </td>
                     <td style={tdStyle}><StatusPill status={s.consent_status} /></td>
                     <td style={tdStyle}><StatusPill status={s.status} /></td>
-                    <td style={tdStyle}>
+                    <td style={{ ...tdStyle, display: "flex", alignItems: "center" }}>
+                      {s.payout_id && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigate?.("payouts"); }}
+                          style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 500, marginRight: 6 }}
+                        >
+                          Payout →
+                        </button>
+                      )}
                       <span style={{ fontSize: 11, color: "#9496a1" }}>{isExpanded ? "▲" : "▼"}</span>
                     </td>
                   </tr>
