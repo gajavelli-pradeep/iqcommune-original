@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/admin", destination: "/console", permanent: true },
+      { source: "/admin/:path*", destination: "/console/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
