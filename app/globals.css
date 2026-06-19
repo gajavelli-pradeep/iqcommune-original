@@ -117,12 +117,6 @@ a {
 .iq-animate.iq-visible:nth-child(5) { animation-delay: 0.24s; }
 .iq-animate.iq-visible:nth-child(6) { animation-delay: 0.30s; }
 
-/* ── FAQ accordion ───────────────────────────────────────────────────────── */
-details summary::-webkit-details-marker { display: none; }
-details summary { list-style: none; }
-details summary:hover { background: #f8f7f4; }
-.faq-chevron { transition: transform 0.22s ease; }
-details[open] .faq-chevron { transform: rotate(180deg); }
 
 button,
 input,

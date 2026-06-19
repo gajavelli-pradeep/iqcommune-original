@@ -54,25 +54,10 @@ export function FaqAccordion() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <>
-      <style>{`
-        .faq-btn { transition: background 0.15s; }
-        .faq-btn:hover { background: #f8f7f4; }
-        .faq-chevron-c { transition: transform 0.22s; }
-        .faq-chevron-c.open { transform: rotate(180deg); }
-        .faq-answer {
-          overflow: hidden;
-          max-height: 0;
-          opacity: 0;
-          transition: max-height 0.3s ease, opacity 0.22s ease;
-        }
-        .faq-answer.open {
-          max-height: 800px;
-          opacity: 1;
-        }
-      `}</style>
-      <div>
-        {FAQS.map((faq, i) => (
+    <div>
+      {FAQS.map((faq, i) => {
+        const isOpen = open === i;
+        return (
           <div
             key={i}
             style={{
@@ -84,9 +69,8 @@ export function FaqAccordion() {
             }}
           >
             <button
-              className="faq-btn"
-              onClick={() => setOpen(open === i ? null : i)}
-              aria-expanded={open === i}
+              onClick={() => setOpen(isOpen ? null : i)}
+              aria-expanded={isOpen}
               style={{
                 width: "100%",
                 padding: "1.1rem 1.4rem",
@@ -99,14 +83,14 @@ export function FaqAccordion() {
                 gap: "1rem",
                 color: "#0f1117",
                 userSelect: "none",
-                background: "transparent",
+                background: isOpen ? "#f8f7f4" : "transparent",
                 border: "none",
                 textAlign: "left",
+                transition: "background 0.15s ease",
               }}
             >
               <span>{faq.q}</span>
               <svg
-                className={`faq-chevron-c${open === i ? " open" : ""}`}
                 width="16"
                 height="16"
                 fill="none"
@@ -114,12 +98,25 @@ export function FaqAccordion() {
                 strokeWidth="2"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
-                style={{ flexShrink: 0 }}
+                style={{
+                  flexShrink: 0,
+                  transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.22s ease",
+                }}
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
-            <div className={`faq-answer${open === i ? " open" : ""}`}>
+
+            {/* Height is driven entirely by inline style — no CSS class dependency */}
+            <div
+              style={{
+                overflow: "hidden",
+                maxHeight: isOpen ? 1000 : 0,
+                opacity: isOpen ? 1 : 0,
+                transition: "max-height 0.35s ease, opacity 0.25s ease",
+              }}
+            >
               <div
                 style={{
                   padding: "1rem 1.4rem 1.1rem",
@@ -133,8 +130,8 @@ export function FaqAccordion() {
               </div>
             </div>
           </div>
-        ))}
-      </div>
-    </>
+        );
+      })}
+    </div>
   );
 }
