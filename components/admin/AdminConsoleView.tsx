@@ -46,6 +46,7 @@ interface Props {
   sessions: SessionRow[];
   requests: RequestRow[];
   payouts: PayoutRow[];
+  agreements: Agreement[];
   counts: Counts;
   email?: string;
 }
@@ -412,7 +413,7 @@ function PractitionerFilterBar({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, counts, email }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, counts, email }: Props) {
   const [activeTab, setActiveTab] = useState<string>("practitioners");
   const [hovered, setHovered] = useState<string | null>(null);
   const [prFilter, setPrFilter] = useState<PrFilter>("all");
@@ -425,8 +426,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
 
   const sections = buildSections(counts);
 
-  // Typed empty array for AgreementTable while no server fetch is wired
-  const emptyAgreements: Agreement[] = [];
 
   return (
     // Gap 7: no global padding on main; layout wrapper
@@ -557,7 +556,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
             <TabHeader tab="sessions" />
             <TabStatsRow tab="sessions" counts={counts} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessions} />
+              <SessionTable initialData={sessions} onNavigate={(tab) => setActiveTab(tab)} />
             </div>
           </div>
         )}
@@ -567,7 +566,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, c
             <TabHeader tab="agreements" />
             {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <AgreementTable initialData={emptyAgreements} />
+              <AgreementTable initialData={agreements} />
             </div>
           </div>
         )}
