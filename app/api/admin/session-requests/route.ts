@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 const PatchSchema = z.object({
-  status: z.enum(["New", "Matched", "Confirmed", "Completed"]).optional(),
+  status: z.enum(["New", "Matched", "Confirmed", "Completed", "Cancelled"]).optional(),
   assignedTo: z.string().uuid().optional(),
 });
 

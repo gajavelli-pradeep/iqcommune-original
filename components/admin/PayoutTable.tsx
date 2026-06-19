@@ -19,7 +19,13 @@ interface Payout {
 
 const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
 
-export function PayoutTable({ initialData }: { initialData: Payout[] }) {
+export function PayoutTable({
+  initialData,
+  onRowChange,
+}: {
+  initialData: Payout[];
+  onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
+}) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
@@ -32,15 +38,17 @@ export function PayoutTable({ initialData }: { initialData: Payout[] }) {
       body: JSON.stringify({ payment_method }),
     });
     if (res.ok) {
+      const paid_at = new Date().toISOString();
       setData((prev) =>
         prev.map((p) =>
-          p.id === id ? { ...p, status: "Paid", paid_at: new Date().toISOString(), payment_method } : p
+          p.id === id ? { ...p, status: "Paid", paid_at, payment_method } : p
         )
       );
+      onRowChange?.(id, { status: "Paid", paid_at, payment_method });
       setToast("Payout marked as paid");
       setTimeout(() => setToast(""), 3000);
     }
-  }, [methodMap]);
+  }, [methodMap, onRowChange]);
 
   const pending = data.filter((p) => p.status === "Pending");
   const totalPendingGross = pending.reduce((sum, p) => sum + p.gross_amount, 0);

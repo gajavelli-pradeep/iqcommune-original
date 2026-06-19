@@ -17,7 +17,13 @@ const STATUSES = [
 
 const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
 
-export function PractitionerTable({ initialData }: { initialData: Practitioner[] }) {
+export function PractitionerTable({
+  initialData,
+  onStatusChange,
+}: {
+  initialData: Practitioner[];
+  onStatusChange?: (id: string, status: string) => void;
+}) {
   const [data, setData] = useState(initialData);
   const [filter, setFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Practitioner | null>(null);
@@ -42,12 +48,13 @@ export function PractitionerTable({ initialData }: { initialData: Practitioner[]
         setData((prev) =>
           prev.map((p) => (p.id === id ? { ...p, status } : p))
         );
+        onStatusChange?.(id, status);
         showToast(`Status updated to "${status}"`);
       } else {
         showToast("Failed to update status");
       }
     },
-    [showToast]
+    [showToast, onStatusChange]
   );
 
   const generateLink = useCallback(

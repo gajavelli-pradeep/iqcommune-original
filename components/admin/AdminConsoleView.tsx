@@ -47,7 +47,6 @@ interface Props {
   requests: RequestRow[];
   payouts: PayoutRow[];
   agreements: Agreement[];
-  counts: Counts;
   email?: string;
 }
 
@@ -413,10 +412,47 @@ function PractitionerFilterBar({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, counts, email }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, email }: Props) {
   const [activeTab, setActiveTab] = useState<string>("practitioners");
   const [hovered, setHovered] = useState<string | null>(null);
-  const [prFilter, setPrFilter] = useState<PrFilter>("all");
+
+  // Lifted data state — tables notify us via callbacks so counts stay reactive
+  const [requestsData, setRequestsData] = useState(requests);
+  const [practitionersData, setPractitionersData] = useState(practitioners);
+  const [payoutsData, setPayoutsData] = useState(payouts);
+
+  // Derive counts from local state — updates instantly when any action fires
+  const pendingPayoutList = payoutsData.filter((p) => p.status === "Pending");
+  const counts: Counts = {
+    applied:            practitionersData.filter((p) => p.status === "Applied").length,
+    empanelled:         practitionersData.filter((p) => p.status === "Empanelled").length,
+    pendingRequests:    requestsData.filter((r) => r.status === "New").length,
+    pendingSessions:    sessions.filter((s) => s.status === "Upcoming").length,
+    pendingPayouts:     pendingPayoutList.length,
+    pendingPayoutGross: pendingPayoutList.reduce((s, p) => s + p.gross_amount, 0),
+    pendingPayoutNet:   pendingPayoutList.reduce((s, p) => s + p.net_amount, 0),
+    confirmedSessions:  sessions.filter((s) => s.status === "Upcoming").length,
+    completedSessions:  sessions.filter((s) => s.status === "Completed").length,
+    totalRequests:      requestsData.length,
+    matchedRequests:    requestsData.filter((r) => r.status === "Matched").length,
+    confirmedRequests:  requestsData.filter((r) => r.status === "Confirmed").length,
+    totalPractitioners: practitionersData.length,
+    totalSessions:      sessions.length,
+    totalPayouts:       payoutsData.length,
+    paidPayouts:        payoutsData.filter((p) => p.status === "Paid").length,
+    pendingAgreements:  agreements.filter((a) => a.status !== "signed" && a.status !== "Signed").length,
+  };
+
+  const handleRequestRowChange = (id: string, patch: { status?: string; assigned_to?: string | null }) => {
+    setRequestsData((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+  const handlePractitionerStatusChange = (id: string, status: string) => {
+    setPractitionersData((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+  };
+  const handlePayoutRowChange = (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => {
+    setPayoutsData((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  };
+
   const [contactModal, setContactModal] = useState<{
     open: boolean;
     recipientName?: string;
@@ -534,7 +570,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabStatsRow tab="requests" counts={counts} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requests} practitioners={practitioners} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} />
             </div>
           </div>
         )}
@@ -543,10 +579,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           <div>
             <TabHeader tab="practitioners" />
             <TabStatsRow tab="practitioners" counts={counts} />
-            {/* Gap 16: filter bar */}
-            <PractitionerFilterBar active={prFilter} onChange={setPrFilter} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitioners} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} />
             </div>
           </div>
         )}
@@ -576,7 +610,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="payouts" />
             <TabStatsRow tab="payouts" counts={counts} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payouts} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} />
             </div>
           </div>
         )}

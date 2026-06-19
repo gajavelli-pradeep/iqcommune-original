@@ -74,9 +74,11 @@ Feel free to reach out if you have any questions!`;
 export function RequestTable({
   initialData,
   practitioners = [],
+  onRowChange,
 }: {
   initialData: SessionRequest[];
   practitioners?: Practitioner[];
+  onRowChange?: (id: string, patch: { status?: string; assigned_to?: string | null }) => void;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
@@ -98,11 +100,13 @@ export function RequestTable({
     });
     if (res.ok) {
       setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+      onRowChange?.(id, { status });
       showToast("Status updated");
     } else {
       showToast("Update failed");
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onRowChange]);
 
   const assignPractitioner = useCallback(async (id: string, practitionerId: string) => {
     const res = await fetch(`/api/admin/session-requests?id=${id}`, {
@@ -119,12 +123,13 @@ export function RequestTable({
             : r
         )
       );
+      onRowChange?.(id, { assigned_to: practitionerId });
       showToast("Practitioner assigned");
     } else {
       showToast("Assignment failed");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empanelled]);
+  }, [empanelled, onRowChange]);
 
   const openDraft = useCallback((r: SessionRequest) => {
     setDraft({
