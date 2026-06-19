@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { RequestModal } from "@/components/public/RequestModal";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
+import { NavBar } from "@/components/public/NavBar";
 
 export const metadata: Metadata = {
   title: { absolute: "iqcommune — Real practitioners. Real sessions." },
@@ -522,42 +523,7 @@ export default function HomePage() {
         .iq-visible { opacity: 1; transform: translateY(0); }
       `}</style>
 
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "rgba(255,255,255,0.95)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(15,17,23,0.10)",
-          padding: "0 2rem",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 68,
-          }}
-        >
-          {/* Logo */}
-          <a href="#" style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ display: "flex", alignItems: "baseline", gap: 0, lineHeight: 1 }}>
-              <span style={{ color: "#c9982a", fontWeight: 700, fontSize: 26, letterSpacing: "-0.04em" }}>iq</span>
-              <span style={{ color: "#0f1117", fontWeight: 300, fontSize: 26, letterSpacing: "-0.04em" }}>commune</span>
-            </span>
-            <span style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.1em", color: "#9496a1", textTransform: "uppercase", lineHeight: 1 }}>
-              Where financial intelligence connects
-            </span>
-          </a>
-
-          {/* Gap 1: nav uses dark ink button (default "nav" variant) */}
-          <RequestModal variant="nav" />
-        </div>
-      </nav>
+      <NavBar />
 
       {/* ── §2 HERO ── */}
       <section

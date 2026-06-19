@@ -9,7 +9,7 @@ type AudienceType = "group" | "org" | "amc";
 type GroupSize = "5-8" | "9-15" | "16-20" | "";
 
 // Gap 1: variant prop to differentiate nav/hero (dark) from CTA section (gold)
-export type ModalVariant = "nav" | "hero" | "gold";
+export type ModalVariant = "nav" | "hero" | "gold" | "mobile";
 
 const AUDIENCE_CHIPS: { id: AudienceType; label: string }[] = [
   { id: "group", label: "Group (register as SPOC)" },
@@ -116,6 +116,25 @@ const heroCTATriggerStyle: React.CSSProperties = {
   boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
   minHeight: 44,
   minWidth: 44,
+};
+
+// Mobile drawer — full-width dark button
+const mobileTriggerStyle: React.CSSProperties = {
+  background: "#0f1117",
+  color: "#fff",
+  border: "none",
+  borderRadius: 12,
+  padding: "14px 22px",
+  fontSize: 15,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  width: "100%",
+  minHeight: 52,
 };
 
 // Gap 19: CTA section gold button style (btn-gold) with speech-bubble icon
@@ -345,11 +364,10 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
 
   // Gap 1 & 19: resolve trigger style and icon based on variant
   const triggerStyle =
-    variant === "gold"
-      ? goldTriggerStyle
-      : variant === "hero"
-      ? heroCTATriggerStyle
-      : navTriggerStyle;
+    variant === "gold"   ? goldTriggerStyle :
+    variant === "hero"   ? heroCTATriggerStyle :
+    variant === "mobile" ? mobileTriggerStyle :
+    navTriggerStyle;
 
   // Gap 19: CTA section uses speech-bubble icon; nav/hero use arrow icon
   const triggerIcon =

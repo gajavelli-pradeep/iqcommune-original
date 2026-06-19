@@ -86,6 +86,15 @@ a {
   text-decoration: none;
 }
 
+/* ── Nav responsive show/hide ─────────────────────────────────────────────── */
+.nav-cta-desktop { display: flex; }
+.nav-hamburger   { display: none !important; }
+
+@media (max-width: 768px) {
+  .nav-cta-desktop { display: none !important; }
+  .nav-hamburger   { display: flex !important; }
+}
+
 /* ── Card hover interactions ──────────────────────────────────────────────── */
 .topic-card,
 .walkout-card,
