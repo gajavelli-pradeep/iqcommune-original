@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { formatInr } from "@/lib/tds";
 
@@ -26,9 +26,22 @@ interface Session {
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
 type StatusFilter = typeof STATUS_FILTERS[number];
 
-export function SessionTable({ initialData, onNavigate }: { initialData: Session[]; onNavigate?: (tab: string) => void }) {
-  const [data] = useState(initialData);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+export function SessionTable({
+  initialData,
+  onNavigate,
+  statusFilter: statusFilterProp,
+  onStatusFilterChange,
+}: {
+  initialData: Session[];
+  onNavigate?: (tab: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (f: string) => void;
+}) {
+  // Read directly from props so newly-created sessions (added upstream) appear immediately.
+  const data = initialData;
+  const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
+  const statusFilter = (statusFilterProp as StatusFilter) ?? internalStatus;
+  const setStatusFilter = (f: StatusFilter) => (onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f));
   const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -123,9 +136,8 @@ export function SessionTable({ initialData, onNavigate }: { initialData: Session
             {visible.map((s) => {
               const isExpanded = expandedRow === s.id;
               return (
-                <>
+                <Fragment key={s.id}>
                   <tr
-                    key={s.id}
                     onClick={() => setExpandedRow(isExpanded ? null : s.id)}
                     style={{
                       borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)",
@@ -169,7 +181,7 @@ export function SessionTable({ initialData, onNavigate }: { initialData: Session
                   </tr>
 
                   {isExpanded && (
-                    <tr key={`${s.id}-expand`} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                    <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
                       <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
@@ -197,7 +209,7 @@ export function SessionTable({ initialData, onNavigate }: { initialData: Session
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
             {visible.length === 0 && (

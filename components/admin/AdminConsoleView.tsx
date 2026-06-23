@@ -6,7 +6,11 @@ import { SessionTable } from "@/components/admin/SessionTable";
 import { RequestTable } from "@/components/admin/RequestTable";
 import { PayoutTable } from "@/components/admin/PayoutTable";
 import { AgreementTable, type Agreement } from "@/components/admin/AgreementTable";
-import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
+import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
+import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
+import { useAdminUI } from "@/components/admin/AdminUIContext";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import type { Database } from "@/lib/supabase/database.types";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
@@ -24,6 +28,9 @@ type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
 interface Counts {
   applied: number;
   empanelled: number;
+  screeningDone?: number;
+  agreementSent?: number;
+  consentPending?: number;
   pendingRequests: number;
   pendingSessions: number;
   pendingPayouts: number;
@@ -66,6 +73,8 @@ type StatDef = {
   value: number | string;
   delta?: string;
   deltaRed?: boolean;
+  /** When set, clicking the stat filters the tab's table to this value. */
+  filter?: string;
 };
 
 function buildTabStats(counts: Counts): Record<string, StatDef[]> {
@@ -74,30 +83,30 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
 
   return {
     requests: [
-      { label: "Total requests",    value: counts.totalRequests ?? 0 },
-      { label: "New — unreviewed",  value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0 },
-      { label: "Matched",           value: counts.matchedRequests ?? 0 },
-      { label: "Confirmed",         value: counts.confirmedRequests ?? 0 },
+      { label: "Total requests",    value: counts.totalRequests ?? 0, filter: "all" },
+      { label: "New — unreviewed",  value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0, filter: "New" },
+      { label: "Matched",           value: counts.matchedRequests ?? 0, filter: "Matched" },
+      { label: "Confirmed",         value: counts.confirmedRequests ?? 0, filter: "Confirmed" },
     ],
     practitioners: [
-      { label: "Total",            value: counts.totalPractitioners ?? 0 },
-      { label: "Applied",          value: counts.applied },
-      { label: "Screening done",   value: 0, delta: counts.applied > 0 ? "↑ action needed" : undefined },
-      { label: "Agreement sent",   value: 0 },
-      { label: "Empanelled",       value: counts.empanelled, delta: counts.empanelled > 0 ? "Active" : undefined },
+      { label: "Total",            value: counts.totalPractitioners ?? 0, filter: "all" },
+      { label: "Applied",          value: counts.applied, filter: "Applied" },
+      { label: "Screening done",   value: counts.screeningDone ?? 0, delta: counts.applied > 0 ? "↑ action needed" : undefined, filter: "Screening Done" },
+      { label: "Agreement sent",   value: counts.agreementSent ?? 0, filter: "Agreement Sent" },
+      { label: "Empanelled",       value: counts.empanelled, delta: counts.empanelled > 0 ? "Active" : undefined, filter: "Empanelled" },
     ],
     sessions: [
-      { label: "Total sessions",  value: counts.totalSessions ?? 0 },
-      { label: "Upcoming",        value: counts.confirmedSessions ?? counts.pendingSessions, delta: counts.confirmedSessions ? `${counts.confirmedSessions} scheduled` : undefined },
-      { label: "Consent pending", value: 0, delta: "↑ action needed", deltaRed: true },
-      { label: "Completed",       value: counts.completedSessions ?? 0 },
+      { label: "Total sessions",  value: counts.totalSessions ?? 0, filter: "All" },
+      { label: "Upcoming",        value: counts.confirmedSessions ?? counts.pendingSessions, delta: counts.confirmedSessions ? `${counts.confirmedSessions} scheduled` : undefined, filter: "Upcoming" },
+      { label: "Consent pending", value: counts.consentPending ?? 0, delta: (counts.consentPending ?? 0) > 0 ? "↑ action needed" : undefined, deltaRed: (counts.consentPending ?? 0) > 0 },
+      { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
     ],
     agreements: [],
     payouts: [
-      { label: "Total paid out",    value: counts.paidPayouts ?? 0 },
-      { label: "Pending payment",   value: counts.pendingPayouts, delta: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) + " gross" : counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0 },
-      { label: "Sessions invoiced", value: counts.totalPayouts ?? 0 },
-      { label: "Net pending",       value: counts.pendingPayoutNet ? fmt(counts.pendingPayoutNet) : "—" },
+      { label: "Total paid out",    value: counts.paidPayouts ?? 0, filter: "Paid" },
+      { label: "Pending payment",   value: counts.pendingPayouts, delta: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) + " gross" : counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
+      { label: "Sessions invoiced", value: counts.totalPayouts ?? 0, filter: "all" },
+      { label: "Net pending",       value: counts.pendingPayoutNet ? fmt(counts.pendingPayoutNet) : "—", filter: "Pending" },
     ],
     settings: [],
   };
@@ -257,7 +266,7 @@ const goldBtnStyle: React.CSSProperties = {
 
 // ─── Tab panel header component — Gap 6, 33 ───────────────────────────────────
 // Renders the white .page-hdr bar (full-width, border-bottom) without duplicate title
-function TabHeader({ tab }: { tab: string }) {
+function TabHeader({ tab, onAction }: { tab: string; onAction?: (label: string) => void }) {
   const meta = TAB_META[tab] ?? { title: tab, subtitle: "" };
   const actions = TAB_ACTIONS[tab] ?? [];
 
@@ -298,7 +307,7 @@ function TabHeader({ tab }: { tab: string }) {
               btn.variant === "primary" ? primaryBtnStyle :
               ghostBtnStyle;
             return (
-              <button key={btn.label} aria-label={btn.ariaLabel ?? btn.label} style={style}>
+              <button key={btn.label} aria-label={btn.ariaLabel ?? btn.label} style={style} onClick={() => onAction?.(btn.label)}>
                 {btn.label}
               </button>
             );
@@ -311,7 +320,7 @@ function TabHeader({ tab }: { tab: string }) {
 
 // ─── Per-tab stats row — Gap 9, 10, 11, 12, 17, 44, 45, 46, 47 ──────────────
 // Full-width, no outer border/radius, background acts as gap colour
-function TabStatsRow({ tab, counts }: { tab: string; counts: Counts }) {
+function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; counts: Counts; activeFilter?: string; onStatClick?: (filter: string) => void }) {
   const allStats = buildTabStats(counts);
   const stats = allStats[tab];
   if (!stats || stats.length === 0) return null;
@@ -327,11 +336,15 @@ function TabStatsRow({ tab, counts }: { tab: string; counts: Counts }) {
         borderBottom: "1px solid rgba(15,17,23,.10)",
       }}
     >
-      {stats.map((s) => (
-        // Gap 11: clickable stat cells with cursor:pointer; no onClick logic wired (placeholder)
+      {stats.map((s) => {
+        const clickable = !!s.filter && !!onStatClick;
+        const isActive = !!s.filter && activeFilter === s.filter;
+        return (
+        // Clickable stat cells filter the table to s.filter
         <div
           key={s.label}
-          style={{ background: "#fff", padding: "1rem 1.5rem", cursor: "pointer" }}
+          onClick={clickable ? () => onStatClick!(s.filter!) : undefined}
+          style={{ background: isActive ? "#f5e9c8" : "#fff", padding: "1rem 1.5rem", cursor: clickable ? "pointer" : "default", boxShadow: isActive ? "inset 0 -2px 0 #c9982a" : undefined }}
         >
           {/* Gap 9: fontSize 24, fontWeight 600, color ink (not accent) */}
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "#0f1117", lineHeight: 1 }}>
@@ -346,64 +359,6 @@ function TabStatsRow({ tab, counts }: { tab: string; counts: Counts }) {
             </div>
           )}
         </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Practitioners filter bar — Gap 16 ───────────────────────────────────────
-type PrFilter = "all" | "Applied" | "Under Review" | "Screening Done" | "Agreement Sent" | "Empanelled" | "Rejected";
-
-function PractitionerFilterBar({
-  active,
-  onChange,
-}: {
-  active: PrFilter;
-  onChange: (v: PrFilter) => void;
-}) {
-  const chips: { label: string; value: PrFilter }[] = [
-    { label: "All",             value: "all" },
-    { label: "Applied",         value: "Applied" },
-    { label: "Under review",    value: "Under Review" },
-    { label: "Screening done",  value: "Screening Done" },
-    { label: "Agreement sent",  value: "Agreement Sent" },
-    { label: "Empanelled",      value: "Empanelled" },
-    { label: "Rejected",        value: "Rejected" },
-  ];
-
-  return (
-    <div
-      style={{
-        background: "#fff",
-        borderBottom: "1px solid rgba(15,17,23,.10)",
-        padding: ".75rem 1.75rem",
-        display: "flex",
-        alignItems: "center",
-        gap: ".5rem",
-        flexWrap: "wrap",
-      }}
-    >
-      <span style={{ fontSize: 12, color: "#9496a1", marginRight: 4 }}>Filter:</span>
-      {chips.map((c) => {
-        const isActive = active === c.value;
-        return (
-          <div
-            key={c.value}
-            onClick={() => onChange(c.value)}
-            style={{
-              padding: "5px 14px",
-              borderRadius: 100,
-              fontSize: 12,
-              fontWeight: 500,
-              border: isActive ? "1px solid #0f1117" : "1px solid rgba(15,17,23,.18)",
-              cursor: "pointer",
-              background: isActive ? "#0f1117" : "#fff",
-              color: isActive ? "#fff" : "#4a4d5c",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {c.label}
-          </div>
         );
       })}
     </div>
@@ -413,11 +368,23 @@ function PractitionerFilterBar({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, email }: Props) {
-  const [activeTab, setActiveTab] = useState<string>("practitioners");
+  const { globalSearch, setGlobalSearch, activeTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
+
+  // Jump to a tab and exit the global-search overlay.
+  const navigateToTab = (tab: string) => { setGlobalSearch(""); setActiveTab(tab); };
+
+  // Per-tab table filters driven by clickable stat cards / table chips
+  const [tabFilters, setTabFilters] = useState<Record<string, string>>({});
+  const setTabFilter = (tab: string, filter: string) => setTabFilters((m) => ({ ...m, [tab]: filter }));
+
+  // Header-action modals
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
+  const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
 
   // Lifted data state — tables notify us via callbacks so counts stay reactive
   const [requestsData, setRequestsData] = useState(requests);
+  const [sessionsData, setSessionsData] = useState(sessions);
   const [practitionersData, setPractitionersData] = useState(practitioners);
   const [payoutsData, setPayoutsData] = useState(payouts);
 
@@ -426,21 +393,25 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const counts: Counts = {
     applied:            practitionersData.filter((p) => p.status === "Applied").length,
     empanelled:         practitionersData.filter((p) => p.status === "Empanelled").length,
+    screeningDone:      practitionersData.filter((p) => p.status === "Screening Done").length,
+    agreementSent:      practitionersData.filter((p) => p.status === "Agreement Sent").length,
     pendingRequests:    requestsData.filter((r) => r.status === "New").length,
-    pendingSessions:    sessions.filter((s) => s.status === "Upcoming").length,
+    pendingSessions:    sessionsData.filter((s) => s.status === "Upcoming").length,
     pendingPayouts:     pendingPayoutList.length,
     pendingPayoutGross: pendingPayoutList.reduce((s, p) => s + p.gross_amount, 0),
     pendingPayoutNet:   pendingPayoutList.reduce((s, p) => s + p.net_amount, 0),
-    confirmedSessions:  sessions.filter((s) => s.status === "Upcoming").length,
-    completedSessions:  sessions.filter((s) => s.status === "Completed").length,
+    confirmedSessions:  sessionsData.filter((s) => s.status === "Upcoming").length,
+    completedSessions:  sessionsData.filter((s) => s.status === "Completed").length,
+    consentPending:     sessionsData.filter((s) => s.consent_status === "Pending consent").length,
     totalRequests:      requestsData.length,
     matchedRequests:    requestsData.filter((r) => r.status === "Matched").length,
     confirmedRequests:  requestsData.filter((r) => r.status === "Confirmed").length,
     totalPractitioners: practitionersData.length,
-    totalSessions:      sessions.length,
+    totalSessions:      sessionsData.length,
     totalPayouts:       payoutsData.length,
     paidPayouts:        payoutsData.filter((p) => p.status === "Paid").length,
-    pendingAgreements:  agreements.filter((a) => a.status !== "signed" && a.status !== "Signed").length,
+    // DB stores agreements awaiting signature as "Pending signature"; signed = "Active".
+    pendingAgreements:  agreements.filter((a) => a.status === "Pending signature").length,
   };
 
   const handleRequestRowChange = (id: string, patch: { status?: string; assigned_to?: string | null }) => {
@@ -453,12 +424,59 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     setPayoutsData((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
 
-  const [contactModal, setContactModal] = useState<{
-    open: boolean;
-    recipientName?: string;
-    recipientEmail?: string;
-    defaultChannel?: "email" | "whatsapp";
-  }>({ open: false });
+  // ── Header actions: Export / + Add manually / + Create session ──
+  function exportActiveTab() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (activeTab === "requests") {
+      downloadCsv(`session-requests-${stamp}.csv`, toCsv(requestsData, [
+        { key: "name", label: "Client" }, { key: "org", label: "Organisation" },
+        { key: "email", label: "Email" }, { key: "phone", label: "Phone" },
+        { key: "topic", label: "Topic" }, { key: "audience_type", label: "Audience" },
+        { key: "group_size", label: "Group size" }, { key: "min_commit", label: "Min commit" },
+        { key: "venue", label: "Venue" }, { key: "preferred_dates", label: "Preferred dates" },
+        { key: (r) => r.assigned_practitioner?.name ?? "", label: "Assigned to" },
+        { key: "status", label: "Status" }, { key: "created_at", label: "Created" },
+      ]));
+    } else if (activeTab === "practitioners") {
+      downloadCsv(`practitioners-${stamp}.csv`, toCsv(practitionersData, [
+        { key: "ref_code", label: "Ref" }, { key: "name", label: "Name" },
+        { key: "role", label: "Role" }, { key: "org", label: "Org" }, { key: "city", label: "City" },
+        { key: (p) => (p.modules ?? []).join("; "), label: "Modules" },
+        { key: "experience", label: "Experience" }, { key: "status", label: "Status" },
+        { key: "created_at", label: "Applied" },
+      ]));
+    } else if (activeTab === "sessions") {
+      downloadCsv(`sessions-${stamp}.csv`, toCsv(sessionsData, [
+        { key: "ref_code", label: "Ref" }, { key: "module", label: "Module" },
+        { key: (s) => s.practitioner?.name ?? "", label: "Practitioner" },
+        { key: "session_date", label: "Date" }, { key: "start_time", label: "Start" }, { key: "end_time", label: "End" },
+        { key: "venue", label: "Venue" }, { key: "audience_type", label: "Audience" },
+        { key: "participants", label: "Pax" }, { key: "payout_amount", label: "Payout" },
+        { key: "tds_rate", label: "TDS %" }, { key: "consent_status", label: "Consent" }, { key: "status", label: "Status" },
+      ]));
+    } else if (activeTab === "payouts") {
+      downloadCsv(`payouts-${stamp}.csv`, toCsv(payoutsData, [
+        { key: "invoice_ref", label: "Invoice" },
+        { key: (p) => p.practitioner?.name ?? "", label: "Practitioner" },
+        { key: (p) => p.session?.ref_code ?? "", label: "Session" },
+        { key: "gross_amount", label: "Gross" }, { key: "net_amount", label: "Net" },
+        { key: "payment_method", label: "Method" }, { key: "status", label: "Status" },
+        { key: "paid_at", label: "Paid at" },
+      ]));
+    } else if (activeTab === "agreements") {
+      downloadCsv(`agreements-${stamp}.csv`, toCsv(agreements, [
+        { key: "practitioner_name", label: "Practitioner" }, { key: "ref_code", label: "Ref" },
+        { key: "module", label: "Module" }, { key: "signed_at", label: "Signed on" },
+        { key: "signature_method", label: "Method" }, { key: "status", label: "Status" },
+      ]));
+    }
+  }
+
+  function handleHeaderAction(label: string) {
+    if (label.includes("Create session")) setSessionModalOpen(true);
+    else if (label.includes("Add manually")) setPractitionerModalOpen(true);
+    else if (label === "Export") exportActiveTab();
+  }
 
   const sections = buildSections(counts);
 
@@ -560,44 +578,55 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
       {/* ── Main — Gap 6, 7: no global padding; page-hdr is full-width ── */}
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
 
+        {/* ── Global search results (overrides tab panels while searching) ── */}
+        {globalSearch.trim() ? (
+          <GlobalSearchResults
+            query={globalSearch}
+            practitioners={practitionersData}
+            sessions={sessionsData}
+            requests={requestsData}
+            onNavigate={navigateToTab}
+          />
+        ) : (
+        <>
         {/* ── Tab panels ── */}
 
         {activeTab === "requests" && (
           <div>
             {/* Gap 6: white page-hdr with border-bottom */}
-            <TabHeader tab="requests" />
+            <TabHeader tab="requests" onAction={handleHeaderAction} />
             {/* Gap 7: stats row is full-width, no horizontal padding */}
-            <TabStatsRow tab="requests" counts={counts} />
+            <TabStatsRow tab="requests" counts={counts} activeFilter={tabFilters.requests ?? "all"} onStatClick={(f) => setTabFilter("requests", f)} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} />
             </div>
           </div>
         )}
 
         {activeTab === "practitioners" && (
           <div>
-            <TabHeader tab="practitioners" />
-            <TabStatsRow tab="practitioners" counts={counts} />
+            <TabHeader tab="practitioners" onAction={handleHeaderAction} />
+            <TabStatsRow tab="practitioners" counts={counts} activeFilter={tabFilters.practitioners ?? "all"} onStatClick={(f) => setTabFilter("practitioners", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} />
             </div>
           </div>
         )}
 
         {activeTab === "sessions" && (
           <div>
-            <TabHeader tab="sessions" />
-            <TabStatsRow tab="sessions" counts={counts} />
+            <TabHeader tab="sessions" onAction={handleHeaderAction} />
+            <TabStatsRow tab="sessions" counts={counts} activeFilter={tabFilters.sessions ?? "All"} onStatClick={(f) => setTabFilter("sessions", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessions} onNavigate={(tab) => setActiveTab(tab)} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} />
             </div>
           </div>
         )}
 
         {activeTab === "agreements" && (
           <div>
-            <TabHeader tab="agreements" />
+            <TabHeader tab="agreements" onAction={handleHeaderAction} />
             {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <AgreementTable initialData={agreements} />
@@ -607,17 +636,17 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
 
         {activeTab === "payouts" && (
           <div>
-            <TabHeader tab="payouts" />
-            <TabStatsRow tab="payouts" counts={counts} />
+            <TabHeader tab="payouts" onAction={handleHeaderAction} />
+            <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} />
             </div>
           </div>
         )}
 
         {activeTab === "settings" && (
           <div>
-            <TabHeader tab="settings" />
+            <TabHeader tab="settings" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <div
                 style={{
@@ -635,15 +664,21 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             </div>
           </div>
         )}
+        </>
+        )}
 
       </main>
 
-      <ContactDraftModal
-        open={contactModal.open}
-        onClose={() => setContactModal({ open: false })}
-        recipientName={contactModal.recipientName}
-        recipientEmail={contactModal.recipientEmail}
-        defaultChannel={contactModal.defaultChannel}
+      <SessionFormModal
+        open={sessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+        practitioners={practitionersData.map((p) => ({ id: p.id, name: p.name, email: p.email, status: p.status }))}
+        onCreated={(s: NewSession) => { setSessionsData((prev) => [s, ...prev]); }}
+      />
+      <PractitionerFormModal
+        open={practitionerModalOpen}
+        onClose={() => setPractitionerModalOpen(false)}
+        onCreated={(p) => { setPractitionersData((prev) => [p, ...prev]); }}
       />
     </div>
   );

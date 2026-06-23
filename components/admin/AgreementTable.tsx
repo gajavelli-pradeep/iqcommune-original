@@ -24,7 +24,8 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
 
   const total     = initialData.length;
   const thisMonth = initialData.filter((a) => a.signed_at && isThisMonth(new Date(a.signed_at))).length;
-  const signed    = initialData.filter((a) => a.status === "signed" || a.status === "Signed").length;
+  // DB stores signed empanelment agreements as status "Active" (see schema check constraint).
+  const signed    = initialData.filter((a) => a.status === "Active" || a.status === "signed" || a.status === "Signed").length;
 
   const showToast = (msg: string) => {
     setToast(msg);

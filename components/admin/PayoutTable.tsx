@@ -22,13 +22,16 @@ const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
 export function PayoutTable({
   initialData,
   onRowChange,
+  statusFilter = "all",
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
+  statusFilter?: string;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
+  const visible = statusFilter === "all" ? data : data.filter((p) => p.status === statusFilter);
 
   const markPaid = useCallback(async (id: string) => {
     const payment_method = methodMap[id] || "UPI";
@@ -55,8 +58,8 @@ export function PayoutTable({
   const totalPendingNet   = pending.reduce((sum, p) => sum + p.net_amount, 0);
   const totalPendingTds   = totalPendingGross - totalPendingNet;
 
-  const totalGross = data.reduce((sum, p) => sum + p.gross_amount, 0);
-  const totalNet   = data.reduce((sum, p) => sum + p.net_amount, 0);
+  const totalGross = visible.reduce((sum, p) => sum + p.gross_amount, 0);
+  const totalNet   = visible.reduce((sum, p) => sum + p.net_amount, 0);
 
   return (
     <div>
@@ -81,7 +84,7 @@ export function PayoutTable({
             </tr>
           </thead>
           <tbody>
-            {data.map((p) => {
+            {visible.map((p) => {
               const tds = p.gross_amount - p.net_amount;
               const tdsRate = p.tds_rate;
               return (
@@ -138,10 +141,10 @@ export function PayoutTable({
             })}
 
             {/* Summary row */}
-            {data.length > 0 && (
+            {visible.length > 0 && (
               <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(15,17,23,.10)" }}>
                 <td colSpan={3} style={{ ...tdStyle, fontSize: 11, fontWeight: 600, color: "#9496a1", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Total ({data.length} payouts)
+                  Total ({visible.length} payout{visible.length > 1 ? "s" : ""})
                 </td>
                 <td style={tdStyle}>
                   <div style={{ fontWeight: 500 }}>{formatInr(totalGross)} gross</div>
@@ -151,10 +154,10 @@ export function PayoutTable({
               </tr>
             )}
 
-            {data.length === 0 && (
+            {visible.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
-                  No payouts yet
+                  {data.length === 0 ? "No payouts yet" : "No payouts match the current filter"}
                 </td>
               </tr>
             )}

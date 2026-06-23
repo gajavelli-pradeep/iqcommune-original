@@ -1,6 +1,13 @@
 -- iqcommune Admin Console — Test Data Seed
 -- Run in Supabase SQL Editor: https://supabase.com/dashboard → your project → SQL Editor
 -- Safe to run multiple times (uses INSERT ... ON CONFLICT DO NOTHING)
+--
+-- ⚠️  KNOWN LIMITATION: the all-zero ids below are NOT valid RFC-4122 v4 UUIDs.
+--     The "Assign practitioner" flow validates `assignedTo` with Zod v4 `.uuid()`,
+--     which REJECTS these ids → the dropdown silently 400s on seeded rows.
+--     To exercise assignment end-to-end, seed with valid v4 UUIDs instead:
+--         node --env-file=.env.local scripts/push-test-data.mjs
+--     (Real practitioners created via the app use gen_random_uuid() and are fine.)
 
 -- ── Session Requests (one per status) ──────────────────────────────────────────
 

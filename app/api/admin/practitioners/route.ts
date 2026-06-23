@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
@@ -44,4 +45,61 @@ export async function GET() {
   );
 
   return NextResponse.json({ data: safe });
+}
+
+const STATUSES = [
+  "Applied",
+  "Under Review",
+  "Screening Done",
+  "Agreement Sent",
+  "Empanelled",
+  "Rejected",
+] as const;
+
+const CreatePractitionerSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  role: z.string().min(1),
+  city: z.string().min(1),
+  experience: z.string().min(1),
+  phone: z.string().optional(),
+  org: z.string().optional(),
+  modules: z.array(z.string()).default([]),
+  status: z.enum(STATUSES).default("Applied"),
+});
+
+export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const body = CreatePractitionerSchema.safeParse(await req.json());
+  if (!body.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: body.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const d = body.data;
+  const { data, error } = await createAdminClient()
+    .from("practitioners")
+    .insert({
+      name: d.name,
+      email: d.email,
+      role: d.role,
+      city: d.city,
+      experience: d.experience,
+      phone: d.phone ?? null,
+      org: d.org ?? null,
+      modules: d.modules,
+      status: d.status,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    const status = error.code === "23505" ? 409 : 500; // unique_violation → email exists
+    return NextResponse.json({ error: error.message }, { status });
+  }
+  return NextResponse.json({ data }, { status: 201 });
 }

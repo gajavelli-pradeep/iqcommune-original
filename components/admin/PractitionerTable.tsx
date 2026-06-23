@@ -20,12 +20,18 @@ const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
 export function PractitionerTable({
   initialData,
   onStatusChange,
+  filter: filterProp,
+  onFilterChange,
 }: {
   initialData: Practitioner[];
   onStatusChange?: (id: string, status: string) => void;
+  filter?: string;
+  onFilterChange?: (f: string) => void;
 }) {
   const [data, setData] = useState(initialData);
-  const [filter, setFilter] = useState<string>("all");
+  const [internalFilter, setInternalFilter] = useState<string>("all");
+  const filter = filterProp ?? internalFilter;
+  const setFilter = onFilterChange ?? setInternalFilter;
   const [selected, setSelected] = useState<Practitioner | null>(null);
   const [genLink, setGenLink] = useState<{ url: string; refCode: string } | null>(null);
   const [toast, setToast] = useState("");

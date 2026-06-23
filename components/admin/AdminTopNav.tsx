@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { useAdminUI } from "@/components/admin/AdminUIContext";
+
+const NOTIF_LINKS: { label: string; tab: string }[] = [
+  { label: "Review new session requests", tab: "requests" },
+  { label: "Pending payouts to settle", tab: "payouts" },
+  { label: "New practitioner applications", tab: "practitioners" },
+];
 
 export function AdminTopNav({ email }: { email: string }) {
+  const { globalSearch, setGlobalSearch, setActiveTab } = useAdminUI();
+  const [bellOpen, setBellOpen] = useState(false);
+
   return (
     <nav
       style={{
@@ -78,9 +89,20 @@ export function AdminTopNav({ email }: { email: string }) {
           </svg>
           <input
             type="text"
+            value={globalSearch}
+            onChange={(e) => setGlobalSearch(e.target.value)}
             placeholder="Search across practitioners, sessions, requests…"
             style={{ border: "none", background: "none", fontFamily: "inherit", fontSize: 13, color: "#0f1117", width: "100%", outline: "none" }}
           />
+          {globalSearch && (
+            <button
+              onClick={() => setGlobalSearch("")}
+              aria-label="Clear search"
+              style={{ border: "none", background: "none", cursor: "pointer", color: "#9496a1", fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -89,41 +111,59 @@ export function AdminTopNav({ email }: { email: string }) {
         {/* Gap 4: 'Admin' text label (no email shown) */}
         <span style={{ fontSize: 12, color: "#4a4d5c" }}>Admin</span>
 
-        {/* Bell */}
-        <button
-          aria-label="Notifications"
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            border: "1px solid rgba(15,17,23,.18)",
-            background: "none",
-            cursor: "pointer",
-            color: "#4a4d5c",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          {/* Gap 5: top:6, right:6, border:1.5px */}
-          <span
+        {/* Bell + popover */}
+        <div style={{ position: "relative" }}>
+          <button
+            aria-label="Notifications"
+            aria-expanded={bellOpen}
+            onClick={() => setBellOpen((v) => !v)}
             style={{
-              width: 7,
-              height: 7,
-              background: "#c9982a",
-              border: "1.5px solid white",
+              width: 34,
+              height: 34,
               borderRadius: "50%",
-              position: "absolute",
-              top: 6,
-              right: 6,
+              border: "1px solid rgba(15,17,23,.18)",
+              background: bellOpen ? "#f8f7f4" : "none",
+              cursor: "pointer",
+              color: "#4a4d5c",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
             }}
-          />
-        </button>
+          >
+            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span style={{ width: 7, height: 7, background: "#c9982a", border: "1.5px solid white", borderRadius: "50%", position: "absolute", top: 6, right: 6 }} />
+          </button>
+
+          {bellOpen && (
+            <>
+              <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 290 }} />
+              <div
+                role="menu"
+                style={{ position: "absolute", top: 42, right: 0, width: 260, background: "#fff", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10, boxShadow: "0 16px 48px rgba(0,0,0,0.14)", zIndex: 300, overflow: "hidden" }}
+              >
+                <div style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.08)" }}>
+                  Quick actions
+                </div>
+                {NOTIF_LINKS.map((n) => (
+                  <button
+                    key={n.tab}
+                    role="menuitem"
+                    onClick={() => { setActiveTab(n.tab); setBellOpen(false); }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: "#0f1117", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#f8f7f4")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+                  >
+                    {n.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Avatar */}
         <div

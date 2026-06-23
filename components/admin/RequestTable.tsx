@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 
@@ -75,12 +75,15 @@ export function RequestTable({
   initialData,
   practitioners = [],
   onRowChange,
+  statusFilter = "all",
 }: {
   initialData: SessionRequest[];
   practitioners?: Practitioner[];
   onRowChange?: (id: string, patch: { status?: string; assigned_to?: string | null }) => void;
+  statusFilter?: string;
 }) {
   const [data, setData] = useState(initialData);
+  const visible = statusFilter === "all" ? data : data.filter((r) => r.status === statusFilter);
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
@@ -155,12 +158,11 @@ export function RequestTable({
             </tr>
           </thead>
           <tbody>
-            {data.map((r) => {
+            {visible.map((r) => {
               const isExpanded = expandedRow === r.id;
               return (
-                <>
+                <Fragment key={r.id}>
                   <tr
-                    key={r.id}
                     onClick={() => setExpandedRow(isExpanded ? null : r.id)}
                     style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
                   >
@@ -204,7 +206,7 @@ export function RequestTable({
                   </tr>
 
                   {isExpanded && (
-                    <tr key={`${r.id}-expand`} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                    <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
                       <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
@@ -255,13 +257,13 @@ export function RequestTable({
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
-            {data.length === 0 && (
+            {visible.length === 0 && (
               <tr>
                 <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
-                  No session requests yet
+                  {data.length === 0 ? "No session requests yet" : "No requests match the current filter"}
                 </td>
               </tr>
             )}
