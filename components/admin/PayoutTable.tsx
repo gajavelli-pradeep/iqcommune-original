@@ -88,12 +88,12 @@ export function PayoutTable({
               const tds = p.gross_amount - p.net_amount;
               const tdsRate = p.tds_rate;
               return (
-                <tr key={p.id} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
                   <td style={tdStyle}><span style={{ fontFamily: "monospace", fontSize: 12 }}>{p.invoice_ref}</span></td>
                   <td style={{ ...tdStyle, fontWeight: 500 }}>{p.practitioner?.name ?? "—"}</td>
                   <td style={tdStyle}>
                     <div style={{ fontSize: 12, fontFamily: "monospace" }}>{p.session?.ref_code}</div>
-                    <div style={{ fontSize: 11, color: "#9496a1" }}>{p.session?.module}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.session?.module}</div>
                   </td>
                   {/* Gross / TDS / Net 3-line stack */}
                   <td style={tdStyle}>
@@ -103,8 +103,8 @@ export function PayoutTable({
                         − TDS {tdsRate ? `${tdsRate}%` : ""} {formatInr(tds)}
                       </div>
                     )}
-                    <div style={{ fontWeight: 600, color: tds > 0 ? "#0f1117" : undefined, fontSize: tds > 0 ? 13 : undefined }}>
-                      {tds > 0 && <span style={{ fontSize: 10, fontWeight: 400, color: "#9496a1", marginRight: 3 }}>net</span>}
+                    <div style={{ fontWeight: 600, color: tds > 0 ? "var(--ink)" : undefined, fontSize: tds > 0 ? 13 : undefined }}>
+                      {tds > 0 && <span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink-faint)", marginRight: 3 }}>net</span>}
                       {formatInr(p.net_amount)}
                     </div>
                   </td>
@@ -113,12 +113,12 @@ export function PayoutTable({
                       <select
                         value={methodMap[p.id] ?? "UPI"}
                         onChange={(e) => setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))}
-                        style={{ fontSize: 12, padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(15,17,23,.15)", background: "#fff", fontFamily: "inherit" }}
+                        style={{ fontSize: 12, padding: "4px 22px 4px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") no-repeat right 7px center, #fcfbf8", appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
                       >
-                        {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
+                        {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
                       </select>
                     ) : (
-                      <span style={{ fontSize: 12, color: "#4a4d5c" }}>{p.payment_method ?? "—"}</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{p.payment_method ?? "—"}</span>
                     )}
                   </td>
                   <td style={tdStyle}><StatusPill status={p.status} /></td>
@@ -126,12 +126,12 @@ export function PayoutTable({
                     {p.status === "Pending" ? (
                       <button
                         onClick={() => markPaid(p.id)}
-                        style={{ background: "#c9982a", color: "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+                        style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
                       >
                         Mark paid
                       </button>
                     ) : (
-                      <span style={{ fontSize: 12, color: "#9496a1" }}>
+                      <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
                         {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN") : "—"}
                       </span>
                     )}
@@ -142,8 +142,8 @@ export function PayoutTable({
 
             {/* Summary row */}
             {visible.length > 0 && (
-              <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(15,17,23,.10)" }}>
-                <td colSpan={3} style={{ ...tdStyle, fontSize: 11, fontWeight: 600, color: "#9496a1", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
+                <td colSpan={3} style={{ ...tdStyle, fontSize: 11, fontWeight: 600, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Total ({visible.length} payout{visible.length > 1 ? "s" : ""})
                 </td>
                 <td style={tdStyle}>
@@ -156,7 +156,7 @@ export function PayoutTable({
 
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No payouts yet" : "No payouts match the current filter"}
                 </td>
               </tr>
@@ -166,7 +166,7 @@ export function PayoutTable({
       </div>
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--ink)", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
           {toast}
         </div>
       )}
@@ -175,5 +175,5 @@ export function PayoutTable({
 }
 
 const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.1)" };
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
 const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };

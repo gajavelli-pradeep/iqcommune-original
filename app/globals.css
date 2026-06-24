@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #0f1117;
-  --color-ink-muted: #4a4d5c;
-  --color-ink-faint: #9496a1;
+  --color-ink: #14161d;
+  --color-ink-muted: #383b47;
+  --color-ink-faint: #71717f;
   --color-surface: #ffffff;
   --color-soft: #f8f7f4;
   --color-gold: #c9982a;
@@ -19,17 +19,26 @@
   --color-amber-light: #faeeda;
   --color-purple: #534ab7;
   --color-purple-light: #eeedfe;
+  --color-teal: #0f7d8c;
+  --color-teal-light: #e2f3f5;
   --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
   --radius: 12px;
   --radius-sm: 6px;
 }
 
 :root {
-  --ink: #0f1117;
-  --ink-muted: #4a4d5c;
-  --ink-faint: #9496a1;
+  --ink: #14161d;
+  --ink-strong: #14161d;
+  --ink-body: #383b47;
+  --ink-muted: #383b47;
+  --ink-soft: #5b5e6c;
+  --ink-faint: #71717f;
+  --eyebrow: #8a6510;
   --surface: #ffffff;
+  --surface-sunken: #f4f2ec;
   --surface-soft: #f8f7f4;
+  --input-paper: #fcfbf8;
+  --input-hover: #faf8f3;
   --gold: #c9982a;
   --gold-light: #f5e9c8;
   --gold-dark: #8a6510;
@@ -43,8 +52,21 @@
   --amber-light: #faeeda;
   --purple: #534ab7;
   --purple-light: #eeedfe;
-  --border: rgba(15, 17, 23, 0.10);
-  --border-strong: rgba(15, 17, 23, 0.20);
+  --border: rgba(20, 18, 12, 0.09);
+  --border-card: rgba(20, 18, 12, 0.12);
+  --border-strong: rgba(20, 18, 12, 0.20);
+  --border-gold: rgba(138, 101, 16, 0.28);
+  /* Edge-case tokens — added to kill recurring magic hexes (color audit 2026-06-24). */
+  --gold-border: rgba(138, 101, 16, 0.28); /* pill/badge/ribbon borders (replaces #e0c870) */
+  --gold-on-ink: #f0c84a;                  /* brightened gold for text on ink surfaces */
+  --green-on-ink: #6fcf6f;                 /* lightened green for checkmarks on ink */
+  --green-border: rgba(42, 107, 42, 0.30); /* success-box borders (replaces #b8d98a) */
+  --red-border: rgba(163, 45, 45, 0.30);   /* error-field borders (replaces #f0b0b0) */
+  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --elev-1: 0 1px 2px rgba(20, 16, 10, 0.05), 0 6px 16px -10px rgba(20, 16, 10, 0.14);
+  --elev-2: 0 2px 4px rgba(20, 16, 10, 0.06), 0 16px 34px -12px rgba(20, 16, 10, 0.20);
+  --elev-3: 0 4px 8px rgba(20, 16, 10, 0.07), 0 28px 56px -14px rgba(20, 16, 10, 0.26);
+  --shadow-focus: 0 0 0 3px rgba(201, 152, 42, 0.16);
   --admin-nav-h: 64px;
   --admin-sidebar-w: 220px;
   /* tint variants used in admin panels and status indicators */
@@ -95,29 +117,98 @@ a {
   .nav-hamburger   { display: flex !important; }
 }
 
-/* ── Card hover interactions ──────────────────────────────────────────────── */
+/* ── Module-accent card hover interactions ────────────────────────────────── */
+/* Each card sets its own `--accent` inline; one rule lifts + borders in-colour. */
 .topic-card,
 .walkout-card,
 .audience-card-inner,
+.role-card,
+.module-card,
 .tool-card {
-  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease, background 0.22s ease;
 }
-.topic-card:hover        { border-color: #c9982a !important; transform: translateY(-3px); }
-.walkout-card:hover      { border-color: #c9982a !important; transform: translateY(-3px); }
-.audience-card-inner:hover { border-color: #c9982a !important; transform: translateY(-3px); }
-.tool-card:hover         { background: rgba(255,255,255,0.09) !important; border-color: rgba(201,152,42,0.4) !important; }
+
+/* Resting elevation so cards read as crafted objects, not flat outlines. */
+.topic-card,
+.walkout-card,
+.audience-card-inner,
+.role-card,
+.module-card,
+.tool-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 1px 2px rgba(20, 16, 10, 0.05), 0 6px 16px -10px rgba(20, 16, 10, 0.14);
+}
+
+/* Hover elevation lives on a pseudo-element so hover only animates opacity. */
+.topic-card::after,
+.audience-card-inner::after,
+.role-card::after,
+.module-card::after,
+.tool-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 2px 4px rgba(20, 16, 10, 0.06), 0 16px 32px -12px rgba(20, 16, 10, 0.2),
+    0 4px 10px -6px color-mix(in srgb, var(--accent, #c9982a) 22%, transparent);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+  pointer-events: none;
+}
+
+/* ── Crafted icon tile: accent ring at rest, fills with the accent on hover ── */
+.card-icon {
+  position: relative;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #c9982a) 24%, transparent);
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .topic-card:hover .card-icon,
+  .audience-card-inner:hover .card-icon,
+  .role-card:hover .card-icon,
+  .module-card:hover .card-icon {
+    background: var(--accent, #c9982a) !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 0 0 1px transparent;
+    transform: scale(1.06);
+  }
+}
+
+@media (hover: hover) {
+  .topic-card:hover,
+  .audience-card-inner:hover,
+  .role-card:hover,
+  .module-card:hover,
+  .walkout-card:hover,
+  .tool-card:hover {
+    /* !important so the lift beats the retained entrance-animation transform
+       (.iq-animate.iq-visible uses fill-mode:both, which otherwise wins). */
+    transform: translateY(-4px) !important;
+    border-color: var(--accent, #c9982a) !important;
+  }
+  .topic-card:hover::after,
+  .audience-card-inner:hover::after,
+  .role-card:hover::after,
+  .module-card:hover::after,
+  .tool-card:hover::after {
+    opacity: 1;
+  }
+}
 
 /* ── Scroll-triggered entrance animation ─────────────────────────────────── */
 @keyframes iq-fade-up {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(20px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .iq-animate {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateY(20px) scale(0.985);
 }
 .iq-animate.iq-visible {
-  animation: iq-fade-up 0.45s ease both;
+  animation: iq-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .iq-animate.iq-visible:nth-child(1) { animation-delay: 0.00s; }
 .iq-animate.iq-visible:nth-child(2) { animation-delay: 0.06s; }
@@ -146,7 +237,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 :focus-visible {
-  outline: 2px solid #c9982a;
+  outline: 2px solid var(--gold);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -186,6 +277,257 @@ h1, h2, h3, h4, h5, h6 {
   .nav-secondary { display: none !important; }
 }
 
+/* ── PREMIUM INTERACTIONS ─────────────────────────────────────────────────── */
+
+/* CTA buttons: lift + brighten + grow shadow, with the arrow nudging forward. */
+.btn-cta {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s ease, filter 0.22s ease;
+  will-change: transform;
+}
+.btn-cta .btn-arrow {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .btn-cta:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.07);
+    box-shadow: 0 12px 28px -8px rgba(15, 17, 23, 0.4) !important;
+  }
+  .btn-cta:hover .btn-arrow {
+    transform: translateX(4px);
+  }
+}
+.btn-cta:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+/* "How it works" numbered step circles: spring up + accent ring on hover. */
+.step-circle {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
+}
+@media (hover: hover) {
+  .step:hover .step-circle {
+    transform: translateY(-4px) scale(1.08);
+    box-shadow: 0 12px 26px -8px rgba(15, 17, 23, 0.45);
+  }
+}
+
+/* Inline text links with an arrow: nudge the arrow + reveal the underline. */
+.link-arrow {
+  transition: color 0.18s ease;
+}
+.link-arrow .link-chevron {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .link-arrow:hover {
+    color: var(--gold);
+  }
+  .link-arrow:hover .link-chevron {
+    transform: translateX(4px);
+  }
+}
+
+/* Logo: a touch of life on hover. */
+.nav-logo {
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .nav-logo:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
+}
+
+/* Audience chips in the request modal: subtle lift on hover. */
+.aud-chip {
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease,
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .aud-chip:hover:not([aria-pressed="true"]) {
+    transform: translateY(-1px);
+    border-color: var(--gold-dark) !important;
+    background: var(--input-hover) !important;
+    color: var(--gold-dark) !important;
+  }
+}
+
+/* Form fields: tactile paper rest, gold-keyed focus, warm hover. */
+/* Rest-state recessed shadow lives in CSS (not inline) so :focus cascades cleanly. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  box-shadow: inset 0 1px 2px rgba(15, 17, 23, 0.04), 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+input:focus,
+select:focus,
+textarea:focus,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  background: #ffffff !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 152, 42, 0.16), inset 0 1px 2px rgba(15, 17, 23, 0.05) !important;
+  outline: none;
+}
+@media (hover: hover) {
+  input:hover:not(:focus),
+  select:hover:not(:focus),
+  textarea:hover:not(:focus) {
+    background: var(--input-hover, #faf8f3) !important;
+    border-color: rgba(20, 18, 12, 0.34) !important;
+  }
+}
+
+/* Ambient hero glow: a slow, calm breathing pulse behind the headline. */
+@keyframes iq-glow-breathe {
+  0%,
+  100% { opacity: 0.55; transform: scale(1); }
+  50%  { opacity: 1; transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-glow {
+    animation: iq-glow-breathe 7s ease-in-out infinite;
+    transform-origin: center;
+  }
+}
+
+/* Table-style rows (comparison, division-of-work, disclosure lists): hover tint. */
+.row-hover {
+  transition: background 0.18s ease;
+}
+@media (hover: hover) {
+  .row-hover:hover {
+    background: rgba(201, 152, 42, 0.07) !important;
+  }
+}
+
+/* Trust-bar / ribbon / pool mini items: gentle lift on hover. */
+.hover-lift {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.18s ease,
+    background 0.18s ease, border-color 0.18s ease;
+}
+@media (hover: hover) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Tool cards already brighten — add a matching lift. */
+@media (hover: hover) {
+  .tool-card:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* FAQ row hover tint. */
+.faq-row {
+  transition: background 0.15s ease;
+}
+@media (hover: hover) {
+  .faq-row:hover {
+    background: var(--surface-soft) !important;
+  }
+}
+
+/* Footer / muted links shift to gold on hover. */
+.foot-link {
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+@media (hover: hover) {
+  .foot-link:hover {
+    color: var(--gold) !important;
+  }
+}
+
+/* Route transition — content fades + rises on every navigation. */
+@keyframes iq-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-transition {
+    animation: iq-page-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* ── Animated step connector (practitioners §6 — flows colour L→R behind steps) ── */
+.iq-step-connector {
+  position: absolute;
+  top: 26px;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(20, 18, 12, 0.12);
+  overflow: hidden;
+  z-index: 0;
+}
+.iq-step-connector::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--green) 18%,
+    var(--blue) 38%,
+    var(--purple) 58%,
+    var(--gold) 80%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .iq-step-connector::before {
+    animation: iq-connector-flow 4.5s linear infinite;
+  }
+}
+@keyframes iq-connector-flow {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+@media (max-width: 720px) {
+  .iq-step-connector { display: none; }
+}
+
+/* ── Perk rows + honest/disclosure cards: hover feedback ── */
+.iq-perk {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iq-perk-icon {
+  transition: background 0.22s ease, color 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iq-honest-card,
+.iq-disclosure-card {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease,
+    box-shadow 0.28s ease;
+}
+@media (hover: hover) {
+  .iq-perk:hover {
+    transform: translateX(3px);
+  }
+  .iq-perk:hover .iq-perk-icon {
+    background: var(--gold) !important;
+    color: var(--ink) !important;
+    transform: scale(1.08);
+  }
+  .iq-honest-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    box-shadow: 0 14px 36px -18px rgba(0, 0, 0, 0.7);
+  }
+  .iq-disclosure-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-gold, rgba(138, 101, 16, 0.28)) !important;
+    box-shadow: 0 16px 32px -14px rgba(20, 16, 10, 0.18);
+  }
+}
+
 /* ── REDUCED MOTION ── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -195,4 +537,11 @@ h1, h2, h3, h4, h5, h6 {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  /* Never trap content behind the entrance animation's opacity:0 start state. */
+  .iq-animate {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+
+/* build: premium pass v2 */

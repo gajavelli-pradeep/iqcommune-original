@@ -106,7 +106,8 @@ export function RequestTable({
       onRowChange?.(id, { status });
       showToast("Status updated");
     } else {
-      showToast("Update failed");
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Update failed: ${error ?? res.status}`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onRowChange]);
@@ -129,7 +130,8 @@ export function RequestTable({
       onRowChange?.(id, { assigned_to: practitionerId });
       showToast("Practitioner assigned");
     } else {
-      showToast("Assignment failed");
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Assignment failed: ${error ?? res.status}`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empanelled, onRowChange]);
@@ -164,24 +166,24 @@ export function RequestTable({
                 <Fragment key={r.id}>
                   <tr
                     onClick={() => setExpandedRow(isExpanded ? null : r.id)}
-                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
+                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
                   >
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 500 }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: "#9496a1" }}>{r.org} · {r.email}</div>
-                      {r.phone && <div style={{ fontSize: 11, color: "#9496a1" }}>{r.phone}</div>}
-                      <div style={{ fontSize: 10, color: "#c9c9c9", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org} · {r.email}</div>
+                      {r.phone && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>}
+                      <div style={{ fontSize: 11, color: "#71717f", marginTop: 2 }}>
                         {new Date(r.created_at).toLocaleDateString("en-IN")}
                       </div>
                     </td>
                     <td style={tdStyle}>{r.topic}</td>
                     <td style={tdStyle}>
                       <div>{r.audience_type}</div>
-                      <div style={{ fontSize: 11, color: "#9496a1" }}>{r.group_size} total</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.group_size} total</div>
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
                       {r.min_commit}
-                      <div style={{ fontSize: 11, color: "#9496a1", fontWeight: 400 }}>guaranteed</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>guaranteed</div>
                     </td>
                     <td style={tdStyle}>{r.venue ?? "—"}</td>
                     <td style={tdStyle}>{r.preferred_dates}</td>
@@ -206,11 +208,11 @@ export function RequestTable({
                   </tr>
 
                   {isExpanded && (
-                    <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
                       <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
-                            border: "1px solid rgba(15,17,23,.10)",
+                            border: "1px solid rgba(20,18,12,.10)",
                             borderRadius: 8,
                             background: "#fff",
                             padding: "1rem 1.25rem",
@@ -218,8 +220,8 @@ export function RequestTable({
                         >
                           {/* Header */}
                           <div style={{ marginBottom: "0.9rem" }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "#0f1117" }}>{r.name}</div>
-                            <div style={{ fontSize: 12, color: "#4a4d5c" }}>{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{r.name}</div>
+                            <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
                           </div>
 
                           {/* Detail grid */}
@@ -234,8 +236,8 @@ export function RequestTable({
                           </div>
 
                           {/* Assign practitioner */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderTop: "1px solid rgba(15,17,23,.08)", paddingTop: "0.85rem" }}>
-                            <span style={{ fontSize: 12, fontWeight: 500, color: "#0f1117", whiteSpace: "nowrap" }}>Assign to:</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderTop: "1px solid rgba(20,18,12,.08)", paddingTop: "0.85rem" }}>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap" }}>Assign to:</span>
                             <select
                               value={r.assigned_to ?? ""}
                               onChange={(e) => { if (e.target.value) assignPractitioner(r.id, e.target.value); }}
@@ -262,7 +264,7 @@ export function RequestTable({
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No session requests yet" : "No requests match the current filter"}
                 </td>
               </tr>
@@ -272,7 +274,7 @@ export function RequestTable({
       </div>
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--ink)", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
           {toast}
         </div>
       )}
@@ -294,14 +296,15 @@ export function RequestTable({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9496a1", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, color: "#0f1117" }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, color: "var(--ink)" }}>{value}</div>
     </div>
   );
 }
 
 const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.1)" };
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
 const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
-const selectStyle: React.CSSProperties = { fontSize: 12, padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(15,17,23,.15)", background: "#fff", cursor: "pointer", fontFamily: "inherit" };
-const btnStyle: React.CSSProperties = { background: "rgba(15,17,23,.07)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" };
+const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
+const selectStyle: React.CSSProperties = { fontSize: 12, padding: "5px 22px 5px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`, appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" };
+const btnStyle: React.CSSProperties = { background: "rgba(20,18,12,.07)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" };

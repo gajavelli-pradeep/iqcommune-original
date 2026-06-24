@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FormModal, fieldLabelStyle, fieldInputStyle, primaryBtn, ghostBtn } from "@/components/admin/FormModal";
+import { FormModal, fieldLabelStyle, fieldInputStyle, fieldSelectStyle, primaryBtn, ghostBtn } from "@/components/admin/FormModal";
 
 interface PractitionerOption {
   id: string;
@@ -114,7 +114,7 @@ export function SessionFormModal({
       footer={
         <>
           <button type="button" style={ghostBtn} onClick={onClose}>Cancel</button>
-          <button type="button" style={{ ...primaryBtn, background: "#c9982a", opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
+          <button type="button" style={{ ...primaryBtn, background: "#c9982a", color: "#14161d", fontWeight: 600, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
             {saving ? "Creating…" : "Create session"}
           </button>
         </>
@@ -130,7 +130,7 @@ export function SessionFormModal({
         <Field label="Module"><input style={fieldInputStyle} value={form.module} onChange={set("module")} /></Field>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Practitioner">
-            <select style={fieldInputStyle} value={form.practitionerId} onChange={set("practitionerId")}>
+            <select style={fieldSelectStyle} value={form.practitionerId} onChange={set("practitionerId")}>
               <option value="">— select practitioner —</option>
               {eligible.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.email}</option>)}
             </select>
@@ -148,7 +148,7 @@ export function SessionFormModal({
         </Field>
         <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8 }}>
           <input id="tdsApplicable" type="checkbox" checked={form.tdsApplicable} onChange={set("tdsApplicable")} style={{ cursor: "pointer" }} />
-          <label htmlFor="tdsApplicable" style={{ fontSize: 13, color: "#4a4d5c", cursor: "pointer" }}>TDS applicable</label>
+          <label htmlFor="tdsApplicable" style={{ fontSize: 13, color: "var(--ink-soft)", cursor: "pointer" }}>TDS applicable</label>
         </div>
       </div>
       {error && <div style={{ marginTop: 12, fontSize: 12, color: "#a32d2d" }}>{error}</div>}

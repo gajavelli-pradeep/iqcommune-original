@@ -47,7 +47,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 1,
-          background: "rgba(15,17,23,.10)",
+          background: "rgba(20,18,12,.10)",
           borderRadius: "10px 10px 0 0",
           overflow: "hidden",
           marginBottom: 0,
@@ -59,8 +59,8 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
           { label: "Signed",           value: signed },
         ].map((s) => (
           <div key={s.label} style={{ background: "#fff", padding: "1rem 1.5rem" }}>
-            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "#0f1117", lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: "#9496a1", marginTop: 3 }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 3 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -72,7 +72,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
             width: "100%",
             borderCollapse: "collapse",
             background: "#fff",
-            border: "1px solid rgba(15,17,23,.10)",
+            border: "1px solid rgba(20,18,12,.10)",
             borderTop: "none",
             borderRadius: "0 0 10px 10px",
             overflow: "hidden",
@@ -101,7 +101,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
             {initialData.map((row) => (
               <tr
                 key={row.id}
-                style={{ borderBottom: "1px solid rgba(15,17,23,.07)", cursor: "pointer" }}
+                style={{ borderBottom: "1px solid rgba(20,18,12,.07)", cursor: "pointer" }}
               >
                 {/* Gap 37: avatar circle (gold-l bg, gold-d text) + name only (no role) */}
                 <td style={tdStyle}>
@@ -124,20 +124,20 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                       {row.practitioner_ini ?? row.practitioner_name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??"}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "#0f1117" }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
                         {row.practitioner_name}
                       </div>
                     </div>
                   </div>
                 </td>
 
-                {/* Gap 38: ref color ink-m (#4a4d5c), not gold-d */}
+                {/* Gap 38: ref color ink-m (var(--ink-soft)), not gold-d */}
                 <td style={tdStyle}>
                   <span
                     style={{
                       fontFamily: "monospace",
                       fontSize: 12,
-                      color: "#4a4d5c",
+                      color: "var(--ink-soft)",
                     }}
                   >
                     {row.ref_code ? `IQC-EMP-${row.ref_code}` : "—"}
@@ -145,7 +145,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                 </td>
 
                 {/* Module */}
-                <td style={{ ...tdStyle, fontSize: 13, color: "#4a4d5c" }}>
+                <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)" }}>
                   {row.module}
                 </td>
 
@@ -154,7 +154,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                   style={{
                     ...tdStyle,
                     fontSize: 13,
-                    color: "#4a4d5c",
+                    color: "var(--ink-soft)",
                     whiteSpace: "nowrap",
                   }}
                 >
@@ -173,7 +173,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                     ...tdStyle,
                     fontSize: 11,
                     fontFamily: "monospace",
-                    color: "#9496a1",
+                    color: "var(--ink-faint)",
                     whiteSpace: "nowrap",
                   }}
                 >
@@ -209,8 +209,8 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                       fontSize: 11,
                       padding: "4px 10px",
                       borderRadius: 100,
-                      border: "1px solid rgba(15,17,23,.18)",
-                      color: "#4a4d5c",
+                      border: "1px solid rgba(20,18,12,.18)",
+                      color: "var(--ink-soft)",
                       background: "#fff",
                       cursor: "pointer",
                       display: "inline-flex",
@@ -250,7 +250,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                   style={{
                     textAlign: "center",
                     padding: 40,
-                    color: "#9496a1",
+                    color: "var(--ink-faint)",
                     fontSize: 13,
                   }}
                 >
@@ -263,7 +263,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
       </div>
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "#0f1117", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--ink)", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
           {toast}
         </div>
       )}
@@ -276,9 +276,9 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
 // Gap 25: render full method string as plain text (no styled badge)
 function MethodCell({ method }: { method: string | null }) {
   if (!method || method === "—") {
-    return <span style={{ color: "#9496a1", fontSize: 12 }}>—</span>;
+    return <span style={{ color: "var(--ink-faint)", fontSize: 12 }}>—</span>;
   }
-  return <span style={{ fontSize: 12, color: "#4a4d5c" }}>{method}</span>;
+  return <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{method}</span>;
 }
 
 // ─── Style helpers ─────────────────────────────────────────────────────────────
@@ -291,8 +291,8 @@ const thStyle: React.CSSProperties = {
   fontSize: 11,
   letterSpacing: "0.06em",
   textTransform: "uppercase",
-  color: "#9496a1",
-  borderBottom: "1px solid rgba(15,17,23,.10)",
+  color: "var(--ink-faint)",
+  borderBottom: "1px solid rgba(20,18,12,.10)",
   whiteSpace: "nowrap",
 };
 

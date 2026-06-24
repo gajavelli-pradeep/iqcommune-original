@@ -10,7 +10,7 @@ export default function NotFound() {
     <main
       style={{
         minHeight: "100vh",
-        background: "#0f1117",
+        background: "var(--ink)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -114,7 +114,7 @@ export default function NotFound() {
         <Link
           href="/"
           style={{
-            background: "#c9982a",
+            background: "#14161d",
             color: "#ffffff",
             textDecoration: "none",
             borderRadius: 100,

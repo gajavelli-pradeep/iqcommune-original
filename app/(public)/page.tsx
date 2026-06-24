@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { RequestModal } from "@/components/public/RequestModal";
-import { FaqAccordion } from "@/components/public/FaqAccordion";
+import { FaqAccordion, type FaqItem } from "@/components/public/FaqAccordion";
 import { NavBar } from "@/components/public/NavBar";
+import { SiteFooter } from "@/components/public/SiteFooter";
+import { RevealOnScroll } from "@/components/public/RevealOnScroll";
+import { CountUp } from "@/components/public/CountUp";
+import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 
 export const metadata: Metadata = {
   title: { absolute: "iqcommune — Real practitioners. Real sessions." },
@@ -151,7 +155,7 @@ const TOPICS = [
     name: "Financial Planning Basics",
     desc: "Budgeting, net worth, emergency funds — the foundation every adult needs before investing a single rupee.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
@@ -161,7 +165,7 @@ const TOPICS = [
     name: "Investment Basics",
     desc: "Mutual funds, SIPs, equity vs. debt — explained by someone actively allocating money across these instruments.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <line x1="12" y1="1" x2="12" y2="23" />
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
       </svg>
@@ -171,7 +175,7 @@ const TOPICS = [
     name: "Market Fundamentals",
     desc: "How markets work, what moves them, and how to read signals — from analysts watching live order books.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
       </svg>
     ),
@@ -180,7 +184,7 @@ const TOPICS = [
     name: "Stock Market Basics",
     desc: "Reading price charts, P/E ratios, earnings reports — concepts that most trainers only read about.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="3" width="20" height="14" rx="2" />
         <line x1="8" y1="21" x2="16" y2="21" />
         <line x1="12" y1="17" x2="12" y2="21" />
@@ -191,7 +195,7 @@ const TOPICS = [
     name: "Retirement Planning",
     desc: "NPS, PPF, EPF, annuities — building a retirement corpus that actually keeps pace with inflation.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
@@ -201,7 +205,7 @@ const TOPICS = [
     name: "Goal-Based Investing",
     desc: "Structuring investments around real goals — a house, children's education, business capital — with timelines that work.",
     icon: (
-      <svg width="22" height="22" fill="none" stroke="#c9982a" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
         <polyline points="22 4 12 14.01 9 11.01" />
       </svg>
@@ -411,6 +415,55 @@ const CTA_REASSURANCE = [
   "We'll reach out within 2–3 working days",
 ] as const;
 
+const HOME_FAQS: FaqItem[] = [
+  {
+    q: "How do I register if I have a group?",
+    a: "One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, a preferred date window, and a venue if you have one in mind. We align a practitioner and confirm details with you directly. You then coordinate within your group — we handle everything else.",
+  },
+  {
+    q: "Will the practitioner try to sell me financial products?",
+    a: "No. This is a firm policy, not a preference. During sessions, our practitioners are here purely to educate — no cross-selling, no product pitching, no collecting attendee details for commercial purposes. They have no commercial arrangement with any fund house, brokerage, or insurance company through this programme. The session is about frameworks, concepts, and your questions — nothing else. That said, practitioners are real professionals and you are adults — any interaction or connection that happens outside the session, on a voluntary basis, is entirely between you and them. We don't restrict that, and we don't pretend we can.",
+  },
+  {
+    q: "Are these sessions affiliated with any AMFI, SEBI, or product entity?",
+    a: "No. iqcommune is an independent platform. Our practitioners may personally hold relevant certifications (CFP, NISM, etc.), but the sessions are not conducted on behalf of any regulator, distributor, or product company. This independence is deliberate — it's what keeps the content product-agnostic.",
+  },
+  {
+    q: "What exactly will I learn — and what won't be covered?",
+    a: "Each session covers the framework and thinking behind a topic — not specific stock tips, fund recommendations, or portfolio advice. You'll leave understanding how to think about a problem, not with a list of things to buy. The practitioner will use real examples from their own work, but the goal is your literacy — not their portfolio.",
+  },
+  {
+    q: "Where are the sessions held? Are they online?",
+    a: "All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. The venue is confirmed after your group is formed and shared with you ahead of the session.",
+  },
+  {
+    q: "Can my company book a session for a team?",
+    a: (
+      <>
+        Yes. Organisational sessions work differently — you bring the group (your team), and we align the right practitioner around your schedule. This covers corporates, educational institutions, hospitals, media &amp; production houses, and any organisation looking to upskill its people. Sessions are tailored to your workforce&apos;s financial literacy level and specific needs. Please note that venue and basic infrastructure are to be arranged by your organisation. Use the &ldquo;Request a Session&rdquo; form and select <strong>Organisations &amp; Institutions</strong> as your audience type — we&apos;ll take it from there.
+      </>
+    ),
+  },
+  {
+    q: "How is the practitioner chosen for my session?",
+    a: "We match the practitioner to the module by current role — not just credentials. Someone teaching Stock Market Basics is an active equity analyst. Someone covering Goal-Based Investing is currently structuring client portfolios. The match is made internally before we confirm your session details.",
+  },
+  {
+    q: "Who arranges the venue?",
+    a: (
+      <>
+        It depends on your audience type.
+        <br /><br />
+        <strong>Groups</strong> — If your group has a preferred space — a society clubhouse, an office room, a community hall — that&apos;s always welcome and we&apos;ll gladly use it. If not, don&apos;t worry at all. We&apos;ll find and book a suitable venue in your city and share the details with the SPOC well ahead of the session.
+        <br /><br />
+        <strong>Organisations &amp; Institutions</strong> (corporates, educational institutions, hospitals, media houses) — the venue and basic infrastructure (seating, projector or screen) are to be arranged by your organisation. This gives you flexibility to host the session in a familiar setting for your team. We handle the practitioner, content, and delivery.
+        <br /><br />
+        <strong>AMCs &amp; Wealth Firms</strong> — venue and setup are on your end. You know your space and your audience best. We focus entirely on the content and the practitioner match.
+      </>
+    ),
+  },
+];
+
 // ── JSON-LD ──────────────────────────────────────────────────────────────────
 
 const orgSchema = {
@@ -441,9 +494,9 @@ function Pill({ children, dark = false }: { children: React.ReactNode; dark?: bo
           fontWeight: 600,
           letterSpacing: "0.12em",
           textTransform: "uppercase",
-          color: dark ? "#f0c84a" : "#8a6510",
+          color: dark ? "var(--gold-on-ink)" : "#8a6510",
           background: dark ? "rgba(201,152,42,0.15)" : "#f5e9c8",
-          border: `1px solid ${dark ? "rgba(201,152,42,0.3)" : "#e0c870"}`,
+          border: `1px solid ${dark ? "rgba(201,152,42,0.3)" : "var(--gold-border)"}`,
           padding: "5px 14px",
           borderRadius: 100,
         }}
@@ -454,19 +507,29 @@ function Pill({ children, dark = false }: { children: React.ReactNode; dark?: bo
   );
 }
 
-function CheckmarkSvg({ size = 15, color = "#c9982a" }: { size?: number; color?: string }) {
+// Affirmative — accent-filled disc with a confident check (used in the "Us" column).
+function CheckmarkSvg({ size = 20, color = "#c9982a" }: { size?: number; color?: string }) {
   return (
-    <svg width={size} height={size} fill="none" stroke={color} strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
-      <polyline points="20 6 9 17 4 12" />
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="11" style={{ fill: `color-mix(in srgb, ${color} 16%, #ffffff)` }} />
+      <path
+        d="M16.5 8.75l-5.7 6.2L7.5 11.7"
+        fill="none"
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ stroke: color }}
+      />
     </svg>
   );
 }
 
+// Negative — muted disc with a hairline ink cross (used in the "Them" column).
 function CrossSvg() {
   return (
-    <svg width="15" height="15" fill="none" stroke="#9496a1" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M15 9l-6 6M9 9l6 6" />
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="11" fill="#ecebe6" />
+      <path d="M15 9l-6 6M9 9l6 6" fill="none" stroke="#71717f" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -515,12 +578,6 @@ export default function HomePage() {
           .walkout-grid { grid-template-columns: 1fr !important; }
           .tools-grid { grid-template-columns: 1fr !important; }
         }
-        .topic-card:hover { border-color: #c9982a !important; transform: translateY(-3px); }
-        .walkout-card:hover { transform: translateY(-3px); border-color: #c9982a !important; }
-        .audience-card-inner:hover { border-color: #c9982a !important; transform: translateY(-3px); }
-        .tool-card:hover { background: rgba(255,255,255,0.09) !important; border-color: rgba(201,152,42,0.4) !important; }
-        .iq-animate { opacity: 0; transform: translateY(16px); transition: opacity 0.45s ease, transform 0.45s ease; }
-        .iq-visible { opacity: 1; transform: translateY(0); }
       `}</style>
 
       <NavBar />
@@ -528,8 +585,8 @@ export default function HomePage() {
       {/* ── §2 HERO ── */}
       <section
         style={{
-          background: "#f8f7f4",
-          borderBottom: "1px solid rgba(15,17,23,0.10)",
+          background: "linear-gradient(180deg, #ffffff 0%, #f8f7f4 100%)",
+          borderBottom: "1px solid rgba(20,18,12,0.10)",
           padding: "5rem 2rem 4.5rem",
           position: "relative",
           overflow: "hidden",
@@ -537,7 +594,7 @@ export default function HomePage() {
       >
         {/* Radial glow */}
         <div
-          className="hero-before"
+          className="hero-before hero-glow"
           style={{
             position: "absolute",
             top: -140,
@@ -565,7 +622,7 @@ export default function HomePage() {
                   textTransform: "uppercase",
                   color: "#8a6510",
                   background: "#f5e9c8",
-                  border: "1px solid #e0c870",
+                  border: "1px solid var(--gold-border)",
                   padding: "5px 14px",
                   borderRadius: 100,
                 }}
@@ -584,7 +641,7 @@ export default function HomePage() {
                 fontWeight: 600,
                 lineHeight: 1.18,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: "1.25rem",
                 marginTop: "1.5rem",
               }}
@@ -597,7 +654,7 @@ export default function HomePage() {
             <p
               style={{
                 fontSize: 17,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 440,
                 marginBottom: "2rem",
                 lineHeight: 1.65,
@@ -609,7 +666,7 @@ export default function HomePage() {
             {/* Gap 1: hero CTA uses dark ink primary button style */}
             <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
               <RequestModal variant="hero" />
-              <span style={{ fontSize: 13, color: "#9496a1", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "#71717f", display: "flex", alignItems: "center", gap: 6 }}>
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
@@ -623,11 +680,11 @@ export default function HomePage() {
           <div
             className="hero-card-anim"
             style={{
-              background: "#ffffff",
-              border: "1px solid rgba(15,17,23,0.20)",
+              background: "linear-gradient(180deg, #ffffff 0%, #fdfcfa 100%)",
+              border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 20,
               padding: "2rem",
-              boxShadow: "0 12px 48px rgba(0,0,0,0.07)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85), 0 2px 4px rgba(20,16,10,0.05), 0 16px 40px -14px rgba(20,16,10,0.16)",
             }}
           >
             {/* Card label */}
@@ -652,13 +709,13 @@ export default function HomePage() {
                   style={{
                     textAlign: "center",
                     padding: "0.65rem 0.5rem",
-                    borderRight: i < 2 ? "1px solid rgba(15,17,23,0.10)" : undefined,
+                    borderRight: i < 2 ? "1px solid rgba(20,18,12,0.10)" : undefined,
                   }}
                 >
-                  <div style={{ fontSize: 26, fontWeight: 600, color: "#0f1117", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
-                    {stat.num}
+                  <div style={{ fontSize: 26, fontWeight: 600, color: "#14161d", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+                    <CountUp value={stat.num} />
                   </div>
-                  <div style={{ fontSize: 11, color: "#4a4d5c", marginTop: 2, lineHeight: 1.3 }}>
+                  <div style={{ fontSize: 11, color: "#383b47", marginTop: 2, lineHeight: 1.3 }}>
                     {stat.label}
                   </div>
                 </div>
@@ -666,7 +723,7 @@ export default function HomePage() {
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, background: "rgba(15,17,23,0.10)", margin: "1rem 0" }} />
+            <div style={{ height: 1, background: "rgba(20,18,12,0.10)", margin: "1rem 0" }} />
 
             {/* Role grid */}
             <div
@@ -676,13 +733,14 @@ export default function HomePage() {
               {POOL_ROLES.map((role) => (
                 <div
                   key={role.title}
+                  className="hover-lift"
                   style={{ background: "#f8f7f4", borderRadius: 10, padding: "0.75rem 0.9rem" }}
                 >
                   <div style={{ color: "#8a6510", marginBottom: 5 }}>{role.icon}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#0f1117", marginBottom: 2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#14161d", marginBottom: 2 }}>
                     {role.title}
                   </div>
-                  <div style={{ fontSize: 11, color: "#4a4d5c", lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 11, color: "#383b47", lineHeight: 1.4 }}>
                     {role.sub}
                   </div>
                 </div>
@@ -693,9 +751,9 @@ export default function HomePage() {
             <div
               style={{
                 paddingTop: "1rem",
-                borderTop: "1px solid rgba(15,17,23,0.10)",
+                borderTop: "1px solid rgba(20,18,12,0.10)",
                 fontSize: 12,
-                color: "#9496a1",
+                color: "#71717f",
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 8,
@@ -712,7 +770,7 @@ export default function HomePage() {
       </section>
 
       {/* ── §3 TRUST BAR ── */}
-      <div style={{ background: "#0f1117", color: "rgba(255,255,255,0.82)", padding: "0.9rem 2rem" }}>
+      <div style={{ background: "#14161d", color: "rgba(255,255,255,0.82)", padding: "0.9rem 2rem" }}>
         <div
           className="trust-bar-inner"
           style={{
@@ -727,7 +785,7 @@ export default function HomePage() {
         >
           {/* Gap 5: each trust item now uses its specific contextual icon */}
           {TRUST_ITEMS.map((item) => (
-            <div key={item.text} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13 }}>
+            <div key={item.text} className="hover-lift" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13 }}>
               {item.icon}
               {item.text}
             </div>
@@ -739,8 +797,8 @@ export default function HomePage() {
       <div
         style={{
           background: "#f5e9c8",
-          borderTop: "1px solid #e0c870",
-          borderBottom: "1px solid #e0c870",
+          borderTop: "1px solid var(--gold-border)",
+          borderBottom: "1px solid var(--gold-border)",
           padding: "0.85rem 2rem",
         }}
       >
@@ -759,6 +817,7 @@ export default function HomePage() {
           {RIBBON_ITEMS.map((item) => (
             <div
               key={item.label}
+              className="hover-lift"
               style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500, color: "#8a6510" }}
             >
               {item.icon}
@@ -773,13 +832,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Why it matters</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -788,7 +848,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 3rem",
@@ -803,7 +863,7 @@ export default function HomePage() {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              border: "1px solid rgba(15,17,23,0.20)",
+              border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 12,
               overflow: "hidden",
               maxWidth: 900,
@@ -820,8 +880,8 @@ export default function HomePage() {
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   background: "#f8f7f4",
-                  color: "#9496a1",
-                  borderBottom: "1px solid rgba(15,17,23,0.20)",
+                  color: "#71717f",
+                  borderBottom: "1px solid rgba(20,18,12,0.18)",
                 }}
               >
                 Typical training programme
@@ -829,15 +889,17 @@ export default function HomePage() {
               {DIFF_THEM.map((text, i) => (
                 <div
                   key={text}
+                  className="row-hover iq-animate"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_THEM.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
+                    borderBottom: i < DIFF_THEM.length - 1 ? "1px solid rgba(20,18,12,0.10)" : undefined,
                     fontSize: 14,
-                    color: "#4a4d5c",
-                    borderRight: "1px solid rgba(15,17,23,0.20)",
+                    color: "#383b47",
+                    borderRight: "1px solid rgba(20,18,12,0.18)",
+                    animationDelay: `${0.05 * i}s`,
                   }}
                 >
                   <CrossSvg />
@@ -855,9 +917,9 @@ export default function HomePage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  background: "#0f1117",
+                  background: "#14161d",
                   color: "#ffffff",
-                  borderBottom: "1px solid rgba(15,17,23,0.20)",
+                  borderBottom: "1px solid rgba(20,18,12,0.18)",
                 }}
               >
                 iqcommune — Active Practitioners
@@ -865,15 +927,17 @@ export default function HomePage() {
               {DIFF_US.map((text, i) => (
                 <div
                   key={text}
+                  className="row-hover iq-animate"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_US.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
+                    borderBottom: i < DIFF_US.length - 1 ? "1px solid rgba(20,18,12,0.10)" : undefined,
                     fontSize: 14,
-                    color: "#0f1117",
+                    color: "#14161d",
                     fontWeight: 500,
+                    animationDelay: `${0.05 * i}s`,
                   }}
                 >
                   <CheckmarkSvg color="#c9982a" />
@@ -890,13 +954,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Training Topics</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -906,7 +971,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 3rem",
@@ -924,24 +989,29 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {TOPICS.map((topic) => (
+            {TOPICS.map((topic) => {
+              const accent = moduleAccent(topic.name);
+              return (
               <div
                 key={topic.name}
                 className="topic-card iq-animate"
                 style={{
-                  background: "#ffffff",
-                  border: "1px solid rgba(15,17,23,0.10)",
+                  background: `linear-gradient(180deg, ${accent.light} 0%, #ffffff 52%)`,
+                  border: `1px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   padding: "1.5rem",
-                  transition: "border-color 0.2s, transform 0.2s",
+                  ...accentVars(accent),
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: "#f5e9c8",
+                    background: accent.light,
+                    color: accent.base,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -950,14 +1020,15 @@ export default function HomePage() {
                 >
                   {topic.icon}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#0f1117", marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
                   {topic.name}
                 </div>
-                <div style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.55 }}>
+                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>
                   {topic.desc}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -967,13 +1038,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Who is this for</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -982,7 +1054,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 3rem",
@@ -1001,39 +1073,43 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {AUDIENCE_CARDS.map((card) => (
+            {AUDIENCE_CARDS.map((card, i) => {
+              const accent = paletteAccent(i);
+              return (
               <div
                 key={card.heading}
-                className="audience-card-inner"
+                className="audience-card-inner iq-animate"
                 style={{
-                  background: "#f8f7f4",
-                  border: "1.5px solid rgba(15,17,23,0.10)",
+                  background: `linear-gradient(180deg, ${accent.light} 0%, #f8f7f4 54%)`,
+                  border: `1.5px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   padding: "1.6rem 1.75rem",
                   flex: "1 1 210px",
                   maxWidth: 240,
-                  transition: "border-color 0.2s, transform 0.2s",
+                  ...accentVars(accent),
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: "#f5e9c8",
+                    background: accent.light,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "1rem",
-                    color: "#8a6510",
+                    color: accent.base,
                   }}
                 >
                   {card.icon}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#0f1117", marginBottom: 5 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 5 }}>
                   {card.heading}
                 </div>
-                <div style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.5, marginBottom: "0.75rem" }}>
+                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.5, marginBottom: "0.75rem" }}>
                   {card.desc}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -1043,9 +1119,9 @@ export default function HomePage() {
                       style={{
                         fontSize: 11,
                         fontWeight: 500,
-                        color: "#8a6510",
-                        background: "#f5e9c8",
-                        border: "1px solid #e0c870",
+                        color: accent.ink,
+                        background: accent.light,
+                        border: `1px solid ${accent.base}33`,
                         padding: "3px 9px",
                         borderRadius: 100,
                       }}
@@ -1055,14 +1131,15 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Gap 7: footnote has SVG icon, font-size 12, margin-top 1.75rem */}
           <p
             style={{
               fontSize: 12,
-              color: "#9496a1",
+              color: "#71717f",
               textAlign: "center",
               marginTop: "1.75rem",
               lineHeight: 1.5,
@@ -1083,13 +1160,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Process</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -1098,7 +1176,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 3rem",
@@ -1120,14 +1198,16 @@ export default function HomePage() {
             {HOW_STEPS.map((step) => (
               <div
                 key={step.num}
+                className="step"
                 style={{ textAlign: "center", flex: "1 1 180px", maxWidth: 210 }}
               >
                 <div
+                  className="step-circle"
                   style={{
                     width: 52,
                     height: 52,
                     borderRadius: "50%",
-                    background: "#0f1117",
+                    background: "#14161d",
                     color: "#ffffff",
                     fontSize: 20,
                     fontWeight: 600,
@@ -1139,10 +1219,10 @@ export default function HomePage() {
                 >
                   {step.num}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: "#0f1117" }}>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: "#14161d" }}>
                   {step.title}
                 </div>
-                <div style={{ fontSize: 13.5, color: "#4a4d5c", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13.5, color: "#383b47", lineHeight: 1.6 }}>
                   {step.desc}
                 </div>
               </div>
@@ -1156,13 +1236,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Takeaways</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -1171,7 +1252,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 2rem",
@@ -1189,28 +1270,31 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {WALKOUT_CARDS.map((card) => (
+            {WALKOUT_CARDS.map((card) => {
+              const accent = moduleAccent(card.title);
+              return (
               <div
                 key={card.title}
-                className="walkout-card"
+                className="walkout-card iq-animate"
                 style={{
-                  border: "1px solid rgba(15,17,23,0.10)",
+                  border: "1px solid rgba(20,18,12,0.10)",
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   overflow: "hidden",
-                  transition: "transform 0.2s, border-color 0.2s",
+                  ...accentVars(accent),
                 }}
               >
                 {/* Dark header */}
                 <div
                   style={{
-                    background: "#0f1117",
+                    background: "#14161d",
                     padding: "1rem 1.25rem",
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                   }}
                 >
-                  <span style={{ color: "#c9982a", flexShrink: 0 }}>{card.icon}</span>
+                  <span style={{ color: accent.base, flexShrink: 0 }}>{card.icon}</span>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.3 }}>
                     {card.title}
                   </div>
@@ -1225,7 +1309,7 @@ export default function HomePage() {
                         alignItems: "flex-start",
                         gap: 9,
                         fontSize: 13,
-                        color: "#4a4d5c",
+                        color: "#383b47",
                         lineHeight: 1.55,
                         marginBottom: "0.6rem",
                       }}
@@ -1238,19 +1322,20 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Gap 8: walkout callout padding 1rem 1.5rem, color #4a4d5c (ink-muted), margin-top 2rem */}
+          {/* Gap 8: walkout callout padding 1rem 1.5rem, color #383b47 (ink-muted), margin-top 2rem */}
           <div
             style={{
               background: "#f8f7f4",
-              border: "1px solid rgba(15,17,23,0.10)",
+              border: "1px solid rgba(20,18,12,0.10)",
               borderLeft: "3px solid #c9982a",
               borderRadius: "0 12px 12px 0",
               padding: "1rem 1.5rem",
               fontSize: 14,
-              color: "#4a4d5c",
+              color: "#383b47",
               lineHeight: 1.65,
               maxWidth: 780,
               margin: "2rem auto 0",
@@ -1264,7 +1349,7 @@ export default function HomePage() {
               <path d="M12 8v4M12 16h.01" />
             </svg>
             <span>
-              <strong style={{ color: "#0f1117", fontWeight: 600 }}>This isn&apos;t a certificate programme.</strong>{" "}
+              <strong style={{ color: "#14161d", fontWeight: 600 }}>This isn&apos;t a certificate programme.</strong>{" "}
               There are no slides to take home. What you leave with is a working plan — built around your actual numbers, in the room, with a practitioner who can sense-check it on the spot.
             </span>
           </div>
@@ -1276,13 +1361,14 @@ export default function HomePage() {
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <Pill>FAQs</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#0f1117",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -1291,7 +1377,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "#4a4d5c",
+              color: "#383b47",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 3rem",
@@ -1300,22 +1386,23 @@ export default function HomePage() {
             Honest answers — no fine print.
           </p>
 
-          <FaqAccordion />
+          <FaqAccordion items={HOME_FAQS} />
         </div>
       </section>
 
       {/* ── §11 TOOLS & CALCULATORS ── */}
-      <section style={{ background: "#0f1117", padding: "4rem 2rem" }}>
+      <section style={{ background: "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(201,152,42,0.06), transparent 70%), #f4f2ec", borderTop: "1px solid rgba(20,18,12,0.09)", padding: "4rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Pill dark>Tools &amp; Calculators</Pill>
+          <Pill>Tools &amp; Calculators</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
               lineHeight: 1.2,
               letterSpacing: "-0.01em",
               textAlign: "center",
-              color: "#ffffff",
+              color: "#14161d",
               marginBottom: "1rem",
             }}
           >
@@ -1324,7 +1411,7 @@ export default function HomePage() {
           <p
             style={{
               fontSize: 16,
-              color: "rgba(255,255,255,0.5)",
+              color: "#5b5e6c",
               textAlign: "center",
               maxWidth: 520,
               margin: "0 auto 2rem",
@@ -1342,17 +1429,20 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {TOOLS.map((tool) => (
+            {TOOLS.map((tool) => {
+              const accent = moduleAccent(tool.module);
+              return (
               <div
                 key={tool.name}
-                className="tool-card"
+                className="tool-card iq-animate"
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: "#ffffff",
+                  border: `1px solid color-mix(in srgb, ${accent.base} 18%, rgba(20,18,12,0.09))`,
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   padding: "1.25rem",
-                  transition: "background 0.2s, border-color 0.2s",
                   cursor: "default",
+                  ...accentVars(accent),
                 }}
               >
                 <div
@@ -1361,16 +1451,16 @@ export default function HomePage() {
                     fontWeight: 600,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color: "#c9982a",
+                    color: accent.ink,
                     marginBottom: 8,
                   }}
                 >
                   {tool.module}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "#ffffff", marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
                   {tool.name}
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: "0.75rem" }}>
+                <div style={{ fontSize: 12, color: "#383b47", lineHeight: 1.5, marginBottom: "0.75rem" }}>
                   {tool.desc}
                 </div>
                 <div
@@ -1379,8 +1469,10 @@ export default function HomePage() {
                     alignItems: "center",
                     gap: 5,
                     fontSize: 11,
-                    color: "rgba(255,255,255,0.30)",
-                    border: "1px solid rgba(255,255,255,0.10)",
+                    fontWeight: 500,
+                    color: accent.ink,
+                    background: accent.light,
+                    border: `1px solid color-mix(in srgb, ${accent.base} 28%, transparent)`,
                     borderRadius: 100,
                     padding: "3px 9px",
                   }}
@@ -1392,16 +1484,18 @@ export default function HomePage() {
                   Coming soon
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── §12 CTA ── */}
-      <section style={{ background: "#0f1117", padding: "5.5rem 2rem", textAlign: "center" }}>
+      <section style={{ background: "radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201,152,42,0.14), transparent 72%), #14161d", borderTop: "1px solid rgba(201,152,42,0.18)", padding: "5.5rem 2rem", textAlign: "center" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill dark>Get Started</Pill>
           <h2
+            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1455,85 +1549,48 @@ export default function HomePage() {
       </section>
 
       {/* ── §13 FOOTER ── */}
-      <footer
-        style={{
-          background: "#080a0e",
-          padding: "2rem",
-          textAlign: "center",
-          fontSize: 13,
-          color: "rgba(255,255,255,0.30)",
-        }}
-      >
-        {/* Practitioner recruitment block */}
-        <div
-          style={{
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            paddingBottom: "1.5rem",
-            marginBottom: "1.25rem",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "#c9982a",
-              marginBottom: "0.5rem",
-            }}
-          >
-            Are you a finance professional?
-          </p>
-          <a
-            href="/practitioners"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              fontSize: 14,
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.65)",
-              textDecoration: "none",
-              borderBottom: "1px solid rgba(201,152,42,0.35)",
-              paddingBottom: 2,
-              transition: "color 0.15s, border-color 0.15s",
-            }}
-          >
-            Teach what you practise — join the iqcommune practitioner network
-            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </a>
-        </div>
-
-        <p>
-          {/* Gap 12: period after "connects" matches source */}
-          <strong style={{ color: "rgba(255,255,255,0.70)", fontWeight: 500 }}>iqcommune</strong>
-          {" "}— Where financial intelligence connects. &nbsp;·&nbsp;{" "}
-          <a href="mailto:hello@iqcommune.com" style={{ color: "rgba(255,255,255,0.50)", textDecoration: "none" }}>
-            hello@iqcommune.com
-          </a>
-        </p>
-        <p style={{ marginTop: "0.5rem" }}>
-          © {new Date().getFullYear()} iqcommune. All rights reserved.
-        </p>
-      </footer>
-      {/* ── FAQ accordion + card entrance animation ── */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        (function () {
-          var cards = document.querySelectorAll('.iq-animate');
-          if (!cards.length) return;
-          var io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('iq-visible');
-                io.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.12 });
-          cards.forEach(function (c) { io.observe(c); });
-        })();
-      `}} />
+      <SiteFooter
+        email="hello@iqcommune.com"
+        tagline="Where financial intelligence connects."
+        top={
+          <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", paddingBottom: "1.5rem", marginBottom: "1.25rem" }}>
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "var(--gold)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Are you a finance professional?
+            </p>
+            <a
+              href="/practitioners"
+              className="link-arrow"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 14,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.65)",
+                textDecoration: "none",
+                borderBottom: "1px solid rgba(201,152,42,0.35)",
+                paddingBottom: 2,
+              }}
+            >
+              Teach what you practise — join the iqcommune practitioner network
+              <svg className="link-chevron" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        }
+      />
+      {/* Card entrance animation — reveals .iq-animate elements on scroll. */}
+      <RevealOnScroll />
     </main>
   );
 }

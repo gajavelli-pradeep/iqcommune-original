@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ApplicationForm } from "@/components/public/ApplicationForm";
+import { RevealOnScroll } from "@/components/public/RevealOnScroll";
+import { FaqAccordion } from "@/components/public/FaqAccordion";
+import { SiteHeader } from "@/components/public/SiteHeader";
+import { SiteFooter } from "@/components/public/SiteFooter";
+import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 
 export const metadata: Metadata = {
   title: "Join as a Practitioner | iqcommune",
@@ -185,24 +190,63 @@ const STEPS: Step[] = [
   },
 ];
 
-// Gap 11: exact source copy
-const IQCOMMUNE_HANDLES = [
-  "All client acquisition and marketing",
-  "Group formation and cohort management",
-  "Venue booking (for individual/group sessions)",
-  "Scheduling, confirmations & logistics",
-  "Fee collection and revenue share payout",
-  "Your identity and privacy protection",
+// Contextual row icon — each table row gets an icon matched to its meaning.
+type RowIcon =
+  | "megaphone" | "users" | "pin" | "calendar" | "rupee" | "shield"
+  | "award" | "clock" | "briefcase" | "chat" | "check" | "ban";
+
+const ROW_ICON_PATHS: Record<RowIcon, React.ReactNode> = {
+  megaphone: <><path d="M3 11l15-5v12L3 14z" /><path d="M11.5 17a2.5 2.5 0 0 1-4.7-1.2" /></>,
+  users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></>,
+  pin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
+  calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
+  rupee: <><path d="M6 3h12M6 8h12M9 13a4 4 0 0 0 4-4M6 13h7l-3 8" /></>,
+  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  award: <><circle cx="12" cy="8" r="6" /><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
+  briefcase: <><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+  chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+  check: <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>,
+  ban: <><circle cx="12" cy="12" r="9" /><path d="M5.6 5.6l12.8 12.8" /></>,
+};
+
+function RowIconSvg({ name, color }: { name: RowIcon; color: string }) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={{ flexShrink: 0, marginTop: 2 }}
+    >
+      {ROW_ICON_PATHS[name]}
+    </svg>
+  );
+}
+
+// Gap 11: exact source copy — icon matched to each responsibility.
+const IQCOMMUNE_HANDLES: { text: string; icon: RowIcon }[] = [
+  { text: "All client acquisition and marketing", icon: "megaphone" },
+  { text: "Group formation and cohort management", icon: "users" },
+  { text: "Venue booking (for individual/group sessions)", icon: "pin" },
+  { text: "Scheduling, confirmations & logistics", icon: "calendar" },
+  { text: "Fee collection and revenue share payout", icon: "rupee" },
+  { text: "Your identity and privacy protection", icon: "shield" },
 ];
 
-// Gap 12: exact source copy
-const YOU_BRING = [
-  "Active, current expertise in your domain",
-  "2–3 hours for each confirmed session",
-  "Real examples from your current work",
-  "Willingness to take genuine questions",
-  "Availability confirmation before each session",
-  "Commitment to no product cross-selling",
+// Gap 12: exact source copy — icon matched to each contribution.
+const YOU_BRING: { text: string; icon: RowIcon }[] = [
+  { text: "Active, current expertise in your domain", icon: "award" },
+  { text: "2–3 hours for each confirmed session", icon: "clock" },
+  { text: "Real examples from your current work", icon: "briefcase" },
+  { text: "Willingness to take genuine questions", icon: "chat" },
+  { text: "Availability confirmation before each session", icon: "check" },
+  { text: "Commitment to no product cross-selling", icon: "ban" },
 ];
 
 interface ModuleCard {
@@ -380,7 +424,7 @@ function Pill({ children }: { children: React.ReactNode }) {
         textTransform: "uppercase",
         color: "#8a6510",
         background: "#f5e9c8",
-        border: "1px solid #e0c870",
+        border: "1px solid var(--gold-border)",
         padding: "5px 14px",
         borderRadius: 100,
         marginBottom: 18,
@@ -402,7 +446,7 @@ function DarkPill({ children }: { children: React.ReactNode }) {
         fontWeight: 600,
         letterSpacing: "0.12em",
         textTransform: "uppercase",
-        color: "#f0c84a",
+        color: "var(--gold-on-ink)",
         background: "rgba(201,152,42,0.15)",
         border: "1px solid rgba(201,152,42,0.30)",
         padding: "5px 14px",
@@ -435,101 +479,20 @@ export default function PractitionersPage() {
           .roles-grid { grid-template-columns: 1fr !important; }
           .modules-grid { grid-template-columns: 1fr !important; }
         }
-        details summary { list-style: none; }
-        details summary::-webkit-details-marker { display: none; }
-        details[open] summary .faq-chevron { transform: rotate(180deg); }
-        .faq-chevron { transition: transform 0.22s; }
       `}</style>
 
       {/* ── §1 NAV ── */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "rgba(255,255,255,0.95)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(15,17,23,0.10)",
-          padding: "0 2rem",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 68,
-          }}
-        >
-          {/* Gap 1 & 2: logo with tagline + divider before Practitioner/Network */}
-          <Link href="/" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 14 }}>
-            {/* Logo wordmark + tagline stacked */}
-            <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              <span style={{ display: "flex", alignItems: "baseline", gap: 0, lineHeight: 1 }}>
-                <span
-                  style={{
-                    color: "#c9982a",
-                    fontWeight: 700,
-                    fontSize: 26,
-                    letterSpacing: "-0.04em",
-                    lineHeight: 1,
-                  }}
-                >
-                  iq
-                </span>
-                <span
-                  style={{
-                    color: "#0f1117",
-                    fontWeight: 300,
-                    fontSize: 26,
-                    letterSpacing: "-0.04em",
-                    lineHeight: 1,
-                  }}
-                >
-                  commune
-                </span>
-              </span>
-              {/* Gap 1: tagline below wordmark */}
-              <span
-                style={{
-                  fontSize: 9.5,
-                  fontWeight: 500,
-                  letterSpacing: "0.1em",
-                  color: "#9496a1",
-                  textTransform: "uppercase",
-                  lineHeight: 1,
-                }}
-              >
-                Where financial intelligence connects
-              </span>
-            </span>
-            {/* Gap 2: Practitioner/Network with left-border divider */}
-            <span
-              style={{
-                borderLeft: "1px solid rgba(15,17,23,0.20)",
-                paddingLeft: 14,
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#8a6510", lineHeight: 1.4 }}>
-                Practitioner
-              </span>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#8a6510", lineHeight: 1.4 }}>
-                Network
-              </span>
-            </span>
-          </Link>
-          {/* Gap 3 & 4: SVG arrow + correct link text + proper styling */}
+      <SiteHeader
+        logoHref="/"
+        badge={["Practitioner", "Network"]}
+        right={
           <Link
             href="/"
+            className="foot-link"
             style={{
               fontSize: 13,
               fontWeight: 500,
-              color: "#4a4d5c",
+              color: "var(--ink-muted)",
               textDecoration: "none",
               display: "inline-flex",
               alignItems: "center",
@@ -541,13 +504,13 @@ export default function PractitionersPage() {
             </svg>
             Back to main site
           </Link>
-        </div>
-      </nav>
+        }
+      />
 
       {/* ── §2 HERO ── */}
       <section
         style={{
-          background: "#0f1117",
+          background: "#14161d",
           padding: "5.5rem 2rem 5rem",
           position: "relative",
           overflow: "hidden",
@@ -605,7 +568,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  color: "#f0c84a",
+                  color: "var(--gold-on-ink)",
                   background: "rgba(201,152,42,0.15)",
                   border: "1px solid rgba(201,152,42,0.30)",
                   padding: "5px 14px",
@@ -657,6 +620,7 @@ export default function PractitionersPage() {
             {/* CTA */}
             <a
               href="#apply-form"
+              className="btn-cta"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -716,6 +680,7 @@ export default function PractitionersPage() {
               {PERKS.map((perk, i) => (
                 <div
                   key={perk.title}
+                  className="iq-perk iq-animate"
                   style={{
                     display: "flex",
                     gap: 12,
@@ -723,9 +688,11 @@ export default function PractitionersPage() {
                     paddingTop: "0.85rem",
                     paddingBottom: "0.85rem",
                     borderBottom: i < PERKS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                    animationDelay: `${0.06 * i}s`,
                   }}
                 >
                   <div
+                    className="iq-perk-icon"
                     style={{
                       width: 34,
                       height: 34,
@@ -760,8 +727,8 @@ export default function PractitionersPage() {
       <div
         style={{
           background: "#f5e9c8",
-          borderTop: "1px solid #e0c870",
-          borderBottom: "1px solid #e0c870",
+          borderTop: "1px solid var(--gold-border)",
+          borderBottom: "1px solid var(--gold-border)",
           padding: "0.9rem 2rem",
         }}
       >
@@ -780,6 +747,7 @@ export default function PractitionersPage() {
           {TRUST_ITEMS.map((item) => (
             <div
               key={item.text}
+              className="hover-lift"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -805,12 +773,13 @@ export default function PractitionersPage() {
             <Pill>Who we&apos;re looking for</Pill>
             {/* Gap 10: section-headline font size clamp(26px,3.8vw,40px) */}
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -821,7 +790,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -839,40 +808,47 @@ export default function PractitionersPage() {
             }}
           >
             {/* Gap 6, 7, 8: SVG icons, exact source desc, no ideal line */}
-            {ROLES.map((role) => (
+            {ROLES.map((role, i) => {
+              const accent = paletteAccent(i);
+              return (
               <div
                 key={role.title}
+                className="role-card iq-animate"
                 style={{
-                  background: "#ffffff",
-                  border: "1px solid rgba(15,17,23,0.10)",
+                  background: `linear-gradient(180deg, ${accent.light} 0%, #ffffff 52%)`,
+                  border: `1px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   padding: "1.5rem",
+                  ...accentVars(accent),
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: "#f5e9c8",
+                    background: accent.light,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "1rem",
-                    color: "#8a6510",
+                    color: accent.base,
                     flexShrink: 0,
                   }}
                   aria-hidden="true"
                 >
                   {role.icon}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#0f1117", marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
                   {role.title}
                 </div>
                 {/* Gap 7: no ideal line rendered */}
-                <div style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.55 }}>{role.desc}</div>
+                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>{role.desc}</div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Gap 9: footnote with info SVG + exact source text */}
@@ -880,7 +856,7 @@ export default function PractitionersPage() {
             style={{
               textAlign: "center",
               fontSize: 12,
-              color: "#9496a1",
+              color: "#71717f",
               marginTop: "1.75rem",
               display: "flex",
               alignItems: "center",
@@ -903,12 +879,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>The process</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -919,7 +896,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -929,7 +906,7 @@ export default function PractitionersPage() {
             </p>
           </div>
           <div
-            className="steps-row"
+            className="steps-row iq-steps"
             style={{
               display: "flex",
               flexWrap: "wrap",
@@ -937,19 +914,23 @@ export default function PractitionersPage() {
               maxWidth: 960,
               margin: "0 auto",
               justifyContent: "center",
+              position: "relative",
             }}
           >
+            <div className="iq-step-connector" aria-hidden="true" />
             {STEPS.map((step, i) => (
               <div
                 key={step.title}
-                style={{ flex: "1 1 180px", maxWidth: 210, textAlign: "center" }}
+                className="step"
+                style={{ flex: "1 1 180px", maxWidth: 210, textAlign: "center", position: "relative" }}
               >
                 <div
+                  className="step-circle"
                   style={{
                     width: 52,
                     height: 52,
                     borderRadius: "50%",
-                    background: "#0f1117",
+                    background: "#14161d",
                     color: "#ffffff",
                     fontSize: 20,
                     fontWeight: 600,
@@ -957,14 +938,17 @@ export default function PractitionersPage() {
                     alignItems: "center",
                     justifyContent: "center",
                     margin: "0 auto 1rem",
+                    position: "relative",
+                    zIndex: 1,
+                    boxShadow: `0 0 0 4px #ffffff, 0 0 0 5px color-mix(in srgb, ${paletteAccent(i).base} 50%, transparent)`,
                   }}
                 >
                   {i + 1}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#0f1117", marginBottom: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#14161d", marginBottom: 6 }}>
                   {step.title}
                 </div>
-                <div style={{ fontSize: 13.5, color: "#4a4d5c", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13.5, color: "#383b47", lineHeight: 1.6 }}>
                   {step.desc}
                 </div>
               </div>
@@ -979,12 +963,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Division of work</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -995,7 +980,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1011,7 +996,7 @@ export default function PractitionersPage() {
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 2,
-              border: "1px solid rgba(15,17,23,0.20)",
+              border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 12,
               overflow: "hidden",
               maxWidth: 860,
@@ -1027,8 +1012,8 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(15,17,23,0.20)",
-                  background: "#0f1117",
+                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  background: "#14161d",
                   color: "#ffffff",
                 }}
               >
@@ -1036,32 +1021,23 @@ export default function PractitionersPage() {
               </div>
               {IQCOMMUNE_HANDLES.map((item, i) => (
                 <div
-                  key={item}
+                  key={item.text}
+                  className="row-hover iq-animate"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
+                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
                     fontSize: 14,
-                    color: "#0f1117",
+                    color: "#14161d",
                     fontWeight: 500,
                     lineHeight: 1.5,
+                    animationDelay: `${0.04 * i}s`,
                   }}
                 >
-                  <svg
-                    width="15"
-                    height="15"
-                    fill="none"
-                    stroke="#c9982a"
-                    strokeWidth="2.5"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 3 }}
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  {item}
+                  <RowIconSvg name={item.icon} color="#c9982a" />
+                  {item.text}
                 </div>
               ))}
             </div>
@@ -1075,40 +1051,31 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(15,17,23,0.20)",
+                  borderBottom: "1px solid rgba(20,18,12,0.18)",
                   background: "#f8f7f4",
-                  color: "#9496a1",
+                  color: "#71717f",
                 }}
               >
                 You bring
               </div>
               {YOU_BRING.map((item, i) => (
                 <div
-                  key={item}
+                  key={item.text}
+                  className="row-hover iq-animate"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < YOU_BRING.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
+                    borderBottom: i < YOU_BRING.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
                     fontSize: 14,
-                    color: "#4a4d5c",
+                    color: "#383b47",
                     lineHeight: 1.5,
+                    animationDelay: `${0.04 * i}s`,
                   }}
                 >
-                  <svg
-                    width="15"
-                    height="15"
-                    fill="none"
-                    stroke="#9496a1"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 3 }}
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  {item}
+                  <RowIconSvg name={item.icon} color="#71717f" />
+                  {item.text}
                 </div>
               ))}
             </div>
@@ -1122,12 +1089,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Teaching modules</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -1137,7 +1105,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1155,52 +1123,61 @@ export default function PractitionersPage() {
               marginTop: "2rem",
             }}
           >
-            {MODULE_CARDS.map((mod) => (
+            {MODULE_CARDS.map((mod) => {
+              const accent = moduleAccent(mod.name);
+              return (
               <div
                 key={mod.name}
+                className="module-card iq-animate"
                 style={{
-                  border: "1.5px solid rgba(15,17,23,0.10)",
+                  background: `linear-gradient(180deg, ${accent.light} 0%, #f8f7f4 54%)`,
+                  border: `1.5px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
+                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   padding: "1.25rem",
+                  ...accentVars(accent),
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 40,
                     height: 40,
                     borderRadius: 9,
-                    background: "#f5e9c8",
+                    background: accent.light,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "0.85rem",
-                    color: "#8a6510",
+                    color: accent.base,
                   }}
                 >
                   {mod.icon}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#0f1117", marginBottom: 3 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#14161d", marginBottom: 3 }}>
                   {mod.name}
                 </div>
-                <div style={{ fontSize: 12, color: "#8a6510", fontWeight: 500, marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: accent.ink, fontWeight: 500, marginBottom: 6 }}>
                   {mod.ideal}
                 </div>
-                <div style={{ fontSize: 12.5, color: "#4a4d5c", lineHeight: 1.55 }}>
+                <div style={{ fontSize: 12.5, color: "#383b47", lineHeight: 1.55 }}>
                   {mod.desc}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── §9 HONEST SECTION (dark) ── */}
-      <section style={{ background: "#0f1117", padding: "4rem 2rem" }}>
+      <section style={{ background: "#14161d", padding: "4rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           {/* Gap 15: no section-sub paragraph — just pill + h2, then grid with marginTop */}
           <div style={{ textAlign: "center" }}>
             <DarkPill>Before you apply</DarkPill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1229,6 +1206,7 @@ export default function PractitionersPage() {
           >
             {/* Good fit */}
             <div
+              className="iq-animate iq-honest-card"
               style={{
                 background: "rgba(42,107,42,0.15)",
                 border: "1px solid rgba(42,107,42,0.25)",
@@ -1242,7 +1220,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  color: "#6fcf6f",
+                  color: "var(--green-on-ink)",
                   marginBottom: "0.75rem",
                 }}
               >
@@ -1264,11 +1242,10 @@ export default function PractitionersPage() {
                     width="14"
                     height="14"
                     fill="none"
-                    stroke="#6fcf6f"
                     strokeWidth="2.5"
                     viewBox="0 0 24 24"
                     aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 3 }}
+                    style={{ stroke: "var(--green-on-ink)", flexShrink: 0, marginTop: 3 }}
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -1279,6 +1256,7 @@ export default function PractitionersPage() {
 
             {/* Not a fit */}
             <div
+              className="iq-animate iq-honest-card"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.10)",
@@ -1337,12 +1315,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Transparency</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -1353,7 +1332,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1375,9 +1354,10 @@ export default function PractitionersPage() {
           >
             {/* Never disclosed */}
             <div
+              className="iq-animate iq-disclosure-card"
               style={{
                 background: "#f8f7f4",
-                border: "1px solid rgba(15,17,23,0.10)",
+                border: "1px solid rgba(20,18,12,0.10)",
                 borderRadius: 12,
                 padding: "1.75rem",
               }}
@@ -1388,7 +1368,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.10em",
                   textTransform: "uppercase",
-                  color: "#9496a1",
+                  color: "#71717f",
                   marginBottom: "0.5rem",
                 }}
               >
@@ -1398,7 +1378,7 @@ export default function PractitionersPage() {
                 style={{
                   fontSize: 17,
                   fontWeight: 600,
-                  color: "#0f1117",
+                  color: "#14161d",
                   marginBottom: "0.75rem",
                   letterSpacing: "-0.01em",
                   lineHeight: 1.25,
@@ -1409,7 +1389,7 @@ export default function PractitionersPage() {
               <div
                 style={{
                   fontSize: 13.5,
-                  color: "#4a4d5c",
+                  color: "#383b47",
                   lineHeight: 1.65,
                   marginBottom: "0.85rem",
                 }}
@@ -1425,7 +1405,7 @@ export default function PractitionersPage() {
                       alignItems: "flex-start",
                       gap: 9,
                       fontSize: 13,
-                      color: "#4a4d5c",
+                      color: "#383b47",
                       lineHeight: 1.5,
                     }}
                   >
@@ -1433,7 +1413,7 @@ export default function PractitionersPage() {
                       width="14"
                       height="14"
                       fill="none"
-                      stroke="#9496a1"
+                      stroke="#71717f"
                       strokeWidth="2"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
@@ -1450,9 +1430,10 @@ export default function PractitionersPage() {
 
             {/* Shared on confirm */}
             <div
+              className="iq-animate iq-disclosure-card"
               style={{
                 background: "#f5e9c8",
-                border: "1px solid #e0c870",
+                border: "1px solid var(--gold-border)",
                 borderRadius: 12,
                 padding: "1.75rem",
               }}
@@ -1473,7 +1454,7 @@ export default function PractitionersPage() {
                 style={{
                   fontSize: 17,
                   fontWeight: 600,
-                  color: "#0f1117",
+                  color: "#14161d",
                   marginBottom: "0.75rem",
                   letterSpacing: "-0.01em",
                   lineHeight: 1.25,
@@ -1484,7 +1465,7 @@ export default function PractitionersPage() {
               <div
                 style={{
                   fontSize: 13.5,
-                  color: "#4a4d5c",
+                  color: "#383b47",
                   lineHeight: 1.65,
                   marginBottom: "0.85rem",
                 }}
@@ -1500,7 +1481,7 @@ export default function PractitionersPage() {
                       alignItems: "flex-start",
                       gap: 9,
                       fontSize: 13,
-                      color: "#4a4d5c",
+                      color: "#383b47",
                       lineHeight: 1.5,
                     }}
                   >
@@ -1529,12 +1510,12 @@ export default function PractitionersPage() {
               maxWidth: 880,
               margin: "1.5rem auto 0",
               background: "#f8f7f4",
-              border: "1px solid rgba(15,17,23,0.10)",
+              border: "1px solid rgba(20,18,12,0.10)",
               borderLeft: "3px solid #c9982a",
               borderRadius: "0 12px 12px 0",
               padding: "1rem 1.25rem",
               fontSize: 13.5,
-              color: "#4a4d5c",
+              color: "#383b47",
               lineHeight: 1.65,
               display: "flex",
               alignItems: "flex-start",
@@ -1556,7 +1537,7 @@ export default function PractitionersPage() {
             </svg>
             <span>
               We&apos;ll be honest about one thing we can&apos;t fully control: once a session is confirmed, the organiser knows a practitioner is coming. Like any in-person engagement, your identity becomes known in the room.{" "}
-              <strong style={{ color: "#0f1117" }}>
+              <strong style={{ color: "#14161d" }}>
                 What we commit to is that this only happens after your explicit availability confirmation — and that we never facilitate direct client-to-practitioner contact outside our coordination layer.
               </strong>{" "}
               Your consent to this operational disclosure is captured during onboarding — and is entirely voluntary.
@@ -1571,12 +1552,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <Pill>Apply</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -1587,7 +1569,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto",
                 lineHeight: 1.65,
@@ -1600,7 +1582,7 @@ export default function PractitionersPage() {
           <div
             style={{
               background: "#ffffff",
-              border: "1px solid rgba(15,17,23,0.20)",
+              border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 20,
               padding: "2.5rem",
               boxShadow: "0 12px 48px rgba(0,0,0,0.06)",
@@ -1617,12 +1599,13 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>FAQs</Pill>
             <h2
+              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#0f1117",
+                color: "#14161d",
                 marginBottom: 12,
               }}
             >
@@ -1631,7 +1614,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#4a4d5c",
+                color: "#383b47",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1641,77 +1624,18 @@ export default function PractitionersPage() {
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {FAQS.map((faq) => (
-              <details
-                key={faq.q}
-                style={{
-                  border: "1px solid rgba(15,17,23,0.10)",
-                  borderRadius: 12,
-                  background: "#ffffff",
-                  overflow: "hidden",
-                }}
-              >
-                <summary
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "1rem",
-                    padding: "1.1rem 1.4rem",
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: "#0f1117",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    minHeight: 44,
-                  }}
-                >
-                  {faq.q}
-                  <svg
-                    className="faq-chevron"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="#9496a1"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </summary>
-                <div
-                  style={{
-                    padding: "1rem 1.4rem 1.1rem",
-                    fontSize: 14,
-                    color: "#4a4d5c",
-                    lineHeight: 1.7,
-                    borderTop: "1px solid rgba(15,17,23,0.10)",
-                  }}
-                >
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion items={FAQS} />
         </div>
       </section>
 
       {/* ── §13 FOOTER ── */}
-      <footer
-        style={{
-          background: "#080a0e",
-          padding: "2rem",
-          textAlign: "center",
-          fontSize: 13,
-          color: "rgba(255,255,255,0.30)",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}>
+      <SiteFooter
+        email="practitioners@iqcommune.com"
+        tagline="practitioner network"
+        top={
           <Link
             href="/"
+            className="foot-link"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1728,19 +1652,11 @@ export default function PractitionersPage() {
             </svg>
             Back to iqcommune
           </Link>
-          <p>
-            <strong style={{ color: "rgba(255,255,255,0.70)", fontWeight: 500 }}>iqcommune</strong>
-            {" — practitioner network · "}
-            <a
-              href="mailto:practitioners@iqcommune.com"
-              style={{ color: "rgba(255,255,255,0.50)", textDecoration: "none" }}
-            >
-              practitioners@iqcommune.com
-            </a>
-          </p>
-          <p style={{ marginTop: "0.4rem" }}>© 2025 iqcommune. All rights reserved.</p>
-        </div>
-      </footer>
+        }
+      />
+
+      {/* Card entrance animation — reveals .iq-animate elements on scroll. */}
+      <RevealOnScroll />
     </main>
   );
 }

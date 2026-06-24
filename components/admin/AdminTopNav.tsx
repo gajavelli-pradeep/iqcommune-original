@@ -25,7 +25,7 @@ export function AdminTopNav({ email }: { email: string }) {
         zIndex: 200,
         background: "rgba(255,255,255,0.97)",
         backdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(15,17,23,.10)",
+        borderBottom: "1px solid rgba(20,18,12,.10)",
         padding: "0 1.75rem",
         display: "flex",
         alignItems: "center",
@@ -39,7 +39,7 @@ export function AdminTopNav({ email }: { email: string }) {
           {/* logo-mark row */}
           <div style={{ display: "flex", alignItems: "baseline", lineHeight: 1 }}>
             <span style={{ color: "#c9982a", fontWeight: 700, fontSize: 22, letterSpacing: "-0.04em" }}>iq</span>
-            <span style={{ color: "#0f1117", fontWeight: 300, fontSize: 22, letterSpacing: "-0.04em" }}>commune</span>
+            <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 22, letterSpacing: "-0.04em" }}>commune</span>
           </div>
           {/* Gap 1: logo-tag */}
           <div
@@ -48,7 +48,7 @@ export function AdminTopNav({ email }: { email: string }) {
               fontWeight: 500,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "#9496a1",
+              color: "var(--ink-faint)",
             }}
           >
             Where financial intelligence connects
@@ -56,7 +56,7 @@ export function AdminTopNav({ email }: { email: string }) {
         </div>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 32, background: "rgba(15,17,23,.18)", flexShrink: 0 }} />
+        <div style={{ width: 1, height: 32, background: "rgba(20,18,12,.18)", flexShrink: 0 }} />
 
         {/* Admin console label */}
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -74,7 +74,7 @@ export function AdminTopNav({ email }: { email: string }) {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1px solid rgba(15,17,23,.18)",
+            border: "1px solid rgba(20,18,12,.18)",
             borderRadius: 100,
             padding: "7px 16px",
             width: 300,
@@ -83,7 +83,7 @@ export function AdminTopNav({ email }: { email: string }) {
             gap: 8,
           }}
         >
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, color: "#9496a1" }}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, color: "var(--ink-faint)" }}>
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
           </svg>
@@ -92,13 +92,13 @@ export function AdminTopNav({ email }: { email: string }) {
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             placeholder="Search across practitioners, sessions, requests…"
-            style={{ border: "none", background: "none", fontFamily: "inherit", fontSize: 13, color: "#0f1117", width: "100%", outline: "none" }}
+            style={{ border: "none", background: "none", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", width: "100%", outline: "none" }}
           />
           {globalSearch && (
             <button
               onClick={() => setGlobalSearch("")}
               aria-label="Clear search"
-              style={{ border: "none", background: "none", cursor: "pointer", color: "#9496a1", fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}
+              style={{ border: "none", background: "none", cursor: "pointer", color: "var(--ink-faint)", fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}
             >
               ✕
             </button>
@@ -109,7 +109,7 @@ export function AdminTopNav({ email }: { email: string }) {
       {/* Right cluster — Gap 4: 'Admin' label, Gap 5: dot position/border */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
         {/* Gap 4: 'Admin' text label (no email shown) */}
-        <span style={{ fontSize: 12, color: "#4a4d5c" }}>Admin</span>
+        <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>Admin</span>
 
         {/* Bell + popover */}
         <div style={{ position: "relative" }}>
@@ -121,10 +121,10 @@ export function AdminTopNav({ email }: { email: string }) {
               width: 34,
               height: 34,
               borderRadius: "50%",
-              border: "1px solid rgba(15,17,23,.18)",
+              border: "1px solid rgba(20,18,12,.18)",
               background: bellOpen ? "#f8f7f4" : "none",
               cursor: "pointer",
-              color: "#4a4d5c",
+              color: "var(--ink-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -143,9 +143,9 @@ export function AdminTopNav({ email }: { email: string }) {
               <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 290 }} />
               <div
                 role="menu"
-                style={{ position: "absolute", top: 42, right: 0, width: 260, background: "#fff", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10, boxShadow: "0 16px 48px rgba(0,0,0,0.14)", zIndex: 300, overflow: "hidden" }}
+                style={{ position: "absolute", top: 42, right: 0, width: 260, background: "#fff", border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, boxShadow: "0 16px 48px rgba(0,0,0,0.14)", zIndex: 300, overflow: "hidden" }}
               >
-                <div style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.08)" }}>
+                <div style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.08)" }}>
                   Quick actions
                 </div>
                 {NOTIF_LINKS.map((n) => (
@@ -153,7 +153,7 @@ export function AdminTopNav({ email }: { email: string }) {
                     key={n.tab}
                     role="menuitem"
                     onClick={() => { setActiveTab(n.tab); setBellOpen(false); }}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: "#0f1117", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: "var(--ink)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
                     onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#f8f7f4")}
                     onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
                   >
@@ -170,7 +170,7 @@ export function AdminTopNav({ email }: { email: string }) {
           style={{
             width: 34,
             height: 34,
-            background: "#0f1117",
+            background: "var(--ink)",
             color: "white",
             borderRadius: "50%",
             fontSize: 12,

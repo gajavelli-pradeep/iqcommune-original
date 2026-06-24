@@ -163,7 +163,7 @@ export function PractitionerTable({
               <tr
                 key={p.id}
                 tabIndex={0}
-                style={{ borderBottom: "1px solid rgba(15,17,23,.07)", cursor: "pointer" }}
+                style={{ borderBottom: "1px solid rgba(20,18,12,.07)", cursor: "pointer" }}
                 onClick={(e) => openDetail(p, e.currentTarget)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -177,12 +177,12 @@ export function PractitionerTable({
                 <td style={tdStyle}>
                   <div style={{ fontSize: 13 }}>{p.role}</div>
                   {p.org && (
-                    <div style={{ fontSize: 11, color: "#9496a1" }}>{p.org}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.org}</div>
                   )}
                 </td>
                 <td style={tdStyle}>{p.city}</td>
                 <td style={tdStyle}>{p.modules.join(", ")}</td>
-                <td style={{ ...tdStyle, fontSize: 12, color: "#9496a1", whiteSpace: "nowrap" }}>
+                <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                   {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                 </td>
                 <td style={tdStyle}>
@@ -202,7 +202,7 @@ export function PractitionerTable({
                     {p.status === "Screening Done" && (
                       <button
                         onClick={(e) => { lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                        style={btnStyle("#c9982a", "#fff")}
+                        style={btnStyle("#c9982a", "#14161d")}
                       >
                         Gen. link
                       </button>
@@ -213,7 +213,7 @@ export function PractitionerTable({
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   No practitioners in this stage
                 </td>
               </tr>
@@ -228,7 +228,7 @@ export function PractitionerTable({
           <p style={{ fontSize: 13, marginBottom: 12 }}>
             Copy this link and send manually, or click &ldquo;Send via email&rdquo; to deliver automatically.
           </p>
-          <div style={{ background: "#f8f7f4", border: "1px solid rgba(15,17,23,.1)", borderRadius: 8, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 16, color: "#0f1117", fontFamily: "monospace" }}>
+          <div style={{ background: "#f8f7f4", border: "1px solid rgba(20,18,12,.1)", borderRadius: 8, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 16, color: "var(--ink)", fontFamily: "monospace" }}>
             {genLink.url}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -241,14 +241,14 @@ export function PractitionerTable({
                   showToast("Copy failed — select and copy manually");
                 }
               }}
-              style={btnStyle("rgba(15,17,23,.07)", "#0f1117")}
+              style={btnStyle("rgba(20,18,12,.07)", "var(--ink)")}
             >
               Copy link
             </button>
             {selected && (
               <button
                 onClick={() => sendAgreementEmail(selected, genLink.url)}
-                style={btnStyle("#c9982a", "#fff")}
+                style={btnStyle("#c9982a", "#14161d")}
               >
                 Send via email
               </button>
@@ -274,34 +274,34 @@ export function PractitionerTable({
               ["Ref", selected.ref_code ? `IQC-EMP-${selected.ref_code}` : "—"],
             ].map(([label, value]) => (
               <div key={label} style={{ display: "flex", gap: 12 }}>
-                <span style={{ color: "#9496a1", minWidth: 100 }}>{label}</span>
+                <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
                 <span style={{ fontWeight: 500 }}>{value}</span>
               </div>
             ))}
             {selected.why && (
               <div>
-                <div style={{ color: "#9496a1", marginBottom: 4 }}>Why teach</div>
+                <div style={{ color: "var(--ink-faint)", marginBottom: 4 }}>Why teach</div>
                 <div style={{ lineHeight: 1.6 }}>{selected.why}</div>
               </div>
             )}
             {/* Consent flags */}
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(15,17,23,.08)" }}>
-              <div style={{ color: "#9496a1", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Consents</div>
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+              <div style={{ color: "var(--ink-faint)", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Consents</div>
               {[
                 ["Operational", selected.consent_operational],
                 ["No-sell", selected.consent_nosell],
                 ["Employer", selected.consent_employer],
               ].map(([label, val]) => (
                 <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
-                  <span style={{ color: "#9496a1", minWidth: 100 }}>{label}</span>
+                  <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
                   <span style={{ color: val ? "#2a6b2a" : "#a32d2d", fontWeight: 500 }}>{val ? "✓ Yes" : "✗ No"}</span>
                 </div>
               ))}
             </div>
             {/* Payment info */}
             {(selected.upi_id || selected.bank_account) && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(15,17,23,.08)" }}>
-                <div style={{ color: "#9496a1", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Payment details</div>
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                <div style={{ color: "var(--ink-faint)", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Payment details</div>
                 {[
                   ["UPI", selected.upi_id],
                   ["Bank", selected.bank_name],
@@ -309,7 +309,7 @@ export function PractitionerTable({
                   ["IFSC", selected.ifsc],
                 ].filter(([, v]) => v).map(([label, value]) => (
                   <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
-                    <span style={{ color: "#9496a1", minWidth: 100 }}>{label}</span>
+                    <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
                     <span style={{ fontWeight: 500, fontFamily: "monospace", fontSize: 12 }}>{value}</span>
                   </div>
                 ))}
@@ -328,7 +328,7 @@ export function PractitionerTable({
           position: "fixed",
           bottom: 24,
           right: 24,
-          background: toast ? "#0f1117" : "transparent",
+          background: toast ? "var(--ink)" : "transparent",
           color: "#fff",
           padding: toast ? "10px 18px" : 0,
           borderRadius: 8,
@@ -383,7 +383,7 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(20,18,12,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -395,7 +395,7 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 id={titleId} style={{ fontWeight: 600, fontSize: 16 }}>{title}</h3>
-          <button onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 20, color: "#9496a1" }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 20, color: "var(--ink-faint)" }}>×</button>
         </div>
         {children}
       </div>
@@ -404,9 +404,10 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
 }
 
 const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.1)", whiteSpace: "nowrap" };
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)", whiteSpace: "nowrap" };
 const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
-const selectStyle: React.CSSProperties = { fontSize: 12, padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(15,17,23,.15)", background: "#fff", cursor: "pointer", fontFamily: "inherit" };
+const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
+const selectStyle: React.CSSProperties = { fontSize: 12, padding: "5px 22px 5px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`, appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" };
 
 function btnStyle(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 };
@@ -416,9 +417,9 @@ function chipStyle(active: boolean, red = false): React.CSSProperties {
   return {
     padding: "5px 14px",
     borderRadius: 100,
-    border: active ? "1px solid #0f1117" : "1px solid rgba(15,17,23,.12)",
-    background: active ? "#0f1117" : "#fff",
-    color: active ? "#fff" : red ? "#a32d2d" : "#4a4d5c",
+    border: active ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.12)",
+    background: active ? "var(--ink)" : "#fff",
+    color: active ? "#fff" : red ? "#a32d2d" : "var(--ink-soft)",
     fontSize: 12,
     fontWeight: active ? 600 : 400,
     cursor: "pointer",

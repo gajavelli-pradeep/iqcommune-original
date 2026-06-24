@@ -21,7 +21,12 @@ export async function GET() {
 
 const PatchSchema = z.object({
   status: z.enum(["New", "Matched", "Confirmed", "Completed", "Cancelled"]).optional(),
-  assignedTo: z.string().uuid().optional(),
+  // Match any RFC-4122 UUID, not just v4 — Postgres `uuid` columns accept any variant,
+  // and Zod v4's `.uuid()` rejects valid non-v4 ids (e.g. seeded data), 400-ing assignment.
+  assignedTo: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "invalid uuid")
+    .optional(),
 });
 
 export async function PATCH(req: NextRequest) {

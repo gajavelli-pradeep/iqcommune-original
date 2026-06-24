@@ -92,7 +92,7 @@ export function AgreementViewer() {
     canvas.style.width = w + "px";
     canvas.style.height = "120px";
     ctx.scale(ratio, ratio);
-    ctx.strokeStyle = "#0f1117";
+    ctx.strokeStyle = "var(--ink)";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -182,7 +182,7 @@ export function AgreementViewer() {
         <div
           style={{
             background: "#fff",
-            border: "1px solid rgba(15,17,23,.1)",
+            border: "1px solid rgba(20,18,12,.1)",
             borderRadius: 12,
             padding: "3rem 2rem",
             textAlign: "center",
@@ -202,14 +202,14 @@ export function AgreementViewer() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", color: "#0f1117", marginBottom: 8 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: 8 }}>
             Agreement signed. Welcome to iqcommune.
           </h1>
           {/* Gap 46: success-sub copy matches source exactly */}
           <p
             style={{
               fontSize: 15,
-              color: "#4a4d5c",
+              color: "var(--ink-soft)",
               marginBottom: "2rem",
               lineHeight: 1.65,
               maxWidth: 480,
@@ -218,7 +218,7 @@ export function AgreementViewer() {
             }}
           >
             Your empanelment is confirmed. We&apos;ll be in touch with your first session details within 2–3 working days. Keep an eye on{" "}
-            <span style={{ fontWeight: 500, color: "#0f1117" }}>
+            <span style={{ fontWeight: 500, color: "var(--ink)" }}>
               {pEmail || "your inbox"}
             </span>
             .
@@ -227,7 +227,7 @@ export function AgreementViewer() {
           <div
             style={{
               background: "#f8f7f4",
-              border: "1px solid rgba(15,17,23,.1)",
+              border: "1px solid rgba(20,18,12,.1)",
               borderRadius: 12,
               padding: "1.25rem 1.5rem",
               maxWidth: 480,
@@ -236,7 +236,7 @@ export function AgreementViewer() {
             }}
           >
             {/* Gap 47: remove City row — only 5 rows: Signed by, Agreement ref., Module assigned, Timestamp, Status */}
-            {/* Gap 48: borderBottom rgba(15,17,23,0.10) */}
+            {/* Gap 48: borderBottom rgba(20,18,12,0.10) */}
             {/* Gap 49: both Timestamp and Status values are green */}
             {(
               [
@@ -259,15 +259,15 @@ export function AgreementViewer() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "0.4rem 0",
-                  borderBottom: idx < arr.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
+                  borderBottom: idx < arr.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
                   fontSize: 13,
                 }}
               >
-                <span style={{ color: "#9496a1" }}>{label}</span>
+                <span style={{ color: "var(--ink-faint)" }}>{label}</span>
                 <span
                   style={{
                     fontWeight: 500,
-                    color: (label === "Status" || label === "Timestamp") ? "#2a6b2a" : "#0f1117",
+                    color: (label === "Status" || label === "Timestamp") ? "#2a6b2a" : "var(--ink)",
                   }}
                 >
                   {value}
@@ -305,18 +305,18 @@ export function AgreementViewer() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(15,17,23,0.10)",
+          border: "1px solid rgba(20,18,12,0.10)",
           borderRadius: 12,
           padding: "2rem",
           marginBottom: "1.5rem",
         }}
       >
         {/* Gap 8: card-title fontSize 18 */}
-        <h3 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: "#0f1117", marginBottom: "0.4rem" }}>
+        <h3 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: "0.4rem" }}>
           Welcome to the iqcommune practitioner network.
         </h3>
         {/* Gap 9: lineHeight 1.6; Gap 10: marginBottom 24 (1.5rem) */}
-        <p style={{ fontSize: 14, color: "#4a4d5c", lineHeight: 1.6, marginBottom: 24 }}>
+        <p style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6, marginBottom: 24 }}>
           Your application has been reviewed and we&apos;d love to have you on board. Please review your details below, read through the empanelment agreement carefully, and provide your digital signature to complete the onboarding.
         </p>
         {/* Gap 11: summary-grid marginBottom 24 (1.5rem) */}
@@ -342,7 +342,7 @@ export function AgreementViewer() {
               <span
                 style={{
                   fontSize: 11,
-                  color: "#9496a1",
+                  color: "var(--ink-faint)",
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
                   fontWeight: 500,
@@ -356,7 +356,7 @@ export function AgreementViewer() {
                 style={{
                   fontSize: 14,
                   fontWeight: 500,
-                  color: "#0f1117",
+                  color: "var(--ink)",
                   fontFamily: "inherit",
                 }}
               >
@@ -366,8 +366,8 @@ export function AgreementViewer() {
           ))}
         </div>
         {/* Gap 13: icon size 13×13, strokeWidth 2, path M12 8v4M12 16h.01 */}
-        {/* Gap 14: info text color #9496a1 (ink-faint) */}
-        <p style={{ fontSize: 13, color: "#9496a1" }}>
+        {/* Gap 14: info text color var(--ink-faint) (ink-faint) */}
+        <p style={{ fontSize: 13, color: "var(--ink-faint)" }}>
           <svg
             width={13}
             height={13}
@@ -389,25 +389,25 @@ export function AgreementViewer() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(15,17,23,0.10)",
+          border: "1px solid rgba(20,18,12,0.10)",
           borderRadius: 12,
           padding: "2rem",
           marginBottom: "1.5rem",
         }}
       >
         {/* card-title */}
-        <h3 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: "#0f1117", marginBottom: "0.4rem" }}>
+        <h3 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: "0.4rem" }}>
           Practitioner Empanelment Agreement
         </h3>
         {/* Gap 16: card-sub ABOVE the agreement-viewer div */}
-        <p style={{ fontSize: 14, color: "#4a4d5c", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+        <p style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
           Please read the full agreement below before signing. You must scroll to the end to proceed.
         </p>
 
-        {/* Gap 15: agreement-viewer border 1.5px solid rgba(15,17,23,0.20) */}
+        {/* Gap 15: agreement-viewer border 1.5px solid rgba(20,18,12,0.20) */}
         <div
           style={{
-            border: "1.5px solid rgba(15,17,23,0.20)",
+            border: "1.5px solid rgba(20,18,12,0.20)",
             borderRadius: 12,
             overflow: "hidden",
             marginBottom: "1.5rem",
@@ -416,7 +416,7 @@ export function AgreementViewer() {
           {/* Dark toolbar */}
           <div
             style={{
-              background: "#0f1117",
+              background: "var(--ink)",
               padding: "0.75rem 1.25rem",
               display: "flex",
               alignItems: "center",
@@ -473,7 +473,7 @@ export function AgreementViewer() {
               padding: "1.75rem 2rem",
               fontSize: 13,
               lineHeight: 1.75,
-              color: "#0f1117",
+              color: "var(--ink)",
               background: "#ffffff",
             }}
           >
@@ -484,7 +484,7 @@ export function AgreementViewer() {
               style={{
                 fontSize: 18,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 textAlign: "left",
                 marginBottom: "0.4rem",
                 letterSpacing: "-0.01em",
@@ -497,7 +497,7 @@ export function AgreementViewer() {
             <p
               style={{
                 fontSize: 13,
-                color: "#9496a1",
+                color: "var(--ink-faint)",
                 textAlign: "left",
                 marginBottom: 24,
               }}
@@ -537,7 +537,7 @@ export function AgreementViewer() {
                         color: "#8a6510",
                         fontWeight: 600,
                         width: "38%",
-                        border: "1px solid rgba(15,17,23,0.10)",
+                        border: "1px solid rgba(20,18,12,0.10)",
                         fontSize: 13,
                       }}
                     >
@@ -547,9 +547,9 @@ export function AgreementViewer() {
                       style={{
                         padding: "0.6rem 0.9rem",
                         background: "#f8f7f4",
-                        color: "#0f1117",
+                        color: "var(--ink)",
                         fontWeight: 500,
-                        border: "1px solid rgba(15,17,23,0.10)",
+                        border: "1px solid rgba(20,18,12,0.10)",
                         fontSize: 13,
                       }}
                     >
@@ -564,7 +564,7 @@ export function AgreementViewer() {
             <hr
               style={{
                 border: "none",
-                borderTop: "1px solid rgba(15,17,23,0.10)",
+                borderTop: "1px solid rgba(20,18,12,0.10)",
                 margin: "20px 0",
               }}
             />
@@ -573,7 +573,7 @@ export function AgreementViewer() {
             <p
               style={{
                 fontSize: 13.5,
-                color: "#4a4d5c",
+                color: "var(--ink-soft)",
                 lineHeight: 1.7,
                 marginBottom: 20,
               }}
@@ -588,17 +588,17 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               1. NATURE OF ENGAGEMENT
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The Practitioner is empanelled as an independent contributor — not an employee, agent, or partner of the Platform. No employment relationship, joint venture, or partnership is created by this Agreement.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The engagement is non-exclusive. The Practitioner is free to conduct independent training, consulting, or advisory work outside of this Agreement.
             </p>
 
@@ -607,23 +607,23 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               2. SCOPE OF ENGAGEMENT
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (a) Sessions are typically 2–3 hours in duration, in-person, with a maximum of 20 participants.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (b) The Platform will notify the Practitioner of session requests and confirm availability before any commitment is made. The Practitioner is never obligated to accept a session.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (c) Sessions are typically confirmed 1–2 weeks in advance.
             </p>
 
@@ -632,26 +632,26 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               3. REVENUE SHARING &amp; PER-SESSION CONFIRMATION
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The Practitioner will receive a payout for each session they confirm and deliver, as detailed in a Per-Session Confirmation issued by the Platform before every session.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (a) Before each session is confirmed, the Platform will issue a Per-Session Confirmation setting out: session date and timing, module, number of participants, audience type, confirmed payout amount, TDS applicability, net payout, and expected payment date. The session is not confirmed until the Practitioner provides digital consent.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (b) The Practitioner&apos;s payout per session is determined by the Platform based on the topic, number of participants, and type of audience. The Platform does not disclose total session fees or its own margin.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (c) Payment will be made within 7 working days of the session date, subject to successful completion.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (d) There are no upfront fees, listing fees, or registration charges payable by the Practitioner to the Platform.
             </p>
 
@@ -660,7 +660,7 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
@@ -682,7 +682,7 @@ export function AgreementViewer() {
             >
               Disclosure operates at two tiers. <strong>Public anonymity (absolute):</strong> The Practitioner&apos;s full name, employer, and personal contact details are never published publicly. <strong>Operational disclosure (upon session confirmation, with consent):</strong> Once a session is confirmed, the session organiser receives the Practitioner&apos;s first name, current employer, domain, and years of experience. All coordination goes through iqcommune — not the Practitioner&apos;s personal contact.
             </div>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (f) The Practitioner is solely responsible for determining whether their employer&apos;s policies permit this engagement. The Platform does not require employer disclosure.
             </p>
 
@@ -691,14 +691,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               4A. PAYMENT &amp; BILLING PREFERENCES
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               Revenue share payments will be made to the account details provided during onboarding. If the Practitioner elects payment to a family member, a signed declaration is required and tax invoices will be generated in the family member&apos;s name. The Practitioner remains solely responsible for all tax obligations regardless of the payment recipient.
             </p>
 
@@ -707,17 +707,17 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               5. CONDUCT DURING SESSIONS
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The session environment must remain strictly educational and product-neutral. During sessions the Practitioner will not actively promote or cross-sell any financial product, fund, scheme, or instrument. The Practitioner will not collect attendee contact details in bulk. The Practitioner may share their own contact details or business card with attendees at their own discretion.
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               These restrictions apply only within the session. Breach of the in-session restrictions is grounds for immediate termination.
             </p>
 
@@ -726,14 +726,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               6. POST-SESSION CONDUCT
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               iqcommune cannot and does not seek to control interactions between the Practitioner and session participants after a session concludes. Any professional or commercial arrangement that arises after a session is entirely between those two parties. iqcommune has no role, no liability, and places no restriction on such interactions. The Practitioner may not represent themselves as acting on behalf of iqcommune in any post-session commercial engagement.
             </p>
 
@@ -742,14 +742,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               7. CONFIDENTIALITY
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               Each Party agrees to keep confidential any non-public information disclosed by the other Party, including participant details, session pricing, and internal platform operations. This obligation survives termination for two (2) years.
             </p>
 
@@ -758,14 +758,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               8. CONFLICT OF INTEREST
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The Practitioner agrees to disclose to the Platform any circumstance that may constitute a conflict of interest prior to accepting a session. The Platform reserves the right to reassign the session in such cases.
             </p>
 
@@ -774,14 +774,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               9. INTELLECTUAL PROPERTY
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               Teaching material and frameworks the Practitioner uses remain their own intellectual property. The Platform makes no claim over it. The iqcommune brand and name may not be used by the Practitioner in any public communication without prior written approval.
             </p>
 
@@ -790,14 +790,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               10. TERM &amp; TERMINATION
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               This Agreement begins on the date signed below and continues until terminated by either Party with 14 days&apos; written notice. The Platform may terminate immediately for breach of Clause 5 (Conduct During Sessions) or Clause 7 (Confidentiality). Revenue share for sessions already conducted remains payable upon termination.
             </p>
 
@@ -806,14 +806,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               11. LIMITATION OF LIABILITY
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               The Platform is not liable for loss of income from session cancellation or low demand. Session frequency is demand-driven and not guaranteed. The Practitioner is solely responsible for the accuracy of content shared during sessions.
             </p>
 
@@ -822,14 +822,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               12. GOVERNING LAW &amp; DISPUTES
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               This Agreement is governed by the laws of India. Disputes will first be resolved through mutual discussion. If unresolved within 30 days, the matter will be referred to arbitration under the Arbitration and Conciliation Act, 1996.
             </p>
 
@@ -838,14 +838,14 @@ export function AgreementViewer() {
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f1117",
+                color: "var(--ink)",
                 marginTop: 24,
                 marginBottom: 8,
               }}
             >
               13. ENTIRE AGREEMENT
             </p>
-            <p style={{ fontSize: 13, color: "#4a4d5c", lineHeight: 1.7, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, marginBottom: 8 }}>
               This Agreement, together with any written Per-Session Confirmation, constitutes the entire agreement between the Parties. Amendments require written consent from both Parties.
             </p>
 
@@ -853,7 +853,7 @@ export function AgreementViewer() {
             <hr
               style={{
                 border: "none",
-                borderTop: "1px solid rgba(15,17,23,0.10)",
+                borderTop: "1px solid rgba(20,18,12,0.10)",
                 margin: "20px 0",
               }}
             />
@@ -862,7 +862,7 @@ export function AgreementViewer() {
             <p
               style={{
                 fontSize: 13,
-                color: "#9496a1",
+                color: "var(--ink-faint)",
                 textAlign: "center",
                 marginTop: "1.5rem",
                 fontStyle: "italic",
@@ -874,13 +874,13 @@ export function AgreementViewer() {
         </div>
 
         {/* ── SCROLL GATE STATUS BOX ── */}
-        {/* Gap 26: locked-state text color #4a4d5c (ink-muted); Gap 27: icons width/height 15 */}
+        {/* Gap 26: locked-state text color var(--ink-soft) (ink-muted); Gap 27: icons width/height 15 */}
         <div
           style={{
             padding: "0.75rem 1rem",
             borderRadius: 8,
             background: hasScrolled ? "#eef7ee" : "#f8f7f4",
-            border: `1px solid ${hasScrolled ? "#b8d98a" : "rgba(15,17,23,0.10)"}`,
+            border: `1px solid ${hasScrolled ? "var(--green-border)" : "rgba(20,18,12,0.10)"}`,
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -907,7 +907,7 @@ export function AgreementViewer() {
               width={15}
               height={15}
               fill="none"
-              stroke="#9496a1"
+              stroke="var(--ink-faint)"
               strokeWidth={2}
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -918,7 +918,7 @@ export function AgreementViewer() {
           )}
           <span
             style={{
-              color: hasScrolled ? "#2a6b2a" : "#4a4d5c",
+              color: hasScrolled ? "#2a6b2a" : "var(--ink-soft)",
               fontWeight: hasScrolled ? 500 : 400,
             }}
           >
@@ -935,7 +935,7 @@ export function AgreementViewer() {
             <div
               style={{
                 background: "#fff",
-                border: "1px solid rgba(15,17,23,0.10)",
+                border: "1px solid rgba(20,18,12,0.10)",
                 borderRadius: 12,
                 padding: "2rem",
               }}
@@ -945,7 +945,7 @@ export function AgreementViewer() {
               <div
                 style={{
                   background: "#f5e9c8",
-                  border: "1.5px solid #e0c870",
+                  border: "1.5px solid var(--gold-border)",
                   borderRadius: 12,
                   padding: "1.25rem 1.5rem",
                   marginBottom: "1.25rem",
@@ -974,7 +974,7 @@ export function AgreementViewer() {
               </div>
 
               {/* Gap 31: label "Full name (as it should appear on the agreement)" */}
-              {/* Gap 34: inputStyle border 1.5px solid rgba(15,17,23,0.20), padding 11px 14px */}
+              {/* Gap 34: inputStyle border 1.5px solid rgba(20,18,12,0.20), padding 11px 14px */}
               <div
                 style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}
               >
@@ -1007,14 +1007,14 @@ export function AgreementViewer() {
                   {errors.designation && (
                     <p style={errStyle} role="alert">{errors.designation.message}</p>
                   )}
-                  <p style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>As per your current employment.</p>
+                  <p style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 4 }}>As per your current employment.</p>
                 </div>
               </div>
 
               {/* Signature pad */}
               <div style={{ marginBottom: "1rem" }}>
                 {/* Gap 35: sig-label "Your signature" above the tabs */}
-                <p style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", marginBottom: 8 }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", marginBottom: 8 }}>
                   Your signature
                 </p>
                 {/* Gap 36: sig tabs borderRadius 100 */}
@@ -1043,7 +1043,7 @@ export function AgreementViewer() {
                     {/* Gap 37: canvas wrapper border solid (not dashed), background #f8f7f4 */}
                     <div
                       style={{
-                        border: "1.5px solid rgba(15,17,23,0.20)",
+                        border: "1.5px solid rgba(20,18,12,0.20)",
                         borderRadius: 10,
                         overflow: "hidden",
                         background: "#f8f7f4",
@@ -1091,9 +1091,9 @@ export function AgreementViewer() {
                             right: 8,
                             fontSize: 11,
                             fontWeight: 500,
-                            color: "#9496a1",
+                            color: "var(--ink-faint)",
                             background: "#fff",
-                            border: "1px solid rgba(15,17,23,0.20)",
+                            border: "1px solid rgba(20,18,12,0.20)",
                             borderRadius: 100,
                             padding: "3px 10px",
                             cursor: "pointer",
@@ -1110,7 +1110,7 @@ export function AgreementViewer() {
                   /* Gap 39: typed sig — preview in Georgia 28px with borderBottom, input is DM Sans 14px */
                   <div
                     style={{
-                      border: "1.5px solid rgba(15,17,23,0.20)",
+                      border: "1.5px solid rgba(20,18,12,0.20)",
                       borderRadius: 10,
                       overflow: "hidden",
                       background: "#f8f7f4",
@@ -1123,11 +1123,11 @@ export function AgreementViewer() {
                         style={{
                           fontSize: 28,
                           fontWeight: 400,
-                          color: typedSig ? "#0f1117" : "#d0d1d8",
+                          color: typedSig ? "var(--ink)" : "#d0d1d8",
                           fontFamily: "Georgia, serif",
                           letterSpacing: "0.02em",
                           minHeight: 52,
-                          borderBottom: "1.5px solid rgba(15,17,23,0.20)",
+                          borderBottom: "1.5px solid rgba(20,18,12,0.20)",
                           paddingBottom: 4,
                         }}
                       >
@@ -1148,7 +1148,7 @@ export function AgreementViewer() {
                           background: "transparent",
                           fontFamily: "inherit",
                           fontSize: 14,
-                          color: "#0f1117",
+                          color: "var(--ink)",
                           marginTop: 8,
                           padding: "4px 0",
                           boxSizing: "border-box" as const,
@@ -1160,7 +1160,7 @@ export function AgreementViewer() {
                 )}
               </div>
 
-              {/* Gap 40: label "Digital timestamp:"; Gap 41: no border; Gap 42: outer color ink-muted #4a4d5c, SVG stroke green; Gap 43: fontSize 13 */}
+              {/* Gap 40: label "Digital timestamp:"; Gap 41: no border; Gap 42: outer color ink-muted var(--ink-soft), SVG stroke green; Gap 43: fontSize 13 */}
               <div
                 style={{
                   marginBottom: "1.25rem",
@@ -1171,7 +1171,7 @@ export function AgreementViewer() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   fontSize: 13,
-                  color: "#4a4d5c",
+                  color: "var(--ink-soft)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1190,11 +1190,11 @@ export function AgreementViewer() {
                   </svg>
                   {liveTs && (
                     <span>
-                      Digital timestamp: &nbsp;<span style={{ fontWeight: 500, color: "#0f1117" }}>{liveTs}</span>
+                      Digital timestamp: &nbsp;<span style={{ fontWeight: 500, color: "var(--ink)" }}>{liveTs}</span>
                     </span>
                   )}
                 </div>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#9496a1" }}>Auto-captured at submission</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--ink-faint)" }}>Auto-captured at submission</span>
               </div>
 
               {/* Hidden fields — HMAC verification pass-through */}
@@ -1215,7 +1215,7 @@ export function AgreementViewer() {
                   role="alert"
                   style={{
                     background: "#fdf0f0",
-                    border: "1px solid #f0b0b0",
+                    border: "1px solid var(--red-border)",
                     borderRadius: 8,
                     padding: "10px 12px",
                     fontSize: 13,
@@ -1234,7 +1234,7 @@ export function AgreementViewer() {
                   width: "100%",
                   marginTop: 20,
                   padding: "15px",
-                  background: "#0f1117",
+                  background: "var(--ink)",
                   color: "#fff",
                   border: "none",
                   borderRadius: 100,
@@ -1267,7 +1267,7 @@ export function AgreementViewer() {
               <p
                 style={{
                   fontSize: 12,
-                  color: "#9496a1",
+                  color: "var(--ink-faint)",
                   textAlign: "center",
                   marginTop: "0.75rem",
                 } as React.CSSProperties}
@@ -1294,11 +1294,11 @@ const checkCircle: React.CSSProperties = {
   color: "#2a6b2a",
 };
 
-// Gap 34: border 1.5px solid rgba(15,17,23,0.20), padding 11px 14px
+// Gap 34: border 1.5px solid rgba(20,18,12,0.20), padding 11px 14px
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
-  border: "1.5px solid rgba(15,17,23,0.20)",
+  border: "1.5px solid rgba(20,18,12,0.20)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
@@ -1311,7 +1311,7 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 500,
   display: "block",
   marginBottom: 5,
-  color: "#0f1117",
+  color: "var(--ink)",
 };
 const errStyle: React.CSSProperties = { fontSize: 12, color: "#a32d2d", marginTop: 4 };
 
@@ -1320,9 +1320,9 @@ function tabBtn(active: boolean): React.CSSProperties {
   return {
     padding: "6px 16px",
     borderRadius: 100,
-    border: active ? "1.5px solid #0f1117" : "1.5px solid rgba(15,17,23,0.20)",
-    background: active ? "#0f1117" : "#fff",
-    color: active ? "#fff" : "#4a4d5c",
+    border: active ? "1.5px solid var(--ink)" : "1.5px solid rgba(20,18,12,0.20)",
+    background: active ? "var(--ink)" : "#fff",
+    color: active ? "#fff" : "var(--ink-soft)",
     fontSize: 13,
     cursor: "pointer",
     fontFamily: "inherit",

@@ -83,7 +83,7 @@ const EMPTY_FORM: FormState = {
 
 // Gap 1: nav dark button style
 const navTriggerStyle: React.CSSProperties = {
-  background: "#0f1117",
+  background: "#14161d",
   color: "#fff",
   border: "none",
   borderRadius: 100,
@@ -101,7 +101,7 @@ const navTriggerStyle: React.CSSProperties = {
 
 // Gap 1: hero CTA dark button style (btn-primary)
 const heroCTATriggerStyle: React.CSSProperties = {
-  background: "#0f1117",
+  background: "#14161d",
   color: "#fff",
   border: "none",
   borderRadius: 100,
@@ -120,7 +120,7 @@ const heroCTATriggerStyle: React.CSSProperties = {
 
 // Mobile drawer — full-width dark button
 const mobileTriggerStyle: React.CSSProperties = {
-  background: "#0f1117",
+  background: "#14161d",
   color: "#fff",
   border: "none",
   borderRadius: 12,
@@ -139,9 +139,9 @@ const mobileTriggerStyle: React.CSSProperties = {
 
 // Gap 19: CTA section gold button style (btn-gold) with speech-bubble icon
 const goldTriggerStyle: React.CSSProperties = {
-  background: "#c9982a",
+  background: "linear-gradient(180deg,#d4a43a 0%,#c9982a 55%,#bd8d22 100%)",
   color: "#fff",
-  border: "none",
+  border: "1px solid #8a6510",
   borderRadius: 100,
   padding: "16px 36px",
   fontSize: 16,
@@ -151,7 +151,8 @@ const goldTriggerStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 10,
-  boxShadow: "0 6px 24px rgba(201,152,42,0.35)",
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 2px rgba(138,101,16,0.30), 0 10px 24px -10px rgba(201,152,42,0.45)",
   minHeight: 44,
   minWidth: 44,
 };
@@ -175,7 +176,8 @@ const dialogStyle: React.CSSProperties = {
   padding: "2.5rem",
   width: "100%",
   maxWidth: 520,
-  boxShadow: "0 24px 80px rgba(0,0,0,0.25)",
+  border: "1px solid rgba(20,18,12,0.12)",
+  boxShadow: "0 4px 8px rgba(20,16,10,0.07), 0 28px 56px -14px rgba(20,16,10,0.26)",
   position: "relative",
   margin: "auto",
 };
@@ -183,23 +185,38 @@ const dialogStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
-  border: "1.5px solid rgba(15,17,23,0.20)",
-  borderRadius: 8,
+  border: "1px solid",
+  borderColor: "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+  borderRadius: 9,
   fontFamily: "inherit",
   fontSize: 14,
-  color: "#0f1117",
-  background: "#ffffff",
+  color: "#14161d",
+  background: "#fcfbf8",
   outline: "none",
   boxSizing: "border-box",
   resize: "none" as const,
+  transition: "border-color .16s ease, box-shadow .16s ease, background .16s ease",
+};
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  cursor: "pointer",
+  paddingRight: 38,
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 14px center",
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 13,
-  fontWeight: 500,
-  color: "#0f1117",
-  marginBottom: 5,
+  fontSize: 12.5,
+  fontWeight: 600,
+  letterSpacing: "0.01em",
+  color: "#383b47",
+  marginBottom: 6,
 };
 
 // ── Context JSX helpers (Gap 15, 16) ─────────────────────────────────────────
@@ -208,7 +225,7 @@ function OrgContextContent() {
   return (
     <>
       Covers corporates, educational institutions, hospitals, media &amp; production houses — any organisation upskilling its people. We&apos;ll tailor the session to your team&apos;s goals and align the right practitioner.{" "}
-      <strong style={{ color: "#0f1117" }}>Please note — venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong>
+      <strong style={{ color: "#14161d" }}>Please note — venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong>
     </>
   );
 }
@@ -217,7 +234,7 @@ function AmcContextContent() {
   return (
     <>
       We&apos;ll match the right practitioner and structure the session around your goals.{" "}
-      <strong style={{ color: "#0f1117" }}>Venue and setup are on your end — we take care of the content and delivery.</strong>
+      <strong style={{ color: "#14161d" }}>Venue and setup are on your end — we take care of the content and delivery.</strong>
     </>
   );
 }
@@ -376,7 +393,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ) : (
-      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <svg className="btn-arrow" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 12h14M12 5l7 7-7 7" />
       </svg>
     );
@@ -385,6 +402,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
     <>
       <button
         ref={triggerRef}
+        className="btn-cta"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -420,7 +438,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                color: "#9496a1",
+                color: "#71717f",
                 fontSize: 18,
                 width: 32,
                 height: 32,
@@ -454,7 +472,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 <h3 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.5rem" }}>
                   Request received!
                 </h3>
-                <p style={{ fontSize: 14, color: "#4a4d5c", lineHeight: 1.65 }}>
+                <p style={{ fontSize: 14, color: "#383b47", lineHeight: 1.65 }}>
                   We&apos;ll reach out within 2–3 working days to understand your needs better and take the conversation forward. Keep an eye on your inbox and phone.
                 </p>
               </div>
@@ -464,7 +482,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 <h2 id={titleId} style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.3rem" }}>
                   Request a Session
                 </h2>
-                <p style={{ fontSize: 14, color: "#4a4d5c", marginBottom: "1.4rem" }}>
+                <p style={{ fontSize: 14, color: "#383b47", marginBottom: "1.4rem" }}>
                   Tell us a bit about what you need — we&apos;ll be in touch within 2–3 working days to take it forward.
                 </p>
 
@@ -476,20 +494,26 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     <button
                       key={chip.id}
                       type="button"
+                      className="aud-chip"
                       onClick={() => setSelectedAudience(selectedAudience === chip.id ? null : chip.id)}
                       style={{
-                        padding: "7px 14px",
+                        padding: "8px 15px",
                         borderRadius: 100,
                         // Gap 13: active chip uses gold accent (source .aud-chip.active)
-                        border: `1.5px solid ${selectedAudience === chip.id ? "#c9982a" : "rgba(15,17,23,0.20)"}`,
-                        background: selectedAudience === chip.id ? "#f5e9c8" : "#ffffff",
-                        color: selectedAudience === chip.id ? "#8a6510" : "#4a4d5c",
+                        border: "1px solid",
+                        borderColor: selectedAudience === chip.id
+                          ? "#c9982a"
+                          : "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+                        background: selectedAudience === chip.id ? "#f5e9c8" : "#fcfbf8",
+                        color: selectedAudience === chip.id ? "#8a6510" : "#383b47",
                         fontSize: 13,
                         fontWeight: selectedAudience === chip.id ? 600 : 500,
                         cursor: "pointer",
                         fontFamily: "inherit",
                         minHeight: 44,
-                        transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                        boxShadow: selectedAudience === chip.id
+                          ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(201,152,42,0.22)"
+                          : "inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 1px rgba(20,18,12,0.03)",
                       }}
                       aria-pressed={selectedAudience === chip.id}
                     >
@@ -502,12 +526,12 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {/* Gap 22: padding updated to 10px 14px to match source */}
                 <div style={{
                   background: "#f8f7f4",
-                  border: "1px solid rgba(15,17,23,0.10)",
+                  border: "1px solid rgba(20,18,12,0.10)",
                   borderLeft: "3px solid #c9982a",
                   borderRadius: "0 8px 8px 0",
                   padding: "10px 14px",
                   fontSize: 13,
-                  color: "#4a4d5c",
+                  color: "#383b47",
                   marginBottom: "1.25rem",
                   display: "flex",
                   alignItems: "flex-start",
@@ -585,7 +609,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     id="modal-topic"
                     value={form.topic}
                     onChange={e => updateField("topic", e.target.value)}
-                    style={inputStyle}
+                    style={selectStyle}
                     required
                   >
                     <option value="">Select a training topic…</option>
@@ -603,7 +627,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       id="modal-groupsize"
                       value={form.groupSize}
                       onChange={e => updateField("groupSize", e.target.value as GroupSize)}
-                      style={inputStyle}
+                      style={selectStyle}
                       required
                     >
                       <option value="">Select…</option>
@@ -611,7 +635,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
                       Sessions are capped at 20 participants.
                     </div>
                   </div>
@@ -625,7 +649,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       placeholder="e.g. July last week"
                       style={inputStyle}
                     />
-                    <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
                       Rough window is fine — we confirm offline.
                     </div>
                   </div>
@@ -636,7 +660,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 <div style={{ marginBottom: "1rem" }}>
                   <label htmlFor="modal-venue" style={labelStyle}>
                     Do you have a venue in mind?{" "}
-                    <span style={{ fontWeight: 400, color: "#9496a1" }}>(optional)</span>
+                    <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
                   </label>
                   <input
                     id="modal-venue"
@@ -646,7 +670,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     placeholder="e.g. Society clubhouse, office conference room, community hall…"
                     style={inputStyle}
                   />
-                  <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
                     If your group has a preferred space, share it here. If not, we&apos;ll arrange a suitable venue for you.
                   </div>
                 </div>
@@ -655,7 +679,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {showMinCommit && (
                   <div style={{
                     background: "#f5e9c8",
-                    border: "1px solid #e0c870",
+                    border: "1px solid var(--gold-border)",
                     borderLeft: "3px solid #c9982a",
                     borderRadius: "0 8px 8px 0",
                     padding: "0.85rem 1rem",
@@ -664,7 +688,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     color: "#8a6510",
                     lineHeight: 1.65,
                   }}>
-                    <strong style={{ color: "#0f1117", fontWeight: 600, display: "block", marginBottom: 3 }}>
+                    <strong style={{ color: "#14161d", fontWeight: 600, display: "block", marginBottom: 3 }}>
                       Minimum attendance commitment
                     </strong>
                     {MIN_COMMIT_TEXT[form.groupSize as Exclude<GroupSize, "">]}
@@ -676,7 +700,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   <div style={{ marginBottom: "1rem" }}>
                     <div style={{
                       background: "#f8f7f4",
-                      border: "1.5px solid rgba(15,17,23,0.20)",
+                      border: "1.5px solid rgba(20,18,12,0.18)",
                       borderRadius: 8,
                       padding: "0.9rem 1rem",
                     }}>
@@ -686,7 +710,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         gap: 10,
                         cursor: "pointer",
                         fontSize: 13,
-                        color: "#4a4d5c",
+                        color: "#383b47",
                         lineHeight: 1.6,
                       }}>
                         <input
@@ -697,9 +721,9 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         />
                         <span>
                           I confirm I am registering as the{" "}
-                          <strong style={{ color: "#0f1117" }}>SPOC (primary contact)</strong>{" "}
+                          <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
                           for this group and that{" "}
-                          <strong style={{ color: "#0f1117" }}>
+                          <strong style={{ color: "#14161d" }}>
                             {form.groupSize
                               ? SPOC_MIN_LABEL[form.groupSize as Exclude<GroupSize, "">]
                               : "at least 5 participants"}
@@ -715,7 +739,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 <div style={{ marginBottom: "1rem" }}>
                   <label htmlFor="modal-notes" style={labelStyle}>
                     Anything else?{" "}
-                    <span style={{ fontWeight: 400, color: "#9496a1" }}>(optional)</span>
+                    <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
                   </label>
                   <textarea
                     id="modal-notes"
@@ -731,7 +755,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {validationError && (
                   <div role="alert" style={{
                     background: "#fdf0f0",
-                    border: "1px solid #f0b0b0",
+                    border: "1px solid var(--red-border)",
                     borderRadius: 8,
                     padding: "10px 12px",
                     fontSize: 13,
@@ -746,7 +770,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {serverError && (
                   <div role="alert" style={{
                     background: "#fdf0f0",
-                    border: "1px solid #f0b0b0",
+                    border: "1px solid var(--red-border)",
                     borderRadius: 8,
                     padding: "10px 12px",
                     fontSize: 13,
@@ -760,18 +784,21 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {/* Gap 17: submit button uses SVG arrow icon, not text arrow */}
                 <button
                   type="submit"
+                  className="btn-cta"
                   disabled={isSubmitting}
                   style={{
                     width: "100%",
                     marginTop: "1.25rem",
-                    background: "#0f1117",
+                    background: isSubmitting ? "#2a2d38" : "linear-gradient(180deg,#1f222e 0%,#14161d 100%)",
                     color: "#fff",
                     fontFamily: "inherit",
                     fontSize: 15,
                     fontWeight: 600,
-                    padding: 14,
+                    letterSpacing: "0.01em",
+                    padding: 15,
                     borderRadius: 100,
                     border: "none",
+                    boxShadow: isSubmitting ? "none" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
                     cursor: isSubmitting ? "not-allowed" : "pointer",
                     opacity: isSubmitting ? 0.6 : 1,
                     display: "flex",
@@ -784,14 +811,14 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   {isSubmitting ? "Sending…" : (
                     <>
                       Send Request
-                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                      <svg className="btn-arrow" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </>
                   )}
                 </button>
 
-                <p style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginTop: "0.75rem" }}>
+                <p style={{ fontSize: 12, color: "#71717f", textAlign: "center", marginTop: "0.75rem" }}>
                   No spam. We&apos;ll only reach out about your session request.
                 </p>
               </form>

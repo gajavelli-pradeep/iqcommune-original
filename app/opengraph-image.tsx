@@ -9,7 +9,7 @@ export default function OgImage() {
   return new ImageResponse(
     <div
       style={{
-        background: "#0f1117",
+        background: "#14161d", /* literal: Satori (OG image) cannot resolve CSS var() */
         width: "100%",
         height: "100%",
         display: "flex",

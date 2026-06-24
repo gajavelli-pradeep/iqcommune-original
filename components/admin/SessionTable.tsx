@@ -63,7 +63,7 @@ export function SessionTable({
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(15,17,23,.10)",
+          border: "1px solid rgba(20,18,12,.10)",
           borderRadius: "10px 10px 0 0",
           borderBottom: "none",
           padding: ".75rem 1.25rem",
@@ -73,7 +73,7 @@ export function SessionTable({
           flexWrap: "wrap",
         }}
       >
-        <span style={{ fontSize: 12, color: "#9496a1", whiteSpace: "nowrap" }}>Filter:</span>
+        <span style={{ fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>Filter:</span>
         {STATUS_FILTERS.map((f) => {
           const isActive = statusFilter === f;
           return (
@@ -85,10 +85,10 @@ export function SessionTable({
                 borderRadius: 100,
                 fontSize: 12,
                 fontWeight: 500,
-                border: isActive ? "1px solid #0f1117" : "1px solid rgba(15,17,23,.18)",
+                border: isActive ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.18)",
                 cursor: "pointer",
-                background: isActive ? "#0f1117" : "#fff",
-                color: isActive ? "#fff" : "#4a4d5c",
+                background: isActive ? "var(--ink)" : "#fff",
+                color: isActive ? "#fff" : "var(--ink-soft)",
                 whiteSpace: "nowrap",
               }}
             >
@@ -107,7 +107,7 @@ export function SessionTable({
               fontSize: 12,
               padding: "6px 10px",
               borderRadius: 8,
-              border: "1px solid rgba(15,17,23,.15)",
+              border: "1px solid rgba(20,18,12,.15)",
               background: "#f8f7f4",
               fontFamily: "inherit",
               outline: "none",
@@ -120,7 +120,7 @@ export function SessionTable({
         <table
           style={{
             ...tableStyle,
-            border: "1px solid rgba(15,17,23,.10)",
+            border: "1px solid rgba(20,18,12,.10)",
             borderRadius: "0 0 10px 10px",
             overflow: "hidden",
           }}
@@ -140,7 +140,7 @@ export function SessionTable({
                   <tr
                     onClick={() => setExpandedRow(isExpanded ? null : s.id)}
                     style={{
-                      borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)",
+                      borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)",
                       cursor: "pointer",
                       background: isExpanded ? "#f8f7f4" : undefined,
                     }}
@@ -149,11 +149,11 @@ export function SessionTable({
                     <td style={tdStyle}>{s.module}</td>
                     <td style={tdStyle}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{s.practitioner?.name ?? "—"}</div>
-                      <div style={{ fontSize: 11, color: "#9496a1" }}>{s.practitioner?.email}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.practitioner?.email}</div>
                     </td>
                     <td style={tdStyle}>
                       <div>{s.session_date}</div>
-                      <div style={{ fontSize: 11, color: "#9496a1" }}>{s.start_time}–{s.end_time}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.start_time}–{s.end_time}</div>
                     </td>
                     <td style={tdStyle}>{s.venue}</td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>{s.participants}</td>
@@ -171,21 +171,21 @@ export function SessionTable({
                       {s.payout_id && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onNavigate?.("payouts"); }}
-                          style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 500, marginRight: 6 }}
+                          style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, marginRight: 6 }}
                         >
                           Payout →
                         </button>
                       )}
-                      <span style={{ fontSize: 11, color: "#9496a1" }}>{isExpanded ? "▲" : "▼"}</span>
+                      <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>{isExpanded ? "▲" : "▼"}</span>
                     </td>
                   </tr>
 
                   {isExpanded && (
-                    <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
                       <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
-                            border: "1px solid rgba(15,17,23,.10)",
+                            border: "1px solid rgba(20,18,12,.10)",
                             borderRadius: 8,
                             background: "#fff",
                             padding: "1rem 1.25rem",
@@ -214,7 +214,7 @@ export function SessionTable({
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "#9496a1", fontSize: 13 }}>
+                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
                 </td>
               </tr>
@@ -229,12 +229,12 @@ export function SessionTable({
 function SField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9496a1", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, color: "#0f1117", fontFamily: mono ? "monospace" : undefined }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, color: "var(--ink)", fontFamily: mono ? "monospace" : undefined }}>{value}</div>
     </div>
   );
 }
 
 const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "#9496a1", borderBottom: "1px solid rgba(15,17,23,.1)" };
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
 const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };

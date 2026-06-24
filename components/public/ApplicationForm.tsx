@@ -76,13 +76,13 @@ export function ApplicationForm() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h3 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8, color: "#0f1117" }}>
+        <h3 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8, color: "#14161d" }}>
           Application received.
         </h3>
         <p
           style={{
             fontSize: 14,
-            color: "#4a4d5c",
+            color: "#383b47",
             lineHeight: 1.65,
           }}
         >
@@ -136,7 +136,7 @@ export function ApplicationForm() {
           </Field>
           <Field label="Years of experience" error={errors.experience?.message}>
             {/* Gap 23: placeholder 'Select…' */}
-            <select {...register("experience")} style={inputStyle}>
+            <select {...register("experience")} style={selectStyle}>
               <option value="">Select…</option>
               {EXPERIENCE_OPTIONS.map((e) => (
                 <option key={e} value={e}>{e}</option>
@@ -161,9 +161,9 @@ export function ApplicationForm() {
 
       <div style={sectionStyle}>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#14161d", display: "block", marginBottom: 5 }}>
             Which module would you like to teach?{" "}
-            <span style={{ fontWeight: 400, color: "#9496a1" }}>(select all that apply)</span>
+            <span style={{ fontWeight: 400, color: "#71717f" }}>(select all that apply)</span>
           </label>
           <div
             role="group"
@@ -186,13 +186,13 @@ export function ApplicationForm() {
                     gap: 9,
                     padding: "9px 12px",
                     // Gap 46: active border gold #c9982a
-                    border: active ? "1.5px solid #c9982a" : "1.5px solid rgba(15,17,23,0.20)",
+                    border: active ? "1.5px solid #c9982a" : "1.5px solid rgba(20,18,12,0.18)",
                     borderRadius: 8,
                     background: active ? "#f5e9c8" : "#ffffff",
                     cursor: "pointer",
                     fontSize: 13,
                     // Gap 47: active color gold-dark #8a6510
-                    color: active ? "#8a6510" : "#4a4d5c",
+                    color: active ? "#8a6510" : "#383b47",
                     fontWeight: active ? 500 : 400,
                     transition: "border-color 0.15s, background 0.15s",
                     userSelect: "none",
@@ -217,7 +217,7 @@ export function ApplicationForm() {
 
         {/* Gap 24 & 25: frequency select in teaching preference section, label 'How often could you teach?', placeholder 'Select…' */}
         <Field label="How often could you teach?" error={errors.teachFreq?.message}>
-          <select {...register("teachFreq")} style={inputStyle}>
+          <select {...register("teachFreq")} style={selectStyle}>
             <option value="">Select…</option>
             {TEACH_FREQ_OPTIONS.map((f) => (
               <option key={f} value={f}>{f}</option>
@@ -266,7 +266,7 @@ export function ApplicationForm() {
               alignItems: "flex-start",
               gap: 12,
               fontSize: 13,
-              color: "#4a4d5c",
+              color: "#383b47",
               lineHeight: 1.6,
               cursor: "pointer",
             }}
@@ -289,7 +289,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(15,17,23,0.20)",
+            border: "1.5px solid rgba(20,18,12,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginBottom: "0.85rem",
@@ -301,7 +301,7 @@ export function ApplicationForm() {
               alignItems: "flex-start",
               gap: 12,
               fontSize: 13,
-              color: "#4a4d5c",
+              color: "#383b47",
               lineHeight: 1.6,
               cursor: "pointer",
             }}
@@ -324,7 +324,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(15,17,23,0.20)",
+            border: "1.5px solid rgba(20,18,12,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginBottom: "0.85rem",
@@ -336,7 +336,7 @@ export function ApplicationForm() {
               alignItems: "flex-start",
               gap: 12,
               fontSize: 13,
-              color: "#4a4d5c",
+              color: "#383b47",
               lineHeight: 1.6,
               cursor: "pointer",
             }}
@@ -363,16 +363,16 @@ export function ApplicationForm() {
         {/* Gap 40: no introductory paragraph */}
         {/* Gap 32: 'Your UPI ID' with faint qualifier, placeholder 'yourname@upi', hint */}
         <div>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#14161d", display: "block", marginBottom: 5 }}>
             Your UPI ID{" "}
-            <span style={{ fontWeight: 400, color: "#9496a1" }}>(if receiving payment via UPI)</span>
+            <span style={{ fontWeight: 400, color: "#71717f" }}>(if receiving payment via UPI)</span>
           </label>
           <input
             {...register("upiId")}
             style={inputStyle}
             placeholder="yourname@upi"
           />
-          <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
             Used only for revenue share payouts. Kept strictly confidential.
           </div>
           {errors.upiId && (
@@ -382,13 +382,13 @@ export function ApplicationForm() {
 
         {/* Gap 51: OR divider, fontSize 11, letterSpacing 0.06em */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
-          <span style={{ fontSize: 11, fontWeight: 500, color: "#9496a1", letterSpacing: "0.06em" }}>OR</span>
-          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+          <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+          <span style={{ fontSize: 11, fontWeight: 500, color: "#71717f", letterSpacing: "0.06em" }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
         </div>
 
         {/* Gap 50: 'Bank account details' label above bank fields */}
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#9496a1", marginBottom: "0.6rem" }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#71717f", marginBottom: "0.6rem" }}>
           Bank account details
         </div>
 
@@ -410,7 +410,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(15,17,23,0.20)",
+            border: "1.5px solid rgba(20,18,12,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginTop: "0.25rem",
@@ -424,7 +424,7 @@ export function ApplicationForm() {
               cursor: "pointer",
               fontSize: 13,
               fontWeight: 500,
-              color: "#4a4d5c",
+              color: "#383b47",
               marginBottom: payToFamily ? "0.5rem" : 0,
             }}
           >
@@ -447,7 +447,7 @@ export function ApplicationForm() {
                 {/* Gap 38: 'Relationship to you', placeholder 'Select…' */}
                 {/* Gap 37: no 'Child' option */}
                 <Field label="Relationship to you">
-                  <select {...register("familyRelation")} style={{ ...inputStyle, cursor: "pointer" }}>
+                  <select {...register("familyRelation")} style={selectStyle}>
                     <option value="">Select…</option>
                     <option value="Spouse">Spouse</option>
                     <option value="Parent">Parent</option>
@@ -460,9 +460,9 @@ export function ApplicationForm() {
               {/* Gap 38: 'Their UPI ID (if paying via UPI)' */}
               {/* Gap 57: placeholder 'familymember@upi' */}
               <div style={{ marginTop: 0 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: "#0f1117", display: "block", marginBottom: 5 }}>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "#14161d", display: "block", marginBottom: 5 }}>
                   Their UPI ID{" "}
-                  <span style={{ fontWeight: 400, color: "#9496a1" }}>(if paying via UPI)</span>
+                  <span style={{ fontWeight: 400, color: "#71717f" }}>(if paying via UPI)</span>
                 </label>
                 <input
                   {...register("familyUpi")}
@@ -473,13 +473,13 @@ export function ApplicationForm() {
 
               {/* Gap 51: family OR divider */}
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
-                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
-                <span style={{ fontSize: 11, fontWeight: 500, color: "#9496a1", letterSpacing: "0.06em" }}>OR</span>
-                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
+                <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+                <span style={{ fontSize: 11, fontWeight: 500, color: "#71717f", letterSpacing: "0.06em" }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
               </div>
 
               {/* Gap 50: Bank account details label inside family section */}
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#9496a1", marginBottom: "0.6rem" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#71717f", marginBottom: "0.6rem" }}>
                 Bank account details
               </div>
 
@@ -502,7 +502,7 @@ export function ApplicationForm() {
                 style={{
                   marginTop: "0.5rem",
                   background: "#f5e9c8",
-                  border: "1px solid #e0c870",
+                  border: "1px solid var(--gold-border)",
                   borderRadius: 12,
                   padding: "1.1rem 1.25rem",
                 }}
@@ -533,7 +533,7 @@ export function ApplicationForm() {
                     alignItems: "flex-start",
                     gap: 12,
                     fontSize: 13,
-                    color: "#4a4d5c",
+                    color: "#383b47",
                     lineHeight: 1.6,
                     cursor: "pointer",
                   }}
@@ -559,7 +559,7 @@ export function ApplicationForm() {
           role="alert"
           style={{
             background: "#fdf0f0",
-            border: "1px solid #f0b0b0",
+            border: "1px solid var(--red-border)",
             borderRadius: 8,
             padding: "10px 14px",
             fontSize: 13,
@@ -574,6 +574,7 @@ export function ApplicationForm() {
       {/* Gap 41: SVG arrow instead of text arrow */}
       <button
         type="submit"
+        className="btn-cta"
         disabled={isSubmitting || !allConsentsChecked}
         style={submitStyle(isSubmitting, !allConsentsChecked)}
       >
@@ -582,7 +583,7 @@ export function ApplicationForm() {
         ) : (
           <>
             Submit Application
-            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="btn-arrow" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </>
@@ -590,7 +591,7 @@ export function ApplicationForm() {
       </button>
 
       {/* Gap 42: fine print below submit */}
-      <p style={{ fontSize: 12, color: "#9496a1", textAlign: "center", marginTop: "0.75rem" }}>
+      <p style={{ fontSize: 12, color: "#71717f", textAlign: "center", marginTop: "0.75rem" }}>
         All three consent boxes above must be checked before submitting. Your details are never shared with third parties.
       </p>
     </form>
@@ -619,7 +620,7 @@ function Field({
           fontWeight: 500,
           display: "block",
           marginBottom: hint ? 3 : 5,
-          color: "#0f1117",
+          color: "#14161d",
         }}
       >
         {label}
@@ -630,7 +631,7 @@ function Field({
         "aria-invalid": error ? true : undefined,
       })}
       {hint && (
-        <div style={{ fontSize: 11, color: "#9496a1", marginTop: 4 }}>
+        <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
           {hint}
         </div>
       )}
@@ -645,14 +646,14 @@ function Field({
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
-  letterSpacing: "0.1em",
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
   color: "#8a6510",
   display: "block",
   marginTop: "1.5rem",
   marginBottom: "1rem",
   paddingBottom: "0.5rem",
-  borderBottom: "1px solid rgba(15,17,23,0.10)",
+  borderBottom: "1px solid rgba(138,101,16,0.22)",
 };
 
 const sectionStyle: React.CSSProperties = { display: "grid", gap: 14 };
@@ -662,16 +663,29 @@ const rowTwo: React.CSSProperties = { display: "grid", gridTemplateColumns: "rep
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
-  border: "1.5px solid rgba(15,17,23,0.20)",
-  borderRadius: 8,
+  border: "1px solid",
+  borderColor: "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+  borderRadius: 9,
   fontSize: 14,
   fontFamily: "inherit",
-  background: "#fff",
-  color: "#0f1117",
+  background: "#fcfbf8",
+  color: "#14161d",
   boxSizing: "border-box",
   outline: "none",
+  transition: "border-color .16s ease, box-shadow .16s ease, background .16s ease",
 };
-const errStyle: React.CSSProperties = { fontSize: 12, color: "#a32d2d", marginTop: 4 };
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  cursor: "pointer",
+  paddingRight: 38,
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 14px center",
+};
+const errStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "#a32d2d", marginTop: 5 };
 const checkCircle: React.CSSProperties = {
   width: 64,
   height: 64,
@@ -688,17 +702,18 @@ function submitStyle(loading: boolean, disabled: boolean): React.CSSProperties {
   return {
     width: "100%",
     marginTop: "1.5rem",
-    padding: "14px",
-    background: "#0f1117",
+    padding: "15px",
+    background: loading || disabled ? "#2a2d38" : "linear-gradient(180deg,#1f222e 0%,#14161d 100%)",
     color: "#fff",
     border: "none",
     borderRadius: 100,
     fontSize: 15,
     fontWeight: 600,
+    letterSpacing: "0.01em",
+    boxShadow: loading || disabled ? "none" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
     cursor: loading || disabled ? "not-allowed" : "pointer",
     opacity: loading ? 0.6 : disabled ? 0.45 : 1,
     fontFamily: "inherit",
-    transition: "opacity 0.18s",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

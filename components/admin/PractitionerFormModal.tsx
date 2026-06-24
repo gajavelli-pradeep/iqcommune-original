@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FormModal, fieldLabelStyle, fieldInputStyle, primaryBtn, ghostBtn } from "@/components/admin/FormModal";
+import { FormModal, fieldLabelStyle, fieldInputStyle, fieldSelectStyle, primaryBtn, ghostBtn } from "@/components/admin/FormModal";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"];
@@ -80,7 +80,7 @@ export function PractitionerFormModal({
         <Field label="Phone"><input style={fieldInputStyle} value={form.phone} onChange={set("phone")} /></Field>
         <Field label="Organisation"><input style={fieldInputStyle} value={form.org} onChange={set("org")} /></Field>
         <Field label="Status">
-          <select style={fieldInputStyle} value={form.status} onChange={set("status")}>
+          <select style={fieldSelectStyle} value={form.status} onChange={set("status")}>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>

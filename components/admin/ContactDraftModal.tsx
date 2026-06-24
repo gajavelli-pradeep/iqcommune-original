@@ -33,7 +33,7 @@ export interface ContactDraftModalProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 // Gap 29: Rebuilt to match source design:
-//   - Dark header (#0f1117 bg) with white title/subtitle and white ✕ close
+//   - Dark header (var(--ink) bg) with white title/subtitle and white ✕ close
 //   - Tab bar (Email / WhatsApp) with gold underline on active
 //   - draft-meta gray bar (To / Re info)
 //   - draft-subject bold line
@@ -163,7 +163,7 @@ export function ContactDraftModal({
         {/* Gap 29: Dark header */}
         <div
           style={{
-            background: "#0f1117",
+            background: "var(--ink)",
             padding: "1.1rem 1.5rem",
             display: "flex",
             alignItems: "center",
@@ -212,7 +212,7 @@ export function ContactDraftModal({
         <div
           style={{
             display: "flex",
-            borderBottom: "1px solid rgba(15,17,23,.10)",
+            borderBottom: "1px solid rgba(20,18,12,.10)",
             background: "#f8f7f4",
             flexShrink: 0,
           }}
@@ -227,7 +227,7 @@ export function ContactDraftModal({
                   padding: ".65rem 1.1rem",
                   fontSize: 12,
                   fontWeight: 500,
-                  color: isActive ? "#0f1117" : "#4a4d5c",
+                  color: isActive ? "var(--ink)" : "var(--ink-soft)",
                   background: "none",
                   border: "none",
                   borderBottom: `2px solid ${isActive ? "#c9982a" : "transparent"}`,
@@ -253,15 +253,15 @@ export function ContactDraftModal({
               padding: ".75rem 1rem",
               marginBottom: "1rem",
               fontSize: 12,
-              color: "#4a4d5c",
+              color: "var(--ink-soft)",
               lineHeight: 1.7,
             }}
           >
-            <span style={{ color: "#0f1117", fontWeight: 500 }}>To:</span> {toDisplay}
+            <span style={{ color: "var(--ink)", fontWeight: 500 }}>To:</span> {toDisplay}
             {reDisplay && (
               <>
                 <br />
-                <span style={{ color: "#0f1117", fontWeight: 500 }}>Re:</span> {reDisplay}
+                <span style={{ color: "var(--ink)", fontWeight: 500 }}>Re:</span> {reDisplay}
               </>
             )}
           </div>
@@ -275,10 +275,10 @@ export function ContactDraftModal({
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    color: "#0f1117",
+                    color: "var(--ink)",
                     marginBottom: ".75rem",
                     paddingBottom: ".65rem",
-                    borderBottom: "1px solid rgba(15,17,23,.10)",
+                    borderBottom: "1px solid rgba(20,18,12,.10)",
                   }}
                 >
                   Subject: {initialSubject}
@@ -288,13 +288,13 @@ export function ContactDraftModal({
               <div
                 style={{
                   fontSize: 13,
-                  color: "#4a4d5c",
+                  color: "var(--ink-soft)",
                   lineHeight: 1.85,
                   whiteSpace: "pre-wrap",
                   background: "#f8f7f4",
                   borderRadius: 8,
                   padding: "1rem",
-                  border: "1px solid rgba(15,17,23,.10)",
+                  border: "1px solid rgba(20,18,12,.10)",
                 }}
               >
                 {activeEmailBody || "No message drafted yet."}
@@ -308,13 +308,13 @@ export function ContactDraftModal({
               <div
                 style={{
                   fontSize: 13,
-                  color: "#4a4d5c",
+                  color: "var(--ink-soft)",
                   lineHeight: 1.85,
                   whiteSpace: "pre-wrap",
                   background: "#f8f7f4",
                   borderRadius: 8,
                   padding: "1rem",
-                  border: "1px solid rgba(15,17,23,.10)",
+                  border: "1px solid rgba(20,18,12,.10)",
                 }}
               >
                 {activeWaBody || "No WhatsApp message drafted yet."}
@@ -327,7 +327,7 @@ export function ContactDraftModal({
         <div
           style={{
             padding: "1rem 1.5rem",
-            borderTop: "1px solid rgba(15,17,23,.10)",
+            borderTop: "1px solid rgba(20,18,12,.10)",
             display: "flex",
             alignItems: "center",
             gap: ".65rem",
@@ -335,7 +335,7 @@ export function ContactDraftModal({
             background: "#fff",
           }}
         >
-          <div style={{ fontSize: 11, color: "#9496a1", flex: 1, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: "var(--ink-faint)", flex: 1, lineHeight: 1.5 }}>
             Edit as needed before sending. Nothing is sent automatically.
           </div>
 
@@ -351,9 +351,9 @@ export function ContactDraftModal({
               fontWeight: 500,
               padding: "6px 12px",
               borderRadius: 100,
-              border: "1px solid rgba(15,17,23,.18)",
+              border: "1px solid rgba(20,18,12,.18)",
               background: "#fff",
-              color: "#4a4d5c",
+              color: "var(--ink-soft)",
               cursor: "pointer",
               fontFamily: "inherit",
               whiteSpace: "nowrap",
@@ -380,7 +380,7 @@ export function ContactDraftModal({
                 padding: "6px 12px",
                 borderRadius: 100,
                 border: "none",
-                background: "#0f1117",
+                background: "var(--ink)",
                 color: "#fff",
                 cursor: "pointer",
                 fontFamily: "inherit",

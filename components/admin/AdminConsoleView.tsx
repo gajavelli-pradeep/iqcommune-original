@@ -189,7 +189,7 @@ function buildSections(counts: Counts): SidebarSection[] {
     {
       heading: "Pipeline",
       items: [
-        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,   badgeBg: "#a32d2d" },
+        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,   badgeBg: "#854f0b" },
         { label: "Practitioners",    tab: "practitioners", badge: counts.applied,            badgeBg: "#c9982a" },
         { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,    badgeBg: "#2a6b2a" },
         // Gap 18: Agreements badge green
@@ -199,7 +199,7 @@ function buildSections(counts: Counts): SidebarSection[] {
     {
       heading: "Finance",
       items: [
-        { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
+        { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#854f0b" },
       ],
     },
     {
@@ -216,12 +216,12 @@ function buildSections(counts: Counts): SidebarSection[] {
 // Gap 34: border-radius 100 (pill) for all buttons
 const ghostBtnStyle: React.CSSProperties = {
   background: "#fff",
-  border: "1px solid rgba(15,17,23,0.18)",
+  border: "1px solid rgba(20,18,12,0.18)",
   borderRadius: 100,
   padding: "6px 12px",
   fontSize: 12,
   fontWeight: 500,
-  color: "#4a4d5c",
+  color: "var(--ink-soft)",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
@@ -232,7 +232,7 @@ const ghostBtnStyle: React.CSSProperties = {
 
 // Gap 34: primary (dark) btn pill
 const primaryBtnStyle: React.CSSProperties = {
-  background: "#0f1117",
+  background: "var(--ink)",
   border: "none",
   borderRadius: 100,
   padding: "6px 12px",
@@ -254,8 +254,8 @@ const goldBtnStyle: React.CSSProperties = {
   borderRadius: 100,
   padding: "6px 12px",
   fontSize: 12,
-  fontWeight: 500,
-  color: "#ffffff",
+  fontWeight: 600,
+  color: "#14161d",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
@@ -274,7 +274,7 @@ function TabHeader({ tab, onAction }: { tab: string; onAction?: (label: string) 
     <div
       style={{
         background: "#fff",
-        borderBottom: "1px solid rgba(15,17,23,.10)",
+        borderBottom: "1px solid rgba(20,18,12,.10)",
         padding: "1.25rem 1.75rem",
         display: "flex",
         alignItems: "center",
@@ -287,14 +287,14 @@ function TabHeader({ tab, onAction }: { tab: string; onAction?: (label: string) 
             fontSize: 18,
             fontWeight: 600,
             letterSpacing: "-0.01em",
-            color: "#0f1117",
+            color: "var(--ink)",
             margin: 0,
             lineHeight: 1.2,
           }}
         >
           {meta.title}
         </h1>
-        <p style={{ fontSize: 13, color: "#9496a1", marginTop: 1, marginBottom: 0 }}>
+        <p style={{ fontSize: 13, color: "var(--ink-faint)", marginTop: 1, marginBottom: 0 }}>
           {meta.subtitle}
         </p>
       </div>
@@ -332,8 +332,8 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
         display: "grid",
         gridTemplateColumns: `repeat(${stats.length},1fr)`,
         gap: 1,
-        background: "rgba(15,17,23,.10)",
-        borderBottom: "1px solid rgba(15,17,23,.10)",
+        background: "rgba(20,18,12,.10)",
+        borderBottom: "1px solid rgba(20,18,12,.10)",
       }}
     >
       {stats.map((s) => {
@@ -347,11 +347,11 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
           style={{ background: isActive ? "#f5e9c8" : "#fff", padding: "1rem 1.5rem", cursor: clickable ? "pointer" : "default", boxShadow: isActive ? "inset 0 -2px 0 #c9982a" : undefined }}
         >
           {/* Gap 9: fontSize 24, fontWeight 600, color ink (not accent) */}
-          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "#0f1117", lineHeight: 1 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1 }}>
             {String(s.value)}
           </div>
           {/* Gap 10: fontSize 11, marginTop 3 */}
-          <div style={{ fontSize: 11, color: "#9496a1", marginTop: 3 }}>{s.label}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 3 }}>{s.label}</div>
           {/* Gap 17, 44: delta sub-label */}
           {s.delta && (
             <div style={{ fontSize: 11, color: s.deltaRed ? "#a32d2d" : "#2a6b2a", marginTop: 2 }}>
@@ -491,7 +491,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           width: 220,
           flexShrink: 0,
           background: "#ffffff",
-          borderRight: "1px solid rgba(15,17,23,.10)",
+          borderRight: "1px solid rgba(20,18,12,.10)",
           position: "sticky",
           top: 64,
           height: "calc(100vh - 64px)",
@@ -503,7 +503,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         {sections.map((section, si) => (
           <div key={section.heading}>
             {si > 0 && (
-              <div style={{ height: 1, background: "rgba(15,17,23,.10)", margin: "0.5rem 1.25rem" }} />
+              <div style={{ height: 1, background: "rgba(20,18,12,.10)", margin: "0.5rem 1.25rem" }} />
             )}
             <div
               style={{
@@ -511,7 +511,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 fontWeight: 600,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                color: "#9496a1",
+                color: "var(--ink-faint)",
                 padding: "1.25rem 1.25rem 0.4rem",
               }}
             >
@@ -535,7 +535,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                     padding: "0.6rem 1.25rem",
                     fontSize: 13,
                     fontWeight: isActive ? 500 : 400,
-                    color: isActive ? "#8a6510" : isHov ? "#0f1117" : "#4a4d5c",
+                    color: isActive ? "#8a6510" : isHov ? "var(--ink)" : "var(--ink-soft)",
                     cursor: "pointer",
                     background: isActive ? "#f5e9c8" : isHov ? "#f8f7f4" : "transparent",
                     border: "none",
@@ -550,7 +550,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
                       style={{
-                        background: item.badgeBg ?? "#9496a1",
+                        background: item.badgeBg ?? "var(--ink-faint)",
                         color: "#fff",
                         fontSize: 10,
                         fontWeight: 600,
@@ -568,10 +568,10 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         ))}
 
         {/* Sidebar footer — Gap 23: no avatar, just name + email lines */}
-        <div style={{ marginTop: "auto", padding: "1rem 1.25rem", borderTop: "1px solid rgba(15,17,23,0.10)" }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "#0f1117" }}>Admin User</div>
+        <div style={{ marginTop: "auto", padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,0.10)" }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Admin User</div>
           {/* Gap 23: email defaults to hello@iqcommune.com */}
-          <div style={{ fontSize: 11, color: "#9496a1" }}>{email ?? "hello@iqcommune.com"}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{email ?? "hello@iqcommune.com"}</div>
         </div>
       </aside>
 
@@ -651,13 +651,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               <div
                 style={{
                   background: "#ffffff",
-                  border: "1px solid rgba(15,17,23,.10)",
+                  border: "1px solid rgba(20,18,12,.10)",
                   borderRadius: 10,
                   padding: "2.5rem",
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 13, color: "#9496a1", lineHeight: 1.65 }}>
+                <div style={{ fontSize: 13, color: "var(--ink-faint)", lineHeight: 1.65 }}>
                   Settings panel — coming soon.
                 </div>
               </div>

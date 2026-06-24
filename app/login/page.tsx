@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(15,17,23,.1)",
+          border: "1px solid rgba(20,18,12,.1)",
           borderRadius: 14,
           padding: "2.5rem 2rem",
           width: "100%",
@@ -49,7 +49,7 @@ export default function LoginPage() {
       >
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>iqcommune</div>
-          <div style={{ fontSize: 14, color: "#9496a1", marginTop: 4 }}>
+          <div style={{ fontSize: 14, color: "var(--ink-faint)", marginTop: 4 }}>
             Admin console — sign in to continue
           </div>
         </div>
@@ -109,12 +109,12 @@ export default function LoginPage() {
                   border: "none",
                   borderRadius: "0 7px 7px 0",
                   cursor: "pointer",
-                  color: "#9496a1",
+                  color: "var(--ink-faint)",
                   padding: 0,
                   flexShrink: 0,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#0f1117")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#9496a1")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-faint)")}
               >
                 {showPassword ? <EyeOff /> : <Eye />}
               </button>
@@ -126,7 +126,7 @@ export default function LoginPage() {
               role="alert"
               style={{
                 background: "#fdf0f0",
-                border: "1px solid #f0b0b0",
+                border: "1px solid var(--red-border)",
                 borderRadius: 8,
                 padding: "10px 12px",
                 fontSize: 13,
@@ -139,10 +139,11 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            className="btn-cta"
             disabled={loading}
             style={{
               padding: "12px",
-              background: "#0f1117",
+              background: "var(--ink)",
               color: "#fff",
               border: "none",
               borderRadius: 100,
@@ -185,7 +186,7 @@ function EyeOff() {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid rgba(15,17,23,.18)",
+  border: "1px solid rgba(20,18,12,.18)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
