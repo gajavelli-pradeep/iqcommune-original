@@ -2,6 +2,7 @@
 
 import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
 
 interface Session {
@@ -46,6 +47,7 @@ export function SessionTable({
   const setStatusFilter = (f: StatusFilter) => (onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f));
   const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ open: boolean; title?: string; subject?: string; emailBody?: string; waBody?: string }>({ open: false });
 
   const query = search.toLowerCase();
   const visible = data.filter((s) => {
@@ -170,16 +172,47 @@ export function SessionTable({
                     </td>
                     <td style={tdStyle}><StatusPill status={s.consent_status} /></td>
                     <td style={tdStyle}><StatusPill status={s.status} /></td>
-                    <td style={{ ...tdStyle, display: "flex", alignItems: "center" }}>
-                      {s.payout_id && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onNavigate?.("payouts"); }}
-                          style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, marginRight: 6 }}
-                        >
-                          Payout →
-                        </button>
-                      )}
-                      <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>{isExpanded ? "▲" : "▼"}</span>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        {s.payout_id && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onNavigate?.("payouts"); }}
+                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
+                          >
+                            Payout →
+                          </button>
+                        )}
+                        {s.status === "Upcoming" && s.consent_status !== "Signed" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDraft({
+                                open: true,
+                                title: `Send confirmation — ${s.ref_code}`,
+                                subject: `Your iqcommune session is confirmed — ${s.session_date}`,
+                                emailBody: `Dear ${s.practitioner?.name ?? "Practitioner"},\n\nYour session has been confirmed.\n\nRef: ${s.ref_code}\nModule: ${s.module}\nDate: ${s.session_date} · ${s.start_time}–${s.end_time}\nVenue: ${s.venue}\nParticipants: ${s.participants}\n\nPlease sign the consent form when you receive the link.\n\nWarm regards,\nThe iqcommune Team`,
+                                waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
+                              });
+                            }}
+                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Send confirmation
+                          </button>
+                        )}
+                        {s.status === "Completed" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/onboarding?session=${encodeURIComponent(s.ref_code)}&mode=photos`;
+                              navigator.clipboard.writeText(url).then(() => alert(`Photo link copied:\n${url}`));
+                            }}
+                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Photo link
+                          </button>
+                        )}
+                        <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>{isExpanded ? "▲" : "▼"}</span>
+                      </div>
                     </td>
                   </tr>
 
@@ -225,6 +258,15 @@ export function SessionTable({
           </tbody>
         </table>
       </div>
+
+      <ContactDraftModal
+        open={draft.open}
+        onClose={() => setDraft({ open: false })}
+        title={draft.title}
+        subject={draft.subject}
+        emailBody={draft.emailBody}
+        waBody={draft.waBody}
+      />
     </div>
   );
 }

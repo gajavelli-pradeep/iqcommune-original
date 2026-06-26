@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
 
 interface Payout {
@@ -31,6 +32,7 @@ export function PayoutTable({
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
+  const [draft, setDraft] = useState<{ open: boolean; name?: string; invoice?: string; net?: string; module?: string }>({ open: false });
   const visible = statusFilter === "all" ? data : data.filter((p) => p.status === statusFilter);
 
   const markPaid = useCallback(async (id: string) => {
@@ -126,19 +128,29 @@ export function PayoutTable({
                     )}
                   </td>
                   <td style={tdStyle}><StatusPill status={p.status} /></td>
-                  <td style={tdStyle}>
-                    {p.status === "Pending" ? (
-                      <button
-                        onClick={() => markPaid(p.id)}
-                        style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
-                      >
-                        Mark paid
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-                        {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN") : "—"}
-                      </span>
-                    )}
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      {p.status === "Pending" ? (
+                        <>
+                          <button
+                            onClick={() => markPaid(p.id)}
+                            style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
+                          >
+                            Mark paid
+                          </button>
+                          <button
+                            onClick={() => setDraft({ open: true, name: p.practitioner?.name ?? "", invoice: p.invoice_ref, net: formatInr(p.net_amount), module: p.session?.module ?? "" })}
+                            style={{ background: "rgba(20,18,12,.07)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Draft reminder
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                          {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN") : "—"}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -174,6 +186,16 @@ export function PayoutTable({
           {toast}
         </div>
       )}
+
+      <ContactDraftModal
+        open={draft.open}
+        onClose={() => setDraft({ open: false })}
+        title={`Payout reminder — ${draft.name}`}
+        subject={`Payout reminder: ${draft.invoice}`}
+        emailBody={`Dear ${draft.name},\n\nThis is a reminder regarding your payout for the ${draft.module} session.\n\nInvoice ref: ${draft.invoice}\nNet payout: ${draft.net}\n\nPlease confirm receipt of this payout or let us know if you have any questions.\n\nWarm regards,\nThe iqcommune Team`}
+        waBody={`Hi ${draft.name}! 👋\n\nJust a quick note from the iqcommune team — your payout for the *${draft.module}* session is ready.\n\nInvoice: *${draft.invoice}*\nNet: *${draft.net}*\n\nLet us know if you have any questions!`}
+        recipientName={draft.name}
+      />
     </div>
   );
 }

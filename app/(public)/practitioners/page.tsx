@@ -1180,6 +1180,74 @@ export default function PractitionersPage() {
               );
             })}
           </div>
+
+          {/* ── Bundle nudge ── */}
+          <div
+            style={{
+              marginTop: "2rem",
+              background: "var(--gold-light, #f5e9c8)",
+              border: "1.5px solid #e0c870",
+              borderRadius: 12,
+              padding: "1.25rem 1.4rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: "#8a6510",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink, #14161d)" }}>
+                  Applying for two related modules? They can be bundled.
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-muted, #4a4d5c)", lineHeight: 1.6, marginTop: 3 }}>
+                  Three natural pairings run back-to-back as a single 6-hour session. If your expertise spans a pair, indicate that in your application and we&apos;ll discuss it.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                "Foundations + Retirement & Goals",
+                "Equity + Debt & Fixed Income",
+                "Asset Allocation + Investment Solutions",
+              ].map((pair, i) => (
+                <div
+                  key={pair}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "#8a6510",
+                    background: "#fff",
+                    border: "1px solid #e0c870",
+                    borderRadius: 100,
+                    padding: "4px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9496a1" }}>0{i + 1}</span>
+                  {pair}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
