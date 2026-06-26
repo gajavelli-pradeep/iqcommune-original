@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ApplicationForm } from "@/components/public/ApplicationForm";
-import { RevealOnScroll } from "@/components/public/RevealOnScroll";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import { SiteFooter } from "@/components/public/SiteFooter";
-import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 
 export const metadata: Metadata = {
   title: "Join as a Practitioner",
@@ -264,16 +262,14 @@ const YOU_BRING: { text: string; icon: RowIcon }[] = [
 
 interface ModuleCard {
   name: string;
-  ideal: string;
-  desc: string;
+  desc: React.ReactNode;
   icon: React.ReactNode;
 }
 
 const MODULE_CARDS: ModuleCard[] = [
   {
     name: "Foundations of Personal Finance",
-    ideal: "Ideal if you're a: CFP, financial planner, IFA",
-    desc: "Budgeting, net worth, emergency funds, insurance, and tax basics. Teaching people to get their complete foundation right before they invest a single rupee.",
+    desc: <>Budgeting frameworks, net worth, emergency funds, insurance, and tax basics. Teaching people to get their foundation right before they invest anything. <strong>The conversation a financial planner or IFA has with every new client — opened up to a room of twenty-five.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -283,8 +279,7 @@ const MODULE_CARDS: ModuleCard[] = [
   },
   {
     name: "Retirement & Goal-Based Financial Planning",
-    ideal: "Ideal if you're a: CFP, pension specialist, wealth planner",
-    desc: "Corpus calculations, NPS/EPF/PPF, goal-bucket planning, and competing financial goals. The conversations most people delay — you know how to make them urgent and actionable.",
+    desc: <>Corpus calculation, NPS/EPF/PPF, and mapping investments to real goals — home, education, retirement. <strong>The plan a CFP or pension specialist builds for a client nearing a milestone — now for a room of twenty-five.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
@@ -294,8 +289,7 @@ const MODULE_CARDS: ModuleCard[] = [
   },
   {
     name: "Equity Investing Simplified",
-    ideal: "Ideal if you're a: Equity analyst, research head, fund manager",
-    desc: "How markets work, reading financials, valuation ratios, and earnings reports. Taught from the desk of someone using these tools professionally every day.",
+    desc: <>How markets work, reading financials, valuation ratios, and earnings reports — the toolkit a retail investor needs. <strong>Taught by an active equity analyst, not a textbook.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -304,8 +298,7 @@ const MODULE_CARDS: ModuleCard[] = [
   },
   {
     name: "Debt & Fixed Income Investing",
-    ideal: "Ideal if you're a: Bond trader, portfolio manager, fixed income analyst",
-    desc: "Bonds, G-Secs, debt mutual funds, yield, duration, and tax treatment — the fixed income universe decoded by someone actively managing these instruments.",
+    desc: <>Bonds, G-Secs, debt mutual funds, yield, duration, and tax treatment. <strong>The fixed income universe decoded by an active portfolio manager.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <line x1="12" y1="1" x2="12" y2="23" />
@@ -315,8 +308,7 @@ const MODULE_CARDS: ModuleCard[] = [
   },
   {
     name: "Asset Allocation & Portfolio Construction",
-    ideal: "Ideal if you're a: Portfolio manager, wealth advisor, RM",
-    desc: "How to split a portfolio across asset classes, build for risk profile, and rebalance. You're actively making these decisions for real clients — now help others make them for themselves.",
+    desc: <>How to split a portfolio across asset classes, build for risk profile, and rebalance. <strong>Taught by someone actively making these decisions for real clients — a portfolio manager or wealth manager.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -327,8 +319,7 @@ const MODULE_CARDS: ModuleCard[] = [
   },
   {
     name: "Investment Solutions & Portfolio Strategies",
-    ideal: "Ideal if you're a: Practising portfolio manager, distributor, RM",
-    desc: "Mutual fund categories, SIP/STP/SWP, PMS and AIF, portfolio review frameworks, and tax-efficient investing — for someone who applies this daily.",
+    desc: <>Mutual fund categories, SIP/STP/SWP mechanics, PMS and AIF, portfolio review frameworks, and tax-efficient investing. <strong>Taught by a practising portfolio manager.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -633,7 +624,6 @@ export default function PractitionersPage() {
             {/* CTA */}
             <a
               href="#apply-form"
-              className="btn-cta"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -693,7 +683,7 @@ export default function PractitionersPage() {
               {PERKS.map((perk, i) => (
                 <div
                   key={perk.title}
-                  className="iq-perk iq-animate"
+                  className="iq-perk"
                   style={{
                     display: "flex",
                     gap: 12,
@@ -701,11 +691,9 @@ export default function PractitionersPage() {
                     paddingTop: "0.85rem",
                     paddingBottom: "0.85rem",
                     borderBottom: i < PERKS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
-                    animationDelay: `${0.06 * i}s`,
                   }}
                 >
                   <div
-                    className="iq-perk-icon"
                     style={{
                       width: 34,
                       height: 34,
@@ -760,7 +748,6 @@ export default function PractitionersPage() {
           {TRUST_ITEMS.map((item) => (
             <div
               key={item.text}
-              className="hover-lift"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -786,7 +773,6 @@ export default function PractitionersPage() {
             <Pill>Who we&apos;re looking for</Pill>
             {/* Gap 10: section-headline font size clamp(26px,3.8vw,40px) */}
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -820,34 +806,29 @@ export default function PractitionersPage() {
               gap: "1rem",
             }}
           >
-            {/* Gap 6, 7, 8: SVG icons, exact source desc, no ideal line */}
-            {ROLES.map((role, i) => {
-              const accent = paletteAccent(i);
-              return (
+            {ROLES.map((role) => (
               <div
                 key={role.title}
-                className="role-card iq-animate"
+                className="role-card"
                 style={{
-                  background: `linear-gradient(180deg, ${accent.light} 0%, #ffffff 52%)`,
-                  border: `1px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
-                  borderTop: `3px solid ${accent.base}`,
+                  background: "var(--surface)",
+                  border: "1px solid rgba(20,18,12,0.10)",
                   borderRadius: 12,
                   padding: "1.5rem",
-                  ...accentVars(accent),
+                  transition: "border-color 0.2s, transform 0.2s",
                 }}
               >
                 <div
-                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: accent.light,
+                    background: "var(--gold-light)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "1rem",
-                    color: accent.base,
+                    color: "var(--gold-dark)",
                     flexShrink: 0,
                   }}
                   aria-hidden="true"
@@ -857,11 +838,9 @@ export default function PractitionersPage() {
                 <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>
                   {role.title}
                 </div>
-                {/* Gap 7: no ideal line rendered */}
                 <div style={{ fontSize: 13, color: "var(--ink-muted)", lineHeight: 1.55 }}>{role.desc}</div>
               </div>
-              );
-            })}
+            ))}
           </div>
 
           {/* Gap 9: footnote with info SVG + exact source text */}
@@ -892,7 +871,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>The process</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -919,7 +897,7 @@ export default function PractitionersPage() {
             </p>
           </div>
           <div
-            className="steps-row iq-steps"
+            className="steps-row"
             style={{
               display: "flex",
               flexWrap: "wrap",
@@ -930,7 +908,6 @@ export default function PractitionersPage() {
               position: "relative",
             }}
           >
-            <div className="iq-step-connector" aria-hidden="true" />
             {STEPS.map((step, i) => (
               <div
                 key={step.title}
@@ -938,7 +915,6 @@ export default function PractitionersPage() {
                 style={{ flex: "1 1 180px", maxWidth: 210, textAlign: "center", position: "relative" }}
               >
                 <div
-                  className="step-circle"
                   style={{
                     width: 52,
                     height: 52,
@@ -953,7 +929,6 @@ export default function PractitionersPage() {
                     margin: "0 auto 1rem",
                     position: "relative",
                     zIndex: 1,
-                    boxShadow: `0 0 0 4px #ffffff, 0 0 0 5px color-mix(in srgb, ${paletteAccent(i).base} 50%, transparent)`,
                   }}
                 >
                   {i + 1}
@@ -976,7 +951,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Division of work</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1016,46 +990,7 @@ export default function PractitionersPage() {
               margin: "0 auto",
             }}
           >
-            {/* iqcommune handles */}
-            <div style={{ background: "var(--surface)" }}>
-              <div
-                style={{
-                  padding: "1.1rem 1.75rem",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(20,18,12,0.18)",
-                  background: "var(--ink)",
-                  color: "var(--surface)",
-                }}
-              >
-                iqcommune handles
-              </div>
-              {IQCOMMUNE_HANDLES.map((item, i) => (
-                <div
-                  key={item.text}
-                  className="row-hover iq-animate"
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    padding: "1rem 1.75rem",
-                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
-                    fontSize: 14,
-                    color: "var(--ink)",
-                    fontWeight: 500,
-                    lineHeight: 1.5,
-                    animationDelay: `${0.04 * i}s`,
-                  }}
-                >
-                  <RowIconSvg name={item.icon} color="var(--gold)" />
-                  {item.text}
-                </div>
-              ))}
-            </div>
-
-            {/* You bring */}
+            {/* You Bring — left column (V2 order) */}
             <div style={{ background: "var(--surface-soft)" }}>
               <div
                 style={{
@@ -1069,12 +1004,12 @@ export default function PractitionersPage() {
                   color: "var(--ink-faint)",
                 }}
               >
-                You bring
+                You Bring
               </div>
               {YOU_BRING.map((item, i) => (
                 <div
                   key={item.text}
-                  className="row-hover iq-animate"
+                  className="row-hover"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
@@ -1084,10 +1019,47 @@ export default function PractitionersPage() {
                     fontSize: 14,
                     color: "var(--ink-muted)",
                     lineHeight: 1.5,
-                    animationDelay: `${0.04 * i}s`,
                   }}
                 >
                   <RowIconSvg name={item.icon} color="var(--ink-faint)" />
+                  {item.text}
+                </div>
+              ))}
+            </div>
+
+            {/* We Handle — right column (V2 order) */}
+            <div style={{ background: "var(--surface)" }}>
+              <div
+                style={{
+                  padding: "1.1rem 1.75rem",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  background: "var(--ink)",
+                  color: "var(--surface)",
+                }}
+              >
+                We Handle
+              </div>
+              {IQCOMMUNE_HANDLES.map((item, i) => (
+                <div
+                  key={item.text}
+                  className="row-hover"
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    padding: "1rem 1.75rem",
+                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                    fontSize: 14,
+                    color: "var(--ink)",
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <RowIconSvg name={item.icon} color="var(--gold)" />
                   {item.text}
                 </div>
               ))}
@@ -1102,7 +1074,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Teaching modules</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1112,9 +1083,8 @@ export default function PractitionersPage() {
                 marginBottom: 12,
               }}
             >
-              Six modules. One per practitioner.
+              Six modules. Teach one or several.
             </h2>
-            {/* Gap 49: margin 0 auto 3rem */}
             <p
               style={{
                 fontSize: 16,
@@ -1124,7 +1094,7 @@ export default function PractitionersPage() {
                 lineHeight: 1.65,
               }}
             >
-              Each module is taught by a single practitioner currently active in that specific area. You apply for the one that fits your expertise.
+              Each module maps to a distinct area of active practice. You can apply for one module or several — if your expertise spans a natural pairing, those two can be bundled as a single 6-hour session. We&apos;ll discuss and confirm what makes sense.
             </p>
           </div>
           <div
@@ -1136,49 +1106,41 @@ export default function PractitionersPage() {
               marginTop: "2rem",
             }}
           >
-            {MODULE_CARDS.map((mod) => {
-              const accent = moduleAccent(mod.name);
-              return (
+            {MODULE_CARDS.map((mod) => (
               <div
                 key={mod.name}
-                className="module-card iq-animate"
+                className="module-card"
                 style={{
-                  background: `linear-gradient(180deg, ${accent.light} 0%, #f8f7f4 54%)`,
-                  border: `1.5px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
-                  borderTop: `3px solid ${accent.base}`,
+                  background: "var(--surface)",
+                  border: "1.5px solid rgba(20,18,12,0.10)",
                   borderRadius: 12,
                   padding: "1.25rem",
-                  ...accentVars(accent),
+                  transition: "border-color 0.2s",
                 }}
               >
                 <div
-                  className="card-icon"
                   style={{
                     width: 40,
                     height: 40,
                     borderRadius: 9,
-                    background: accent.light,
+                    background: "var(--gold-light)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "0.85rem",
-                    color: accent.base,
+                    color: "var(--gold-dark)",
                   }}
                 >
                   {mod.icon}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
                   {mod.name}
-                </div>
-                <div style={{ fontSize: 12, color: accent.ink, fontWeight: 500, marginBottom: 6 }}>
-                  {mod.ideal}
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-muted)", lineHeight: 1.55 }}>
                   {mod.desc}
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
 
           {/* ── Bundle nudge ── */}
@@ -1258,7 +1220,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <DarkPill>Before you apply</DarkPill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1287,7 +1248,7 @@ export default function PractitionersPage() {
           >
             {/* Good fit */}
             <div
-              className="iq-animate iq-honest-card"
+              className="iq-honest-card"
               style={{
                 background: "rgba(42,107,42,0.15)",
                 border: "1px solid rgba(42,107,42,0.25)",
@@ -1337,7 +1298,7 @@ export default function PractitionersPage() {
 
             {/* Not a fit */}
             <div
-              className="iq-animate iq-honest-card"
+              className="iq-honest-card"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.10)",
@@ -1396,7 +1357,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>Transparency</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1435,7 +1395,7 @@ export default function PractitionersPage() {
           >
             {/* Never disclosed */}
             <div
-              className="iq-animate iq-disclosure-card"
+              className="iq-disclosure-card"
               style={{
                 background: "var(--surface-soft)",
                 border: "1px solid rgba(20,18,12,0.10)",
@@ -1510,7 +1470,7 @@ export default function PractitionersPage() {
 
             {/* Shared on confirm */}
             <div
-              className="iq-animate iq-disclosure-card"
+              className="iq-disclosure-card"
               style={{
                 background: "var(--gold-light)",
                 border: "1px solid var(--gold-border)",
@@ -1630,7 +1590,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <Pill>Apply</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1677,7 +1636,6 @@ export default function PractitionersPage() {
           <div style={{ textAlign: "center" }}>
             <Pill>FAQs</Pill>
             <h2
-              className="iq-animate"
               style={{
                 fontSize: "clamp(26px,3.8vw,40px)",
                 fontWeight: 600,
@@ -1733,8 +1691,6 @@ export default function PractitionersPage() {
         }
       />
 
-      {/* Card entrance animation — reveals .iq-animate elements on scroll. */}
-      <RevealOnScroll />
     </main>
   );
 }
