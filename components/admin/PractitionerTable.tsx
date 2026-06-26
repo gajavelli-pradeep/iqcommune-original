@@ -188,7 +188,10 @@ export function PractitionerTable({
                     <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.org}</div>
                   )}
                 </td>
-                <td style={tdStyle}>{p.city}</td>
+                <td style={tdStyle}>
+                  <div>{p.city}</div>
+                  {p.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.state}</div>}
+                </td>
                 <td style={tdStyle}>{(p.modules ?? []).join(", ")}</td>
                 <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                   {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
@@ -273,6 +276,7 @@ export function PractitionerTable({
               ["Role", selected.role],
               ["Org", selected.org ?? "Independent"],
               ["City", selected.city],
+              ["State", selected.state ?? "—"],
               ["Experience", selected.experience],
               ["Modules", (selected.modules ?? []).join(", ")],
               ["Availability", selected.teach_freq ?? "—"],

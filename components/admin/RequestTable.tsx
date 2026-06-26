@@ -10,6 +10,8 @@ interface SessionRequest {
   org: string | null;
   email: string;
   phone: string | null;
+  city: string | null;
+  state: string | null;
   topic: string;
   audience_type: string;
   group_size: string | null;
@@ -154,7 +156,7 @@ export function RequestTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Client", "Topic", "Audience", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
+              {["Client", "Topic", "Audience", "City", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -180,6 +182,10 @@ export function RequestTable({
                     <td style={tdStyle}>
                       <div>{r.audience_type}</div>
                       <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.group_size} total</div>
+                    </td>
+                    <td style={tdStyle}>
+                      <div>{r.city ?? "—"}</div>
+                      {r.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.state}</div>}
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
                       {r.min_commit != null ? (
@@ -213,7 +219,7 @@ export function RequestTable({
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                      <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
                             border: "1px solid rgba(20,18,12,.10)",
@@ -232,6 +238,8 @@ export function RequestTable({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem 2rem", marginBottom: "1rem" }}>
                             <Field label="Topic" value={r.topic} />
                             <Field label="Audience type" value={r.audience_type} />
+                            <Field label="City" value={r.city ?? "—"} />
+                            <Field label="State" value={r.state ?? "—"} />
                             <Field label="Group size" value={r.group_size ?? "—"} />
                             <Field label="Preferred dates" value={r.preferred_dates ?? "—"} />
                             <Field label="Venue" value={r.venue ?? "—"} />
@@ -268,7 +276,7 @@ export function RequestTable({
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No session requests yet" : "No requests match the current filter"}
                 </td>
               </tr>

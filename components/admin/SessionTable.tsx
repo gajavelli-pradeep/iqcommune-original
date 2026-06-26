@@ -129,7 +129,7 @@ export function SessionTable({
         >
           <thead>
             <tr>
-              {["Ref", "Module", "Practitioner", "Date", "Venue", "Pax", "Payout", "Consent", "Status", ""].map((h) => (
+              {["Ref", "Module", "Practitioner", "Date", "Venue", "Audience", "Pax", "Payout", "Consent", "Status", ""].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -158,6 +158,7 @@ export function SessionTable({
                       <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.start_time}–{s.end_time}</div>
                     </td>
                     <td style={tdStyle}>{s.venue}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{s.audience_type ?? "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>{s.participants}</td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>
                       {formatInr(s.payout_amount)}
@@ -184,7 +185,7 @@ export function SessionTable({
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                      <td colSpan={11} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
                             border: "1px solid rgba(20,18,12,.10)",
@@ -216,7 +217,7 @@ export function SessionTable({
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={11} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
                 </td>
               </tr>
