@@ -3,9 +3,7 @@ import { RequestModal } from "@/components/public/RequestModal";
 import { FaqAccordion, type FaqItem } from "@/components/public/FaqAccordion";
 import { NavBar } from "@/components/public/NavBar";
 import { SiteFooter } from "@/components/public/SiteFooter";
-import { RevealOnScroll } from "@/components/public/RevealOnScroll";
 import { CountUp } from "@/components/public/CountUp";
-import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 import { ToolsSection } from "@/components/public/ToolsSection";
 import { GallerySection } from "@/components/public/GallerySection";
 
@@ -808,7 +806,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Why it matters</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -865,7 +862,7 @@ export default function HomePage() {
               {DIFF_THEM.map((text, i) => (
                 <div
                   key={text}
-                  className="row-hover iq-animate"
+                  className="row-hover"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
@@ -875,7 +872,6 @@ export default function HomePage() {
                     fontSize: 14,
                     color: "#383b47",
                     borderRight: "1px solid rgba(20,18,12,0.18)",
-                    animationDelay: `${0.05 * i}s`,
                   }}
                 >
                   <CrossSvg />
@@ -903,7 +899,7 @@ export default function HomePage() {
               {DIFF_US.map((text, i) => (
                 <div
                   key={text}
-                  className="row-hover iq-animate"
+                  className="row-hover"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
@@ -913,7 +909,6 @@ export default function HomePage() {
                     fontSize: 14,
                     color: "#14161d",
                     fontWeight: 500,
-                    animationDelay: `${0.05 * i}s`,
                   }}
                 >
                   <CheckmarkSvg color="#c9982a" />
@@ -930,7 +925,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Training Topics</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -965,29 +959,25 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {TOPICS.map((topic) => {
-              const accent = moduleAccent(topic.name);
-              return (
+            {TOPICS.map((topic) => (
               <div
                 key={topic.name}
-                className="topic-card iq-animate"
+                className="topic-card"
                 style={{
-                  background: `linear-gradient(180deg, ${accent.light} 0%, #ffffff 52%)`,
-                  border: `1px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
-                  borderTop: `3px solid ${accent.base}`,
+                  background: "#ffffff",
+                  border: "1px solid rgba(20,18,12,0.10)",
                   borderRadius: 12,
                   padding: "1.5rem",
-                  ...accentVars(accent),
+                  transition: "border-color 0.2s, transform 0.2s",
                 }}
               >
                 <div
-                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: accent.light,
-                    color: accent.base,
+                    background: "var(--gold-light)",
+                    color: "var(--gold-dark)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1003,8 +993,7 @@ export default function HomePage() {
                   {topic.desc}
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
         </div>
       </section>
@@ -1014,7 +1003,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Who is this for</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1049,35 +1037,31 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {AUDIENCE_CARDS.map((card, i) => {
-              const accent = paletteAccent(i);
-              return (
+            {AUDIENCE_CARDS.map((card) => (
               <div
                 key={card.heading}
-                className="audience-card-inner iq-animate"
+                className="audience-card-inner"
                 style={{
-                  background: `linear-gradient(180deg, ${accent.light} 0%, #f8f7f4 54%)`,
-                  border: `1.5px solid color-mix(in srgb, ${accent.base} 20%, rgba(20,18,12,0.10))`,
-                  borderTop: `3px solid ${accent.base}`,
+                  background: "#f8f7f4",
+                  border: "1.5px solid rgba(20,18,12,0.10)",
                   borderRadius: 12,
                   padding: "1.6rem 1.75rem",
                   flex: "1 1 210px",
                   maxWidth: 240,
-                  ...accentVars(accent),
+                  transition: "border-color 0.2s, transform 0.2s",
                 }}
               >
                 <div
-                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: accent.light,
+                    background: "var(--gold-light)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "1rem",
-                    color: accent.base,
+                    color: "var(--gold-dark)",
                   }}
                 >
                   {card.icon}
@@ -1095,9 +1079,9 @@ export default function HomePage() {
                       style={{
                         fontSize: 11,
                         fontWeight: 500,
-                        color: accent.ink,
-                        background: accent.light,
-                        border: `1px solid ${accent.base}33`,
+                        color: "var(--gold-dark)",
+                        background: "var(--gold-light)",
+                        border: "1px solid #e0c870",
                         padding: "3px 9px",
                         borderRadius: 100,
                       }}
@@ -1107,8 +1091,7 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
 
           {/* Gap 7: footnote has SVG icon, font-size 12, margin-top 1.75rem */}
@@ -1136,7 +1119,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Process</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1212,7 +1194,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Takeaways</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1246,18 +1227,15 @@ export default function HomePage() {
               marginTop: "2rem",
             }}
           >
-            {WALKOUT_CARDS.map((card) => {
-              const accent = moduleAccent(card.title);
-              return (
+            {WALKOUT_CARDS.map((card) => (
               <div
                 key={card.title}
-                className="walkout-card iq-animate"
+                className="walkout-card"
                 style={{
                   border: "1px solid rgba(20,18,12,0.10)",
-                  borderTop: `3px solid ${accent.base}`,
                   borderRadius: 12,
                   overflow: "hidden",
-                  ...accentVars(accent),
+                  transition: "transform 0.2s, border-color 0.2s",
                 }}
               >
                 {/* Dark header */}
@@ -1270,7 +1248,7 @@ export default function HomePage() {
                     gap: 10,
                   }}
                 >
-                  <span style={{ color: accent.base, flexShrink: 0 }}>{card.icon}</span>
+                  <span style={{ color: "var(--gold)", flexShrink: 0 }}>{card.icon}</span>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.3 }}>
                     {card.title}
                   </div>
@@ -1298,8 +1276,7 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
 
           {/* Gap 8: walkout callout padding 1rem 1.5rem, color #383b47 (ink-muted), margin-top 2rem */}
@@ -1340,7 +1317,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <Pill>FAQs</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1377,7 +1353,6 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill dark>Get Started</Pill>
           <h2
-            className="iq-animate"
             style={{
               fontSize: "clamp(26px,3.8vw,40px)",
               fontWeight: 600,
@@ -1471,8 +1446,6 @@ export default function HomePage() {
           </div>
         }
       />
-      {/* Card entrance animation — reveals .iq-animate elements on scroll. */}
-      <RevealOnScroll />
     </main>
   );
 }
