@@ -7,6 +7,7 @@ import { RevealOnScroll } from "@/components/public/RevealOnScroll";
 import { CountUp } from "@/components/public/CountUp";
 import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 import { ToolsSection } from "@/components/public/ToolsSection";
+import { GallerySection } from "@/components/public/GallerySection";
 
 export const metadata: Metadata = {
   title: { absolute: "iqcommune — Real practitioners. Real sessions." },
@@ -1331,7 +1332,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── §10 FAQ ── */}
+      {/* ── §10 GALLERY ── */}
+      <GallerySection />
+
+      {/* ── §11 FAQ ── */}
       <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <Pill>FAQs</Pill>
@@ -1365,10 +1369,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── §11 TOOLS & CALCULATORS ── */}
+      {/* ── §12 TOOLS & CALCULATORS ── */}
       <ToolsSection />
 
-      {/* ── §12 CTA ── */}
+      {/* ── §13 CTA ── */}
       <section style={{ background: "radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201,152,42,0.14), transparent 72%), #14161d", borderTop: "1px solid rgba(201,152,42,0.18)", padding: "5.5rem 2rem", textAlign: "center" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill dark>Get Started</Pill>
