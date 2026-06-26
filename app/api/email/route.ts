@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { sendEmail } from "@/lib/email/brevo";
+import { log } from "@/lib/logger";
 import {
   availabilityCheckEmail,
   agreementLinkEmail,
   clientFollowUpEmail,
   sessionConfirmationEmail,
+  photoApproved,
+  payoutPaid,
 } from "@/lib/email/templates";
 import { z } from "zod";
 
@@ -52,6 +55,19 @@ const Schema = z.discriminatedUnion("type", [
     tdsRate: z.number(),
     consentUrl: z.string().url(),
   }),
+  z.object({
+    type:       z.literal("photo-approved"),
+    to:         z.string().email(),
+    name:       z.string(),
+    sessionRef: z.string(),
+  }),
+  z.object({
+    type:        z.literal("payout-paid"),
+    to:          z.string().email(),
+    name:        z.string(),
+    invoiceRef:  z.string(),
+    amountInr:   z.number(),
+  }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -86,28 +102,32 @@ export async function POST(req: NextRequest) {
       audienceType: d.audienceType,
       preferredDates: d.preferredDates,
     });
-  } else {
+  } else if (d.type === "session-confirmation") {
     email = sessionConfirmationEmail(d.name, {
-      refCode: d.refCode,
-      module: d.module,
-      date: d.date,
-      startTime: d.startTime,
-      endTime: d.endTime,
-      venue: d.venue,
+      refCode:      d.refCode,
+      module:       d.module,
+      date:         d.date,
+      startTime:    d.startTime,
+      endTime:      d.endTime,
+      venue:        d.venue,
       participants: d.participants,
-      grossAmount: d.grossAmount,
-      tdsAmount: d.tdsAmount,
-      netAmount: d.netAmount,
-      tdsRate: d.tdsRate,
-      consentUrl: d.consentUrl,
+      grossAmount:  d.grossAmount,
+      tdsAmount:    d.tdsAmount,
+      netAmount:    d.netAmount,
+      tdsRate:      d.tdsRate,
+      consentUrl:   d.consentUrl,
     });
+  } else if (d.type === "photo-approved") {
+    email = photoApproved({ practitionerName: d.name, sessionRef: d.sessionRef });
+  } else {
+    email = payoutPaid({ practitionerName: d.name, invoiceRef: d.invoiceRef, amountInr: d.amountInr });
   }
 
   try {
     await sendEmail({ to: d.to, name: d.name, ...email });
     return NextResponse.json({ sent: true });
   } catch (err) {
-    console.error("[POST /api/email]", err);
+    log.error("[POST /api/email] Failed to send email", { error: String(err), type: d.type, to: d.to });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

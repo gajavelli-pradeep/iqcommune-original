@@ -32,21 +32,28 @@ export function PractitionerFormModal({
       return;
     }
     setSaving(true);
-    const res = await fetch("/api/admin/practitioners", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        email: form.email,
-        role: form.role,
-        city: form.city,
-        experience: form.experience,
-        phone: form.phone || undefined,
-        org: form.org || undefined,
-        modules: form.modules.split(",").map((m) => m.trim()).filter(Boolean),
-        status: form.status,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/practitioners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          role: form.role,
+          city: form.city,
+          experience: form.experience,
+          phone: form.phone || undefined,
+          org: form.org || undefined,
+          modules: form.modules.split(",").map((m) => m.trim()).filter(Boolean),
+          status: form.status,
+        }),
+      });
+    } catch {
+      setSaving(false);
+      setError("Network error — please try again.");
+      return;
+    }
     setSaving(false);
     if (res.status === 409) { setError("A practitioner with this email already exists."); return; }
     if (!res.ok) { setError("Could not add practitioner. Check the fields and try again."); return; }
@@ -72,21 +79,21 @@ export function PractitionerFormModal({
       }
     >
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
-        <Field label="Name *"><input style={fieldInputStyle} value={form.name} onChange={set("name")} /></Field>
-        <Field label="Email *"><input type="email" style={fieldInputStyle} value={form.email} onChange={set("email")} /></Field>
-        <Field label="Role / title *"><input style={fieldInputStyle} value={form.role} onChange={set("role")} /></Field>
-        <Field label="City *"><input style={fieldInputStyle} value={form.city} onChange={set("city")} /></Field>
-        <Field label="Experience *"><input style={fieldInputStyle} placeholder="e.g. 9 – 12 years" value={form.experience} onChange={set("experience")} /></Field>
-        <Field label="Phone"><input style={fieldInputStyle} value={form.phone} onChange={set("phone")} /></Field>
-        <Field label="Organisation"><input style={fieldInputStyle} value={form.org} onChange={set("org")} /></Field>
+        <Field label="Name *"><input id="pf-name" name="pf-name" style={fieldInputStyle} value={form.name} onChange={set("name")} /></Field>
+        <Field label="Email *"><input id="pf-email" name="pf-email" type="email" style={fieldInputStyle} value={form.email} onChange={set("email")} /></Field>
+        <Field label="Role / title *"><input id="pf-role" name="pf-role" style={fieldInputStyle} value={form.role} onChange={set("role")} /></Field>
+        <Field label="City *"><input id="pf-city" name="pf-city" style={fieldInputStyle} value={form.city} onChange={set("city")} /></Field>
+        <Field label="Experience *"><input id="pf-experience" name="pf-experience" style={fieldInputStyle} placeholder="e.g. 9 – 12 years" value={form.experience} onChange={set("experience")} /></Field>
+        <Field label="Phone"><input id="pf-phone" name="pf-phone" style={fieldInputStyle} value={form.phone} onChange={set("phone")} /></Field>
+        <Field label="Organisation"><input id="pf-org" name="pf-org" style={fieldInputStyle} value={form.org} onChange={set("org")} /></Field>
         <Field label="Status">
-          <select style={fieldSelectStyle} value={form.status} onChange={set("status")}>
+          <select id="pf-status" name="pf-status" style={fieldSelectStyle} value={form.status} onChange={set("status")}>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Modules (comma-separated)">
-            <input style={fieldInputStyle} placeholder="Personal Finance, Tax Planning" value={form.modules} onChange={set("modules")} />
+            <input id="pf-modules" name="pf-modules" style={fieldInputStyle} placeholder="Personal Finance, Tax Planning" value={form.modules} onChange={set("modules")} />
           </Field>
         </div>
       </div>

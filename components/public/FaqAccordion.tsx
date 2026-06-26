@@ -18,6 +18,8 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
     <div>
       {items.map((faq, i) => {
         const isOpen = open === i;
+        const btnId = `faq-btn-${i}`;
+        const panelId = `faq-panel-${i}`;
         return (
           <div
             key={i}
@@ -34,9 +36,11 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
             }}
           >
             <button
+              id={btnId}
               className="faq-row"
               onClick={() => setOpen(isOpen ? null : i)}
               aria-expanded={isOpen}
+              aria-controls={panelId}
               style={{
                 width: "100%",
                 padding: "1.1rem 1.4rem",
@@ -77,6 +81,9 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
 
             {/* Height is driven entirely by inline style — no CSS class dependency */}
             <div
+              id={panelId}
+              role="region"
+              aria-labelledby={btnId}
               style={{
                 overflow: "hidden",
                 maxHeight: isOpen ? 1000 : 0,

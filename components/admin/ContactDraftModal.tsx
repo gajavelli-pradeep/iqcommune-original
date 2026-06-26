@@ -60,8 +60,10 @@ export function ContactDraftModal({
   const titleId   = useId();
   const cardRef   = useRef<HTMLDivElement>(null);
 
-  // Reset channel when modal opens
+  // Reset to the caller's default channel each time the modal (re)opens — a
+  // controlled-prop sync, not a render-derived value.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setChannel(defaultChannel);
   }, [open, defaultChannel]);
 
@@ -94,12 +96,21 @@ export function ContactDraftModal({
     }
   }
 
-  function copyDraft() {
+  const [copied, setCopied] = useState(false);
+
+  async function copyDraft() {
     const text =
       channel === "email"
         ? (initialSubject ? `Subject: ${initialSubject}\n\n` : "") + emailBody
         : waBody;
-    navigator.clipboard.writeText(text).catch(() => {});
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API requires secure context (HTTPS) — show inline feedback
+      setCopied(false);
+    }
   }
 
   function openInMail() {
@@ -351,19 +362,20 @@ export function ContactDraftModal({
               fontWeight: 500,
               padding: "6px 12px",
               borderRadius: 100,
-              border: "1px solid rgba(20,18,12,.18)",
-              background: "#fff",
-              color: "var(--ink-soft)",
+              border: `1px solid ${copied ? "var(--green-border)" : "rgba(20,18,12,.18)"}`,
+              background: copied ? "var(--green-light)" : "#fff",
+              color: copied ? "var(--green)" : "var(--ink-soft)",
               cursor: "pointer",
               fontFamily: "inherit",
               whiteSpace: "nowrap",
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
             }}
           >
             <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
               <rect x="9" y="9" width="13" height="13" rx="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            Copy
+            {copied ? "Copied!" : "Copy"}
           </button>
 
           {/* Open in mail dark btn — only shown on email tab */}

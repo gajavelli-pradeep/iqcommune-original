@@ -1,16 +1,6 @@
 import crypto from "crypto";
 
-const PARAM_KEYS = [
-  "name",
-  "role",
-  "org",
-  "module",
-  "city",
-  "ref",
-  "email",
-] as const;
-
-export type OnboardingParams = Record<(typeof PARAM_KEYS)[number], string>;
+// ── Shared secret ──────────────────────────────────────────────────────────────
 
 function secret(): string {
   const s = process.env.HMAC_SECRET;
@@ -19,16 +9,33 @@ function secret(): string {
   return s;
 }
 
-function computeSig(params: OnboardingParams): string {
-  const canonical = PARAM_KEYS.map((k) => `${k}=${params[k]}`).join("&");
+function sign(canonical: string): string {
   return crypto.createHmac("sha256", secret()).update(canonical).digest("hex");
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+}
+
+// ── Agreement / Onboarding links ──────────────────────────────────────────────
+// v2: `state` added between `city` and `ref`.
+// ⚠ Any links signed before this migration are now invalid — regenerate them.
+
+const ONBOARDING_KEYS = [
+  "name", "role", "org", "module", "city", "state", "ref", "email",
+] as const;
+
+export type OnboardingParams = Record<(typeof ONBOARDING_KEYS)[number], string>;
+
+function canonicalOnboarding(params: OnboardingParams): string {
+  return ONBOARDING_KEYS.map((k) => `${k}=${params[k]}`).join("&");
+}
+
 export function signOnboardingUrl(params: OnboardingParams): string {
-  const sig = computeSig(params);
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const qs = new URLSearchParams({ ...params, sig }).toString();
+  const sig  = sign(canonicalOnboarding(params));
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const qs   = new URLSearchParams({ ...params, sig }).toString();
   return `${base}/onboarding?${qs}`;
 }
 
@@ -40,18 +47,52 @@ export function verifyOnboardingParams(
     if (!sig) return null;
 
     const params = Object.fromEntries(
-      PARAM_KEYS.map((k) => [k, searchParams.get(k) ?? ""])
+      ONBOARDING_KEYS.map((k) => [k, searchParams.get(k) ?? ""])
     ) as OnboardingParams;
 
-    const expected = computeSig(params);
-    if (sig.length !== expected.length) return null;
-
-    const valid = crypto.timingSafeEqual(
-      Buffer.from(sig, "hex"),
-      Buffer.from(expected, "hex")
-    );
-    return valid ? params : null;
+    const expected = sign(canonicalOnboarding(params));
+    return timingSafeEqual(sig, expected) ? params : null;
   } catch {
     return null;
+  }
+}
+
+// ── Photo submission links ─────────────────────────────────────────────────────
+
+const PHOTO_KEYS = [
+  "ref", "session", "module", "date", "city", "state", "name", "role",
+] as const;
+
+export type PhotoLinkParams = Record<(typeof PHOTO_KEYS)[number], string> & {
+  org?: string;
+};
+
+function canonicalPhoto(params: PhotoLinkParams): string {
+  return PHOTO_KEYS.map((k) => `${k}=${params[k]}`).join("&") + `&org=${params.org ?? ""}`;
+}
+
+export function signPhotoUrl(
+  params: PhotoLinkParams,
+  baseRoute: "/onboarding" | "/submit-photos" = "/submit-photos"
+): string {
+  const sig  = sign(canonicalPhoto(params));
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const qs   = new URLSearchParams({
+    ...params,
+    ...(params.org ? { org: params.org } : {}),
+    sig,
+  }).toString();
+  return `${base}${baseRoute}?${qs}`;
+}
+
+export function verifyPhotoLinkParams(
+  params: PhotoLinkParams,
+  sig: string
+): boolean {
+  try {
+    const expected = sign(canonicalPhoto(params));
+    return timingSafeEqual(sig, expected);
+  } catch {
+    return false;
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -15,7 +16,10 @@ export async function GET() {
     .select("*, assigned_practitioner:practitioners(name)")
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error("Session requests GET failed", { error: error.message });
+    return NextResponse.json({ error: "Failed to load requests" }, { status: 500 });
+  }
   return NextResponse.json({ data });
 }
 
@@ -45,11 +49,23 @@ export async function PATCH(req: NextRequest) {
   if (body.data.status) update.status = body.data.status;
   if (body.data.assignedTo) update.assigned_to = body.data.assignedTo;
 
-  const { error } = await createAdminClient()
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
+  }
+
+  const { data: updated, error } = await createAdminClient()
     .from("session_requests")
     .update(update)
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error("Session request PATCH failed", { error: error.message, requestId: id });
+    return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: "Session request not found" }, { status: 404 });
+  }
   return new NextResponse(null, { status: 204 });
 }

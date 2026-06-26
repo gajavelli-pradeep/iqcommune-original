@@ -2,13 +2,14 @@ import { z } from "zod";
 
 // linkParams must match the OnboardingParams fields signed by lib/hmac.ts
 const LinkParamsSchema = z.object({
-  name: z.string().max(256),
-  role: z.string().max(256),
-  org: z.string().max(256),
+  name:   z.string().max(256),
+  role:   z.string().max(256),
+  org:    z.string().max(256),
   module: z.string().max(256),
-  city: z.string().max(128),
-  ref: z.string().regex(/^[0-9]{1,8}$/, "Invalid ref format"),
-  email: z.string().email(),
+  city:   z.string().max(128),
+  state:  z.string().max(128),
+  ref:    z.string().regex(/^[A-Za-z0-9]{1,32}$/, "Invalid ref format"),
+  email:  z.string().email(),
 });
 
 export const AgreementSignSchema = z.object({

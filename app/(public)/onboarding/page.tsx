@@ -3,7 +3,7 @@ import { AgreementViewer } from "@/components/public/AgreementViewer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Practitioner Onboarding | iqcommune",
+  title: "Practitioner Onboarding",
   robots: { index: false, follow: false },
 };
 
@@ -15,7 +15,7 @@ function Loading() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f8f7f4",
+        background: "var(--surface-soft)",
       }}
     >
       <div style={{ textAlign: "center" }}>
@@ -72,7 +72,7 @@ function Stepper() {
                   : step.state === "active"
                   ? { background: "var(--ink)", color: "#fff" }
                   : {
-                      background: "#f8f7f4",
+                      background: "var(--surface-soft)",
                       border: "1.5px solid rgba(20,18,12,0.20)",
                       color: "var(--ink-faint)",
                     }),
@@ -135,7 +135,7 @@ function Stepper() {
 
 export default function OnboardingPage() {
   return (
-    <main style={{ background: "#f8f7f4", minHeight: "100vh" }}>
+    <main style={{ background: "var(--surface-soft)", minHeight: "100vh" }}>
       {/* ── NAV ── */}
       <nav
         style={{

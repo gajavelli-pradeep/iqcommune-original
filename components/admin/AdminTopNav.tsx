@@ -43,6 +43,7 @@ export function AdminTopNav({ email }: { email: string }) {
           </div>
           {/* Gap 1: logo-tag */}
           <div
+            className="admin-nav-tagline hidden sm:block"
             style={{
               fontSize: 9,
               fontWeight: 500,
@@ -77,10 +78,12 @@ export function AdminTopNav({ email }: { email: string }) {
             border: "1px solid rgba(20,18,12,.18)",
             borderRadius: 100,
             padding: "7px 16px",
-            width: 300,
+            width: "100%",
+            maxWidth: 300,
             display: "flex",
             alignItems: "center",
             gap: 8,
+            minWidth: 0,
           }}
         >
           <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, color: "var(--ink-faint)" }}>
@@ -108,8 +111,8 @@ export function AdminTopNav({ email }: { email: string }) {
 
       {/* Right cluster — Gap 4: 'Admin' label, Gap 5: dot position/border */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Gap 4: 'Admin' text label (no email shown) */}
-        <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>Admin</span>
+        {/* Gap 4: 'Admin' text label (no email shown) — hidden on small screens */}
+        <span className="admin-nav-label hidden sm:block" style={{ fontSize: 12, color: "var(--ink-soft)" }}>Admin</span>
 
         {/* Bell + popover */}
         <div style={{ position: "relative" }}>

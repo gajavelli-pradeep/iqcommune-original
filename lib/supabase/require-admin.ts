@@ -1,6 +1,17 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+// Warn once at module load if ADMIN_EMAIL is active in production.
+// It grants admin access by email address alone and bypasses the proper
+// app_metadata.role check — acceptable only for dev or initial bootstrap.
+if (process.env.ADMIN_EMAIL && process.env.NODE_ENV === "production") {
+  console.warn(
+    "[require-admin] ADMIN_EMAIL is set in a production environment. " +
+    "This grants admin access to any authenticated account with this email address. " +
+    "Grant access via app_metadata.role = 'admin' in Supabase Auth instead, then unset ADMIN_EMAIL."
+  );
+}
+
 export async function requireAdmin(): Promise<NextResponse | null> {
   const supabase = await createServerSupabaseClient();
   const {

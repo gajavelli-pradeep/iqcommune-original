@@ -30,6 +30,9 @@ export function CountUp({
     if (!el) return;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // Syncing to a platform preference (not deriving render state): jump
+      // straight to the final value and skip the animation entirely.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplay(value);
       return;
     }

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const MODULES = [
-  "Financial Planning Basics",
-  "Investment Basics",
-  "Market Fundamentals",
-  "Stock Market Basics",
-  "Retirement Planning",
-  "Goal-Based Investing",
+  "Foundations of Personal Finance",
+  "Retirement & Goal-Based Financial Planning",
+  "Equity Investing Simplified",
+  "Debt & Fixed Income Investing",
+  "Asset Allocation & Portfolio Construction",
+  "Investment Solutions & Portfolio Strategies",
 ] as const;
 
 export const EXPERIENCE_OPTIONS = [
@@ -31,7 +31,8 @@ export const ApplicationSchema = z
     phone: z.string().min(6, "Required"),
     role: z.string().min(1, "Required"),
     experience: z.enum(EXPERIENCE_OPTIONS, { message: "Select experience range" }),
-    city: z.string().min(1, "Required"),
+    city:    z.string().min(1, "Required"),
+    state:   z.string().min(1, "Required"),
     modules: z.array(z.enum(MODULES)).min(1, "Select at least one module"),
     teachFreq: z.enum(TEACH_FREQ_OPTIONS, { message: "Select availability" }),
     why: z.string().min(10, "Please write at least a sentence"),

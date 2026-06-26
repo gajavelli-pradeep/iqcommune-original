@@ -54,6 +54,7 @@
   --purple-light: #eeedfe;
   --border: rgba(20, 18, 12, 0.09);
   --border-card: rgba(20, 18, 12, 0.12);
+  --border-input: rgba(20, 18, 12, 0.18);
   --border-strong: rgba(20, 18, 12, 0.20);
   --border-gold: rgba(138, 101, 16, 0.28);
   /* Edge-case tokens — added to kill recurring magic hexes (color audit 2026-06-24). */
@@ -115,6 +116,11 @@ a {
 @media (max-width: 768px) {
   .nav-cta-desktop { display: none !important; }
   .nav-hamburger   { display: flex !important; }
+}
+
+@media (max-width: 600px) {
+  .admin-nav-tagline { display: none !important; }
+  .admin-nav-label   { display: none !important; }
 }
 
 /* ── Module-accent card hover interactions ────────────────────────────────── */

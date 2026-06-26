@@ -25,7 +25,8 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
   const total     = initialData.length;
   const thisMonth = initialData.filter((a) => a.signed_at && isThisMonth(new Date(a.signed_at))).length;
   // DB stores signed empanelment agreements as status "Active" (see schema check constraint).
-  const signed    = initialData.filter((a) => a.status === "Active" || a.status === "signed" || a.status === "Signed").length;
+  // DB schema CHECK constraint uses "Active" as the only signed-state value.
+  const signed    = initialData.filter((a) => a.status === "Active").length;
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -101,7 +102,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
             {initialData.map((row) => (
               <tr
                 key={row.id}
-                style={{ borderBottom: "1px solid rgba(20,18,12,.07)", cursor: "pointer" }}
+                style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}
               >
                 {/* Gap 37: avatar circle (gold-l bg, gold-d text) + name only (no role) */}
                 <td style={tdStyle}>
@@ -121,7 +122,12 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                         color: "#8a6510",
                       }}
                     >
-                      {row.practitioner_ini ?? row.practitioner_name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??"}
+                      {row.practitioner_ini ??
+                        (row.practitioner_name
+                          ? row.practitioner_name.split(" ").filter(Boolean).map((n: string) => n[0]).join("").slice(0, 2) || "??"
+                          : "??"
+                        )
+                      }
                     </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
@@ -140,7 +146,7 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                       color: "var(--ink-soft)",
                     }}
                   >
-                    {row.ref_code ? `IQC-EMP-${row.ref_code}` : "—"}
+                    {row.ref_code ? `IQC-EMP-${row.ref_code.replace(/^IQC-EMP-/, "")}` : "—"}
                   </span>
                 </td>
 
@@ -205,19 +211,22 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                 <td style={tdStyle}>
                   <button
                     aria-label="Download agreement"
+                    disabled={!row.storage_path}
+                    title={!row.storage_path ? "No file available yet" : undefined}
                     style={{
                       fontSize: 11,
                       padding: "4px 10px",
                       borderRadius: 100,
                       border: "1px solid rgba(20,18,12,.18)",
-                      color: "var(--ink-soft)",
+                      color: row.storage_path ? "var(--ink-soft)" : "var(--ink-faint)",
                       background: "#fff",
-                      cursor: "pointer",
+                      cursor: row.storage_path ? "pointer" : "not-allowed",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
                       fontFamily: "inherit",
                       fontWeight: 500,
+                      opacity: row.storage_path ? 1 : 0.5,
                     }}
                     onClick={(e) => {
                       e.stopPropagation();

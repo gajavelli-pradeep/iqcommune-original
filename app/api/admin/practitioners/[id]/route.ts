@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 import { z } from "zod";
 
 const VALID_STATUSES = [
@@ -28,7 +29,9 @@ export async function GET(
     .eq("id", id)
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  if (error || !data) {
+    return NextResponse.json({ error: "Practitioner not found" }, { status: 404 });
+  }
   return NextResponse.json({ data });
 }
 
@@ -45,11 +48,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const { error } = await createAdminClient()
+  const { data: updated, error } = await createAdminClient()
     .from("practitioners")
     .update({ status: body.data.status })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error("Practitioner PATCH failed", { error: error.message, practitionerId: id });
+    return NextResponse.json({ error: "Failed to update practitioner" }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: "Practitioner not found" }, { status: 404 });
+  }
   return new NextResponse(null, { status: 204 });
 }

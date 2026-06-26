@@ -28,6 +28,7 @@ export interface NewSession {
   status: string;
   request_id: string | null;
   created_at: string;
+  updated_at: string | null;
   practitioner: { name: string; email: string } | null;
   payout_id?: string | null;
 }
@@ -58,24 +59,31 @@ export function SessionFormModal({
     if (required.some((v) => !v)) { setError("All fields except TDS are required."); return; }
 
     setSaving(true);
-    const res = await fetch("/api/admin/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        refCode: form.refCode,
-        module: form.module,
-        practitionerId: form.practitionerId,
-        sessionDate: form.sessionDate,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        venue: form.venue,
-        audienceType: form.audienceType,
-        participants: Number(form.participants),
-        payoutAmount: Number(form.payoutAmount),
-        tdsApplicable: form.tdsApplicable,
-        tdsRate: form.tdsApplicable ? Number(form.tdsRate) : undefined,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refCode: form.refCode,
+          module: form.module,
+          practitionerId: form.practitionerId,
+          sessionDate: form.sessionDate,
+          startTime: form.startTime,
+          endTime: form.endTime,
+          venue: form.venue,
+          audienceType: form.audienceType,
+          participants: Number(form.participants),
+          payoutAmount: Number(form.payoutAmount),
+          tdsApplicable: form.tdsApplicable,
+          tdsRate: form.tdsApplicable ? Number(form.tdsRate) : undefined,
+        }),
+      });
+    } catch {
+      setSaving(false);
+      setError("Network error — please try again.");
+      return;
+    }
     setSaving(false);
     if (!res.ok) { setError("Could not create session. Check the fields and try again."); return; }
     const { id } = await res.json();
@@ -98,6 +106,7 @@ export function SessionFormModal({
       status: "Upcoming",
       request_id: null,
       created_at: new Date().toISOString(),
+      updated_at: null,
       practitioner: pr ? { name: pr.name, email: pr.email } : null,
       payout_id: null,
     });
@@ -126,25 +135,25 @@ export function SessionFormModal({
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
-        <Field label="Reference code"><input style={fieldInputStyle} placeholder="IQC-SES-0003" value={form.refCode} onChange={set("refCode")} /></Field>
-        <Field label="Module"><input style={fieldInputStyle} value={form.module} onChange={set("module")} /></Field>
+        <Field label="Reference code"><input id="sf-ref-code" name="sf-ref-code" style={fieldInputStyle} placeholder="IQC-SES-0003" value={form.refCode} onChange={set("refCode")} /></Field>
+        <Field label="Module"><input id="sf-module" name="sf-module" style={fieldInputStyle} value={form.module} onChange={set("module")} /></Field>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Practitioner">
-            <select style={fieldSelectStyle} value={form.practitionerId} onChange={set("practitionerId")}>
+            <select id="sf-practitioner" name="sf-practitioner" style={fieldSelectStyle} value={form.practitionerId} onChange={set("practitionerId")}>
               <option value="">— select practitioner —</option>
               {eligible.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.email}</option>)}
             </select>
           </Field>
         </div>
-        <Field label="Date"><input type="date" style={fieldInputStyle} value={form.sessionDate} onChange={set("sessionDate")} /></Field>
-        <Field label="Venue"><input style={fieldInputStyle} value={form.venue} onChange={set("venue")} /></Field>
-        <Field label="Start time"><input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} /></Field>
-        <Field label="End time"><input type="time" style={fieldInputStyle} value={form.endTime} onChange={set("endTime")} /></Field>
-        <Field label="Audience type"><input style={fieldInputStyle} value={form.audienceType} onChange={set("audienceType")} /></Field>
-        <Field label="Participants"><input type="number" min={1} style={fieldInputStyle} value={form.participants} onChange={set("participants")} /></Field>
-        <Field label="Payout amount (₹)"><input type="number" min={1} style={fieldInputStyle} value={form.payoutAmount} onChange={set("payoutAmount")} /></Field>
+        <Field label="Date"><input id="sf-date" name="sf-date" type="date" style={fieldInputStyle} value={form.sessionDate} onChange={set("sessionDate")} /></Field>
+        <Field label="Venue"><input id="sf-venue" name="sf-venue" style={fieldInputStyle} value={form.venue} onChange={set("venue")} /></Field>
+        <Field label="Start time"><input id="sf-start-time" name="sf-start-time" type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} /></Field>
+        <Field label="End time"><input id="sf-end-time" name="sf-end-time" type="time" style={fieldInputStyle} value={form.endTime} onChange={set("endTime")} /></Field>
+        <Field label="Audience type"><input id="sf-audience-type" name="sf-audience-type" style={fieldInputStyle} value={form.audienceType} onChange={set("audienceType")} /></Field>
+        <Field label="Participants"><input id="sf-participants" name="sf-participants" type="number" min={1} style={fieldInputStyle} value={form.participants} onChange={set("participants")} /></Field>
+        <Field label="Payout amount (₹)"><input id="sf-payout-amount" name="sf-payout-amount" type="number" min={1} style={fieldInputStyle} value={form.payoutAmount} onChange={set("payoutAmount")} /></Field>
         <Field label="TDS rate (%)">
-          <input type="number" min={0} max={100} style={{ ...fieldInputStyle, opacity: form.tdsApplicable ? 1 : 0.5 }} disabled={!form.tdsApplicable} value={form.tdsRate} onChange={set("tdsRate")} />
+          <input id="sf-tds-rate" name="sf-tds-rate" type="number" min={0} max={100} style={{ ...fieldInputStyle, opacity: form.tdsApplicable ? 1 : 0.5 }} disabled={!form.tdsApplicable} value={form.tdsRate} onChange={set("tdsRate")} />
         </Field>
         <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8 }}>
           <input id="tdsApplicable" type="checkbox" checked={form.tdsApplicable} onChange={set("tdsApplicable")} style={{ cursor: "pointer" }} />

@@ -1,42 +1,28 @@
-// NOTE: This limiter is in-process. On serverless (Vercel) each function
-// instance has its own store — limits are not enforced across instances.
-// For production at scale, replace with @upstash/ratelimit (Redis-backed).
-interface RLWindow {
-  count: number;
-  resetAt: number;
-}
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-const store = new Map<string, RLWindow>();
-const MAX_STORE_SIZE = 10_000;
-const PURGE_INTERVAL_MS = 60_000;
-let lastPurge = 0;
+// Sliding-window limiter backed by Upstash Redis.
+// Works correctly across all Vercel serverless instances (unlike an in-process Map).
+const redis = new Redis({
+  url:   process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
-function purgeExpired(now: number) {
-  for (const [key, win] of store) {
-    if (win.resetAt < now) store.delete(key);
+const limiter = new Ratelimit({
+  redis,
+  limiter:   Ratelimit.slidingWindow(10, "60 s"),
+  analytics: false,
+});
+
+export async function checkRateLimit(
+  ip: string
+): Promise<{ limited: boolean; reset: number }> {
+  try {
+    const { success, reset } = await limiter.limit(ip);
+    return { limited: !success, reset };
+  } catch (err) {
+    // Fail-open: Redis unavailable shouldn't block all requests.
+    console.error("[rate-limit] Upstash unavailable — failing open", err);
+    return { limited: false, reset: Date.now() + 60_000 };
   }
-  lastPurge = now;
-}
-
-export function rateLimit(
-  key: string,
-  { max, windowMs }: { max: number; windowMs: number }
-): boolean {
-  const now = Date.now();
-
-  // Time-based purge: runs at most once per minute instead of only when the
-  // store is full, preventing unbounded accumulation under moderate traffic.
-  if (now - lastPurge > PURGE_INTERVAL_MS || store.size >= MAX_STORE_SIZE) {
-    purgeExpired(now);
-  }
-
-  const win = store.get(key);
-
-  if (!win || win.resetAt < now) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (win.count >= max) return false;
-  win.count++;
-  return true;
 }

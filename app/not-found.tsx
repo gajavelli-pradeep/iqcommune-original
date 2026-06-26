@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Page Not Found | iqcommune",
+  title: "Page Not Found",
 };
 
 export default function NotFound() {
@@ -40,7 +40,7 @@ export default function NotFound() {
         <div style={{ display: "flex", alignItems: "baseline" }}>
           <span
             style={{
-              color: "#c9982a",
+              color: "var(--gold)",
               fontWeight: 700,
               fontSize: 26,
               letterSpacing: "-0.04em",
@@ -50,7 +50,7 @@ export default function NotFound() {
           </span>
           <span
             style={{
-              color: "#ffffff",
+              color: "var(--surface)",
               fontWeight: 300,
               fontSize: 26,
               letterSpacing: "-0.04em",
@@ -82,7 +82,7 @@ export default function NotFound() {
           fontSize: "clamp(20px, 3vw, 28px)",
           fontWeight: 600,
           letterSpacing: "-0.02em",
-          color: "#ffffff",
+          color: "var(--surface)",
           marginBottom: 12,
           textAlign: "center",
         }}
@@ -92,7 +92,7 @@ export default function NotFound() {
       <p
         style={{
           fontSize: 15,
-          color: "rgba(255,255,255,.45)",
+          color: "rgba(255,255,255,.62)",
           maxWidth: 380,
           textAlign: "center",
           lineHeight: 1.65,
@@ -114,8 +114,8 @@ export default function NotFound() {
         <Link
           href="/"
           style={{
-            background: "#14161d",
-            color: "#ffffff",
+            background: "var(--gold)",
+            color: "var(--ink)",
             textDecoration: "none",
             borderRadius: 100,
             padding: "12px 28px",

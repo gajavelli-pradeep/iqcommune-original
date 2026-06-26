@@ -1,6 +1,6 @@
-// Shared module accent system for the public site.
+﻿// Shared module accent system for the public site.
 // One color per finance module, kept consistent across every page so a card for
-// "Investment Basics" is always blue, "Retirement Planning" always amber, etc.
+// "Equity Investing Simplified" is always amber, "Debt & Fixed Income Investing" always blue, etc.
 // Colors are drawn from the design tokens in app/globals.css.
 
 export interface Accent {
@@ -14,12 +14,12 @@ export interface Accent {
 
 /** Accent keyed by the canonical finance-module name. */
 export const MODULE_ACCENT: Record<string, Accent> = {
-  "Financial Planning Basics": { base: "#2a6b2a", light: "#eef7ee", ink: "#2a6b2a" },
-  "Investment Basics": { base: "#185fa5", light: "#e6f1fb", ink: "#185fa5" },
-  "Market Fundamentals": { base: "#534ab7", light: "#eeedfe", ink: "#534ab7" },
-  "Stock Market Basics": { base: "#c9982a", light: "#f5e9c8", ink: "#8a6510" },
-  "Retirement Planning": { base: "#854f0b", light: "#faeeda", ink: "#854f0b" },
-  "Goal-Based Investing": { base: "#0f7d8c", light: "#e2f3f5", ink: "#0f7d8c" },
+  "Foundations of Personal Finance": { base: "#2a6b2a", light: "#eef7ee", ink: "#2a6b2a" },
+  "Retirement & Goal-Based Financial Planning": { base: "#854f0b", light: "#faeeda", ink: "#854f0b" },
+  "Equity Investing Simplified": { base: "#c9982a", light: "#f5e9c8", ink: "#8a6510" },
+  "Debt & Fixed Income Investing": { base: "#185fa5", light: "#e6f1fb", ink: "#185fa5" },
+  "Asset Allocation & Portfolio Construction": { base: "#534ab7", light: "#eeedfe", ink: "#534ab7" },
+  "Investment Solutions & Portfolio Strategies": { base: "#0f7d8c", light: "#e2f3f5", ink: "#0f7d8c" },
 };
 
 /** Ordered palette for cards that aren't module-keyed (audiences, roles). */

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   // Refresh Supabase session cookies on every request (required by @supabase/ssr)
@@ -30,7 +30,8 @@ export async function proxy(request: NextRequest) {
   const isAdmin =
     !!user &&
     (user.app_metadata?.role === "admin" ||
-      (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL));
+      (!!process.env.ADMIN_EMAIL &&
+        user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()));
 
   const isConsole = request.nextUrl.pathname.startsWith("/console");
   const isLogin = request.nextUrl.pathname === "/login";

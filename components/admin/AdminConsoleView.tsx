@@ -79,7 +79,7 @@ type StatDef = {
 
 function buildTabStats(counts: Counts): Record<string, StatDef[]> {
   const fmt = (n: number) =>
-    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(0)}K` : `₹${n}`;
+    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${n % 1000 !== 0 ? (n / 1000).toFixed(1) : (n / 1000).toFixed(0)}K` : `₹${n}`;
 
   return {
     requests: [
@@ -97,7 +97,7 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
     ],
     sessions: [
       { label: "Total sessions",  value: counts.totalSessions ?? 0, filter: "All" },
-      { label: "Upcoming",        value: counts.confirmedSessions ?? counts.pendingSessions, delta: counts.confirmedSessions ? `${counts.confirmedSessions} scheduled` : undefined, filter: "Upcoming" },
+      { label: "Upcoming",        value: counts.pendingSessions, delta: counts.confirmedSessions > 0 ? `${counts.confirmedSessions} confirmed` : undefined, filter: "Upcoming" },
       { label: "Consent pending", value: counts.consentPending ?? 0, delta: (counts.consentPending ?? 0) > 0 ? "↑ action needed" : undefined, deltaRed: (counts.consentPending ?? 0) > 0 },
       { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
     ],
@@ -193,7 +193,7 @@ function buildSections(counts: Counts): SidebarSection[] {
         { label: "Practitioners",    tab: "practitioners", badge: counts.applied,            badgeBg: "#c9982a" },
         { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,    badgeBg: "#2a6b2a" },
         // Gap 18: Agreements badge green
-        { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 4, badgeBg: "#2a6b2a" },
+        { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
       ],
     },
     {
@@ -400,7 +400,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     pendingPayouts:     pendingPayoutList.length,
     pendingPayoutGross: pendingPayoutList.reduce((s, p) => s + p.gross_amount, 0),
     pendingPayoutNet:   pendingPayoutList.reduce((s, p) => s + p.net_amount, 0),
-    confirmedSessions:  sessionsData.filter((s) => s.status === "Upcoming").length,
+    confirmedSessions:  sessionsData.filter((s) => s.status === "Upcoming" && s.consent_status === "Consent given").length,
     completedSessions:  sessionsData.filter((s) => s.status === "Completed").length,
     consentPending:     sessionsData.filter((s) => s.consent_status === "Pending consent").length,
     totalRequests:      requestsData.length,
@@ -576,7 +576,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
       </aside>
 
       {/* ── Main — Gap 6, 7: no global padding; page-hdr is full-width ── */}
-      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflowX: "auto" }}>
 
         {/* ── Global search results (overrides tab panels while searching) ── */}
         {globalSearch.trim() ? (

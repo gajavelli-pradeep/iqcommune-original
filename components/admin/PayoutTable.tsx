@@ -35,10 +35,10 @@ export function PayoutTable({
 
   const markPaid = useCallback(async (id: string) => {
     const payment_method = methodMap[id] || "UPI";
-    const res = await fetch(`/api/admin/payouts/${id}`, {
+    const res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payment_method }),
+      body: JSON.stringify({ paidOn: new Date().toISOString(), payment_method }),
     });
     if (res.ok) {
       const paid_at = new Date().toISOString();
@@ -50,6 +50,10 @@ export function PayoutTable({
       onRowChange?.(id, { status: "Paid", paid_at, payment_method });
       setToast("Payout marked as paid");
       setTimeout(() => setToast(""), 3000);
+    } else {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      setToast(body.error ?? "Failed to mark payout as paid — please try again.");
+      setTimeout(() => setToast(""), 5000);
     }
   }, [methodMap, onRowChange]);
 

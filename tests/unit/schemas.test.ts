@@ -11,14 +11,14 @@ const validApplication = {
   role: "Equity Analyst",
   experience: "9 – 12 years",
   city: "Mumbai",
-  modules: ["Stock Market Basics"],
+  state: "Maharashtra",
+  modules: ["Equity Investing Simplified"],
   teachFreq: "Once a month",
   why: "I want to give back to the community.",
   consentOperational: true,
   consentNosell: true,
   consentEmployer: true,
   payToFamily: false,
-  // payment: at least UPI or bank details required (Gap 44)
   upiId: "vikram@oksbi",
 };
 
@@ -67,14 +67,18 @@ describe("ApplicationSchema", () => {
 
 describe("SessionRequestSchema", () => {
   const valid = {
-    name: "Suresh",
-    org: "TechCorp",
+    firstName: "Suresh",
+    lastName: "Sharma",
     email: "s@t.com",
-    topic: "Stock Market Basics",
+    phone: "+91 9876543210",
+    city: "Mumbai",
+    state: "Maharashtra",
+    topic: "Equity Investing Simplified",
     audienceType: "Groups",
-    groupSize: "5–8",
+    groupSize: "5-8",
     minCommit: 5,
     preferredDates: "July",
+    spocDeclaration: true as const,
   };
 
   it("accepts valid request", () => {
@@ -103,6 +107,17 @@ describe("AgreementSignSchema", () => {
         designation: "Equity Analyst",
         sigMode: "typed",
         sigData: "Vikram Kulkarni",
+        linkSig: "deadbeef",
+        linkParams: {
+          name: "Vikram Kulkarni",
+          role: "Equity Analyst",
+          org: "IQ Commune",
+          module: "Equity Research",
+          city: "Pune",
+          state: "Maharashtra",
+          ref: "42",
+          email: "vikram@example.com",
+        },
       }).success
     ).toBe(true);
   });

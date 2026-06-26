@@ -29,11 +29,19 @@ export function PractitionerTable({
   onFilterChange?: (f: string) => void;
 }) {
   const [data, setData] = useState(initialData);
+
+  // Sync when parent adds a new practitioner (e.g. via PractitionerFormModal).
+  // useState(initialData) only consumes the initializer once on mount; subsequent
+  // prop changes are ignored without this effect.
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
   const [internalFilter, setInternalFilter] = useState<string>("all");
   const filter = filterProp ?? internalFilter;
   const setFilter = onFilterChange ?? setInternalFilter;
   const [selected, setSelected] = useState<Practitioner | null>(null);
-  const [genLink, setGenLink] = useState<{ url: string; refCode: string } | null>(null);
+  const [genLink, setGenLink] = useState<{ url: string; refCode: string; practitioner: Practitioner } | null>(null);
   const [toast, setToast] = useState("");
   // Track which row triggered a modal so focus can be restored on close
   const lastFocusRef = useRef<HTMLElement | null>(null);
@@ -72,7 +80,7 @@ export function PractitionerTable({
       });
       if (res.ok) {
         const body = await res.json();
-        setGenLink(body);
+        setGenLink({ ...body, practitioner: p });
       } else {
         showToast("Failed to generate link");
       }
@@ -181,7 +189,7 @@ export function PractitionerTable({
                   )}
                 </td>
                 <td style={tdStyle}>{p.city}</td>
-                <td style={tdStyle}>{p.modules.join(", ")}</td>
+                <td style={tdStyle}>{(p.modules ?? []).join(", ")}</td>
                 <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                   {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                 </td>
@@ -245,14 +253,12 @@ export function PractitionerTable({
             >
               Copy link
             </button>
-            {selected && (
-              <button
-                onClick={() => sendAgreementEmail(selected, genLink.url)}
-                style={btnStyle("#c9982a", "#14161d")}
-              >
-                Send via email
-              </button>
-            )}
+            <button
+              onClick={() => sendAgreementEmail(genLink.practitioner, genLink.url)}
+              style={btnStyle("#c9982a", "#14161d")}
+            >
+              Send via email
+            </button>
           </div>
         </Modal>
       )}
@@ -268,7 +274,7 @@ export function PractitionerTable({
               ["Org", selected.org ?? "Independent"],
               ["City", selected.city],
               ["Experience", selected.experience],
-              ["Modules", selected.modules.join(", ")],
+              ["Modules", (selected.modules ?? []).join(", ")],
               ["Availability", selected.teach_freq ?? "—"],
               ["Status", selected.status],
               ["Ref", selected.ref_code ? `IQC-EMP-${selected.ref_code}` : "—"],
@@ -284,20 +290,6 @@ export function PractitionerTable({
                 <div style={{ lineHeight: 1.6 }}>{selected.why}</div>
               </div>
             )}
-            {/* Consent flags */}
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(20,18,12,.08)" }}>
-              <div style={{ color: "var(--ink-faint)", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Consents</div>
-              {[
-                ["Operational", selected.consent_operational],
-                ["No-sell", selected.consent_nosell],
-                ["Employer", selected.consent_employer],
-              ].map(([label, val]) => (
-                <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
-                  <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
-                  <span style={{ color: val ? "#2a6b2a" : "#a32d2d", fontWeight: 500 }}>{val ? "✓ Yes" : "✗ No"}</span>
-                </div>
-              ))}
-            </div>
             {/* Payment info */}
             {(selected.upi_id || selected.bank_account) && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(20,18,12,.08)" }}>

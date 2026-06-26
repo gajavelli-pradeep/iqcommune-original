@@ -8,9 +8,23 @@ import { SiteFooter } from "@/components/public/SiteFooter";
 import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
 
 export const metadata: Metadata = {
-  title: "Join as a Practitioner | iqcommune",
+  title: "Join as a Practitioner",
   description:
     "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed. Join the iqcommune practitioner network.",
+  openGraph: {
+    title: "Join as a Practitioner",
+    description:
+      "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed.",
+    url: "https://iqcommune.com/practitioners",
+    siteName: "iqcommune",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Join as a Practitioner",
+    description:
+      "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed.",
+  },
 };
 
 /* ─── Static data ─── */
@@ -53,7 +67,7 @@ const PERKS: Perk[] = [
   },
   {
     title: "Small, serious groups only",
-    sub: "Max 20 participants per session. Curated. In-person. No webinar crowds.",
+    sub: "Max 25 participants per session. Curated. In-person. No webinar crowds.",
     icon: (
       <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -216,13 +230,12 @@ function RowIconSvg({ name, color }: { name: RowIcon; color: string }) {
       width="15"
       height="15"
       fill="none"
-      stroke={color}
       strokeWidth="1.9"
       strokeLinecap="round"
       strokeLinejoin="round"
       viewBox="0 0 24 24"
       aria-hidden="true"
-      style={{ flexShrink: 0, marginTop: 2 }}
+      style={{ flexShrink: 0, marginTop: 2, stroke: color }}
     >
       {ROW_ICON_PATHS[name]}
     </svg>
@@ -258,9 +271,9 @@ interface ModuleCard {
 
 const MODULE_CARDS: ModuleCard[] = [
   {
-    name: "Financial Planning Basics",
+    name: "Foundations of Personal Finance",
     ideal: "Ideal if you're a: CFP, financial planner, IFA",
-    desc: "Budgeting frameworks, net worth, emergency funds. Teaching people to get their foundation right before they invest anything.",
+    desc: "Budgeting, net worth, emergency funds, insurance, and tax basics. Teaching people to get their complete foundation right before they invest a single rupee.",
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -269,9 +282,30 @@ const MODULE_CARDS: ModuleCard[] = [
     ),
   },
   {
-    name: "Investment Basics",
-    ideal: "Ideal if you're a: Wealth advisor, RM, distributor",
-    desc: "Mutual funds, SIPs, equity vs. debt allocation. You've had this conversation with clients — now have it with people who are just starting.",
+    name: "Retirement & Goal-Based Financial Planning",
+    ideal: "Ideal if you're a: CFP, pension specialist, wealth planner",
+    desc: "Corpus calculations, NPS/EPF/PPF, goal-bucket planning, and competing financial goals. The conversations most people delay — you know how to make them urgent and actionable.",
+    icon: (
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
+  {
+    name: "Equity Investing Simplified",
+    ideal: "Ideal if you're a: Equity analyst, research head, fund manager",
+    desc: "How markets work, reading financials, valuation ratios, and earnings reports. Taught from the desk of someone using these tools professionally every day.",
+    icon: (
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+  },
+  {
+    name: "Debt & Fixed Income Investing",
+    ideal: "Ideal if you're a: Bond trader, portfolio manager, fixed income analyst",
+    desc: "Bonds, G-Secs, debt mutual funds, yield, duration, and tax treatment — the fixed income universe decoded by someone actively managing these instruments.",
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <line x1="12" y1="1" x2="12" y2="23" />
@@ -280,19 +314,9 @@ const MODULE_CARDS: ModuleCard[] = [
     ),
   },
   {
-    name: "Market Fundamentals",
-    ideal: "Ideal if you're a: Fund manager, macro analyst",
-    desc: "How markets move, what drives sentiment, how to filter signal from noise. Taught from the desk of someone reading this every day.",
-    icon: (
-      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-  },
-  {
-    name: "Stock Market Basics",
-    ideal: "Ideal if you're a: Equity analyst, research head",
-    desc: "P/E ratios, earnings reports, reading a balance sheet. The toolkit a retail investor needs — explained by someone using it professionally.",
+    name: "Asset Allocation & Portfolio Construction",
+    ideal: "Ideal if you're a: Portfolio manager, wealth advisor, RM",
+    desc: "How to split a portfolio across asset classes, build for risk profile, and rebalance. You're actively making these decisions for real clients — now help others make them for themselves.",
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -302,20 +326,9 @@ const MODULE_CARDS: ModuleCard[] = [
     ),
   },
   {
-    name: "Retirement Planning",
-    ideal: "Ideal if you're a: CFP, pension specialist, RM",
-    desc: "NPS, PPF, EPF, corpus calculations. The conversations most people delay until it's almost too late — you know how to make them urgent and actionable.",
-    icon: (
-      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  {
-    name: "Goal-Based Investing",
-    ideal: "Ideal if you're a: Wealth planner, CFP, advisor",
-    desc: "Mapping investments to real goals — home, education, capital. You've built these plans for clients. Now help a room of people build their own.",
+    name: "Investment Solutions & Portfolio Strategies",
+    ideal: "Ideal if you're a: Practising portfolio manager, distributor, RM",
+    desc: "Mutual fund categories, SIP/STP/SWP, PMS and AIF, portfolio review frameworks, and tax-efficient investing — for someone who applies this daily.",
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -422,8 +435,8 @@ function Pill({ children }: { children: React.ReactNode }) {
         fontWeight: 600,
         letterSpacing: "0.12em",
         textTransform: "uppercase",
-        color: "#8a6510",
-        background: "#f5e9c8",
+        color: "var(--gold-dark)",
+        background: "var(--gold-light)",
         border: "1px solid var(--gold-border)",
         padding: "5px 14px",
         borderRadius: 100,
@@ -462,7 +475,7 @@ function DarkPill({ children }: { children: React.ReactNode }) {
 /* ─── Page ─── */
 export default function PractitionersPage() {
   return (
-    <main style={{ background: "#ffffff", minHeight: "100vh", fontFamily: "inherit" }}>
+    <main style={{ background: "var(--surface)", minHeight: "100vh", fontFamily: "inherit" }}>
       <style>{`
         @media (max-width: 720px) {
           .hero-grid { grid-template-columns: 1fr !important; }
@@ -510,7 +523,7 @@ export default function PractitionersPage() {
       {/* ── §2 HERO ── */}
       <section
         style={{
-          background: "#14161d",
+          background: "var(--ink)",
           padding: "5.5rem 2rem 5rem",
           position: "relative",
           overflow: "hidden",
@@ -589,7 +602,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.12,
                 letterSpacing: "-0.02em",
-                color: "#ffffff",
+                color: "var(--surface)",
                 marginBottom: "1.25rem",
               }}
             >
@@ -597,7 +610,7 @@ export default function PractitionersPage() {
               <br />
               managing real money.
               <br />
-              <span style={{ color: "#c9982a" }}>
+              <span style={{ color: "var(--gold)" }}>
                 Most people will never
                 <br />
                 learn from someone like you.
@@ -625,8 +638,8 @@ export default function PractitionersPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                background: "#c9982a",
-                color: "#ffffff",
+                background: "var(--gold)",
+                color: "var(--ink)",
                 borderRadius: 100,
                 padding: "14px 30px",
                 fontSize: 15,
@@ -702,14 +715,14 @@ export default function PractitionersPage() {
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      color: "#c9982a",
+                      color: "var(--gold)",
                       marginTop: 1,
                     }}
                   >
                     {perk.icon}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", marginBottom: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--surface)", marginBottom: 2 }}>
                       {perk.title}
                     </div>
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
@@ -726,7 +739,7 @@ export default function PractitionersPage() {
       {/* ── §3 TRUST BAR ── */}
       <div
         style={{
-          background: "#f5e9c8",
+          background: "var(--gold-light)",
           borderTop: "1px solid var(--gold-border)",
           borderBottom: "1px solid var(--gold-border)",
           padding: "0.9rem 2rem",
@@ -754,7 +767,7 @@ export default function PractitionersPage() {
                 gap: 9,
                 fontSize: 13,
                 fontWeight: 500,
-                color: "#8a6510",
+                color: "var(--gold-dark)",
               }}
             >
               {item.icon}
@@ -767,7 +780,7 @@ export default function PractitionersPage() {
       {/* Gap 5: §4 DIFFERENTIATOR section REMOVED — goes directly to WHO WE WANT */}
 
       {/* ── §5 WHO WE WANT ── */}
-      <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface-soft)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>Who we&apos;re looking for</Pill>
@@ -779,7 +792,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -790,7 +803,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -841,11 +854,11 @@ export default function PractitionersPage() {
                 >
                   {role.icon}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>
                   {role.title}
                 </div>
                 {/* Gap 7: no ideal line rendered */}
-                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>{role.desc}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-muted)", lineHeight: 1.55 }}>{role.desc}</div>
               </div>
               );
             })}
@@ -856,7 +869,7 @@ export default function PractitionersPage() {
             style={{
               textAlign: "center",
               fontSize: 12,
-              color: "#71717f",
+              color: "var(--ink-faint)",
               marginTop: "1.75rem",
               display: "flex",
               alignItems: "center",
@@ -874,7 +887,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §6 HOW IT WORKS ── */}
-      <section style={{ background: "#ffffff", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>The process</Pill>
@@ -885,7 +898,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -896,7 +909,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -930,8 +943,8 @@ export default function PractitionersPage() {
                     width: 52,
                     height: 52,
                     borderRadius: "50%",
-                    background: "#14161d",
-                    color: "#ffffff",
+                    background: "var(--ink)",
+                    color: "var(--surface)",
                     fontSize: 20,
                     fontWeight: 600,
                     display: "flex",
@@ -945,10 +958,10 @@ export default function PractitionersPage() {
                 >
                   {i + 1}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#14161d", marginBottom: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
                   {step.title}
                 </div>
-                <div style={{ fontSize: 13.5, color: "#383b47", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13.5, color: "var(--ink-muted)", lineHeight: 1.6 }}>
                   {step.desc}
                 </div>
               </div>
@@ -958,7 +971,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §7 WHAT WE HANDLE ── */}
-      <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface-soft)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>Division of work</Pill>
@@ -969,7 +982,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -980,7 +993,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1004,7 +1017,7 @@ export default function PractitionersPage() {
             }}
           >
             {/* iqcommune handles */}
-            <div style={{ background: "#ffffff" }}>
+            <div style={{ background: "var(--surface)" }}>
               <div
                 style={{
                   padding: "1.1rem 1.75rem",
@@ -1013,8 +1026,8 @@ export default function PractitionersPage() {
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   borderBottom: "1px solid rgba(20,18,12,0.18)",
-                  background: "#14161d",
-                  color: "#ffffff",
+                  background: "var(--ink)",
+                  color: "var(--surface)",
                 }}
               >
                 iqcommune handles
@@ -1030,20 +1043,20 @@ export default function PractitionersPage() {
                     padding: "1rem 1.75rem",
                     borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
                     fontSize: 14,
-                    color: "#14161d",
+                    color: "var(--ink)",
                     fontWeight: 500,
                     lineHeight: 1.5,
                     animationDelay: `${0.04 * i}s`,
                   }}
                 >
-                  <RowIconSvg name={item.icon} color="#c9982a" />
+                  <RowIconSvg name={item.icon} color="var(--gold)" />
                   {item.text}
                 </div>
               ))}
             </div>
 
             {/* You bring */}
-            <div style={{ background: "#f8f7f4" }}>
+            <div style={{ background: "var(--surface-soft)" }}>
               <div
                 style={{
                   padding: "1.1rem 1.75rem",
@@ -1052,8 +1065,8 @@ export default function PractitionersPage() {
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   borderBottom: "1px solid rgba(20,18,12,0.18)",
-                  background: "#f8f7f4",
-                  color: "#71717f",
+                  background: "var(--surface-soft)",
+                  color: "var(--ink-faint)",
                 }}
               >
                 You bring
@@ -1069,12 +1082,12 @@ export default function PractitionersPage() {
                     padding: "1rem 1.75rem",
                     borderBottom: i < YOU_BRING.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
                     fontSize: 14,
-                    color: "#383b47",
+                    color: "var(--ink-muted)",
                     lineHeight: 1.5,
                     animationDelay: `${0.04 * i}s`,
                   }}
                 >
-                  <RowIconSvg name={item.icon} color="#71717f" />
+                  <RowIconSvg name={item.icon} color="var(--ink-faint)" />
                   {item.text}
                 </div>
               ))}
@@ -1084,7 +1097,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §8 TEACHING MODULES ── */}
-      <section style={{ background: "#ffffff", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>Teaching modules</Pill>
@@ -1095,7 +1108,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -1105,7 +1118,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1154,13 +1167,13 @@ export default function PractitionersPage() {
                 >
                   {mod.icon}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#14161d", marginBottom: 3 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>
                   {mod.name}
                 </div>
                 <div style={{ fontSize: 12, color: accent.ink, fontWeight: 500, marginBottom: 6 }}>
                   {mod.ideal}
                 </div>
-                <div style={{ fontSize: 12.5, color: "#383b47", lineHeight: 1.55 }}>
+                <div style={{ fontSize: 12.5, color: "var(--ink-muted)", lineHeight: 1.55 }}>
                   {mod.desc}
                 </div>
               </div>
@@ -1171,7 +1184,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §9 HONEST SECTION (dark) ── */}
-      <section style={{ background: "#14161d", padding: "4rem 2rem" }}>
+      <section style={{ background: "var(--ink)", padding: "4rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           {/* Gap 15: no section-sub paragraph — just pill + h2, then grid with marginTop */}
           <div style={{ textAlign: "center" }}>
@@ -1183,7 +1196,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#ffffff",
+                color: "var(--surface)",
                 marginBottom: 12,
               }}
             >
@@ -1310,7 +1323,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §10 DISCLOSURE SECTION ── */}
-      <section style={{ background: "#ffffff", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>Transparency</Pill>
@@ -1321,7 +1334,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -1332,7 +1345,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,
@@ -1356,7 +1369,7 @@ export default function PractitionersPage() {
             <div
               className="iq-animate iq-disclosure-card"
               style={{
-                background: "#f8f7f4",
+                background: "var(--surface-soft)",
                 border: "1px solid rgba(20,18,12,0.10)",
                 borderRadius: 12,
                 padding: "1.75rem",
@@ -1368,7 +1381,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.10em",
                   textTransform: "uppercase",
-                  color: "#71717f",
+                  color: "var(--ink-faint)",
                   marginBottom: "0.5rem",
                 }}
               >
@@ -1378,7 +1391,7 @@ export default function PractitionersPage() {
                 style={{
                   fontSize: 17,
                   fontWeight: 600,
-                  color: "#14161d",
+                  color: "var(--ink)",
                   marginBottom: "0.75rem",
                   letterSpacing: "-0.01em",
                   lineHeight: 1.25,
@@ -1389,7 +1402,7 @@ export default function PractitionersPage() {
               <div
                 style={{
                   fontSize: 13.5,
-                  color: "#383b47",
+                  color: "var(--ink-muted)",
                   lineHeight: 1.65,
                   marginBottom: "0.85rem",
                 }}
@@ -1405,7 +1418,7 @@ export default function PractitionersPage() {
                       alignItems: "flex-start",
                       gap: 9,
                       fontSize: 13,
-                      color: "#383b47",
+                      color: "var(--ink-muted)",
                       lineHeight: 1.5,
                     }}
                   >
@@ -1413,11 +1426,10 @@ export default function PractitionersPage() {
                       width="14"
                       height="14"
                       fill="none"
-                      stroke="#71717f"
                       strokeWidth="2"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
-                      style={{ flexShrink: 0, marginTop: 3 }}
+                      style={{ flexShrink: 0, marginTop: 3, stroke: "var(--ink-faint)" }}
                     >
                       <circle cx="12" cy="12" r="10" />
                       <path d="M15 9l-6 6M9 9l6 6" />
@@ -1432,7 +1444,7 @@ export default function PractitionersPage() {
             <div
               className="iq-animate iq-disclosure-card"
               style={{
-                background: "#f5e9c8",
+                background: "var(--gold-light)",
                 border: "1px solid var(--gold-border)",
                 borderRadius: 12,
                 padding: "1.75rem",
@@ -1444,7 +1456,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.10em",
                   textTransform: "uppercase",
-                  color: "#8a6510",
+                  color: "var(--gold-dark)",
                   marginBottom: "0.5rem",
                 }}
               >
@@ -1454,7 +1466,7 @@ export default function PractitionersPage() {
                 style={{
                   fontSize: 17,
                   fontWeight: 600,
-                  color: "#14161d",
+                  color: "var(--ink)",
                   marginBottom: "0.75rem",
                   letterSpacing: "-0.01em",
                   lineHeight: 1.25,
@@ -1465,7 +1477,7 @@ export default function PractitionersPage() {
               <div
                 style={{
                   fontSize: 13.5,
-                  color: "#383b47",
+                  color: "var(--ink-muted)",
                   lineHeight: 1.65,
                   marginBottom: "0.85rem",
                 }}
@@ -1481,7 +1493,7 @@ export default function PractitionersPage() {
                       alignItems: "flex-start",
                       gap: 9,
                       fontSize: 13,
-                      color: "#383b47",
+                      color: "var(--ink-muted)",
                       lineHeight: 1.5,
                     }}
                   >
@@ -1489,11 +1501,10 @@ export default function PractitionersPage() {
                       width="14"
                       height="14"
                       fill="none"
-                      stroke="#8a6510"
                       strokeWidth="2.5"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
-                      style={{ flexShrink: 0, marginTop: 3 }}
+                      style={{ flexShrink: 0, marginTop: 3, stroke: "var(--gold-dark)" }}
                     >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
@@ -1509,13 +1520,13 @@ export default function PractitionersPage() {
             style={{
               maxWidth: 880,
               margin: "1.5rem auto 0",
-              background: "#f8f7f4",
+              background: "var(--surface-soft)",
               border: "1px solid rgba(20,18,12,0.10)",
-              borderLeft: "3px solid #c9982a",
+              borderLeft: "3px solid var(--gold)",
               borderRadius: "0 12px 12px 0",
               padding: "1rem 1.25rem",
               fontSize: 13.5,
-              color: "#383b47",
+              color: "var(--ink-muted)",
               lineHeight: 1.65,
               display: "flex",
               alignItems: "flex-start",
@@ -1526,18 +1537,17 @@ export default function PractitionersPage() {
               width="15"
               height="15"
               fill="none"
-              stroke="#8a6510"
               strokeWidth="2"
               viewBox="0 0 24 24"
               aria-hidden="true"
-              style={{ flexShrink: 0, marginTop: 3 }}
+              style={{ flexShrink: 0, marginTop: 3, stroke: "var(--gold-dark)" }}
             >
               <circle cx="12" cy="12" r="10" />
               <path d="M12 8v4M12 16h.01" />
             </svg>
             <span>
               We&apos;ll be honest about one thing we can&apos;t fully control: once a session is confirmed, the organiser knows a practitioner is coming. Like any in-person engagement, your identity becomes known in the room.{" "}
-              <strong style={{ color: "#14161d" }}>
+              <strong style={{ color: "var(--ink)" }}>
                 What we commit to is that this only happens after your explicit availability confirmation — and that we never facilitate direct client-to-practitioner contact outside our coordination layer.
               </strong>{" "}
               Your consent to this operational disclosure is captured during onboarding — and is entirely voluntary.
@@ -1547,7 +1557,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §11 APPLICATION FORM ── */}
-      <section id="apply-form" style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
+      <section id="apply-form" style={{ background: "var(--surface-soft)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <Pill>Apply</Pill>
@@ -1558,7 +1568,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -1569,7 +1579,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto",
                 lineHeight: 1.65,
@@ -1581,7 +1591,7 @@ export default function PractitionersPage() {
           {/* Gap 16: form card — no h2 'Apply to join iqcommune', no subtitle paragraph */}
           <div
             style={{
-              background: "#ffffff",
+              background: "var(--surface)",
               border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 20,
               padding: "2.5rem",
@@ -1594,7 +1604,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §12 PRACTITIONER FAQ ── */}
-      <section style={{ background: "#ffffff", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>FAQs</Pill>
@@ -1605,7 +1615,7 @@ export default function PractitionersPage() {
                 fontWeight: 600,
                 lineHeight: 1.2,
                 letterSpacing: "-0.01em",
-                color: "#14161d",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
@@ -1614,7 +1624,7 @@ export default function PractitionersPage() {
             <p
               style={{
                 fontSize: 16,
-                color: "#383b47",
+                color: "var(--ink-muted)",
                 maxWidth: 520,
                 margin: "0 auto 3rem",
                 lineHeight: 1.65,

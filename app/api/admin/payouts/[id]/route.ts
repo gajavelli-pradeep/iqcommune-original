@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 
 export async function PATCH(
   req: NextRequest,
@@ -23,13 +24,16 @@ export async function PATCH(
 
   const db = createAdminClient();
 
-  // Validate payout exists and is Pending
-  const { data: payout } = await db
+  const { data: payout, error: fetchErr } = await db
     .from("payouts")
     .select("status")
     .eq("id", id)
     .single();
 
+  if (fetchErr) {
+    log.error("Payout fetch failed", { error: fetchErr.message, payoutId: id });
+    return NextResponse.json({ error: "Failed to fetch payout" }, { status: 500 });
+  }
   if (!payout) {
     return NextResponse.json({ error: "Payout not found" }, { status: 404 });
   }
@@ -38,11 +42,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Payout already paid" }, { status: 409 });
   }
 
-  const { error } = await db
+  // Atomic update: WHERE status = 'Pending' prevents a concurrent mark-paid from
+  // causing a silent double-update even if two requests pass the status check above.
+  const { data: updated, error } = await db
     .from("payouts")
     .update({ status: "Paid", paid_at: new Date().toISOString(), payment_method })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "Pending")
+    .select("id")
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error("Payout PATCH failed", { error: error.message, payoutId: id });
+    return NextResponse.json({ error: "Failed to update payout" }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: "Payout already paid" }, { status: 409 });
+  }
   return new NextResponse(null, { status: 204 });
 }

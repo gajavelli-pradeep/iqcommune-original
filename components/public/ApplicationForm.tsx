@@ -2,7 +2,7 @@
 
 import { cloneElement, useId, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodV4Resolver } from "@/lib/zodV4Resolver";
 import {
   ApplicationSchema,
   type Application,
@@ -22,7 +22,7 @@ export function ApplicationForm() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<Application>({
-    resolver: zodResolver(ApplicationSchema),
+    resolver: zodV4Resolver(ApplicationSchema),
     defaultValues: { modules: [], payToFamily: false },
   });
 
@@ -40,22 +40,28 @@ export function ApplicationForm() {
       (current.includes(mod)
         ? current.filter((m) => m !== mod)
         : [...current, mod]) as Application["modules"],
-      { shouldValidate: true }
+      { shouldValidate: false }
     );
   }
 
   async function onSubmit(data: Application) {
     setServerError("");
-    const res = await fetch("/api/applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    } catch {
+      setServerError("Network error. Please check your connection and try again.");
+      return;
+    }
     if (res.ok) {
       setSuccess(true);
     } else {
-      const body = await res.json();
-      setServerError(body.error ?? "Submission failed. Please try again.");
+      const body = await res.json().catch(() => ({}));
+      setServerError((body as { error?: string }).error ?? "Submission failed. Please try again.");
     }
   }
 
@@ -145,14 +151,19 @@ export function ApplicationForm() {
           </Field>
         </div>
 
-        {/* Gap 22: city full-width with hint */}
-        <Field
-          label="City you're based in"
-          hint="Sessions are in-person — city helps us match you to local requests."
-          error={errors.city?.message}
-        >
-          <input {...register("city")} style={inputStyle} placeholder="Mumbai" />
-        </Field>
+        {/* Gap 22: city + state side-by-side with hint */}
+        <div style={rowTwo}>
+          <Field
+            label="City you're based in"
+            hint="Sessions are in-person — city helps us match you to local requests."
+            error={errors.city?.message}
+          >
+            <input {...register("city")} style={inputStyle} placeholder="Mumbai" />
+          </Field>
+          <Field label="State" error={errors.state?.message}>
+            <input {...register("state")} style={inputStyle} placeholder="Maharashtra" />
+          </Field>
+        </div>
       </div>
 
       {/* ── Your teaching preference ── */}

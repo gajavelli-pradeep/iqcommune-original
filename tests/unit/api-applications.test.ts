@@ -30,7 +30,7 @@ const validBody = {
   role: "Equity Analyst",
   experience: "9 – 12 years",
   city: "Mumbai",
-  modules: ["Stock Market Basics"],
+  modules: ["Equity Investing Simplified"],
   teachFreq: "Once a month",
   why: "I want to give back to the community.",
   consentOperational: true,

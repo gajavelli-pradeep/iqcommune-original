@@ -16,8 +16,7 @@ test.describe("Practitioner application flow", () => {
   });
 
   test("module toggle selects and deselects", async ({ page }) => {
-    // "Investment Basics" is the first module in MODULES — "Mutual Funds" was never in the schema
-    const btn = page.getByRole("button", { name: /investment basics/i });
+    const btn = page.getByRole("button", { name: /foundations of personal finance/i });
     await expect(btn).toBeVisible();
     await btn.click();
     await expect(btn).toHaveCSS("background-color", "rgb(15, 17, 23)");
@@ -45,7 +44,7 @@ test.describe("Practitioner application flow", () => {
     await page.fill('input[placeholder="Certified Financial Planner"]', "CFP");
     await page.fill('input[placeholder="Mumbai"]', "Mumbai");
     await page.selectOption('select:has-text("Select range")', { label: "5 – 8 years" });
-    await page.click('button:has-text("Stock Market Basics")');
+    await page.click('button:has-text("Equity Investing Simplified")');
     await page.selectOption('select:has-text("Select frequency")', { label: "Once a month" });
     await page.fill("textarea", "I want to share my knowledge and give back.");
 
@@ -75,7 +74,7 @@ test.describe("Practitioner application flow", () => {
     await page.fill('input[placeholder="Certified Financial Planner"]', "CFP");
     await page.fill('input[placeholder="Mumbai"]', "Mumbai");
     await page.selectOption('select:has-text("Select range")', { label: "5 – 8 years" });
-    await page.click('button:has-text("Stock Market Basics")');
+    await page.click('button:has-text("Equity Investing Simplified")');
     await page.selectOption('select:has-text("Select frequency")', { label: "Once a month" });
     await page.fill("textarea", "I want to share my knowledge.");
     await page.getByRole("checkbox", { name: /iqcommune may disclose/i }).check();

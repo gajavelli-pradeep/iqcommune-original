@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SessionRequestSchema } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { rateLimit } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
-import type { Database } from "@/lib/supabase/database.types";
-
-type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"];
+import { sendEmail } from "@/lib/email/brevo";
+import { clientFollowUpEmail } from "@/lib/email/templates";
+import { guardEmailSend } from "@/lib/email/idempotency";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
-  if (!rateLimit(ip, { max: 10, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  const { limited, reset } = await checkRateLimit(ip);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(reset) } }
+    );
   }
 
   let body: unknown;
@@ -35,26 +39,51 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from("session_requests")
     .insert({
-      name: d.name,
-      org: d.org,
-      email: d.email,
-      phone: d.phone ?? null,
-      topic: d.topic,
-      audience_type: d.audienceType,
-      group_size: d.groupSize,
-      min_commit: d.minCommit,
-      venue: d.venue ?? null,
-      preferred_dates: d.preferredDates,
-      status: "New",
+      name:             `${d.firstName} ${d.lastName}`,
+      email:            d.email,
+      phone:            d.phone,
+      city:             d.city,
+      state:            d.state,
+      audience_type:    d.audienceType,
+      org_name:         d.orgName?.trim() || null,
+      topic:            d.topic,
+      group_size:       d.groupSize ?? null,
+      min_commit:       d.minCommit ?? null,
+      venue:            d.audienceType === "Groups" ? (d.venue ?? null) : null,
+      preferred_dates:  d.preferredDates ?? null,
+      notes:            d.notes ?? null,
+      spoc_declaration: true,
+      status:           "New",
     })
-    .select("*")
+    .select("id")
     .single();
 
   if (error) {
     log.error("Failed to save session request", { error: error.message, ip });
-    return NextResponse.json({ error: "Failed to save request" }, { status: 500 });
+    const msg = process.env.NODE_ENV === "development" ? error.message : "Failed to save request";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  const row = data as RequestRow;
-  return NextResponse.json({ id: row.id }, { status: 201 });
+  const requestId = data.id as string;
+
+  // Send client confirmation (idempotent — safe on retry)
+  const alreadySent = await guardEmailSend("session_request_received", requestId, d.email);
+  if (!alreadySent) {
+    try {
+      const { subject, htmlContent } = clientFollowUpEmail(
+        `${d.firstName} ${d.lastName}`,
+        {
+          topic:          d.topic,
+          groupSize:      d.groupSize ?? "—",
+          audienceType:   d.audienceType,
+          preferredDates: d.preferredDates ?? "Flexible",
+        }
+      );
+      await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
+    } catch (emailErr) {
+      log.error("Session request confirmation email failed", { error: String(emailErr), requestId });
+    }
+  }
+
+  return NextResponse.json({ id: requestId }, { status: 201 });
 }

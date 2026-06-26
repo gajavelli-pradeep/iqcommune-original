@@ -1,18 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 import { signOnboardingUrl } from "@/lib/hmac";
+import { sendEmail } from "@/lib/email/brevo";
+import { agreementLinkEmail } from "@/lib/email/templates";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 import type { Database } from "@/lib/supabase/database.types";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { practitionerId } = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { practitionerId } =
+    (body as { practitionerId?: string }) ?? {};
+
   if (!practitionerId) {
     return NextResponse.json({ error: "practitionerId required" }, { status: 400 });
+  }
+  if (!UUID_RE.test(practitionerId)) {
+    return NextResponse.json({ error: "practitionerId must be a valid UUID" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -43,32 +62,53 @@ export async function POST(req: NextRequest) {
   }
 
   const url = signOnboardingUrl({
-    name: p.name,
-    role: p.role,
-    org: p.org ?? "Independent",
+    name:   p.name,
+    role:   p.role,
+    org:    p.org ?? "Independent",
     module: p.modules[0],
-    city: p.city,
-    ref: p.ref_code ?? "",
-    email: p.email,
+    city:   p.city,
+    state:  p.state ?? "",
+    ref:    p.ref_code ?? "",
+    email:  p.email,
   });
 
-  // Create agreement record (idempotent — upsert by ref_code)
   const refCode = `IQC-EMP-${p.ref_code}`;
+
+  // Guard against downgrading an already-active (signed) agreement.
+  // Insert only if no row exists yet; ignore the duplicate if one already exists.
   const { error: upsertErr } = await supabase.from("agreements").upsert(
     {
       practitioner_id: practitionerId,
-      ref_code: refCode,
-      module: p.modules[0],
-      status: "Pending signature",
+      ref_code:        refCode,
+      module:          p.modules[0],
+      status:          "Pending signature",
     },
-    { onConflict: "ref_code" }
+    { onConflict: "ref_code", ignoreDuplicates: true }
   );
 
   if (upsertErr) {
-    return NextResponse.json(
-      { error: "Failed to create agreement record", detail: upsertErr.message },
-      { status: 500 }
-    );
+    log.error("Onboarding link: agreement upsert failed", {
+      error: upsertErr.message,
+      practitionerId,
+    });
+    return NextResponse.json({ error: "Failed to create agreement record" }, { status: 500 });
+  }
+
+  // Auto-send agreement link email (idempotent).
+  // revokeEmailSend on failure allows the next call to retry.
+  const alreadySent = await guardEmailSend("agreement_link", refCode, p.email);
+  if (!alreadySent) {
+    try {
+      const { subject, htmlContent } = agreementLinkEmail(p.name, url);
+      await sendEmail({ to: p.email, name: p.name, subject, htmlContent });
+      log.info("Agreement link emailed", { practitionerId, refCode });
+    } catch (emailErr) {
+      log.error("Agreement link email failed — revoking sentinel for retry", {
+        error: String(emailErr),
+        practitionerId,
+      });
+      await revokeEmailSend("agreement_link", refCode);
+    }
   }
 
   return NextResponse.json({ url, refCode });

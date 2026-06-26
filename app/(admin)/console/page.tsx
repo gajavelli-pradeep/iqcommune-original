@@ -4,7 +4,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Admin Console | iqcommune" };
+export const metadata: Metadata = { title: "Admin Console" };
 export const dynamic = "force-dynamic";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
@@ -31,6 +31,14 @@ async function getData() {
     db.from("payouts").select("*, session:sessions(ref_code, module), practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
     db.from("agreements").select("*, practitioner:practitioners(name, role)").order("signed_at", { ascending: false }).limit(200),
   ]);
+  // Surface DB errors so Next.js error.tsx handles them — empty tables on query failure
+  // are worse than an error page because they look like "no data" to the admin.
+  if (practitioners.error) throw new Error(`Practitioners load failed: ${practitioners.error.message}`);
+  if (sessions.error)      throw new Error(`Sessions load failed: ${sessions.error.message}`);
+  if (requests.error)      throw new Error(`Session requests load failed: ${requests.error.message}`);
+  if (payouts.error)       throw new Error(`Payouts load failed: ${payouts.error.message}`);
+  if (agreementsRes.error) throw new Error(`Agreements load failed: ${agreementsRes.error.message}`);
+
   const agreements: Agreement[] = ((agreementsRes.data ?? []) as AgreementFetchRow[]).map((a) => ({
     ...a,
     practitioner_name: a.practitioner?.name ?? "—",
@@ -54,6 +62,7 @@ export default async function ConsolePage() {
       requests={requests}
       payouts={payouts}
       agreements={agreements}
+      email={process.env.ADMIN_EMAIL}
     />
   );
 }

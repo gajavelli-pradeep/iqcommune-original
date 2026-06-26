@@ -133,7 +133,13 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
 
         {/* Mobile drawer */}
         {drawer && (
-          <div style={{ overflow: "hidden", maxHeight: menuOpen ? 360 : 0, transition: "max-height 0.3s ease" }}>
+          <div
+            // inert + aria-hidden keep keyboard focus and screen-reader content out of the
+            // closed drawer without unmounting it (avoids layout shift on re-open).
+            inert={!menuOpen || undefined}
+            aria-hidden={!menuOpen}
+            style={{ overflow: "hidden", maxHeight: menuOpen ? 360 : 0, transition: "max-height 0.3s ease" }}
+          >
             <div
               style={{
                 borderTop: "1px solid rgba(20,18,12,0.08)",

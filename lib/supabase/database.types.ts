@@ -1,6 +1,5 @@
 // Auto-generate this file with:
 //   pnpm supabase gen types typescript --linked > lib/supabase/database.types.ts
-// Placeholder types until Supabase project is linked.
 
 export type Json =
   | string
@@ -22,6 +21,7 @@ export interface Database {
           role: string;
           org: string | null;
           city: string;
+          state: string | null;
           experience: string;
           modules: string[];
           teach_freq: string | null;
@@ -38,9 +38,6 @@ export interface Database {
           family_ifsc: string | null;
           status: string;
           ref_code: string | null;
-          consent_operational: boolean;
-          consent_nosell: boolean;
-          consent_employer: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -52,6 +49,7 @@ export interface Database {
           role: string;
           org?: string | null;
           city: string;
+          state?: string | null;
           experience: string;
           modules: string[];
           teach_freq?: string | null;
@@ -68,9 +66,6 @@ export interface Database {
           family_ifsc?: string | null;
           status?: string;
           ref_code?: string | null;
-          consent_operational?: boolean;
-          consent_nosell?: boolean;
-          consent_employer?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -82,6 +77,7 @@ export interface Database {
           role?: string;
           org?: string | null;
           city?: string;
+          state?: string | null;
           experience?: string;
           modules?: string[];
           teach_freq?: string | null;
@@ -98,9 +94,6 @@ export interface Database {
           family_ifsc?: string | null;
           status?: string;
           ref_code?: string | null;
-          consent_operational?: boolean;
-          consent_nosell?: boolean;
-          consent_employer?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -109,48 +102,66 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          org: string;
           email: string;
           phone: string | null;
+          city: string | null;
+          state: string | null;
+          org: string | null;
+          org_name: string | null;
           topic: string;
           audience_type: string;
-          group_size: string;
-          min_commit: number;
+          group_size: string | null;
+          min_commit: number | null;
           venue: string | null;
-          preferred_dates: string;
+          preferred_dates: string | null;
+          notes: string | null;
+          spoc_declaration: boolean;
           status: string;
           assigned_to: string | null;
           created_at: string;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
           name: string;
-          org: string;
           email: string;
           phone?: string | null;
+          city?: string | null;
+          state?: string | null;
+          org?: string | null;
+          org_name?: string | null;
           topic: string;
           audience_type: string;
-          group_size: string;
-          min_commit: number;
+          group_size?: string | null;
+          min_commit?: number | null;
           venue?: string | null;
-          preferred_dates: string;
+          preferred_dates?: string | null;
+          notes?: string | null;
+          spoc_declaration?: boolean;
           status?: string;
           assigned_to?: string | null;
           created_at?: string;
+          updated_at?: string | null;
         };
         Update: {
           name?: string;
-          org?: string;
           email?: string;
           phone?: string | null;
+          city?: string | null;
+          state?: string | null;
+          org?: string | null;
+          org_name?: string | null;
           topic?: string;
           audience_type?: string;
-          group_size?: string;
-          min_commit?: number;
+          group_size?: string | null;
+          min_commit?: number | null;
           venue?: string | null;
-          preferred_dates?: string;
+          preferred_dates?: string | null;
+          notes?: string | null;
+          spoc_declaration?: boolean;
           status?: string;
           assigned_to?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -173,6 +184,7 @@ export interface Database {
           status: string;
           request_id: string | null;
           created_at: string;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -192,6 +204,7 @@ export interface Database {
           status?: string;
           request_id?: string | null;
           created_at?: string;
+          updated_at?: string | null;
         };
         Update: {
           ref_code?: string;
@@ -209,6 +222,7 @@ export interface Database {
           consent_status?: string;
           status?: string;
           request_id?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -233,6 +247,7 @@ export interface Database {
           status: string;
           storage_path: string | null;
           created_at: string;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -246,6 +261,7 @@ export interface Database {
           status?: string;
           storage_path?: string | null;
           created_at?: string;
+          updated_at?: string | null;
         };
         Update: {
           practitioner_id?: string;
@@ -257,6 +273,7 @@ export interface Database {
           signer_ip?: string | null;
           status?: string;
           storage_path?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -276,10 +293,12 @@ export interface Database {
           invoice_ref: string;
           gross_amount: number;
           net_amount: number;
+          tds_rate: number | null;
           payment_method: string | null;
           paid_at: string | null;
           status: string;
           created_at: string;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -288,10 +307,12 @@ export interface Database {
           invoice_ref: string;
           gross_amount: number;
           net_amount: number;
+          tds_rate?: number | null;
           payment_method?: string | null;
           paid_at?: string | null;
           status?: string;
           created_at?: string;
+          updated_at?: string | null;
         };
         Update: {
           session_id?: string;
@@ -299,9 +320,11 @@ export interface Database {
           invoice_ref?: string;
           gross_amount?: number;
           net_amount?: number;
+          tds_rate?: number | null;
           payment_method?: string | null;
           paid_at?: string | null;
           status?: string;
+          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -319,6 +342,123 @@ export interface Database {
             referencedColumns: ["id"];
           }
         ];
+      };
+      onboarding_tokens: {
+        Row: {
+          id: string;
+          practitioner_id: string;
+          token: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          practitioner_id: string;
+          token: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          practitioner_id?: string;
+          token?: string;
+          expires_at?: string;
+          used_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tokens_practitioner_id_fkey";
+            columns: ["practitioner_id"];
+            isOneToOne: false;
+            referencedRelation: "practitioners";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      photo_submissions: {
+        Row: {
+          id: string;
+          practitioner_ref: string;
+          session_ref: string;
+          module: string;
+          city: string;
+          state: string;
+          org: string | null;
+          submitted_at: string;
+          expiry_date: string;
+          photo_count: number;
+          storage_keys: string[];
+          participant_consent: boolean;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          practitioner_ref: string;
+          session_ref: string;
+          module: string;
+          city: string;
+          state: string;
+          org?: string | null;
+          submitted_at?: string;
+          expiry_date: string;
+          photo_count: number;
+          storage_keys?: string[];
+          participant_consent: boolean;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          practitioner_ref?: string;
+          session_ref?: string;
+          module?: string;
+          city?: string;
+          state?: string;
+          org?: string | null;
+          submitted_at?: string;
+          expiry_date?: string;
+          photo_count?: number;
+          storage_keys?: string[];
+          participant_consent?: boolean;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sent_emails: {
+        Row: {
+          id: string;
+          idempotency_key: string;
+          email_type: string;
+          recipient_email: string;
+          entity_id: string;
+          brevo_message_id: string | null;
+          status: string;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          idempotency_key: string;
+          email_type: string;
+          recipient_email: string;
+          entity_id: string;
+          brevo_message_id?: string | null;
+          status?: string;
+          sent_at?: string;
+        };
+        Update: {
+          idempotency_key?: string;
+          email_type?: string;
+          recipient_email?: string;
+          entity_id?: string;
+          brevo_message_id?: string | null;
+          status?: string;
+          sent_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

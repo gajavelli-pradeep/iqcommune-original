@@ -7,15 +7,15 @@ import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 interface SessionRequest {
   id: string;
   name: string;
-  org: string;
+  org: string | null;
   email: string;
   phone: string | null;
   topic: string;
   audience_type: string;
-  group_size: string;
-  min_commit: number;
+  group_size: string | null;
+  min_commit: number | null;
   venue: string | null;
-  preferred_dates: string;
+  preferred_dates: string | null;
   venue_notes?: string | null;
   notes?: string | null;
   status: string;
@@ -50,8 +50,8 @@ We have received your session request for "${r.topic}" and are reviewing the det
 
 • Topic: ${r.topic}
 • Audience: ${r.audience_type}
-• Group size: ${r.group_size}
-• Preferred dates: ${r.preferred_dates}${r.venue ? `\n• Venue: ${r.venue}` : ""}${r.notes ? `\n• Notes: ${r.notes}` : ""}
+• Group size: ${r.group_size ?? "TBD"}
+• Preferred dates: ${r.preferred_dates ?? "flexible"}${r.venue ? `\n• Venue: ${r.venue}` : ""}${r.notes ? `\n• Notes: ${r.notes}` : ""}
 
 Our team will match you with a suitable practitioner and confirm the session details within 2–3 working days.
 
@@ -64,7 +64,7 @@ The iqcommune Team`;
 function buildRequestFollowupWA(r: SessionRequest): string {
   return `Hi ${r.name}! 👋
 
-This is the iqcommune team. We've received your session request for *${r.topic}* (${r.group_size} participants, ${r.preferred_dates}).
+This is the iqcommune team. We've received your session request for *${r.topic}* (${r.group_size ?? "TBD"} participants, ${r.preferred_dates ?? "flexible"}).
 
 We're reviewing your request and will confirm the practitioner match within 2–3 working days.
 
@@ -170,7 +170,7 @@ export function RequestTable({
                   >
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 500 }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org} · {r.email}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org ? `${r.org} · ` : ""}{r.email}</div>
                       {r.phone && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>}
                       <div style={{ fontSize: 11, color: "#71717f", marginTop: 2 }}>
                         {new Date(r.created_at).toLocaleDateString("en-IN")}
@@ -182,11 +182,15 @@ export function RequestTable({
                       <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.group_size} total</div>
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
-                      {r.min_commit}
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>guaranteed</div>
+                      {r.min_commit != null ? (
+                        <>
+                          {r.min_commit}
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>guaranteed</div>
+                        </>
+                      ) : "—"}
                     </td>
                     <td style={tdStyle}>{r.venue ?? "—"}</td>
-                    <td style={tdStyle}>{r.preferred_dates}</td>
+                    <td style={tdStyle}>{r.preferred_dates ?? "—"}</td>
                     <td style={tdStyle}>{r.assigned_practitioner?.name ?? "—"}</td>
                     <td style={tdStyle}><StatusPill status={r.status} /></td>
                     <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
@@ -228,8 +232,8 @@ export function RequestTable({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem 2rem", marginBottom: "1rem" }}>
                             <Field label="Topic" value={r.topic} />
                             <Field label="Audience type" value={r.audience_type} />
-                            <Field label="Group size" value={r.group_size} />
-                            <Field label="Preferred dates" value={r.preferred_dates} />
+                            <Field label="Group size" value={r.group_size ?? "—"} />
+                            <Field label="Preferred dates" value={r.preferred_dates ?? "—"} />
                             <Field label="Venue" value={r.venue ?? "—"} />
                             <Field label="Venue notes" value={r.venue_notes ?? "—"} />
                             {r.notes && <Field label="Additional notes" value={r.notes} />}

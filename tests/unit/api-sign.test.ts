@@ -1,10 +1,28 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { POST } from "@/app/api/onboarding/sign/route";
+import { signOnboardingUrl } from "@/lib/hmac";
 import { NextRequest } from "next/server";
 
 beforeAll(() => {
   process.env.HMAC_SECRET = "test-secret-32-chars-minimum-x12";
 });
+
+// Builds an HMAC-valid linkParams + linkSig pair so requests clear signature
+// verification and reach the DB-state branches under test (403 / 409).
+function validLink(ref: string) {
+  const linkParams = {
+    name: "Vikram Kulkarni",
+    role: "Equity Analyst",
+    org: "IQ Commune",
+    module: "Equity Research",
+    city: "Pune",
+    state: "MH",
+    ref,
+    email: "vikram@example.com",
+  };
+  const linkSig = new URL(signOnboardingUrl(linkParams)).searchParams.get("sig")!;
+  return { linkParams, linkSig };
+}
 
 const mockSingle = vi.fn();
 const mockUpdate = vi.fn();
@@ -55,11 +73,12 @@ describe("POST /api/onboarding/sign", () => {
     const req = new NextRequest("http://localhost/api/onboarding/sign", {
       method: "POST",
       body: JSON.stringify({
-        ref: "IQC-EMP-NONEXISTENT",
+        ref: "IQC-EMP-9999",
         fullName: "Vikram Kulkarni",
         designation: "Equity Analyst",
         sigMode: "typed",
         sigData: "Vikram Kulkarni",
+        ...validLink("9999"),
       }),
       headers: { "Content-Type": "application/json", "x-forwarded-for": "1.2.3.4" },
     });
@@ -76,11 +95,12 @@ describe("POST /api/onboarding/sign", () => {
     const req = new NextRequest("http://localhost/api/onboarding/sign", {
       method: "POST",
       body: JSON.stringify({
-        ref: "IQC-EMP-0042",
+        ref: "IQC-EMP-42",
         fullName: "Vikram Kulkarni",
         designation: "Equity Analyst",
         sigMode: "typed",
         sigData: "Vikram Kulkarni",
+        ...validLink("42"),
       }),
       headers: { "Content-Type": "application/json", "x-forwarded-for": "1.2.3.4" },
     });

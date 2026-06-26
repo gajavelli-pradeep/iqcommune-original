@@ -4,7 +4,7 @@ import { StatusPill } from "@/components/shared/StatusPill";
 
 interface PractitionerLike { id: string; name: string; email: string; role: string; city: string; modules: string[]; status: string; }
 interface SessionLike { id: string; ref_code: string; module: string; venue: string; status: string; practitioner: { name: string } | null; }
-interface RequestLike { id: string; name: string; org: string; email: string; topic: string; status: string; }
+interface RequestLike { id: string; name: string; org: string | null; email: string; topic: string; status: string; }
 
 function matches(query: string, ...fields: (string | null | undefined)[]) {
   const q = query.toLowerCase();
@@ -63,7 +63,7 @@ export function GlobalSearchResults({
         <Section title="Session requests" count={rq.length} onSeeAll={() => onNavigate("requests")}>
           {rq.slice(0, 8).map((r) => (
             <Row key={r.id} onClick={() => onNavigate("requests")}
-              primary={`${r.name} · ${r.org}`} secondary={r.topic} status={r.status} />
+              primary={r.org ? `${r.name} · ${r.org}` : r.name} secondary={r.topic} status={r.status} />
           ))}
         </Section>
       </div>

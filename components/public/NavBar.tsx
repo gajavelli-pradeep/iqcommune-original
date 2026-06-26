@@ -3,7 +3,7 @@ import { RequestModal } from "@/components/public/RequestModal";
 import { SiteHeader } from "@/components/public/SiteHeader";
 
 const DRAWER_TRUST = [
-  "In-person sessions · max 20 participants",
+  "In-person sessions · max 25 participants",
   "All practitioners currently active in their domain",
   "We'll reach out within 2–3 working days",
 ] as const;

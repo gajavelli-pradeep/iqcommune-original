@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f8f7f4",
+        background: "var(--surface-soft)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -39,7 +39,7 @@ export default function LoginPage() {
     >
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface)",
           border: "1px solid rgba(20,18,12,.1)",
           borderRadius: 14,
           padding: "2.5rem 2rem",
@@ -125,12 +125,12 @@ export default function LoginPage() {
             <div
               role="alert"
               style={{
-                background: "#fdf0f0",
+                background: "var(--red-light)",
                 border: "1px solid var(--red-border)",
                 borderRadius: 8,
                 padding: "10px 12px",
                 fontSize: 13,
-                color: "#a32d2d",
+                color: "var(--red)",
               }}
             >
               {error}
@@ -144,7 +144,7 @@ export default function LoginPage() {
             style={{
               padding: "12px",
               background: "var(--ink)",
-              color: "#fff",
+              color: "var(--surface)",
               border: "none",
               borderRadius: 100,
               fontSize: 14,
@@ -190,6 +190,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
-  background: "#fff",
+  background: "var(--surface)",
   boxSizing: "border-box",
 };

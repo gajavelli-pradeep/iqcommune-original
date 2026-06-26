@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { RequestModal } from "@/components/public/RequestModal";
 import { FaqAccordion, type FaqItem } from "@/components/public/FaqAccordion";
 import { NavBar } from "@/components/public/NavBar";
@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/public/SiteFooter";
 import { RevealOnScroll } from "@/components/public/RevealOnScroll";
 import { CountUp } from "@/components/public/CountUp";
 import { moduleAccent, paletteAccent, accentVars } from "@/lib/accents";
+import { ToolsSection } from "@/components/public/ToolsSection";
 
 export const metadata: Metadata = {
   title: { absolute: "iqcommune — Real practitioners. Real sessions." },
@@ -93,7 +94,7 @@ const TRUST_ITEMS = [
     ),
   },
   {
-    text: "Max 20 participants per session",
+    text: "Max 25 participants per session",
     icon: (
       <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" style={{ opacity: 0.65, flexShrink: 0 }}>
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -152,8 +153,8 @@ const DIFF_US = [
 
 const TOPICS = [
   {
-    name: "Financial Planning Basics",
-    desc: "Budgeting, net worth, emergency funds — the foundation every adult needs before investing a single rupee.",
+    name: "Foundations of Personal Finance",
+    desc: "Budgeting, net worth, emergency funds, insurance, and tax basics — the complete foundation every adult needs before investing a single rupee.",
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -162,8 +163,27 @@ const TOPICS = [
     ),
   },
   {
-    name: "Investment Basics",
-    desc: "Mutual funds, SIPs, equity vs. debt — explained by someone actively allocating money across these instruments.",
+    name: "Retirement & Goal-Based Financial Planning",
+    desc: "Corpus calculation, NPS/EPF/PPF, goal-bucket planning, and handling competing financial goals — all in one session.",
+    icon: (
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
+  {
+    name: "Equity Investing Simplified",
+    desc: "From how markets work to reading financials, valuation ratios, and earnings reports — taught by an active equity analyst, not a textbook.",
+    icon: (
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+  },
+  {
+    name: "Debt & Fixed Income Investing",
+    desc: "Bonds, G-Secs, debt mutual funds, yield, duration, and tax treatment — the fixed income universe decoded by an active portfolio manager.",
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <line x1="12" y1="1" x2="12" y2="23" />
@@ -172,17 +192,8 @@ const TOPICS = [
     ),
   },
   {
-    name: "Market Fundamentals",
-    desc: "How markets work, what moves them, and how to read signals — from analysts watching live order books.",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-  },
-  {
-    name: "Stock Market Basics",
-    desc: "Reading price charts, P/E ratios, earnings reports — concepts that most trainers only read about.",
+    name: "Asset Allocation & Portfolio Construction",
+    desc: "How to split a portfolio across asset classes, build for your risk profile, and rebalance — taught by someone actively making these decisions for real clients.",
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -192,18 +203,8 @@ const TOPICS = [
     ),
   },
   {
-    name: "Retirement Planning",
-    desc: "NPS, PPF, EPF, annuities — building a retirement corpus that actually keeps pace with inflation.",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  {
-    name: "Goal-Based Investing",
-    desc: "Structuring investments around real goals — a house, children's education, business capital — with timelines that work.",
+    name: "Investment Solutions & Portfolio Strategies",
+    desc: "Mutual fund categories, SIP/STP/SWP mechanics, PMS and AIF, portfolio review frameworks, and tax-efficient investing — taught by a practising portfolio manager.",
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -274,7 +275,7 @@ const HOW_STEPS = [
   {
     num: "2",
     title: "Send your request",
-    desc: "Share your audience type, group size (up to 20), and a preferred date window. We take it from there.",
+    desc: "Share your audience type, group size (up to 25), and a preferred date window. We take it from there.",
   },
   {
     num: "3",
@@ -284,17 +285,18 @@ const HOW_STEPS = [
   {
     num: "4",
     title: "Attend Session",
-    desc: "In-person, focused session — max 20 people — led by a practitioner still active in that field.",
+    desc: "In-person, focused session — max 25 people — led by a practitioner still active in that field.",
   },
 ] as const;
 
 const WALKOUT_CARDS = [
   {
-    title: "Financial Planning Basics",
+    title: "Foundations of Personal Finance",
     bullets: [
       "A personal budget framework mapped to your actual income and expenses",
       "A net worth snapshot and a clear step to improve it within 30 days",
       "Emergency fund target calculated for your specific situation",
+      "Insurance gap analysis — how much cover you actually need vs. what you have",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -304,11 +306,41 @@ const WALKOUT_CARDS = [
     ),
   },
   {
-    title: "Investment Basics",
+    title: "Retirement & Goal-Based Financial Planning",
     bullets: [
-      "A starter allocation plan — how to split your investable surplus across instruments",
-      "A checklist to evaluate any mutual fund or SIP before committing",
-      "Clarity on what to avoid — common mistakes that cost retail investors the most",
+      "Your personal retirement corpus number — calculated with real inflation assumptions",
+      "A NPS/PPF/EPF contribution plan mapped to your timeline",
+      "A goal-bucket plan — each goal mapped to a timeline and an instrument",
+      "Monthly SIP amounts needed per goal — calculated in the room, for your numbers",
+    ],
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
+  {
+    title: "Equity Investing Simplified",
+    bullets: [
+      "A personal stock evaluation template — P/E, growth, moat, and red flags",
+      "How to read an earnings report in under 10 minutes",
+      "A framework to read market movements without getting swept up in media noise",
+      "A watchlist-building approach you can apply immediately",
+    ],
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+  },
+  {
+    title: "Debt & Fixed Income Investing",
+    bullets: [
+      "A framework for choosing between bonds, G-Secs, and debt mutual funds",
+      "How to calculate yield-to-maturity and apply duration to your portfolio",
+      "Tax treatment across fixed income instruments — post-tax return comparison",
+      "When to use debt vs. equity for a specific goal or time horizon",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -318,24 +350,12 @@ const WALKOUT_CARDS = [
     ),
   },
   {
-    title: "Market Fundamentals",
+    title: "Asset Allocation & Portfolio Construction",
     bullets: [
-      "A framework to read market movements without getting swept up in media noise",
-      "A personal “signal vs noise” filter for RBI decisions, earnings, and macro events",
-      "Confidence to have an informed view — not just follow a tip",
-    ],
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-  },
-  {
-    title: "Stock Market Basics",
-    bullets: [
-      "A personal stock evaluation template — P/E, growth, moat, and red flags",
-      "How to read an earnings report in under 10 minutes",
-      "A watchlist-building approach you can apply immediately",
+      "A starter allocation plan — how to split your investable surplus across asset classes",
+      "A rebalancing framework — when to act, when to hold",
+      "Risk profile to allocation mapping — not generic, but built for your numbers",
+      "A checklist to evaluate any portfolio decision before committing",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -346,25 +366,12 @@ const WALKOUT_CARDS = [
     ),
   },
   {
-    title: "Retirement Planning",
+    title: "Investment Solutions & Portfolio Strategies",
     bullets: [
-      "Your personal retirement corpus number — calculated with real inflation assumptions",
-      "A NPS/PPF/EPF contribution plan mapped to your timeline",
-      "The one lever most people miss that makes the biggest difference post-60",
-    ],
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  {
-    title: "Goal-Based Investing",
-    bullets: [
-      "A goal-bucket plan — each goal mapped to a timeline and an instrument",
-      "Monthly SIP amounts needed per goal — calculated in the room, for your numbers",
-      "A review trigger system so you know when — and only when — to revisit the plan",
+      "Mutual fund category map — which fund type for which goal and horizon",
+      "SIP/STP/SWP mechanics — when and how to use each",
+      "PMS and AIF — who they're for and what to verify before investing",
+      "A portfolio review framework you can run quarterly, without an advisor",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -376,42 +383,10 @@ const WALKOUT_CARDS = [
 ] as const;
 
 
-const TOOLS = [
-  {
-    module: "Financial Planning Basics",
-    name: "50/30/20 Budget Calculator",
-    desc: "Enter your monthly take-home and instantly see how your spending maps against a healthy allocation framework.",
-  },
-  {
-    module: "Financial Planning Basics",
-    name: "Net Worth Tracker",
-    desc: "A simple asset vs. liability sheet that calculates your real net worth and highlights where to focus first.",
-  },
-  {
-    module: "Investment Basics",
-    name: "SIP Growth Calculator",
-    desc: "See how a monthly SIP compounds over 5, 10, and 20 years at realistic return assumptions — not marketing numbers.",
-  },
-  {
-    module: "Stock Market Basics",
-    name: "P/E & Valuation Quick-Check",
-    desc: "Enter a stock's basic numbers and get a sense of whether it's reasonably priced — without needing a Bloomberg terminal.",
-  },
-  {
-    module: "Retirement Planning",
-    name: "Retirement Corpus Estimator",
-    desc: "Calculate how much you need at retirement given your current age, lifestyle cost, and inflation rate — with a monthly savings target.",
-  },
-  {
-    module: "Goal-Based Investing",
-    name: "Goal-to-SIP Planner",
-    desc: "Enter your goal (amount + timeline) and get the monthly investment needed — broken down by instrument type and risk profile.",
-  },
-] as const;
 
 const CTA_REASSURANCE = [
   "No fixed slots — we schedule around you",
-  "Max 20 participants per session",
+  "Max 25 participants per session",
   "We'll reach out within 2–3 working days",
 ] as const;
 
@@ -446,7 +421,7 @@ const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "How is the practitioner chosen for my session?",
-    a: "We match the practitioner to the module by current role — not just credentials. Someone teaching Stock Market Basics is an active equity analyst. Someone covering Goal-Based Investing is currently structuring client portfolios. The match is made internally before we confirm your session details.",
+    a: "We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Retirement & Goal-Based Financial Planning is currently structuring client portfolios. The match is made internally before we confirm your session details.",
   },
   {
     q: "Who arranges the venue?",
@@ -572,7 +547,7 @@ export default function HomePage() {
           .trust-bar-inner, .ribbon-inner, .cta-reassurance { gap: 1.25rem !important; }
           .form-row-modal { grid-template-columns: 1fr !important; }
         }
-        @media (max-width: 480px) {
+        @media (max-width: 600px) {
           .topics-grid { grid-template-columns: 1fr !important; }
           .pool-role-grid { grid-template-columns: 1fr !important; }
           .walkout-grid { grid-template-columns: 1fr !important; }
@@ -647,7 +622,7 @@ export default function HomePage() {
               }}
             >
               Real finance knowledge —{" "}
-              <span style={{ color: "#c9982a" }}>from professionals</span> actively navigating the same markets you&apos;re trying to understand.
+              <span style={{ color: "var(--gold-dark)" }}>from professionals</span>{" "}actively navigating the same markets you&apos;re trying to understand.
             </h1>
 
             {/* Sub */}
@@ -1150,7 +1125,7 @@ export default function HomePage() {
               <circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            All sessions capped at 20 participants — to keep the quality of conversation and interaction high.
+            All sessions capped at 25 participants — to keep the quality of conversation and interaction high.
           </p>
         </div>
       </section>
@@ -1391,104 +1366,7 @@ export default function HomePage() {
       </section>
 
       {/* ── §11 TOOLS & CALCULATORS ── */}
-      <section style={{ background: "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(201,152,42,0.06), transparent 70%), #f4f2ec", borderTop: "1px solid rgba(20,18,12,0.09)", padding: "4rem 2rem" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Pill>Tools &amp; Calculators</Pill>
-          <h2
-            className="iq-animate"
-            style={{
-              fontSize: "clamp(26px,3.8vw,40px)",
-              fontWeight: 600,
-              lineHeight: 1.2,
-              letterSpacing: "-0.01em",
-              textAlign: "center",
-              color: "#14161d",
-              marginBottom: "1rem",
-            }}
-          >
-            Free tools to start before the session.
-          </h2>
-          <p
-            style={{
-              fontSize: 16,
-              color: "#5b5e6c",
-              textAlign: "center",
-              maxWidth: 520,
-              margin: "0 auto 2rem",
-            }}
-          >
-            These placeholders will link to curated calculators and frameworks aligned to each module. Coming soon — one tool per topic.
-          </p>
-
-          <div
-            className="tools-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "1rem",
-              marginTop: "2rem",
-            }}
-          >
-            {TOOLS.map((tool) => {
-              const accent = moduleAccent(tool.module);
-              return (
-              <div
-                key={tool.name}
-                className="tool-card iq-animate"
-                style={{
-                  background: "#ffffff",
-                  border: `1px solid color-mix(in srgb, ${accent.base} 18%, rgba(20,18,12,0.09))`,
-                  borderTop: `3px solid ${accent.base}`,
-                  borderRadius: 12,
-                  padding: "1.25rem",
-                  cursor: "default",
-                  ...accentVars(accent),
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: accent.ink,
-                    marginBottom: 8,
-                  }}
-                >
-                  {tool.module}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
-                  {tool.name}
-                </div>
-                <div style={{ fontSize: 12, color: "#383b47", lineHeight: 1.5, marginBottom: "0.75rem" }}>
-                  {tool.desc}
-                </div>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: accent.ink,
-                    background: accent.light,
-                    border: `1px solid color-mix(in srgb, ${accent.base} 28%, transparent)`,
-                    borderRadius: 100,
-                    padding: "3px 9px",
-                  }}
-                >
-                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 8v4M12 16h.01" />
-                  </svg>
-                  Coming soon
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <ToolsSection />
 
       {/* ── §12 CTA ── */}
       <section style={{ background: "radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201,152,42,0.14), transparent 72%), #14161d", borderTop: "1px solid rgba(201,152,42,0.18)", padding: "5.5rem 2rem", textAlign: "center" }}>
@@ -1536,7 +1414,7 @@ export default function HomePage() {
             {CTA_REASSURANCE.map((item) => (
               <div
                 key={item}
-                style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "rgba(255,255,255,0.45)" }}
+                style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "rgba(255,255,255,0.62)" }}
               >
                 <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />

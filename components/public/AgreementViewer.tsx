@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodV4Resolver } from "@/lib/zodV4Resolver";
 import { AgreementSignSchema, type AgreementSign } from "@/lib/schemas/agreement";
 
 
@@ -21,6 +21,7 @@ export function AgreementViewer() {
   const pModule = params.get("module") ?? "";
   const pRef    = params.get("ref")    ?? "";
   const pCity   = params.get("city")   ?? "";
+  const pState  = params.get("state")  ?? "";
   const pEmail  = params.get("email")  ?? "";
 
   const refCode = `IQC-EMP-${pRef}`;
@@ -43,7 +44,7 @@ export function AgreementViewer() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<AgreementSign>({
-    resolver: zodResolver(AgreementSignSchema),
+    resolver: zodV4Resolver(AgreementSignSchema),
     defaultValues: {
       ref: refCode,
       sigMode: "drawn",
@@ -53,9 +54,10 @@ export function AgreementViewer() {
         role: pRole,
         org: pOrg,
         module: pModule,
-        city: params.get("city") ?? "",
+        city: pCity,
+        state: pState,
         ref: pRef,
-        email: params.get("email") ?? "",
+        email: pEmail,
       },
     },
   });
@@ -92,10 +94,12 @@ export function AgreementViewer() {
     canvas.style.width = w + "px";
     canvas.style.height = "120px";
     ctx.scale(ratio, ratio);
-    ctx.strokeStyle = "var(--ink)";
+    ctx.strokeStyle = "#14161d";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+    // Resizing clears the canvas bitmap — reset hasSig so a blank canvas isn't submitted.
+    setHasSig(false);
   }, []);
 
   useEffect(() => {
@@ -142,8 +146,12 @@ export function AgreementViewer() {
     setHasSig(false);
   }
 
-  function handleFormSubmit(e: React.FormEvent) {
+  async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!pRef || !params.get("sig")) {
+      setServerError("This onboarding link is invalid or has expired. Please contact support at hello@iqcommune.com.");
+      return;
+    }
     if (sigMode === "drawn") {
       if (!hasSig) { setServerError("Please draw your signature"); return; }
       setValue("sigData", canvasRef.current!.toDataURL("image/png"));
@@ -153,7 +161,7 @@ export function AgreementViewer() {
     }
     setValue("sigMode", sigMode);
     setServerError("");
-    handleSubmit(onSubmit)();
+    await handleSubmit(onSubmit)();
   }
 
   async function onSubmit(data: AgreementSign) {
@@ -1207,6 +1215,7 @@ export function AgreementViewer() {
               <input type="hidden" {...register("linkParams.org")} />
               <input type="hidden" {...register("linkParams.module")} />
               <input type="hidden" {...register("linkParams.city")} />
+              <input type="hidden" {...register("linkParams.state")} />
               <input type="hidden" {...register("linkParams.ref")} />
               <input type="hidden" {...register("linkParams.email")} />
 

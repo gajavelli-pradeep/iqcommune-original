@@ -13,7 +13,7 @@ const validBody = {
   name: "Suresh Patel",
   org: "TechCorp",
   email: "s@techcorp.in",
-  topic: "Stock Market Basics",
+  topic: "Equity Investing Simplified",
   audienceType: "Organisations & Institutions",
   groupSize: "16–20",
   minCommit: 16,

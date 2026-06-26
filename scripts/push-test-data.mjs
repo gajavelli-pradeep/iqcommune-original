@@ -60,16 +60,16 @@ const { error: reqErr } = await db.from("session_requests").upsert(reqs, { onCon
 log("session_requests upsert:", reqErr ? "ERROR: " + reqErr.message : "ok (" + reqs.length + ")");
 
 const prs = [
-  { id: PR_APPLIED, name: "Dr. Meena Krishnan", email: "meena.krishnan@example.com", phone: "+91 99887 76650", role: "Certified Financial Planner", org: "Independent", city: "Bangalore", experience: "12 years", modules: ["Personal Finance", "Tax Planning"], status: "Applied", why: "Democratise financial literacy.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "MK001" },
-  { id: PR_SCREEN, name: "Deepa Venkataraman", email: "deepa.v@example.com", phone: "+91 99887 76652", role: "CA & Financial Coach", org: "Self-employed", city: "Chennai", experience: "15 years", modules: ["Tax Planning"], status: "Screening Done", why: "Help people reduce financial stress.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "DV003" },
-  { id: EMP_ID, name: "Lakshmi Subramaniam", email: "lakshmi.s@example.com", phone: "+91 99887 76654", role: "Personal Finance Educator", org: "Independent", city: "Hyderabad", experience: "7 years", modules: ["Personal Finance", "Goal-Based Investing"], status: "Empanelled", why: "Every rupee saved today is freedom tomorrow.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "LS005", upi_id: "lakshmi.s@upi", bank_name: "HDFC Bank", bank_account: "50100123456789", ifsc: "HDFC0001234" },
+  { id: PR_APPLIED, name: "Dr. Meena Krishnan", email: "meena.krishnan@example.com", phone: "+91 99887 76650", role: "Certified Financial Planner", org: "Independent", city: "Bangalore", experience: "12 years", modules: ["Foundations of Personal Finance", "Asset Allocation & Portfolio Construction"], status: "Applied", why: "Democratise financial literacy.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "MK001" },
+  { id: PR_SCREEN, name: "Deepa Venkataraman", email: "deepa.v@example.com", phone: "+91 99887 76652", role: "CA & Financial Coach", org: "Self-employed", city: "Chennai", experience: "15 years", modules: ["Debt & Fixed Income Investing"], status: "Screening Done", why: "Help people reduce financial stress.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "DV003" },
+  { id: EMP_ID, name: "Lakshmi Subramaniam", email: "lakshmi.s@example.com", phone: "+91 99887 76654", role: "Personal Finance Educator", org: "Independent", city: "Hyderabad", experience: "7 years", modules: ["Foundations of Personal Finance", "Retirement & Goal-Based Financial Planning"], status: "Empanelled", why: "Every rupee saved today is freedom tomorrow.", consent_operational: true, consent_nosell: true, consent_employer: true, ref_code: "LS005", upi_id: "lakshmi.s@upi", bank_name: "HDFC Bank", bank_account: "50100123456789", ifsc: "HDFC0001234" },
 ];
 const { error: prErr } = await db.from("practitioners").upsert(prs, { onConflict: "id" });
 log("practitioners upsert:", prErr ? "ERROR: " + prErr.message : "ok (" + prs.length + ")");
 
 const sessions = [
-  { id: SES_1, ref_code: "IQC-SES-0001", module: "Personal Finance", practitioner_id: EMP_ID, session_date: "2026-07-20", start_time: "10:00", end_time: "13:00", venue: "Hyderabad HQ", audience_type: "Corporate employees", participants: 35, payout_amount: 15000, tds_applicable: true, tds_rate: 10, consent_status: "Pending consent", status: "Upcoming" },
-  { id: SES_2, ref_code: "IQC-SES-0002", module: "Goal-Based Investing", practitioner_id: EMP_ID, session_date: "2026-06-01", start_time: "14:00", end_time: "17:00", venue: "Pune campus", audience_type: "All staff", participants: 50, payout_amount: 20000, tds_applicable: true, tds_rate: 10, consent_status: "Consent given", status: "Completed" },
+  { id: SES_1, ref_code: "IQC-SES-0001", module: "Foundations of Personal Finance", practitioner_id: EMP_ID, session_date: "2026-07-20", start_time: "10:00", end_time: "13:00", venue: "Hyderabad HQ", audience_type: "Corporate employees", participants: 35, payout_amount: 15000, tds_applicable: true, tds_rate: 10, consent_status: "Pending consent", status: "Upcoming" },
+  { id: SES_2, ref_code: "IQC-SES-0002", module: "Retirement & Goal-Based Financial Planning", practitioner_id: EMP_ID, session_date: "2026-06-01", start_time: "14:00", end_time: "17:00", venue: "Pune campus", audience_type: "All staff", participants: 50, payout_amount: 20000, tds_applicable: true, tds_rate: 10, consent_status: "Consent given", status: "Completed" },
 ];
 const { error: sesErr } = await db.from("sessions").upsert(sessions, { onConflict: "id" });
 log("sessions upsert:", sesErr ? "ERROR: " + sesErr.message : "ok (" + sessions.length + ")");
@@ -82,7 +82,7 @@ const { error: poErr } = await db.from("payouts").upsert(payouts, { onConflict: 
 log("payouts upsert:", poErr ? "ERROR: " + poErr.message : "ok (" + payouts.length + ")");
 
 const agreements = [
-  { id: AG_1, practitioner_id: EMP_ID, ref_code: "LS005", module: "Personal Finance", signed_at: new Date().toISOString(), signature_method: "typed", status: "Active", storage_path: null },
+  { id: AG_1, practitioner_id: EMP_ID, ref_code: "LS005", module: "Foundations of Personal Finance", signed_at: new Date().toISOString(), signature_method: "typed", status: "Active", storage_path: null },
 ];
 const { error: agErr } = await db.from("agreements").upsert(agreements, { onConflict: "id" });
 log("agreements upsert:", agErr ? "ERROR: " + agErr.message : "ok (" + agreements.length + ")");

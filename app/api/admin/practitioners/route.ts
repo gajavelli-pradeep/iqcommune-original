@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -14,6 +15,7 @@ const SAFE_KEYS: (keyof PractitionerRow)[] = [
   "role",
   "org",
   "city",
+  "state",
   "experience",
   "modules",
   "teach_freq",
@@ -21,9 +23,6 @@ const SAFE_KEYS: (keyof PractitionerRow)[] = [
   "status",
   "ref_code",
   "pay_to_family",
-  "consent_operational",
-  "consent_nosell",
-  "consent_employer",
   "created_at",
   "updated_at",
 ];
@@ -37,7 +36,10 @@ export async function GET() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error("Practitioners GET failed", { error: error.message });
+    return NextResponse.json({ error: "Failed to load practitioners" }, { status: 500 });
+  }
 
   // Strip bank / payment fields from list response — full data available via /[id]
   const safe = (data as PractitionerRow[]).map((p) =>
@@ -57,15 +59,15 @@ const STATUSES = [
 ] as const;
 
 const CreatePractitionerSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  role: z.string().min(1),
-  city: z.string().min(1),
+  name:       z.string().min(1),
+  email:      z.string().email(),
+  role:       z.string().min(1),
+  city:       z.string().min(1),
   experience: z.string().min(1),
-  phone: z.string().optional(),
-  org: z.string().optional(),
-  modules: z.array(z.string()).default([]),
-  status: z.enum(STATUSES).default("Applied"),
+  phone:      z.string().optional(),
+  org:        z.string().optional(),
+  modules:    z.array(z.string()).default([]),
+  status:     z.enum(STATUSES).default("Applied"),
 });
 
 export async function POST(req: NextRequest) {
@@ -84,22 +86,25 @@ export async function POST(req: NextRequest) {
   const { data, error } = await createAdminClient()
     .from("practitioners")
     .insert({
-      name: d.name,
-      email: d.email,
-      role: d.role,
-      city: d.city,
+      name:       d.name,
+      email:      d.email,
+      role:       d.role,
+      city:       d.city,
       experience: d.experience,
-      phone: d.phone ?? null,
-      org: d.org ?? null,
-      modules: d.modules,
-      status: d.status,
+      phone:      d.phone ?? null,
+      org:        d.org ?? null,
+      modules:    d.modules,
+      status:     d.status,
     })
     .select("*")
     .single();
 
   if (error) {
-    const status = error.code === "23505" ? 409 : 500; // unique_violation → email exists
-    return NextResponse.json({ error: error.message }, { status });
+    if (error.code === "23505") {
+      return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+    }
+    log.error("Practitioner POST failed", { error: error.message });
+    return NextResponse.json({ error: "Failed to create practitioner" }, { status: 500 });
   }
   return NextResponse.json({ data }, { status: 201 });
 }

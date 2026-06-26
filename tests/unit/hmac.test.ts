@@ -14,8 +14,9 @@ describe("HMAC URL signing", () => {
       name: "Vikram Kulkarni",
       role: "Analyst",
       org: "Motilal",
-      module: "Stock Market Basics",
+      module: "Equity Investing Simplified",
       city: "Mumbai",
+      state: "MH",
       ref: "0042",
       email: "v@gmail.com",
     };
@@ -35,6 +36,7 @@ describe("HMAC URL signing", () => {
       org: "O",
       module: "M",
       city: "C",
+      state: "",
       ref: "0001",
       email: "t@t.com",
     });

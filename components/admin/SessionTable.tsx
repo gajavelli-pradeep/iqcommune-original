@@ -40,7 +40,9 @@ export function SessionTable({
   // Read directly from props so newly-created sessions (added upstream) appear immediately.
   const data = initialData;
   const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
-  const statusFilter = (statusFilterProp as StatusFilter) ?? internalStatus;
+  const statusFilter: StatusFilter = STATUS_FILTERS.includes(statusFilterProp as StatusFilter)
+    ? (statusFilterProp as StatusFilter)
+    : internalStatus;
   const setStatusFilter = (f: StatusFilter) => (onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f));
   const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -149,7 +151,7 @@ export function SessionTable({
                     <td style={tdStyle}>{s.module}</td>
                     <td style={tdStyle}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{s.practitioner?.name ?? "—"}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.practitioner?.email}</div>
+                      {s.practitioner?.email && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.practitioner.email}</div>}
                     </td>
                     <td style={tdStyle}>
                       <div>{s.session_date}</div>

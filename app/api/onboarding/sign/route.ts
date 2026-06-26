@@ -2,17 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { AgreementSignSchema } from "@/lib/schemas/agreement";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyOnboardingParams } from "@/lib/hmac";
-import { rateLimit } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
-import type { Database } from "@/lib/supabase/database.types";
+import { generateAndStoreAgreementPdf } from "@/lib/pdf/generate-agreement";
+import { sendEmail } from "@/lib/email/brevo";
+import { agreementConfirmed } from "@/lib/email/templates";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 
-type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
+// Drawn signatures are base64-encoded PNG — cap at ~600 KB to block
+// oversized uploads before they hit validation or DB storage.
+const MAX_BODY_BYTES = 600_000;
 
 export async function POST(req: NextRequest) {
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  }
+
   const ip = clientIp(req);
-  if (!rateLimit(ip, { max: 5, windowMs: 60_000 })) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  const { limited, reset } = await checkRateLimit(ip);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(reset) } }
+    );
   }
 
   let body: unknown;
@@ -32,10 +46,16 @@ export async function POST(req: NextRequest) {
 
   const { ref, fullName, designation, sigMode, sigData, linkSig, linkParams } = parsed.data;
 
-  // Verify the HMAC signature from the original onboarding URL.
-  // This prevents anyone who guesses a ref_code from signing without the link.
+  // Verify HMAC signature from the original onboarding URL
   const sp = new URLSearchParams({ ...linkParams, sig: linkSig });
   if (!verifyOnboardingParams(sp)) {
+    return NextResponse.json({ error: "Invalid or tampered link" }, { status: 403 });
+  }
+
+  // Bind the agreement lookup to the HMAC-verified ref. The top-level `ref` is
+  // NOT covered by the signature, so without this check a holder of any one
+  // valid link could sign a different practitioner's agreement by swapping it.
+  if (ref !== `IQC-EMP-${linkParams.ref}`) {
     return NextResponse.json({ error: "Invalid or tampered link" }, { status: 403 });
   }
 
@@ -51,28 +71,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid agreement reference" }, { status: 403 });
   }
 
-  const agreement = data as AgreementRow;
-
-  if (agreement.status === "Active") {
+  if (data.status === "Active") {
     return NextResponse.json({ error: "Agreement already signed" }, { status: 409 });
   }
 
-  // ip already resolved at top of handler
-  const signedAt = new Date().toISOString(); // server-side — never trust client
+  const signedAt = new Date().toISOString();
 
-  // Atomic guard: the WHERE status = 'Pending signature' ensures only one
-  // concurrent request wins the race. If another request signed first,
-  // updatedAgreement will be null and we return 409.
+  // Atomic: WHERE status = 'Pending signature' ensures only one concurrent request wins.
   const { data: updatedAgreement, error: updateErr } = await supabase
     .from("agreements")
     .update({
-      signed_at: signedAt,
+      signed_at:        signedAt,
       signature_method: sigMode,
-      signature_data: sigData,
-      signer_ip: ip,
-      status: "Active",
+      signature_data:   sigData,
+      signer_ip:        ip,
+      status:           "Active",
     })
-    .eq("id", agreement.id)
+    .eq("id", data.id)
     .eq("status", "Pending signature")
     .select("id")
     .maybeSingle();
@@ -80,36 +95,69 @@ export async function POST(req: NextRequest) {
   if (updateErr) {
     log.error("Failed to record agreement signature", {
       error: updateErr.message,
-      agreementId: agreement.id,
+      agreementId: data.id,
     });
     return NextResponse.json({ error: "Failed to record signature" }, { status: 500 });
   }
 
   if (!updatedAgreement) {
-    // Another concurrent request already activated this agreement.
     return NextResponse.json({ error: "Agreement already signed" }, { status: 409 });
   }
 
-  // Promote practitioner to Empanelled — check the error so partial failure is visible.
-  const { error: promoteErr } = await supabase
-    .from("practitioners")
-    .update({ status: "Empanelled" })
-    .eq("id", agreement.practitioner_id);
+  // Practitioner promotion is handled atomically by DB trigger (0006_sign_agreement_atomic.sql)
 
-  if (promoteErr) {
-    // Agreement is already Active — log but don't fail the response.
-    // Admin can manually correct the practitioner status.
-    log.error("Agreement signed but practitioner status promotion failed", {
-      error: promoteErr.message,
-      practitionerId: agreement.practitioner_id,
-      agreementId: agreement.id,
+  const agreementId = updatedAgreement.id as string;
+
+  // Generate and store PDF (non-fatal — agreement is signed regardless of PDF success)
+  try {
+    const storagePath = await generateAndStoreAgreementPdf({
+      practitionerName: fullName,
+      designation,
+      org:          linkParams.org,
+      module:       linkParams.module,
+      city:         linkParams.city,
+      state:        linkParams.state,
+      ref:          linkParams.ref,
+      signedAt,
+      sigMode,
+      sigTypedName: fullName,
+    });
+
+    const { error: pathErr } = await supabase
+      .from("agreements")
+      .update({ storage_path: storagePath })
+      .eq("id", agreementId);
+
+    if (pathErr) {
+      // Agreement is signed; missing storage_path means PDF is available in storage
+      // but the link wasn't saved. Query storage_path IS NULL to find these.
+      log.error("Failed to store PDF path on agreement row", {
+        error: pathErr.message,
+        agreementId,
+        storagePath,
+      });
+    }
+  } catch (pdfErr) {
+    log.error("PDF generation failed — agreement is signed, PDF path is NULL", {
+      error: String(pdfErr),
+      ref,
     });
   }
 
-  return NextResponse.json({
-    timestamp: signedAt,
-    refCode: ref,
-    signedBy: fullName,
-    designation,
-  });
+  // Send agreement confirmation email (idempotent)
+  const alreadySent = await guardEmailSend("agreement_signed", agreementId, linkParams.email);
+  if (!alreadySent) {
+    try {
+      const { subject, htmlContent } = agreementConfirmed({ name: fullName, ref: linkParams.ref });
+      await sendEmail({ to: linkParams.email, name: fullName, subject, htmlContent });
+    } catch (emailErr) {
+      log.error("Agreement confirmation email failed — revoking sentinel for retry", {
+        error: String(emailErr),
+        ref,
+      });
+      await revokeEmailSend("agreement_signed", agreementId);
+    }
+  }
+
+  return NextResponse.json({ timestamp: signedAt, refCode: ref, signedBy: fullName, designation });
 }

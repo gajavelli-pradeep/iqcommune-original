@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef } from "react";
+import { selectReset, selectChevronBg } from "@/components/ui/selectStyle";
 
 /** Reusable centered modal shell with dark header, ESC/backdrop close, and a footer slot. */
 export function FormModal({
@@ -32,7 +33,15 @@ export function FormModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (open) cardRef.current?.querySelector<HTMLElement>("input,select,textarea,button")?.focus();
+    if (!open) return;
+    // Prefer first form field; fall back to any button that isn't the close button.
+    const firstField = cardRef.current?.querySelector<HTMLElement>(
+      "input:not([type='hidden']),select,textarea"
+    );
+    const firstBtn = cardRef.current?.querySelector<HTMLElement>(
+      'button:not([aria-label="Close dialog"])'
+    );
+    (firstField ?? firstBtn)?.focus();
   }, [open]);
 
   if (!open || typeof document === "undefined") return null;
@@ -73,8 +82,7 @@ export function FormModal({
 // ── Shared field styles ─────────────────────────────────────────────────────────
 
 export const fieldLabelStyle: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 4 };
-export const fieldInputStyle: React.CSSProperties = { width: "100%", fontSize: 13, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", background: "#fcfbf8", fontFamily: "inherit", color: "#14161d", outline: "none", boxSizing: "border-box" };
-const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
-export const fieldSelectStyle: React.CSSProperties = { ...fieldInputStyle, appearance: "none", WebkitAppearance: "none", cursor: "pointer", paddingRight: 34, background: `${CHEVRON_GOLD} no-repeat right 12px center, #fcfbf8` };
-export const primaryBtn: React.CSSProperties = { background: "var(--ink)", color: "#fff", border: "none", borderRadius: 100, padding: "8px 16px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
-export const ghostBtn: React.CSSProperties = { background: "#fff", color: "var(--ink-soft)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "8px 16px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
+export const fieldInputStyle: React.CSSProperties = { width: "100%", fontSize: 13, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-input)", background: "var(--input-paper)", fontFamily: "inherit", color: "var(--ink)", outline: "none", boxSizing: "border-box" };
+export const fieldSelectStyle: React.CSSProperties = { ...fieldInputStyle, ...selectReset, paddingRight: 34, background: selectChevronBg(12) };
+export const primaryBtn: React.CSSProperties = { background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 100, padding: "8px 16px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
+export const ghostBtn: React.CSSProperties = { background: "var(--surface)", color: "var(--ink-soft)", border: "1px solid var(--border-input)", borderRadius: 100, padding: "8px 16px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" };
