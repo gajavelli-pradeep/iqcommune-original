@@ -97,7 +97,7 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
     ],
     sessions: [
       { label: "Total sessions",  value: counts.totalSessions ?? 0, filter: "All" },
-      { label: "Upcoming",        value: counts.pendingSessions, delta: counts.confirmedSessions > 0 ? `${counts.confirmedSessions} confirmed` : undefined, filter: "Upcoming" },
+      { label: "Upcoming",        value: counts.pendingSessions, delta: (counts.confirmedSessions ?? 0) > 0 ? `${counts.confirmedSessions} confirmed` : undefined, filter: "Upcoming" },
       { label: "Consent pending", value: counts.consentPending ?? 0, delta: (counts.consentPending ?? 0) > 0 ? "↑ action needed" : undefined, deltaRed: (counts.consentPending ?? 0) > 0 },
       { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
     ],
