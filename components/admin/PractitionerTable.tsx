@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useId, useRef } from "react";
+import { useState, useCallback, useEffect, useId, useRef, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -16,6 +16,10 @@ const STATUSES = [
 ] as const;
 
 const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
+
+function initials(name: string): string {
+  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
+}
 
 export function PractitionerTable({
   initialData,
@@ -40,7 +44,7 @@ export function PractitionerTable({
   const [internalFilter, setInternalFilter] = useState<string>("all");
   const filter = filterProp ?? internalFilter;
   const setFilter = onFilterChange ?? setInternalFilter;
-  const [selected, setSelected] = useState<Practitioner | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<{ url: string; refCode: string; practitioner: Practitioner } | null>(null);
   const [toast, setToast] = useState("");
   // Track which row triggered a modal so focus can be restored on close
@@ -111,16 +115,6 @@ export function PractitionerTable({
     [updateStatus, showToast]
   );
 
-  function openDetail(p: Practitioner, trigger: HTMLElement) {
-    lastFocusRef.current = trigger;
-    setSelected(p);
-  }
-
-  function closeDetail() {
-    setSelected(null);
-    setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
-  }
-
   function closeGenLink() {
     setGenLink(null);
     setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
@@ -159,7 +153,7 @@ export function PractitionerTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Ref", "Name", "Role / Org", "City", "Modules", "Applied", "Status", "Actions"].map(
+              {["Practitioner", "Module", "City", "Applied on", "Status", "Actions"].map(
                 (h) => (
                   <th key={h} scope="col" style={thStyle}>{h}</th>
                 )
@@ -167,64 +161,176 @@ export function PractitionerTable({
             </tr>
           </thead>
           <tbody>
-            {visible.map((p) => (
-              <tr
-                key={p.id}
-                tabIndex={0}
-                style={{ borderBottom: "1px solid rgba(20,18,12,.07)", cursor: "pointer" }}
-                onClick={(e) => openDetail(p, e.currentTarget)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openDetail(p, e.currentTarget);
-                  }
-                }}
-              >
-                <td style={tdStyle}>{p.ref_code ? `#${p.ref_code}` : "—"}</td>
-                <td style={{ ...tdStyle, fontWeight: 500 }}>{p.name}</td>
-                <td style={tdStyle}>
-                  <div style={{ fontSize: 13 }}>{p.role}</div>
-                  {p.org && (
-                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.org}</div>
+            {visible.map((p) => {
+              const isExpanded = expandedRow === p.id;
+              return (
+                <Fragment key={p.id}>
+                  <tr
+                    tabIndex={0}
+                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
+                    onClick={() => setExpandedRow(isExpanded ? null : p.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedRow(isExpanded ? null : p.id);
+                      }
+                    }}
+                  >
+                    {/* Practitioner — avatar + name (primary) + role (sub-line) */}
+                    <td style={tdStyle}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {initials(p.name)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.role}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {/* Module */}
+                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-soft)" }}>{(p.modules ?? []).join(", ") || "—"}</td>
+                    {/* City */}
+                    <td style={tdStyle}>
+                      <div>{p.city}</div>
+                      {p.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.state}</div>}
+                    </td>
+                    {/* Applied on */}
+                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
+                      {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
+                    </td>
+                    <td style={tdStyle}>
+                      <StatusPill status={p.status} />
+                    </td>
+                    <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select
+                          value={p.status}
+                          onChange={(e) => updateStatus(p.id, e.target.value)}
+                          style={selectStyle}
+                        >
+                          {STATUSES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        {p.status === "Screening Done" && (
+                          <button
+                            onClick={(e) => { lastFocusRef.current = e.currentTarget; generateLink(p); }}
+                            style={btnStyle("#c9982a", "#14161d")}
+                          >
+                            Gen. link
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {isExpanded && (
+                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                      <td colSpan={6} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                        <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}>
+                            {/* Col 1: Profile details */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Profile</div>
+                              {[
+                                ["Ref", p.ref_code ? `IQC-EMP-${p.ref_code}` : "—"],
+                                ["Email", p.email],
+                                ["Phone", p.phone ?? "—"],
+                                ["Role", p.role],
+                                ["Org", p.org ?? "Independent"],
+                                ["City", `${p.city}${p.state ? `, ${p.state}` : ""}`],
+                                ["Experience", p.experience ?? "—"],
+                                ["Modules", (p.modules ?? []).join(", ") || "—"],
+                                ["Availability", p.teach_freq ?? "—"],
+                              ].map(([label, value]) => (
+                                <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
+                                  <span style={{ color: "var(--ink-faint)", width: 90, flexShrink: 0, fontSize: 12 }}>{label}</span>
+                                  <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
+                                </div>
+                              ))}
+                              {p.why && (
+                                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(20,18,12,.07)" }}>
+                                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginBottom: 4 }}>Why teach</div>
+                                  <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink)" }}>{p.why}</div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Col 2: Pipeline progress */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline progress</div>
+                              {PIPELINE_ORDER.map((step, i) => {
+                                const stepIdx = PIPELINE_ORDER.indexOf(p.status as typeof PIPELINE_ORDER[number]);
+                                const thisIdx = i;
+                                const state = thisIdx < stepIdx ? "done" : thisIdx === stepIdx ? "active" : "pending";
+                                return (
+                                  <div key={step} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.6rem" }}>
+                                    <div style={{
+                                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700,
+                                      ...(state === "done" ? { background: "#2a6b2a", color: "#fff" } :
+                                         state === "active" ? { background: "var(--ink)", color: "#fff" } :
+                                         { background: "#f8f7f4", border: "1.5px solid rgba(20,18,12,.18)", color: "var(--ink-faint)" }),
+                                    }}>
+                                      {state === "done" ? "✓" : i + 1}
+                                    </div>
+                                    <span style={{
+                                      fontSize: 13,
+                                      ...(state === "done" ? { color: "#2a6b2a", fontWeight: 500 } :
+                                         state === "active" ? { color: "var(--ink)", fontWeight: 600 } :
+                                         { color: "var(--ink-faint)" }),
+                                    }}>{step}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Col 3: Actions */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Actions</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                                <select
+                                  value={p.status}
+                                  onChange={(e) => { e.stopPropagation(); updateStatus(p.id, e.target.value); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
+                                >
+                                  {STATUSES.map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                                {p.status === "Screening Done" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
+                                    style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    Generate agreement link
+                                  </button>
+                                )}
+                                {(p.upi_id || p.bank_account) && (
+                                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                                    <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
+                                    {[["UPI", p.upi_id], ["Bank", p.bank_name], ["Account", p.bank_account], ["IFSC", p.ifsc]].filter(([, v]) => v).map(([label, value]) => (
+                                      <div key={String(label)} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 12 }}>
+                                        <span style={{ color: "var(--ink-faint)", minWidth: 60 }}>{label}</span>
+                                        <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{value}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td style={tdStyle}>
-                  <div>{p.city}</div>
-                  {p.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.state}</div>}
-                </td>
-                <td style={tdStyle}>{(p.modules ?? []).join(", ")}</td>
-                <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
-                  {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
-                </td>
-                <td style={tdStyle}>
-                  <StatusPill status={p.status} />
-                </td>
-                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <select
-                      value={p.status}
-                      onChange={(e) => updateStatus(p.id, e.target.value)}
-                      style={selectStyle}
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    {p.status === "Screening Done" && (
-                      <button
-                        onClick={(e) => { lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                        style={btnStyle("#c9982a", "#14161d")}
-                      >
-                        Gen. link
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   No practitioners in this stage
                 </td>
               </tr>
@@ -262,55 +368,6 @@ export function PractitionerTable({
             >
               Send via email
             </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Detail drawer */}
-      {selected && (
-        <Modal onClose={closeDetail} title={selected.name}>
-          <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
-            {[
-              ["Email", selected.email],
-              ["Phone", selected.phone ?? "—"],
-              ["Role", selected.role],
-              ["Org", selected.org ?? "Independent"],
-              ["City", selected.city],
-              ["State", selected.state ?? "—"],
-              ["Experience", selected.experience],
-              ["Modules", (selected.modules ?? []).join(", ")],
-              ["Availability", selected.teach_freq ?? "—"],
-              ["Status", selected.status],
-              ["Ref", selected.ref_code ? `IQC-EMP-${selected.ref_code}` : "—"],
-            ].map(([label, value]) => (
-              <div key={label} style={{ display: "flex", gap: 12 }}>
-                <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
-                <span style={{ fontWeight: 500 }}>{value}</span>
-              </div>
-            ))}
-            {selected.why && (
-              <div>
-                <div style={{ color: "var(--ink-faint)", marginBottom: 4 }}>Why teach</div>
-                <div style={{ lineHeight: 1.6 }}>{selected.why}</div>
-              </div>
-            )}
-            {/* Payment info */}
-            {(selected.upi_id || selected.bank_account) && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(20,18,12,.08)" }}>
-                <div style={{ color: "var(--ink-faint)", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Payment details</div>
-                {[
-                  ["UPI", selected.upi_id],
-                  ["Bank", selected.bank_name],
-                  ["Account", selected.bank_account],
-                  ["IFSC", selected.ifsc],
-                ].filter(([, v]) => v).map(([label, value]) => (
-                  <div key={String(label)} style={{ display: "flex", gap: 12, marginBottom: 4, fontSize: 13 }}>
-                    <span style={{ color: "var(--ink-faint)", minWidth: 100 }}>{label}</span>
-                    <span style={{ fontWeight: 500, fontFamily: "monospace", fontSize: 12 }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </Modal>
       )}
