@@ -122,8 +122,6 @@ export function PayoutTable({
           </thead>
           <tbody>
             {visible.map((p) => {
-              const tds     = p.gross_amount - p.net_amount;
-              const tdsRate = p.tds_rate;
               const detail  = payToDetail(p);
               const ini     = initials(p.practitioner?.name ?? "?");
               return (
@@ -146,14 +144,9 @@ export function PayoutTable({
                   <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
                     {fmtSessionDate(p.session?.session_date ?? null)}
                   </td>
-                  {/* Payout (₹) — net amount prominently; TDS note as sub-line if applicable */}
+                  {/* Payout (₹) */}
                   <td style={tdStyle}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
-                    {tds > 0 && (
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                        gross {formatInr(p.gross_amount)}{tdsRate ? ` · TDS ${tdsRate}%` : ""}
-                      </div>
-                    )}
                   </td>
                   {/* Pay to — name + UPI/bank sub-line */}
                   <td style={tdStyle}>
