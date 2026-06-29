@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodV4Resolver } from "@/lib/zodV4Resolver";
 import { AgreementSignSchema, type AgreementSign } from "@/lib/schemas/agreement";
@@ -227,7 +227,7 @@ export function AgreementViewer() {
           >
             Your empanelment is confirmed. We&apos;ll be in touch with your first session details within 2–3 working days. Keep an eye on{" "}
             <span style={{ fontWeight: 500, color: "var(--ink)" }}>
-              {pEmail || "your inbox"}
+              {pEmail || "your registered email"}
             </span>
             .
           </p>
@@ -253,9 +253,10 @@ export function AgreementViewer() {
                 ["Module assigned", pModule],
                 [
                   "Timestamp",
-                  new Date(result.timestamp).toLocaleString("en-IN", {
-                    timeZone: "Asia/Kolkata",
-                  }),
+                  (() => {
+                    const d = new Date(result.timestamp);
+                    return `${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}, ${d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })} IST`;
+                  })(),
                 ],
                 ["Status", "✓ Digitally signed"],
               ] as [string, string][]
@@ -283,6 +284,24 @@ export function AgreementViewer() {
               </div>
             ))}
           </div>
+          {/* Photo nudge — shown after signing, matches V2 onboarding */}
+          <div
+            style={{
+              marginTop: "1.5rem",
+              maxWidth: 480,
+              margin: "1.5rem auto 0",
+              padding: "1rem 1.25rem",
+              background: "#f8f7f4",
+              border: "1px solid rgba(20,18,12,0.10)",
+              borderRadius: 10,
+              fontSize: 13,
+              color: "var(--ink-soft)",
+              lineHeight: 1.65,
+              textAlign: "left",
+            }}
+          >
+            <strong style={{ color: "var(--ink)" }}>After each session —</strong> we&apos;ll send you a link to submit photos. Eight standard angles, all on your phone. Photos are stored for 30 days; we process and publish the confirmed ones before then.
+          </div>
         </div>
       </div>
     );
@@ -292,9 +311,10 @@ export function AgreementViewer() {
   const welcomeRows: Array<[string, string]> = [
     ["Name", pName],
     ["Current role", pRole],
-    ["Organisation", pOrg || "Independent"],
+    ["Organisation", pOrg || "—"],
     ["Module assigned", pModule],
     ["City", pCity],
+    ["State", pState],
     ["Agreement reference", refCode],
   ];
 
@@ -305,8 +325,88 @@ export function AgreementViewer() {
   });
 
   // ── MAIN FORM ─────────────────────────────────────────────────────────────
+  const stepDefs = [
+    { label: "Application submitted",   state: "done"    as const, num: 1 },
+    { label: "Screening call done",     state: "done"    as const, num: 2 },
+    { label: "Review & sign agreement", state: "active"  as const, num: 3 },
+    { label: "Empanelment confirmed",   state: "pending" as const, num: 4 },
+  ];
+  const activeStep = stepDefs.find((s) => s.state === "active") ?? stepDefs[stepDefs.length - 1];
+
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "2.5rem 2rem 4rem" }}>
+    <>
+      {/* Mobile-responsive styles */}
+      <style>{`
+        .iq-stepper-label { display: inline; }
+        .iq-stepper-label-inactive { display: inline; }
+        .iq-stepper-arrow { margin: 0 0.75rem; }
+        .iq-stepper-mobile-summary { display: none; }
+        .iq-content-pad { padding: 1.5rem 2rem 4rem; }
+        .iq-ag-card { padding: 2rem; }
+        .iq-ag-scroll { padding: 1.75rem 2rem; }
+        /* Tablet: hide inactive labels so active one fits */
+        @media (min-width: 541px) and (max-width: 820px) {
+          .iq-stepper-label-inactive { display: none; }
+          .iq-stepper-arrow { margin: 0 0.4rem; }
+        }
+        @media (max-width: 540px) {
+          .iq-stepper-label { display: none; }
+          .iq-stepper-arrow { margin: 0 0.35rem; }
+          .iq-stepper-mobile-summary { display: block; }
+          .iq-content-pad { padding: 1.25rem 0.75rem 4rem; }
+          .iq-ag-card { padding: 1.25rem 1rem; }
+          .iq-ag-scroll { padding: 1.25rem 1rem; }
+        }
+      `}</style>
+
+      {/* ── STEPPER (hidden on success) ── */}
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid rgba(20,18,12,0.10)",
+          borderRadius: 12,
+          padding: "1rem 1.5rem",
+          maxWidth: 860,
+          margin: "2.5rem auto 0",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 0, overflow: "hidden" }}>
+          {stepDefs.map((step, i, arr) => (
+            <div key={step.num} style={{ display: "contents" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    ...(step.state === "done"   ? { background: "#2a6b2a", color: "#fff" }
+                      : step.state === "active" ? { background: "var(--ink)", color: "#fff" }
+                      : { background: "var(--surface-soft)", border: "1.5px solid rgba(20,18,12,0.20)", color: "var(--ink-faint)" }),
+                  }}
+                >
+                  {step.state === "done"
+                    ? <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                    : <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1 }}>{step.num}</span>}
+                </div>
+                <span
+                  className={`iq-stepper-label${step.state !== "active" ? " iq-stepper-label-inactive" : ""}`}
+                  style={{ fontSize: 13, fontWeight: 500, ...(step.state === "done" ? { color: "#2a6b2a" } : step.state === "active" ? { color: "var(--ink)" } : { color: "var(--ink-faint)" }) }}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {i < arr.length - 1 && (
+                <span aria-hidden="true" className="iq-stepper-arrow" style={{ color: "rgba(20,18,12,0.20)", fontSize: 14, flexShrink: 0, userSelect: "none" }}>›</span>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Mobile: show active step label below circles */}
+        <p className="iq-stepper-mobile-summary" style={{ margin: "0.5rem 0 0", fontSize: 12, color: "var(--ink-soft)", fontWeight: 500 }}>
+          Step {activeStep.num} of {stepDefs.length} · {activeStep.label}
+        </p>
+      </div>
+
+      <div className="iq-content-pad" style={{ maxWidth: 860, margin: "0 auto" }}>
       {/* Gap 51: Dancing Script removed; DM Sans should be loaded globally in layout.tsx */}
 
       {/* ── 1. WELCOME CARD ── */}
@@ -395,11 +495,11 @@ export function AgreementViewer() {
 
       {/* ── 2. AGREEMENT VIEWER (outer card wrapper) ── */}
       <div
+        className="iq-ag-card"
         style={{
           background: "#fff",
           border: "1px solid rgba(20,18,12,0.10)",
           borderRadius: 12,
-          padding: "2rem",
           marginBottom: "1.5rem",
         }}
       >
@@ -475,10 +575,10 @@ export function AgreementViewer() {
                 setHasScrolled(true);
               }
             }}
+            className="iq-ag-scroll"
             style={{
               height: 420,
               overflowY: "auto",
-              padding: "1.75rem 2rem",
               fontSize: 13,
               lineHeight: 1.75,
               color: "var(--ink)",
@@ -514,11 +614,11 @@ export function AgreementViewer() {
             </p>
 
             {/* Detail table — Gap 21: remove tr borderBottom; td padding 0.6rem 0.9rem */}
+            <div style={{ overflowX: "auto", marginBottom: 24 }}>
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginBottom: 24,
                 fontSize: 13,
               }}
             >
@@ -528,14 +628,14 @@ export function AgreementViewer() {
                     ["Agreement Date", agreementDate],
                     [
                       "Platform",
-                      "InvestQ Commune, operating as iqcommune (“the Platform”)",
+                      <>InvestQ Commune, operating as <strong>iqcommune</strong> (&quot;the Platform&quot;)</>,
                     ],
                     [
                       "Practitioner",
-                      `${pName}${pCity ? " · " + pCity : ""}${pEmail ? " · " + pEmail : ""}`,
+                      `${pName}${pCity ? " · " + pCity : ""}${pState ? ", " + pState : ""}${pEmail ? " · " + pEmail : ""}`,
                     ],
                     ["Module(s)", pModule],
-                  ] as [string, string][]
+                  ] as [string, React.ReactNode][]
                 ).map(([label, value]) => (
                   <tr key={label}>
                     <td
@@ -544,7 +644,7 @@ export function AgreementViewer() {
                         background: "#f5e9c8",
                         color: "#8a6510",
                         fontWeight: 600,
-                        width: "38%",
+                        whiteSpace: "nowrap",
                         border: "1px solid rgba(20,18,12,0.10)",
                         fontSize: 13,
                       }}
@@ -559,6 +659,8 @@ export function AgreementViewer() {
                         fontWeight: 500,
                         border: "1px solid rgba(20,18,12,0.10)",
                         fontSize: 13,
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
                       }}
                     >
                       {value || "—"}
@@ -567,6 +669,7 @@ export function AgreementViewer() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Divider */}
             <hr
@@ -626,7 +729,7 @@ export function AgreementViewer() {
               The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
-              (a) Sessions are typically 2–3 hours in duration, in-person, with a maximum of 20 participants.
+              (a) Sessions are typically 2–3 hours in duration, in-person, with a maximum of 25 participants.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (b) The Platform will notify the Practitioner of session requests and confirm availability before any commitment is made. The Practitioner is never obligated to accept a session.
@@ -1288,6 +1391,7 @@ export function AgreementViewer() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

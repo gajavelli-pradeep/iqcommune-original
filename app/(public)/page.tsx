@@ -8,17 +8,17 @@ import { ToolsSection } from "@/components/public/ToolsSection";
 import { GallerySection } from "@/components/public/GallerySection";
 
 export const metadata: Metadata = {
-  title: { absolute: "iqcommune — Real practitioners. Real sessions." },
+  title: { absolute: "iqcommune — Where financial intelligence connects" },
   description: "In-person finance sessions led by active practitioners. No products. No pitch. Just knowledge.",
   openGraph: {
-    title: "iqcommune — Real practitioners. Real sessions.",
+    title: "iqcommune — Where financial intelligence connects",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
     type: "website",
     siteName: "iqcommune",
   },
   twitter: {
     card: "summary",
-    title: "iqcommune — Real practitioners. Real sessions.",
+    title: "iqcommune — Where financial intelligence connects",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
   },
 };
@@ -60,7 +60,7 @@ const POOL_ROLES = [
     ),
   },
   {
-    title: "Wealth Advisors",
+    title: "Wealth Managers",
     sub: "Serving HNI clients day-to-day",
     icon: (
       <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -135,19 +135,19 @@ const RIBBON_ITEMS = [
 ] as const;
 
 const DIFF_THEM = [
-  "Instructors who left the industry years ago",
+  "Focus on theory & concepts",
   "Curriculum based on past market conditions",
-  "Generic examples from outdated textbooks",
-  "No skin in the game — not investing their own money",
-  "Fixed content, repeated every batch",
+  "Generic case studies",
+  "Limited focus on investor behaviour",
+  "Learning ends with the classroom",
 ] as const;
 
 const DIFF_US = [
-  "Currently working in finance — every single day",
-  "Teaching with live market examples from this week",
-  "Real decisions, real portfolios, real consequences",
+  "Blend theory with practical investment applications",
+  "Content updated to reflect evolving market conditions",
+  "Real-world portfolio and investment examples",
   "They manage money the same way they teach you to",
-  "Sessions adapt to current events — no stale content",
+  "You step out with a clear plan of action with real numbers",
 ] as const;
 
 const TOPICS = [
@@ -195,9 +195,9 @@ const TOPICS = [
     desc: "How to split a portfolio across asset classes, build for your risk profile, and rebalance — taught by someone actively making these decisions for real clients.",
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4l3 3" />
+        <path d="M3.05 11a9 9 0 1 0 .5-3" />
       </svg>
     ),
   },
@@ -269,7 +269,7 @@ const HOW_STEPS = [
   {
     num: "1",
     title: "Pick a topic",
-    desc: "Choose the area that fits your need — or let us guide you if you're unsure where to start.",
+    desc: "Choose the area that fits your need — or a 6-hour bundle covering two related modules. Unsure? We'll guide you.",
   },
   {
     num: "2",
@@ -292,10 +292,10 @@ const WALKOUT_CARDS = [
   {
     title: "Foundations of Personal Finance",
     bullets: [
-      "A personal budget framework mapped to your actual income and expenses",
-      "A net worth snapshot and a clear step to improve it within 30 days",
-      "Emergency fund target calculated for your specific situation",
-      "Insurance gap analysis — how much cover you actually need vs. what you have",
+      "A personal budget framework mapped to your actual income and expense pattern",
+      "Net worth snapshot built in the session — with one specific step to improve it within 30 days",
+      "Emergency fund target calculated for your household size and income stability",
+      "A ranked financial to-do list — what to fix before the first rupee is invested",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -305,12 +305,12 @@ const WALKOUT_CARDS = [
     ),
   },
   {
-    title: "Retirement & Goal-Based Financial Planning",
+    title: "Retirement & Goal-Based Planning",
     bullets: [
-      "Your personal retirement corpus number — calculated with real inflation assumptions",
-      "A NPS/PPF/EPF contribution plan mapped to your timeline",
-      "A goal-bucket plan — each goal mapped to a timeline and an instrument",
-      "Monthly SIP amounts needed per goal — calculated in the room, for your numbers",
+      "Your personal retirement corpus number — calculated in the room with your own age, lifestyle cost, and inflation assumption",
+      "A NPS / PPF / EPF contribution plan mapped to your current income and retirement timeline",
+      "A personal goal-bucket map — each major goal with a timeline, target amount, and instrument match",
+      "Monthly SIP amounts needed per goal — calculated in the room with your own numbers",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -322,10 +322,10 @@ const WALKOUT_CARDS = [
   {
     title: "Equity Investing Simplified",
     bullets: [
-      "A personal stock evaluation template — P/E, growth, moat, and red flags",
-      "How to read an earnings report in under 10 minutes",
-      "A framework to read market movements without getting swept up in media noise",
-      "A watchlist-building approach you can apply immediately",
+      "A stock evaluation template — P/E context, growth rate, moat assessment, and red flag checklist",
+      "Ability to read a basic earnings report and extract what matters — practised in the session",
+      "A watchlist of 3–5 companies started in the room using the practitioner's shortlisting framework",
+      "One valuation ratio calibrated to the current market — what's cheap vs. expensive right now",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -336,10 +336,10 @@ const WALKOUT_CARDS = [
   {
     title: "Debt & Fixed Income Investing",
     bullets: [
-      "A framework for choosing between bonds, G-Secs, and debt mutual funds",
-      "How to calculate yield-to-maturity and apply duration to your portfolio",
-      "Tax treatment across fixed income instruments — post-tax return comparison",
-      "When to use debt vs. equity for a specific goal or time horizon",
+      "A fixed income allocation framework — how to decide what portion of your portfolio belongs in debt and in which instruments",
+      "A debt instrument comparison guide — FD vs. debt fund vs. bond vs. G-Sec across risk, return, liquidity, and tax",
+      "Clarity on how RBI rate decisions affect your fixed income holdings — with a simple response framework",
+      "A tax-efficiency checklist for debt investments — how to minimise the tax drag on fixed income returns",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -351,26 +351,26 @@ const WALKOUT_CARDS = [
   {
     title: "Asset Allocation & Portfolio Construction",
     bullets: [
-      "A starter allocation plan — how to split your investable surplus across asset classes",
-      "A rebalancing framework — when to act, when to hold",
-      "Risk profile to allocation mapping — not generic, but built for your numbers",
-      "A checklist to evaluate any portfolio decision before committing",
+      "A personal allocation framework — how to split your investable surplus across asset classes based on your risk profile and timeline",
+      "A model portfolio structure (conservative / moderate / aggressive) as a starting reference",
+      "A rebalancing trigger framework — simple rules for when and how to adjust the portfolio",
+      "A checklist of portfolio construction pitfalls most retail investors make",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4l3 3" />
+        <path d="M3.05 11a9 9 0 1 0 .5-3" />
       </svg>
     ),
   },
   {
-    title: "Investment Solutions & Portfolio Strategies",
+    title: "Portfolio & Investment Strategies",
     bullets: [
-      "Mutual fund category map — which fund type for which goal and horizon",
-      "SIP/STP/SWP mechanics — when and how to use each",
-      "PMS and AIF — who they're for and what to verify before investing",
-      "A portfolio review framework you can run quarterly, without an advisor",
+      "A portfolio strategy document — your allocation across mutual fund categories, mapped to your risk profile and timeline",
+      "A mutual fund shortlist framework — how to evaluate and compare funds within a category before committing",
+      "A portfolio review checklist — what to look at, how often, and what triggers a change vs. staying the course",
+      "A tax-efficiency action list — two or three moves to reduce the tax drag on your current portfolio",
     ],
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -419,8 +419,12 @@ const HOME_FAQS: FaqItem[] = [
     ),
   },
   {
+    q: "Can sessions be bundled into a longer block?",
+    a: "Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement & Goal-Based Financial Planning; Equity Investing Simplified paired with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction paired with Investment Solutions & Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the 'Request a Session' form and we'll confirm bundle availability with you.",
+  },
+  {
     q: "How is the practitioner chosen for my session?",
-    a: "We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Retirement & Goal-Based Financial Planning is currently structuring client portfolios. The match is made internally before we confirm your session details.",
+    a: "We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Investment Solutions & Portfolio Strategies is currently structuring client portfolios. The match is made internally before we confirm your session details.",
   },
   {
     q: "Who arranges the venue?",
@@ -559,7 +563,7 @@ export default function HomePage() {
       {/* ── §2 HERO ── */}
       <section
         style={{
-          background: "linear-gradient(180deg, #ffffff 0%, #f8f7f4 100%)",
+          background: "var(--surface-soft)",
           borderBottom: "1px solid rgba(20,18,12,0.10)",
           padding: "5rem 2rem 4.5rem",
           position: "relative",
@@ -620,8 +624,8 @@ export default function HomePage() {
                 marginTop: "1.5rem",
               }}
             >
-              Real finance knowledge —{" "}
-              <span style={{ color: "var(--gold-dark)" }}>from professionals</span>{" "}actively navigating the same markets you&apos;re trying to understand.
+              Real financial insights from{" "}
+              <em style={{ color: "var(--gold)" }}>active</em> professionals{" "}—{" "}backed by years of experience.
             </h1>
 
             {/* Sub */}
@@ -634,7 +638,7 @@ export default function HomePage() {
                 lineHeight: 1.65,
               }}
             >
-              You deserve to learn from someone who&apos;d stake their own money on what they teach.
+              Built for anyone serious about financial literacy.
             </p>
 
             {/* Gap 1: hero CTA uses dark ink primary button style */}
@@ -857,7 +861,7 @@ export default function HomePage() {
                   borderBottom: "1px solid rgba(20,18,12,0.18)",
                 }}
               >
-                Typical training programme
+                Conventional Trainers
               </div>
               {DIFF_THEM.map((text, i) => (
                 <div
@@ -894,7 +898,7 @@ export default function HomePage() {
                   borderBottom: "1px solid rgba(20,18,12,0.18)",
                 }}
               >
-                iqcommune — Active Practitioners
+                Our Practitioners
               </div>
               {DIFF_US.map((text, i) => (
                 <div
@@ -920,85 +924,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── §6 TOPICS ── */}
-      <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Pill>Training Topics</Pill>
-          <h2
-            style={{
-              fontSize: "clamp(26px,3.8vw,40px)",
-              fontWeight: 600,
-              lineHeight: 1.2,
-              letterSpacing: "-0.01em",
-              textAlign: "center",
-              color: "#14161d",
-              marginBottom: "1rem",
-            }}
-          >
-            What you&apos;ll learn.
-          </h2>
-          {/* Gap 6 & 24: section-sub margin-bottom matches source 3rem */}
-          <p
-            style={{
-              fontSize: 16,
-              color: "#383b47",
-              textAlign: "center",
-              maxWidth: 520,
-              margin: "0 auto 3rem",
-            }}
-          >
-            Six focused modules — each led by a practitioner actively working in that specific area.
-          </p>
-
-          <div
-            className="topics-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "1rem",
-              marginTop: "2rem",
-            }}
-          >
-            {TOPICS.map((topic) => (
-              <div
-                key={topic.name}
-                className="topic-card"
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid rgba(20,18,12,0.10)",
-                  borderRadius: 12,
-                  padding: "1.5rem",
-                  transition: "border-color 0.2s, transform 0.2s",
-                }}
-              >
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 10,
-                    background: "var(--gold-light)",
-                    color: "var(--gold-dark)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  {topic.icon}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
-                  {topic.name}
-                </div>
-                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>
-                  {topic.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── §7 AUDIENCE ── */}
+      {/* ── §6 AUDIENCE ── */}
       <section style={{ background: "#ffffff", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Pill>Who is this for</Pill>
@@ -1110,6 +1036,218 @@ export default function HomePage() {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             All sessions capped at 25 participants — to keep the quality of conversation and interaction high.
+          </p>
+        </div>
+      </section>
+
+      {/* ── §7 TOPICS ── */}
+      <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <Pill>Training Topics</Pill>
+          <h2
+            style={{
+              fontSize: "clamp(26px,3.8vw,40px)",
+              fontWeight: 600,
+              lineHeight: 1.2,
+              letterSpacing: "-0.01em",
+              textAlign: "center",
+              color: "#14161d",
+              marginBottom: "1rem",
+            }}
+          >
+            What you&apos;ll learn.
+          </h2>
+          {/* Gap 6 & 24: section-sub margin-bottom matches source 3rem */}
+          <p
+            style={{
+              fontSize: 16,
+              color: "#383b47",
+              textAlign: "center",
+              maxWidth: 520,
+              margin: "0 auto 3rem",
+            }}
+          >
+            Six focused modules — each led by a practitioner actively working in that specific area.
+          </p>
+
+          <div
+            className="topics-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1rem",
+              marginTop: "2rem",
+            }}
+          >
+            {TOPICS.map((topic) => (
+              <div
+                key={topic.name}
+                className="topic-card"
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid rgba(20,18,12,0.10)",
+                  borderRadius: 12,
+                  padding: "1.5rem",
+                  transition: "border-color 0.2s, transform 0.2s",
+                }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 10,
+                    background: "var(--gold-light)",
+                    color: "var(--gold-dark)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {topic.icon}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#14161d", marginBottom: 4 }}>
+                  {topic.name}
+                </div>
+                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>
+                  {topic.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── §6b BUNDLED SESSIONS ── */}
+      <section style={{ background: "#ffffff", padding: "4rem 2rem" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <Pill>Bundled Sessions</Pill>
+          <h2
+            style={{
+              fontSize: "clamp(24px,3.2vw,36px)",
+              fontWeight: 600,
+              lineHeight: 1.2,
+              letterSpacing: "-0.01em",
+              textAlign: "center",
+              color: "#14161d",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Book one module or bundle two into one sitting.
+          </h2>
+          <p
+            style={{
+              fontSize: 15,
+              color: "#383b47",
+              textAlign: "center",
+              maxWidth: 520,
+              margin: "0 auto 2.5rem",
+              lineHeight: 1.65,
+            }}
+          >
+            Two related modules, taught back-to-back by one practitioner, as a single 6-hour session — open to every audience.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1rem",
+              maxWidth: 900,
+              margin: "0 auto",
+            }}
+            className="topics-grid"
+          >
+            {[
+              {
+                modules: [
+                  "Foundations of Personal Finance",
+                  "Retirement & Goal-Based Financial Planning",
+                ] as [string, string],
+                note: "A complete personal-finance-to-retirement arc — get the foundation right, then plan toward the goals it's funding.",
+              },
+              {
+                modules: [
+                  "Equity Investing Simplified",
+                  "Debt & Fixed Income Investing",
+                ] as [string, string],
+                note: "The two core asset classes covered together — how to evaluate and invest across equity and debt instruments in a single session.",
+              },
+              {
+                modules: [
+                  "Asset Allocation & Portfolio Construction",
+                  "Investment Solutions & Portfolio Strategies",
+                ] as [string, string],
+                note: "Decide the allocation, then pick the instruments to execute it — strategy through to implementation in one session.",
+              },
+            ].map((bundle) => (
+              <div
+                key={bundle.modules[0]}
+                style={{
+                  background: "#f8f7f4",
+                  border: "1px solid rgba(20,18,12,0.10)",
+                  borderRadius: 12,
+                  padding: "1.5rem",
+                }}
+              >
+                {/* "6 hrs total" label */}
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#14161d", marginBottom: "1rem" }}>
+                  6 hrs total
+                </div>
+
+                {/* Module rows */}
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: "1rem" }}>
+                  {(bundle.modules as [string, string]).map((mod, idx) => (
+                    <div
+                      key={mod}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        padding: "0.6rem 0",
+                        borderBottom: idx === 0 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#8a6510", flexShrink: 0, marginTop: 2 }}>
+                          {idx === 0 ? "01" : "02"}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#14161d" }}>{mod}</span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "#71717f",
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                          background: "#fff",
+                          border: "1px solid rgba(20,18,12,0.10)",
+                          padding: "2px 8px",
+                          borderRadius: 100,
+                        }}
+                      >
+                        3 hrs
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bundle note */}
+                <div style={{ fontSize: 13, color: "#383b47", lineHeight: 1.55 }}>
+                  {bundle.note}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ textAlign: "center", fontSize: 12, color: "#71717f", marginTop: "1.5rem" }}>
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" style={{ display: "inline", verticalAlign: "middle", marginRight: 5, marginTop: -2 }}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4M12 16h.01" />
+            </svg>
+            Bundling is open to all audiences. Groups booking a bundle need a minimum of 9 participants, instead of the usual 5, to make the longer session worthwhile.
           </p>
         </div>
       </section>
@@ -1309,10 +1447,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── §10 GALLERY ── */}
-      <GallerySection />
-
-      {/* ── §11 FAQ ── */}
+      {/* ── §10 FAQ ── */}
       <section style={{ background: "#f8f7f4", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <Pill>FAQs</Pill>
@@ -1362,9 +1497,7 @@ export default function HomePage() {
               marginBottom: "1rem",
             }}
           >
-            Ready to learn from someone
-            <br />
-            still doing the work?
+            If you are serious to improve your financial literacy
           </h2>
           <p
             style={{
@@ -1405,7 +1538,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── §13 FOOTER ── */}
+      {/* ── GALLERY ── */}
+      <GallerySection />
+
+      {/* ── FOOTER ── */}
       <SiteFooter
         email="hello@iqcommune.com"
         tagline="Where financial intelligence connects."

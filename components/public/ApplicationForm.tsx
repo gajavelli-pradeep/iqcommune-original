@@ -155,7 +155,7 @@ export function ApplicationForm() {
         <div style={rowTwo}>
           <Field
             label="City you're based in"
-            hint="Sessions are in-person — city helps us match you to local requests."
+            hint="Sessions are in-person — city and state help us match you to local requests."
             error={errors.city?.message}
           >
             <input {...register("city")} style={inputStyle} placeholder="Mumbai" />
@@ -664,7 +664,7 @@ const sectionLabelStyle: React.CSSProperties = {
   marginTop: "1.5rem",
   marginBottom: "1rem",
   paddingBottom: "0.5rem",
-  borderBottom: "1px solid rgba(138,101,16,0.22)",
+  borderBottom: "1px solid rgba(20,18,12,0.12)",
 };
 
 const sectionStyle: React.CSSProperties = { display: "grid", gap: 14 };
@@ -674,7 +674,7 @@ const rowTwo: React.CSSProperties = { display: "grid", gridTemplateColumns: "rep
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
-  border: "1px solid",
+  border: "1.5px solid",
   borderColor: "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
   borderRadius: 9,
   fontSize: 14,
@@ -714,14 +714,14 @@ function submitStyle(loading: boolean, disabled: boolean): React.CSSProperties {
     width: "100%",
     marginTop: "1.5rem",
     padding: "15px",
-    background: loading || disabled ? "#2a2d38" : "linear-gradient(180deg,#1f222e 0%,#14161d 100%)",
+    background: loading || disabled ? "#2a2d38" : "var(--ink)",
     color: "#fff",
     border: "none",
     borderRadius: 100,
     fontSize: 15,
     fontWeight: 600,
     letterSpacing: "0.01em",
-    boxShadow: loading || disabled ? "none" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
+    boxShadow: "none",
     cursor: loading || disabled ? "not-allowed" : "pointer",
     opacity: loading ? 0.6 : disabled ? 0.45 : 1,
     fontFamily: "inherit",

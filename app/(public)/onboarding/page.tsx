@@ -117,8 +117,8 @@ function Stepper() {
             <span
               aria-hidden="true"
               style={{
-                color: "#d0d1d8",
-                fontSize: 16,
+                color: "rgba(20,18,12,0.20)",
+                fontSize: 14,
                 flexShrink: 0,
                 userSelect: "none",
                 margin: "0 0.75rem",
@@ -269,21 +269,7 @@ export default function OnboardingPage() {
         </div>
       </nav>
 
-      {/* ── STEPPER ── */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid rgba(20,18,12,0.10)",
-          borderRadius: 12,
-          padding: "1rem 1.5rem",
-          maxWidth: 860,
-          margin: "2.5rem auto 2.5rem",
-        }}
-      >
-        <Stepper />
-      </div>
-
-      {/* ── AGREEMENT VIEWER ── */}
+      {/* ── AGREEMENT VIEWER (includes stepper) ── */}
       <Suspense fallback={<Loading />}>
         <AgreementViewer />
       </Suspense>

@@ -202,62 +202,22 @@ const STEPS: Step[] = [
   },
 ];
 
-// Contextual row icon — each table row gets an icon matched to its meaning.
-type RowIcon =
-  | "megaphone" | "users" | "pin" | "calendar" | "rupee" | "shield"
-  | "award" | "clock" | "briefcase" | "chat" | "check" | "ban";
-
-const ROW_ICON_PATHS: Record<RowIcon, React.ReactNode> = {
-  megaphone: <><path d="M3 11l15-5v12L3 14z" /><path d="M11.5 17a2.5 2.5 0 0 1-4.7-1.2" /></>,
-  users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></>,
-  pin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
-  calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
-  rupee: <><path d="M6 3h12M6 8h12M9 13a4 4 0 0 0 4-4M6 13h7l-3 8" /></>,
-  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
-  award: <><circle cx="12" cy="8" r="6" /><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1" /></>,
-  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
-  briefcase: <><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
-  chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
-  check: <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>,
-  ban: <><circle cx="12" cy="12" r="9" /><path d="M5.6 5.6l12.8 12.8" /></>,
-};
-
-function RowIconSvg({ name, color }: { name: RowIcon; color: string }) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      fill="none"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      style={{ flexShrink: 0, marginTop: 2, stroke: color }}
-    >
-      {ROW_ICON_PATHS[name]}
-    </svg>
-  );
-}
-
-// Gap 11: exact source copy — icon matched to each responsibility.
-const IQCOMMUNE_HANDLES: { text: string; icon: RowIcon }[] = [
-  { text: "All client acquisition and marketing", icon: "megaphone" },
-  { text: "Group formation and cohort management", icon: "users" },
-  { text: "Venue booking (for individual/group sessions)", icon: "pin" },
-  { text: "Scheduling, confirmations & logistics", icon: "calendar" },
-  { text: "Fee collection and revenue share payout", icon: "rupee" },
-  { text: "Your identity and privacy protection", icon: "shield" },
+const IQCOMMUNE_HANDLES: string[] = [
+  "All client acquisition and marketing",
+  "Group formation and cohort management",
+  "Venue booking (for groups, if needed)",
+  "Scheduling, confirmations & logistics",
+  "Fee collection and revenue share payout",
+  "Your identity and privacy protection",
 ];
 
-// Gap 12: exact source copy — icon matched to each contribution.
-const YOU_BRING: { text: string; icon: RowIcon }[] = [
-  { text: "Active, current expertise in your domain", icon: "award" },
-  { text: "2–3 hours for each confirmed session", icon: "clock" },
-  { text: "Real examples from your current work", icon: "briefcase" },
-  { text: "Willingness to take genuine questions", icon: "chat" },
-  { text: "Availability confirmation before each session", icon: "check" },
-  { text: "Commitment to no product cross-selling", icon: "ban" },
+const YOU_BRING: string[] = [
+  "Active, current expertise in your domain",
+  "2–3 hours for each confirmed session",
+  "Real examples from your current work",
+  "Willingness to take genuine questions",
+  "Availability confirmation before each session",
+  "Commitment to no product cross-selling",
 ];
 
 interface ModuleCard {
@@ -311,9 +271,9 @@ const MODULE_CARDS: ModuleCard[] = [
     desc: <>How to split a portfolio across asset classes, build for risk profile, and rebalance. <strong>Taught by someone actively making these decisions for real clients — a portfolio manager or wealth manager.</strong></>,
     icon: (
       <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4l3 3" />
+        <path d="M3.05 11a9 9 0 1 0 .5-3" />
       </svg>
     ),
   },
@@ -391,6 +351,10 @@ const FAQS: FAQ[] = [
   {
     q: "Can I be listed for more than one module?",
     a: "Yes — if your experience genuinely spans multiple areas, you can indicate that in the application. We'll have a conversation to understand your depth in each. We'd rather match you to one module you're excellent at than spread you across three where the quality thins out. We'll guide this together.",
+  },
+  {
+    q: "Will I ever be asked to teach a longer, bundled session?",
+    a: "Occasionally. Any booking — Groups, Organisations, or AMC/wealth-firm clients — can request two related modules back-to-back as a single 6-hour session. Three combinations are available: Foundations of Personal Finance with Retirement & Goal-Based Financial Planning; Equity Investing Simplified with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction with Investment Solutions & Portfolio Strategies. This only happens when one practitioner can credibly cover both halves. If a bundled request comes in, we'll check with you specifically before confirming anything — your revenue share is adjusted to reflect the longer session, and you're never auto-enrolled into a bundle you didn't agree to.",
   },
   {
     q: "What if I'm approached by a participant after the session?",
@@ -860,7 +824,7 @@ export default function PractitionersPage() {
               <circle cx="12" cy="12" r="10" />
               <path d="M12 8v4M12 16h.01" />
             </svg>
-            Minimum 5 years of active, hands-on experience in your domain. Employed or independent — what matters is that you are actively practising, not that you work for an organisation.
+            Minimum 5 years of active, hands-on experience in your domain. Employed or independent — what matters is that you are actively practising.
           </p>
         </div>
       </section>
@@ -946,7 +910,7 @@ export default function PractitionersPage() {
       </section>
 
       {/* ── §7 WHAT WE HANDLE ── */}
-      <section style={{ background: "var(--surface-soft)", padding: "5rem 2rem" }}>
+      <section style={{ background: "var(--surface)", padding: "5rem 2rem" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Pill>Division of work</Pill>
@@ -1006,9 +970,9 @@ export default function PractitionersPage() {
               >
                 You Bring
               </div>
-              {YOU_BRING.map((item, i) => (
+              {YOU_BRING.map((text, i) => (
                 <div
-                  key={item.text}
+                  key={text}
                   className="row-hover"
                   style={{
                     display: "flex",
@@ -1021,8 +985,10 @@ export default function PractitionersPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  <RowIconSvg name={item.icon} color="var(--ink-faint)" />
-                  {item.text}
+                  <svg width="15" height="15" fill="none" stroke="#9496a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {text}
                 </div>
               ))}
             </div>
@@ -1043,9 +1009,9 @@ export default function PractitionersPage() {
               >
                 We Handle
               </div>
-              {IQCOMMUNE_HANDLES.map((item, i) => (
+              {IQCOMMUNE_HANDLES.map((text, i) => (
                 <div
-                  key={item.text}
+                  key={text}
                   className="row-hover"
                   style={{
                     display: "flex",
@@ -1059,8 +1025,10 @@ export default function PractitionersPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  <RowIconSvg name={item.icon} color="var(--gold)" />
-                  {item.text}
+                  <svg width="15" height="15" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {text}
                 </div>
               ))}
             </div>
@@ -1156,31 +1124,28 @@ export default function PractitionersPage() {
               gap: "0.75rem",
             }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: "#8a6510",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
-                </svg>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: "#8a6510",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink, #14161d)" }}>
+                Applying for two related modules? They can be bundled.
               </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink, #14161d)" }}>
-                  Applying for two related modules? They can be bundled.
-                </div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-muted, #4a4d5c)", lineHeight: 1.6, marginTop: 3 }}>
-                  Three natural pairings run back-to-back as a single 6-hour session. If your expertise spans a pair, indicate that in your application and we&apos;ll discuss it.
-                </div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-muted, #4a4d5c)", lineHeight: 1.6, marginTop: 3 }}>
+                Three natural pairings run back-to-back as a single 6-hour session. If your expertise spans a pair, indicate that in your application and we&apos;ll discuss it.
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

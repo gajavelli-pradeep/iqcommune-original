@@ -16,12 +16,11 @@ export function SiteFooter({ tagline, email, top }: SiteFooterProps) {
   return (
     <footer
       style={{
-        background: "var(--ink)",
-        borderTop: "1px solid rgba(201,152,42,0.20)",
+        background: "#080a0e",
         padding: "2rem",
         textAlign: "center",
         fontSize: 13,
-        color: "rgba(255,255,255,0.62)",
+        color: "rgba(255,255,255,0.30)",
       }}
     >
       {top}

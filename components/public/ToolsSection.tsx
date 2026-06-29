@@ -88,7 +88,7 @@ function BudgetChecker() {
           <Box label="Wants (30%)" value={fmt(wants)} />
           <Box label="Savings (20%)" value={fmt(save)} cls="pos" />
         </div>
-        <Flag type="good" text={`₹${Math.round(annualSave / 1000)}K/yr in savings — over 10 years at 10% that compounds to ${fmt(tenYrCorpus)}.`} />
+        <Flag type="good" text={`₹${Math.round(annualSave / 1000)}K/yr goes to savings — over 10 years at 10% return that compounds to ${fmt(tenYrCorpus)}.`} />
       </div>
     </div>
   );
@@ -295,7 +295,7 @@ function SipVisualiser() {
 
 const TOOLS_DATA = [
   { module: "Foundations of Personal Finance",              name: "50/30/20 Budget Checker",        desc: "Enter your monthly take-home. See instantly how your spending maps against the 50/30/20 benchmark.",                               Widget: BudgetChecker    },
-  { module: "Retirement & Goal-Based Financial Planning",   name: "Retirement Corpus Calculator",   desc: "Your age, monthly savings, and inflation. We calculate what you need at retirement and the SIP to get there.",                   Widget: RetirementCorpus },
+  { module: "Retirement & Goal-Based Planning",   name: "Retirement Corpus Calculator",   desc: "Your age, monthly savings, and inflation. We calculate what you need at retirement and the SIP to get there.",                   Widget: RetirementCorpus },
   { module: "Equity Investing Simplified",                  name: "P/E Valuation Quick-Check",      desc: "Enter a stock's market price and EPS. Instant P/E verdict against the broad market benchmark.",                                  Widget: PEValuation      },
   { module: "Debt & Fixed Income Investing",                name: "Post-Tax Return Comparator",     desc: "FD vs. debt fund vs. G-Sec. Enter amount and tenure — see post-tax returns side by side.",                                      Widget: DebtComparator   },
   { module: "Asset Allocation & Portfolio Construction",    name: "Portfolio Balance Scorecard",    desc: "Enter your asset mix. Get a live balance score and rebalancing cue for your risk profile.",                                      Widget: PortfolioScorecard },
@@ -306,7 +306,8 @@ const TOOLS_DATA = [
 
 export function ToolsSection() {
   return (
-    <section style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,152,42,0.12), transparent 70%), #14161d", borderTop: "1px solid rgba(201,152,42,0.18)", padding: "5rem 2rem" }}>
+    <section style={{ background: "#14161d", padding: "4rem 2rem" }}>
+      <style>{`.tool-card:hover { background: rgba(255,255,255,0.09) !important; border-color: rgba(201,152,42,0.4) !important; }`}</style>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* Section pill */}
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
@@ -324,7 +325,7 @@ export function ToolsSection() {
 
         <div className="tools-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginTop: "2rem" }}>
           {TOOLS_DATA.map(({ module, name, desc, Widget }) => (
-            <div key={name} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "1.25rem", display: "flex", flexDirection: "column", transition: "background 0.2s, border-color 0.2s", minWidth: 0, overflow: "hidden" }}>
+            <div key={name} className="tool-card" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "1.25rem", display: "flex", flexDirection: "column", transition: "background 0.2s, border-color 0.2s", minWidth: 0, overflow: "hidden" }}>
               <div style={{ marginBottom: "1rem" }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.5rem" }}>{module}</div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: "#fff", marginBottom: 4 }}>{name}</div>

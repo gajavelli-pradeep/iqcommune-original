@@ -36,7 +36,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
           style={{
             maxWidth: 1100,
             margin: "0 auto",
-            padding: "0 1.5rem",
+            padding: "0 2rem",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -51,7 +51,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
           >
             <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ display: "flex", alignItems: "baseline", lineHeight: 1 }}>
-                <span style={{ color: "var(--gold-dark)", fontWeight: 700, fontSize: 26, letterSpacing: "-0.04em" }}>iq</span>
+                <span style={{ color: "var(--gold)", fontWeight: 700, fontSize: 26, letterSpacing: "-0.04em" }}>iq</span>
                 <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 26, letterSpacing: "-0.04em" }}>commune</span>
               </span>
               <span
