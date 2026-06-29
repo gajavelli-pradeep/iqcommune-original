@@ -178,10 +178,42 @@ export function SessionTable({
                   )}
                 </td>
                 <td style={TD}>
-                  <div>
-                    {s.session_date} · {s.start_time}–{s.end_time}
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>
+                    {s.session_date
+                      ? new Date(s.session_date + "T00:00:00").toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 2 }}>
+                    {s.start_time}–{s.end_time}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--ink-faint)",
+                      marginTop: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
+                  >
+                    <svg
+                      width={10}
+                      height={10}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 21C12 21 4 13.7 4 8a8 8 0 0 1 16 0c0 5.7-8 13-8 13z" />
+                      <circle cx="12" cy="8" r="3" />
+                    </svg>
                     {s.venue}
                   </div>
                 </td>
@@ -251,14 +283,16 @@ export function SessionTable({
                             alert("Failed to generate photo link. Please try again.");
                           }
                         }}
-                        style={actionBtn("#fff", "#14161d", true)}
+                        style={{ ...actionBtn("#fff", "#14161d", true), display: "inline-flex", alignItems: "center", gap: 4 }}
                       >
+                        <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
                         Photo link
                       </button>
                     )}
-                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>
-                      {isExpanded ? "▲" : "▼"}
-                    </span>
                   </div>
                 </td>
               </tr>
