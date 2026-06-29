@@ -156,7 +156,7 @@ export function RequestTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Client", "Topic", "Audience", "City", "Commit", "Venue", "Dates", "Assigned to", "Status", "Actions"].map((h) => (
+              {["SPOC / Requester", "Topic", "Audience type", "City", "Group size", "Min. commitment", "Preferred dates", "Received", "Status", "Actions"].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -174,19 +174,14 @@ export function RequestTable({
                       <div style={{ fontWeight: 500 }}>{r.name}</div>
                       <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org ? `${r.org} · ` : ""}{r.email}</div>
                       {r.phone && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>}
-                      <div style={{ fontSize: 11, color: "#71717f", marginTop: 2 }}>
-                        {new Date(r.created_at).toLocaleDateString("en-IN")}
-                      </div>
                     </td>
                     <td style={tdStyle}>{r.topic}</td>
-                    <td style={tdStyle}>
-                      <div>{r.audience_type}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.group_size} total</div>
-                    </td>
+                    <td style={tdStyle}>{r.audience_type}</td>
                     <td style={tdStyle}>
                       <div>{r.city ?? "—"}</div>
                       {r.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.state}</div>}
                     </td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{r.group_size ?? "—"}</td>
                     <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
                       {r.min_commit != null ? (
                         <>
@@ -195,77 +190,117 @@ export function RequestTable({
                         </>
                       ) : "—"}
                     </td>
-                    <td style={tdStyle}>{r.venue ?? "—"}</td>
                     <td style={tdStyle}>{r.preferred_dates ?? "—"}</td>
-                    <td style={tdStyle}>{r.assigned_practitioner?.name ?? "—"}</td>
+                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
+                      {new Date(r.created_at).toLocaleDateString("en-IN")}
+                    </td>
                     <td style={tdStyle}><StatusPill status={r.status} /></td>
                     <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select
-                          value={r.status}
-                          onChange={(e) => updateStatus(r.id, e.target.value)}
-                          style={selectStyle}
+                      {r.status === "New" ? (
+                        <button
+                          onClick={() => { updateStatus(r.id, "Matched"); setExpandedRow(r.id); }}
+                          style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 100, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
                         >
-                          {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                        <button onClick={() => openDraft(r)} style={btnStyle}>
-                          Email draft
+                          Review
                         </button>
-                      </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <select
+                            value={r.status}
+                            onChange={(e) => updateStatus(r.id, e.target.value)}
+                            style={selectStyle}
+                          >
+                            {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => openDraft(r)} style={btnStyle}>Email draft</button>
+                        </div>
+                      )}
                     </td>
                   </tr>
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
                       <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
-                        <div
-                          style={{
-                            border: "1px solid rgba(20,18,12,.10)",
-                            borderRadius: 8,
-                            background: "#fff",
-                            padding: "1rem 1.25rem",
-                          }}
-                        >
-                          {/* Header */}
-                          <div style={{ marginBottom: "0.9rem" }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{r.name}</div>
-                            <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
-                          </div>
-
-                          {/* Detail grid */}
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem 2rem", marginBottom: "1rem" }}>
-                            <Field label="Topic" value={r.topic} />
-                            <Field label="Audience type" value={r.audience_type} />
-                            <Field label="City" value={r.city ?? "—"} />
-                            <Field label="State" value={r.state ?? "—"} />
-                            <Field label="Group size" value={r.group_size ?? "—"} />
-                            <Field label="Preferred dates" value={r.preferred_dates ?? "—"} />
-                            <Field label="Venue" value={r.venue ?? "—"} />
-                            <Field label="Venue notes" value={r.venue_notes ?? "—"} />
-                            {r.notes && <Field label="Additional notes" value={r.notes} />}
-                          </div>
-
-                          {/* Assign practitioner */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderTop: "1px solid rgba(20,18,12,.08)", paddingTop: "0.85rem" }}>
-                            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap" }}>Assign to:</span>
-                            <select
-                              value={r.assigned_to ?? ""}
-                              onChange={(e) => { if (e.target.value) assignPractitioner(r.id, e.target.value); }}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ ...selectStyle, flex: 1, maxWidth: 280 }}
-                            >
-                              <option value="">— select practitioner —</option>
-                              {empanelled.map((p) => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
+                        <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}>
+                            {/* Col 1: Request details */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Request details</div>
+                              {[
+                                ["From", r.name],
+                                ["Organisation", r.org ?? "—"],
+                                ["Email", r.email],
+                                ["City", r.city ?? "—"],
+                                ["State", r.state ?? "—"],
+                                ["Topic", r.topic],
+                                ["Audience", r.audience_type],
+                                ["Group size", r.group_size ?? "—"],
+                                ["Min. commitment", r.min_commit != null ? `${r.min_commit} participants` : "—"],
+                                ["Venue", r.venue || "Not specified — we will arrange"],
+                                ["Preferred dates", r.preferred_dates ?? "—"],
+                              ].map(([label, value]) => (
+                                <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
+                                  <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>{label}</span>
+                                  <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
+                                </div>
                               ))}
-                            </select>
-                            {r.assigned_practitioner && (
-                              <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>
-                                ✓ {r.assigned_practitioner.name}
-                              </span>
-                            )}
+                            </div>
+
+                            {/* Col 2: Available practitioners */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Available practitioners</div>
+                              {(() => {
+                                const matching = empanelled.filter((p) => (p.modules ?? []).some((m) => m === r.topic));
+                                if (matching.length === 0) return (
+                                  <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>No empanelled practitioners match this module yet.</div>
+                                );
+                                return matching.map((p) => (
+                                  <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0", borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{p.name}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); assignPractitioner(r.id, p.id); }}
+                                      style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    >
+                                      Assign
+                                    </button>
+                                  </div>
+                                ));
+                              })()}
+                              {r.assigned_practitioner && (
+                                <div style={{ marginTop: "0.75rem", fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Assigned: {r.assigned_practitioner.name}</div>
+                              )}
+                            </div>
+
+                            {/* Col 3: Actions */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Actions</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                                <select
+                                  value={r.status}
+                                  onChange={(e) => { e.stopPropagation(); updateStatus(r.id, e.target.value); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
+                                >
+                                  {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openDraft(r); }}
+                                  style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                >
+                                  Draft follow-up to client
+                                </button>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                >
+                                  Create session from request
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </td>
