@@ -14,11 +14,27 @@ interface Payout {
   paid_at: string | null;
   status: string;
   tds_rate?: number | null;
-  session: { ref_code: string; module: string } | null;
-  practitioner: { name: string } | null;
+  session: { ref_code: string; module: string; session_date: string | null } | null;
+  practitioner: { name: string; upi_id: string | null; bank_account: string | null; bank_name: string | null } | null;
 }
 
 const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
+
+function initials(name: string): string {
+  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
+}
+
+function fmtSessionDate(d: string | null): string {
+  if (!d) return "—";
+  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function payToDetail(p: Payout): string {
+  if (p.practitioner?.upi_id) return p.practitioner.upi_id;
+  if (p.practitioner?.bank_account && p.practitioner?.bank_name)
+    return `${p.practitioner.bank_name} ···${p.practitioner.bank_account.slice(-4)}`;
+  return "";
+}
 
 export function PayoutTable({
   initialData,
@@ -84,22 +100,36 @@ export function PayoutTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Invoice", "Practitioner", "Session", "Gross / TDS / Net", "Method", "Status", "Actions"].map((h) => (
+              {["Practitioner", "Session", "Session date", "Gross / TDS / Net", "Pay to", "Method", "Invoice", "Status", "Actions"].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {visible.map((p) => {
-              const tds = p.gross_amount - p.net_amount;
+              const tds     = p.gross_amount - p.net_amount;
               const tdsRate = p.tds_rate;
+              const detail  = payToDetail(p);
+              const ini     = initials(p.practitioner?.name ?? "?");
               return (
                 <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                  <td style={tdStyle}><span style={{ fontFamily: "monospace", fontSize: 12 }}>{p.invoice_ref}</span></td>
-                  <td style={{ ...tdStyle, fontWeight: 500 }}>{p.practitioner?.name ?? "—"}</td>
+                  {/* Practitioner — avatar + name */}
                   <td style={tdStyle}>
-                    <div style={{ fontSize: 12, fontFamily: "monospace" }}>{p.session?.ref_code}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {ini}
+                      </div>
+                      <span style={{ fontWeight: 500 }}>{p.practitioner?.name ?? "—"}</span>
+                    </div>
+                  </td>
+                  {/* Session — ref + module */}
+                  <td style={tdStyle}>
+                    <div style={{ fontSize: 12, fontFamily: "monospace" }}>{p.session?.ref_code ?? "—"}</div>
                     <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.session?.module}</div>
+                  </td>
+                  {/* Session date */}
+                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
+                    {fmtSessionDate(p.session?.session_date ?? null)}
                   </td>
                   {/* Gross / TDS / Net 3-line stack */}
                   <td style={tdStyle}>
@@ -114,6 +144,14 @@ export function PayoutTable({
                       {formatInr(p.net_amount)}
                     </div>
                   </td>
+                  {/* Pay to — name + UPI/bank sub-line */}
+                  <td style={tdStyle}>
+                    <div style={{ fontSize: 13 }}>{p.practitioner?.name ?? "—"}</div>
+                    {detail && (
+                      <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--ink-faint)", marginTop: 1 }}>{detail}</div>
+                    )}
+                  </td>
+                  {/* Method — select (pending) or label (paid) */}
                   <td style={tdStyle}>
                     {p.status === "Pending" ? (
                       <select
@@ -127,7 +165,13 @@ export function PayoutTable({
                       <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{p.payment_method ?? "—"}</span>
                     )}
                   </td>
+                  {/* Invoice ref */}
+                  <td style={tdStyle}>
+                    <span style={{ fontFamily: "monospace", fontSize: 12 }}>{p.invoice_ref}</span>
+                  </td>
+                  {/* Status */}
                   <td style={tdStyle}><StatusPill status={p.status} /></td>
+                  {/* Actions */}
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {p.status === "Pending" ? (
@@ -156,7 +200,7 @@ export function PayoutTable({
               );
             })}
 
-            {/* Summary row */}
+            {/* Summary row — colSpan matches 9-column layout */}
             {visible.length > 0 && (
               <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
                 <td colSpan={3} style={{ ...tdStyle, fontSize: 11, fontWeight: 600, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -166,13 +210,13 @@ export function PayoutTable({
                   <div style={{ fontWeight: 500 }}>{formatInr(totalGross)} gross</div>
                   <div style={{ fontWeight: 600 }}>{formatInr(totalNet)} net</div>
                 </td>
-                <td colSpan={3} style={tdStyle} />
+                <td colSpan={5} style={tdStyle} />
               </tr>
             )}
 
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No payouts yet" : "No payouts match the current filter"}
                 </td>
               </tr>

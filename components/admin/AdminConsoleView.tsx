@@ -6,6 +6,7 @@ import { SessionTable } from "@/components/admin/SessionTable";
 import { RequestTable } from "@/components/admin/RequestTable";
 import { PayoutTable } from "@/components/admin/PayoutTable";
 import { AgreementTable, type Agreement } from "@/components/admin/AgreementTable";
+import { PhotosTable } from "@/components/admin/PhotosTable";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
@@ -21,8 +22,11 @@ type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
 };
 type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
-  session: { ref_code: string; module: string } | null;
-  practitioner: { name: string } | null;
+  session: { ref_code: string; module: string; session_date: string | null } | null;
+  practitioner: { name: string; upi_id: string | null; bank_account: string | null; bank_name: string | null } | null;
+};
+type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
+  practitioner_name: string;
 };
 
 interface Counts {
@@ -37,6 +41,9 @@ interface Counts {
   pendingAgreements?: number;
   pendingPayoutGross?: number;
   pendingPayoutNet?: number;
+  paidPayoutGross?: number;
+  paidPayoutNet?: number;
+  nextSessionDate?: string;
   confirmedSessions?: number;
   completedSessions?: number;
   totalRequests?: number;
@@ -46,6 +53,10 @@ interface Counts {
   totalSessions?: number;
   totalPayouts?: number;
   paidPayouts?: number;
+  pendingPhotos?: number;
+  approvedPhotos?: number;
+  totalPhotos?: number;
+  urgentPhotos?: number;
 }
 
 interface Props {
@@ -54,6 +65,7 @@ interface Props {
   requests: RequestRow[];
   payouts: PayoutRow[];
   agreements: Agreement[];
+  photos: PhotoRow[];
   email?: string;
 }
 
@@ -64,6 +76,7 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   sessions:       { title: "Sessions",              subtitle: "Create sessions, send confirmations, and track delivery" },
   agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
+  photos:         { title: "Session Photos",          subtitle: "Review session photos submitted by practitioners — approve or delete within 30 days" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
 
@@ -91,22 +104,28 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
     practitioners: [
       { label: "Total",            value: counts.totalPractitioners ?? 0, filter: "all" },
       { label: "Applied",          value: counts.applied, filter: "Applied" },
-      { label: "Screening done",   value: counts.screeningDone ?? 0, delta: counts.applied > 0 ? "↑ action needed" : undefined, filter: "Screening Done" },
+      { label: "Screening done",   value: counts.screeningDone ?? 0, delta: (counts.screeningDone ?? 0) > 0 ? "↑ action needed" : undefined, filter: "Screening Done" },
       { label: "Agreement sent",   value: counts.agreementSent ?? 0, filter: "Agreement Sent" },
       { label: "Empanelled",       value: counts.empanelled, delta: counts.empanelled > 0 ? "Active" : undefined, filter: "Empanelled" },
     ],
     sessions: [
       { label: "Total sessions",  value: counts.totalSessions ?? 0, filter: "All" },
-      { label: "Upcoming",        value: counts.pendingSessions, delta: (counts.confirmedSessions ?? 0) > 0 ? `${counts.confirmedSessions} confirmed` : undefined, filter: "Upcoming" },
+      { label: "Upcoming",        value: counts.pendingSessions, delta: counts.nextSessionDate ? `Next: ${counts.nextSessionDate}` : undefined, filter: "Upcoming" },
       { label: "Consent pending", value: counts.consentPending ?? 0, delta: (counts.consentPending ?? 0) > 0 ? "↑ action needed" : undefined, deltaRed: (counts.consentPending ?? 0) > 0 },
       { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
     ],
     agreements: [],
     payouts: [
-      { label: "Total paid out",    value: counts.paidPayouts ?? 0, filter: "Paid" },
-      { label: "Pending payment",   value: counts.pendingPayouts, delta: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) + " gross" : counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
+      { label: "Total paid out",    value: counts.paidPayoutGross ? fmt(counts.paidPayoutGross) : "—", filter: "Paid" },
+      { label: "Pending payment",   value: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) : (counts.pendingPayouts > 0 ? `${counts.pendingPayouts}` : "—"), delta: counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
       { label: "Sessions invoiced", value: counts.totalPayouts ?? 0, filter: "all" },
-      { label: "Net pending",       value: counts.pendingPayoutNet ? fmt(counts.pendingPayoutNet) : "—", filter: "Pending" },
+      { label: "Paid this month",   value: counts.paidPayoutNet ? fmt(counts.paidPayoutNet) : "—", filter: "Paid" },
+    ],
+    photos: [
+      { label: "Total",            value: counts.totalPhotos ?? 0, filter: "all" },
+      { label: "Pending review",   value: counts.pendingPhotos ?? 0, delta: (counts.pendingPhotos ?? 0) > 0 ? "↑ action needed" : "All reviewed", deltaRed: (counts.pendingPhotos ?? 0) > 0, filter: "Pending" },
+      { label: "Approved",         value: counts.approvedPhotos ?? 0, filter: "Approved" },
+      { label: "Expiring ≤ 7 days", value: counts.urgentPhotos ?? 0, delta: (counts.urgentPhotos ?? 0) > 0 ? "↑ review soon" : undefined, deltaRed: (counts.urgentPhotos ?? 0) > 0 },
     ],
     settings: [],
   };
@@ -141,6 +160,9 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
   payouts:       [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export payouts" },
   ],
+  photos:        [
+    { label: "Export",        variant: "ghost",   ariaLabel: "Export photo submissions" },
+  ],
   settings:      [],
 };
 
@@ -171,6 +193,12 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
       <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
     </svg>
   ),
+  photos: (
+    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  ),
   // Gap 20: broadcast/signal icon, not gear
   settings: (
     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -189,17 +217,18 @@ function buildSections(counts: Counts): SidebarSection[] {
     {
       heading: "Pipeline",
       items: [
-        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,   badgeBg: "#854f0b" },
+        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,   badgeBg: "#a32d2d" },
         { label: "Practitioners",    tab: "practitioners", badge: counts.applied,            badgeBg: "#c9982a" },
         { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,    badgeBg: "#2a6b2a" },
         // Gap 18: Agreements badge green
         { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
+        { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,           badgeBg: "#a32d2d" },
       ],
     },
     {
       heading: "Finance",
       items: [
-        { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#854f0b" },
+        { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
       ],
     },
     {
@@ -367,7 +396,7 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, email }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email }: Props) {
   const { globalSearch, setGlobalSearch, activeTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -387,19 +416,26 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [sessionsData, setSessionsData] = useState(sessions);
   const [practitionersData, setPractitionersData] = useState(practitioners);
   const [payoutsData, setPayoutsData] = useState(payouts);
+  const [photosData, setPhotosData] = useState(photos);
 
   // Derive counts from local state — updates instantly when any action fires
   const pendingPayoutList = payoutsData.filter((p) => p.status === "Pending");
+  const paidPayoutList    = payoutsData.filter((p) => p.status === "Paid");
+  const upcomingSessions  = sessionsData.filter((s) => s.status === "Upcoming");
+  const nextSession       = upcomingSessions.sort((a, b) => a.session_date < b.session_date ? -1 : 1)[0];
   const counts: Counts = {
     applied:            practitionersData.filter((p) => p.status === "Applied").length,
     empanelled:         practitionersData.filter((p) => p.status === "Empanelled").length,
     screeningDone:      practitionersData.filter((p) => p.status === "Screening Done").length,
     agreementSent:      practitionersData.filter((p) => p.status === "Agreement Sent").length,
     pendingRequests:    requestsData.filter((r) => r.status === "New").length,
-    pendingSessions:    sessionsData.filter((s) => s.status === "Upcoming").length,
+    pendingSessions:    upcomingSessions.length,
     pendingPayouts:     pendingPayoutList.length,
     pendingPayoutGross: pendingPayoutList.reduce((s, p) => s + p.gross_amount, 0),
     pendingPayoutNet:   pendingPayoutList.reduce((s, p) => s + p.net_amount, 0),
+    paidPayoutGross:    paidPayoutList.reduce((s, p) => s + p.gross_amount, 0),
+    paidPayoutNet:      paidPayoutList.reduce((s, p) => s + p.net_amount, 0),
+    nextSessionDate:    nextSession?.session_date,
     confirmedSessions:  sessionsData.filter((s) => s.status === "Upcoming" && s.consent_status === "Consent given").length,
     completedSessions:  sessionsData.filter((s) => s.status === "Completed").length,
     consentPending:     sessionsData.filter((s) => s.consent_status === "Pending consent").length,
@@ -409,9 +445,17 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     totalPractitioners: practitionersData.length,
     totalSessions:      sessionsData.length,
     totalPayouts:       payoutsData.length,
-    paidPayouts:        payoutsData.filter((p) => p.status === "Paid").length,
+    paidPayouts:        paidPayoutList.length,
     // DB stores agreements awaiting signature as "Pending signature"; signed = "Active".
     pendingAgreements:  agreements.filter((a) => a.status === "Pending signature").length,
+    totalPhotos:        photosData.length,
+    pendingPhotos:      photosData.filter((p) => p.status === "Pending").length,
+    approvedPhotos:     photosData.filter((p) => p.status === "Approved").length,
+    urgentPhotos:       photosData.filter((p) => {
+      if (p.status !== "Pending") return false;
+      const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return days <= 7;
+    }).length,
   };
 
   const handleRequestRowChange = (id: string, patch: { status?: string; assigned_to?: string | null }) => {
@@ -468,6 +512,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         { key: "practitioner_name", label: "Practitioner" }, { key: "ref_code", label: "Ref" },
         { key: "module", label: "Module" }, { key: "signed_at", label: "Signed on" },
         { key: "signature_method", label: "Method" }, { key: "status", label: "Status" },
+      ]));
+    } else if (activeTab === "photos") {
+      downloadCsv(`photo-submissions-${stamp}.csv`, toCsv(photosData, [
+        { key: "practitioner_name", label: "Practitioner" }, { key: "practitioner_ref", label: "Ref" }, { key: "session_ref", label: "Session" },
+        { key: "module", label: "Module" }, { key: "city", label: "City" }, { key: "state", label: "State" },
+        { key: "photo_count", label: "Photos" }, { key: "status", label: "Status" },
+        { key: "submitted_at", label: "Submitted" }, { key: "expiry_date", label: "Expires" },
       ]));
     }
   }
@@ -640,6 +691,27 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "photos" && (
+          <div>
+            <TabHeader tab="photos" onAction={handleHeaderAction} />
+            <TabStatsRow tab="photos" counts={counts} activeFilter={tabFilters.photos ?? "all"} onStatClick={(f) => setTabFilter("photos", f)} />
+            <div style={{ padding: "1.5rem 1.75rem" }}>
+              <PhotosTable
+                initialData={photosData}
+                statusFilter={tabFilters.photos ?? "All"}
+                onStatusFilterChange={(f) => setTabFilter("photos", f)}
+                onStatusChange={(id, status) =>
+                  setPhotosData((prev) =>
+                    status === "Deleted"
+                      ? prev.filter((p) => p.id !== id)
+                      : prev.map((p) => p.id === id ? { ...p, status } : p)
+                  )
+                }
+              />
             </div>
           </div>
         )}

@@ -15,21 +15,25 @@ type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
 };
 type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
-  session: { ref_code: string; module: string } | null;
-  practitioner: { name: string } | null;
+  session: { ref_code: string; module: string; session_date: string | null } | null;
+  practitioner: { name: string; upi_id: string | null; bank_account: string | null; bank_name: string | null } | null;
 };
 type AgreementFetchRow = Database["public"]["Tables"]["agreements"]["Row"] & {
   practitioner: { name: string; role: string } | null;
 };
+type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
+  practitioner_name: string;
+};
 
 async function getData() {
   const db = createAdminClient();
-  const [practitioners, sessions, requests, payouts, agreementsRes] = await Promise.all([
+  const [practitioners, sessions, requests, payouts, agreementsRes, photosRes] = await Promise.all([
     db.from("practitioners").select("*").order("created_at", { ascending: false }).limit(200),
     db.from("sessions").select("*, practitioner:practitioners(name, email)").order("session_date", { ascending: false }).limit(200),
     db.from("session_requests").select("*, assigned_practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
-    db.from("payouts").select("*, session:sessions(ref_code, module), practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
+    db.from("payouts").select("*, session:sessions(ref_code, module, session_date), practitioner:practitioners(name, upi_id, bank_account, bank_name)").order("created_at", { ascending: false }).limit(200),
     db.from("agreements").select("*, practitioner:practitioners(name, role)").order("signed_at", { ascending: false }).limit(200),
+    db.from("photo_submissions").select("*").order("submitted_at", { ascending: false }).limit(200),
   ]);
   // Surface DB errors so Next.js error.tsx handles them — empty tables on query failure
   // are worse than an error page because they look like "no data" to the admin.
@@ -38,6 +42,17 @@ async function getData() {
   if (requests.error)      throw new Error(`Session requests load failed: ${requests.error.message}`);
   if (payouts.error)       throw new Error(`Payouts load failed: ${payouts.error.message}`);
   if (agreementsRes.error) throw new Error(`Agreements load failed: ${agreementsRes.error.message}`);
+
+  // Build ref→name map from already-fetched practitioners — zero extra queries
+  const nameByRef: Record<string, string> = {};
+  for (const p of practitioners.data ?? []) {
+    if (p.ref_code) nameByRef[p.ref_code] = p.name;
+  }
+  // Photos query failure is non-fatal — show empty state rather than crashing the admin
+  const photos: PhotoRow[] = (photosRes.data ?? []).map((p) => ({
+    ...p,
+    practitioner_name: nameByRef[p.practitioner_ref] ?? p.practitioner_ref,
+  }));
 
   const agreements: Agreement[] = ((agreementsRes.data ?? []) as AgreementFetchRow[]).map((a) => ({
     ...a,
@@ -50,11 +65,12 @@ async function getData() {
     requests: (requests.data ?? []) as RequestRow[],
     payouts: (payouts.data ?? []) as PayoutRow[],
     agreements,
+    photos,
   };
 }
 
 export default async function ConsolePage() {
-  const { practitioners, sessions, requests, payouts, agreements } = await getData();
+  const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
   return (
     <AdminConsoleView
       practitioners={practitioners}
@@ -62,6 +78,7 @@ export default async function ConsolePage() {
       requests={requests}
       payouts={payouts}
       agreements={agreements}
+      photos={photos}
       email={process.env.ADMIN_EMAIL}
     />
   );

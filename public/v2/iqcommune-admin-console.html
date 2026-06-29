@@ -1,0 +1,2722 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iqcommune — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --ink: #0f1117;
+      --ink-m: #4a4d5c;
+      --ink-f: #9496a1;
+      --surface: #fff;
+      --soft: #f8f7f4;
+      --gold: #c9982a;
+      --gold-l: #f5e9c8;
+      --gold-d: #8a6510;
+      --green: #2a6b2a;
+      --green-l: #eef7ee;
+      --green-m: #c8e6c8;
+      --red-l: #fdf0f0;
+      --red: #a32d2d;
+      --red-m: #f0b0b0;
+      --blue-l: #e6f1fb;
+      --blue: #185fa5;
+      --blue-m: #85b7eb;
+      --amber-l: #faeeda;
+      --amber: #854f0b;
+      --amber-m: #fac775;
+      --purple-l: #eeedfe;
+      --purple: #534ab7;
+      --purple-m: #afa9ec;
+      --border: rgba(15, 17, 23, .10);
+      --border-s: rgba(15, 17, 23, .18);
+      --r: 10px;
+      --rs: 6px;
+      --sw: 220px;
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--soft);
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh
+    }
+
+    /* NAV */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      height: 64px;
+      background: rgba(255, 255, 255, .97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1.75rem;
+      gap: 1.5rem
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      flex-shrink: 0
+    }
+
+    .logo-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .logo-mark {
+      display: flex;
+      align-items: baseline;
+      line-height: 1
+    }
+
+    .logo-iq {
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -.04em
+    }
+
+    .logo-commune {
+      color: var(--ink);
+      font-weight: 300;
+      font-size: 22px;
+      letter-spacing: -.04em
+    }
+
+    .logo-tag {
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--ink-f)
+    }
+
+    .logo-div {
+      width: 1px;
+      height: 32px;
+      background: var(--border-s);
+      flex-shrink: 0
+    }
+
+    .logo-sec {
+      display: flex;
+      flex-direction: column;
+      gap: 2px
+    }
+
+    .logo-sec span {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--gold-d);
+      line-height: 1.4
+    }
+
+    .nav-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .nav-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--soft);
+      border: 1px solid var(--border-s);
+      border-radius: 100px;
+      padding: 7px 16px;
+      width: 300px
+    }
+
+    .nav-search input {
+      border: none;
+      background: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--ink);
+      outline: none;
+      width: 100%
+    }
+
+    .nav-search input::placeholder {
+      color: var(--ink-f)
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-shrink: 0
+    }
+
+    .nav-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: none;
+      border: 1px solid var(--border-s);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ink-m);
+      transition: background .15s;
+      position: relative
+    }
+
+    .nav-icon-btn:hover {
+      background: var(--soft);
+      color: var(--ink)
+    }
+
+    .notif-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 1.5px solid #fff
+    }
+
+    .nav-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .nav-admin {
+      font-size: 12px;
+      color: var(--ink-m)
+    }
+
+    /* LAYOUT */
+    .layout {
+      display: flex;
+      padding-top: 64px;
+      min-height: 100vh
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sw);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 64px;
+      height: calc(100vh - 64px);
+      overflow-y: auto;
+      align-self: flex-start
+    }
+
+    .sb-sec {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--ink-f);
+      padding: 1.25rem 1.25rem .4rem
+    }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: .6rem 1.25rem;
+      font-size: 13px;
+      color: var(--ink-m);
+      cursor: pointer;
+      transition: all .15s;
+      border-left: 2.5px solid transparent;
+      user-select: none
+    }
+
+    .sb-item:hover {
+      background: var(--soft);
+      color: var(--ink)
+    }
+
+    .sb-item.active {
+      background: var(--gold-l);
+      color: var(--gold-d);
+      font-weight: 500;
+      border-left-color: var(--gold)
+    }
+
+    .sb-item svg {
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .sb-item.active svg {
+      opacity: 1
+    }
+
+    .sb-badge {
+      margin-left: auto;
+      background: var(--gold);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 100px
+    }
+
+    .sb-badge.green {
+      background: var(--green)
+    }
+
+    .sb-badge.blue {
+      background: var(--blue)
+    }
+
+    .sb-badge.red {
+      background: var(--red)
+    }
+
+    .sb-div {
+      height: 1px;
+      background: var(--border);
+      margin: .5rem 1.25rem
+    }
+
+    .sb-footer {
+      margin-top: auto;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border)
+    }
+
+    .sb-footer-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink)
+    }
+
+    .sb-footer-role {
+      font-size: 11px;
+      color: var(--ink-f)
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    /* PAGE HEADER */
+    .page-hdr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .page-hdr h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -.01em
+    }
+
+    .page-hdr p {
+      font-size: 13px;
+      color: var(--ink-f);
+      margin-top: 1px
+    }
+
+    .page-hdr-r {
+      display: flex;
+      gap: .65rem
+    }
+
+    /* TABS */
+    .tab-nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.75rem;
+      display: flex;
+      gap: 0
+    }
+
+    .tab-btn {
+      padding: .85rem 1.25rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-m);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .tab-btn:hover {
+      color: var(--ink)
+    }
+
+    .tab-btn.active {
+      color: var(--ink);
+      border-bottom-color: var(--gold)
+    }
+
+    .tab-panel {
+      display: none
+    }
+
+    .tab-panel.active {
+      display: block
+    }
+
+    /* STATS */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border)
+    }
+
+    .stat-cell {
+      background: var(--surface);
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      transition: background .15s
+    }
+
+    .stat-cell:hover {
+      background: var(--soft)
+    }
+
+    .stat-cell.active {
+      background: var(--gold-l)
+    }
+
+    .stat-num {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--ink);
+      line-height: 1
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--ink-f);
+      margin-top: 3px
+    }
+
+    .stat-delta {
+      font-size: 11px;
+      color: var(--green);
+      margin-top: 2px
+    }
+
+    .stat-delta.red {
+      color: var(--red)
+    }
+
+    /* FILTER BAR */
+    .filter-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap
+    }
+
+    .filter-label {
+      font-size: 12px;
+      color: var(--ink-f);
+      margin-right: 4px
+    }
+
+    .chip {
+      padding: 5px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border-s);
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--ink-m);
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .chip:hover {
+      border-color: var(--gold);
+      color: var(--ink)
+    }
+
+    .chip.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink)
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      border: 1px solid var(--border-s);
+      color: var(--ink-m)
+    }
+
+    .btn-ghost:hover {
+      background: var(--soft);
+      color: var(--ink)
+    }
+
+    .btn-dark {
+      background: var(--ink);
+      color: #fff
+    }
+
+    .btn-dark:hover {
+      opacity: .87
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(201, 152, 42, .3)
+    }
+
+    .btn-gold:hover {
+      filter: brightness(1.08)
+    }
+
+    .btn-sm {
+      font-size: 12px;
+      padding: 6px 12px
+    }
+
+    .btn-xs {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 100px
+    }
+
+    /* TABLE WRAP */
+    .table-wrap {
+      padding: 1.5rem 1.75rem
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden
+    }
+
+    thead th {
+      background: var(--soft);
+      padding: .7rem 1.25rem;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-f);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap
+    }
+
+    tbody tr.dr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .1s
+    }
+
+    tbody tr.dr:hover {
+      background: var(--soft)
+    }
+
+    tbody tr.dr.sel {
+      background: #fffbf0
+    }
+
+    td {
+      padding: .85rem 1.25rem;
+      vertical-align: middle;
+      font-size: 13px
+    }
+
+    .p-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .p-av {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--gold-l);
+      color: var(--gold-d)
+    }
+
+    .p-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink)
+    }
+
+    .p-sub {
+      font-size: 11px;
+      color: var(--ink-f)
+    }
+
+    /* PILLS */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 100px;
+      white-space: nowrap;
+      border: 1px solid transparent
+    }
+
+    .pd {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .s-applied {
+      background: var(--purple-l);
+      color: var(--purple);
+      border-color: var(--purple-m)
+    }
+
+    .s-applied .pd {
+      background: var(--purple)
+    }
+
+    .s-review {
+      background: var(--amber-l);
+      color: var(--amber);
+      border-color: var(--amber-m)
+    }
+
+    .s-review .pd {
+      background: var(--amber)
+    }
+
+    .s-screening {
+      background: var(--blue-l);
+      color: var(--blue);
+      border-color: var(--blue-m)
+    }
+
+    .s-screening .pd {
+      background: var(--blue)
+    }
+
+    .s-sent {
+      background: var(--green-l);
+      color: var(--green);
+      border-color: var(--green-m)
+    }
+
+    .s-sent .pd {
+      background: var(--green)
+    }
+
+    .s-empanelled {
+      background: var(--green-l);
+      color: var(--green);
+      border-color: #639922
+    }
+
+    .s-empanelled .pd {
+      background: #3b6d11
+    }
+
+    .s-rejected {
+      background: var(--red-l);
+      color: var(--red);
+      border-color: var(--red-m)
+    }
+
+    .s-rejected .pd {
+      background: var(--red)
+    }
+
+    .s-new {
+      background: var(--purple-l);
+      color: var(--purple);
+      border-color: var(--purple-m)
+    }
+
+    .s-new .pd {
+      background: var(--purple)
+    }
+
+    .s-matched {
+      background: var(--blue-l);
+      color: var(--blue);
+      border-color: var(--blue-m)
+    }
+
+    .s-matched .pd {
+      background: var(--blue)
+    }
+
+    .s-confirmed {
+      background: var(--green-l);
+      color: var(--green);
+      border-color: var(--green-m)
+    }
+
+    .s-confirmed .pd {
+      background: var(--green)
+    }
+
+    .s-completed {
+      background: var(--green-l);
+      color: #1a4a1a;
+      border-color: #639922
+    }
+
+    .s-completed .pd {
+      background: #1a4a1a
+    }
+
+    .s-pending-consent {
+      background: var(--amber-l);
+      color: var(--amber);
+      border-color: var(--amber-m)
+    }
+
+    .s-pending-consent .pd {
+      background: var(--amber)
+    }
+
+    .s-consent-done {
+      background: var(--green-l);
+      color: var(--green);
+      border-color: var(--green-m)
+    }
+
+    .s-consent-done .pd {
+      background: var(--green)
+    }
+
+    .s-pay-pending {
+      background: var(--red-l);
+      color: var(--red);
+      border-color: var(--red-m)
+    }
+
+    .s-pay-pending .pd {
+      background: var(--red)
+    }
+
+    .s-pay-done {
+      background: var(--green-l);
+      color: var(--green);
+      border-color: var(--green-m)
+    }
+
+    .s-pay-done .pd {
+      background: var(--green)
+    }
+
+    /* EXPANDED PROFILE CARD */
+    tr.profile-row td {
+      padding: 0
+    }
+
+    .profile-card {
+      background: var(--surface);
+      border-top: 2px solid var(--gold);
+      animation: slideDown .2s ease
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .profile-inner {
+      padding: 2rem 1.75rem;
+      position: relative
+    }
+
+    .prof-close {
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-s);
+      background: var(--soft);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-m);
+      font-size: 16px;
+      transition: all .15s
+    }
+
+    .prof-close:hover {
+      background: var(--surface);
+      color: var(--ink)
+    }
+
+    .prof-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2rem
+    }
+
+    .prof-av-lg {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--gold-l);
+      color: var(--gold-d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 600
+    }
+
+    .prof-name {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+      color: var(--ink)
+    }
+
+    .prof-role {
+      font-size: 13px;
+      color: var(--ink-m);
+      margin-top: 2px
+    }
+
+    .prof-org {
+      font-size: 12px;
+      color: var(--ink-f);
+      margin-top: 1px
+    }
+
+    .kv {
+      display: flex;
+      flex-direction: column;
+      gap: .55rem;
+      margin-top: 1.25rem
+    }
+
+    .kv-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 13px
+    }
+
+    .kv-l {
+      color: var(--ink-f);
+      width: 90px;
+      flex-shrink: 0;
+      font-size: 12px
+    }
+
+    .kv-v {
+      color: var(--ink);
+      font-weight: 500
+    }
+
+    .sec-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-f);
+      margin-bottom: .85rem
+    }
+
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0
+    }
+
+    .pipe-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: .4rem 0;
+      position: relative
+    }
+
+    .pipe-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 9px;
+      top: 22px;
+      width: 1px;
+      height: calc(100% - 4px);
+      background: var(--border-s)
+    }
+
+    .pn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 1px
+    }
+
+    .pn-done {
+      background: var(--green-l);
+      color: var(--green);
+      border: 1px solid var(--green-m)
+    }
+
+    .pn-active {
+      background: var(--ink);
+      color: #fff
+    }
+
+    .pn-pend {
+      background: var(--soft);
+      color: var(--ink-f);
+      border: 1px solid var(--border-s)
+    }
+
+    .pipe-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink)
+    }
+
+    .pipe-date {
+      font-size: 11px;
+      color: var(--ink-f);
+      margin-left: auto;
+      white-space: nowrap
+    }
+
+    .prof-actions {
+      display: flex;
+      flex-direction: column;
+      gap: .65rem
+    }
+
+    .status-sel {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-s);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--soft);
+      outline: none;
+      cursor: pointer
+    }
+
+    .status-sel:focus {
+      border-color: var(--gold)
+    }
+
+    .gen-link-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter .15s;
+      box-shadow: 0 2px 10px rgba(201, 152, 42, .3)
+    }
+
+    .gen-link-btn:hover {
+      filter: brightness(1.08)
+    }
+
+    .link-prev {
+      background: var(--soft);
+      border: 1px solid var(--border-s);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 10px;
+      color: var(--ink-f);
+      word-break: break-all;
+      font-family: monospace;
+      line-height: 1.5;
+      display: none
+    }
+
+    .link-prev.show {
+      display: block
+    }
+
+    .link-btns,
+    .sec-btns {
+      display: flex;
+      gap: 6px
+    }
+
+    .link-btn {
+      flex: 1;
+      padding: 7px;
+      border-radius: 8px;
+      border: 1px solid var(--border-s);
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-m);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all .15s
+    }
+
+    .link-btn:hover {
+      background: var(--soft);
+      color: var(--ink)
+    }
+
+    .link-btn.send {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink)
+    }
+
+    .link-btn.send:hover {
+      opacity: .87
+    }
+
+    /* ── PHOTOS PANEL ── */
+    .photo-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #fffbf0;
+      border: 1px solid #e0c870;
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      font-size: 12.5px;
+      color: #6b500e;
+      line-height: 1.6;
+      margin-bottom: 1.25rem
+    }
+
+    .photo-notice svg {
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: #c9982a
+    }
+
+    .photo-notice strong {
+      color: #3d2e08
+    }
+
+    .expiry-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: #e5e5e5;
+      overflow: hidden;
+      margin-top: 3px;
+      width: 60px
+    }
+
+    .expiry-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width .3s
+    }
+
+    .days-urgent {
+      color: #c0392b;
+      font-weight: 600
+    }
+
+    .days-warn {
+      color: #c9982a;
+      font-weight: 600
+    }
+
+    .days-ok {
+      color: #2a6b2a
+    }
+
+    .photo-empty {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--ink-f)
+    }
+
+    .photo-empty.visible {
+      display: flex
+    }
+
+    .photo-empty svg {
+      color: var(--border-s)
+    }
+
+    .photo-empty-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--ink-m)
+    }
+
+    .photo-empty-sub {
+      font-size: 12.5px;
+      color: var(--ink-f);
+      max-width: 380px;
+      line-height: 1.6
+    }
+
+    .s-ph-pending {
+      background: #fff8e5;
+      color: #8a6510;
+      border: 1px solid #e0c870
+    }
+
+    .s-ph-approved {
+      background: #eef7ee;
+      color: #2a6b2a;
+      border: 1px solid #b8d98a
+    }
+
+    .s-ph-expired {
+      background: #f5f5f5;
+      color: #999;
+      border: 1px solid #ddd
+    }
+
+    .ph-gen-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-s);
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-m);
+      cursor: pointer;
+      transition: all .15s
+    }
+
+    .ph-gen-btn:hover {
+      background: var(--soft);
+      color: var(--ink);
+      border-color: var(--gold)
+    }
+
+    .sec-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-s);
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-m);
+      cursor: pointer;
+      transition: all .15s
+    }
+
+    .sec-btn:hover {
+      background: var(--soft);
+      color: var(--ink)
+    }
+
+    .pay-detail {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .85rem 1rem;
+      font-size: 12px;
+      color: var(--ink-m);
+      line-height: 1.7
+    }
+
+    .pay-detail strong {
+      color: var(--ink);
+      font-weight: 500
+    }
+
+    /* SESSION FORM */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem
+    }
+
+    .form-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 1rem
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .fg label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink)
+    }
+
+    .fg input,
+    .fg select,
+    .fg textarea {
+      padding: 9px 12px;
+      border: 1px solid var(--border-s);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--surface);
+      outline: none;
+      transition: border-color .15s;
+      resize: none
+    }
+
+    .fg input:focus,
+    .fg select:focus,
+    .fg textarea:focus {
+      border-color: var(--gold)
+    }
+
+    .fg .hint {
+      font-size: 11px;
+      color: var(--ink-f)
+    }
+
+    /* PAYOUT MARK */
+    .pay-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none
+    }
+
+    .pay-toggle input {
+      accent-color: var(--gold);
+      width: 15px;
+      height: 15px;
+      cursor: pointer
+    }
+
+    /* EMPTY */
+    .empty-state {
+      padding: 3rem;
+      text-align: center;
+      color: var(--ink-f);
+      font-size: 13px
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 100px;
+      z-index: 999;
+      transition: transform .25s ease;
+      pointer-events: none;
+      white-space: nowrap
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0)
+    }
+
+    /* EMAIL DRAFT MODAL */
+    .draft-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem
+    }
+
+    .draft-overlay.open {
+      display: flex
+    }
+
+    .draft-modal {
+      background: var(--surface);
+      border-radius: var(--r);
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .2);
+      overflow: hidden;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column
+    }
+
+    .draft-header {
+      background: var(--ink);
+      padding: 1.1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0
+    }
+
+    .draft-header-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff
+    }
+
+    .draft-header-sub {
+      font-size: 11px;
+      color: rgba(255, 255, 255, .4);
+      margin-top: 1px
+    }
+
+    .draft-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255, 255, 255, .5);
+      font-size: 18px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background .15s
+    }
+
+    .draft-close:hover {
+      background: rgba(255, 255, 255, .1);
+      color: #fff
+    }
+
+    .draft-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--soft);
+      flex-shrink: 0
+    }
+
+    .draft-tab {
+      padding: .65rem 1.1rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-m);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .draft-tab:hover {
+      color: var(--ink)
+    }
+
+    .draft-tab.active {
+      color: var(--ink);
+      border-bottom-color: var(--gold)
+    }
+
+    .draft-body {
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      flex: 1
+    }
+
+    .draft-meta {
+      background: var(--soft);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 12px;
+      color: var(--ink-m);
+      line-height: 1.7
+    }
+
+    .draft-meta strong {
+      color: var(--ink);
+      font-weight: 500
+    }
+
+    .draft-subject {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: .75rem;
+      padding-bottom: .65rem;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .draft-text {
+      font-size: 13px;
+      color: var(--ink-m);
+      line-height: 1.85;
+      white-space: pre-wrap;
+      background: var(--soft);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid var(--border)
+    }
+
+    .draft-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      flex-shrink: 0;
+      background: var(--surface)
+    }
+
+    .draft-note {
+      font-size: 11px;
+      color: var(--ink-f);
+      flex: 1;
+      line-height: 1.5
+    }
+
+    .draft-panel {
+      display: none
+    }
+
+    .draft-panel.active {
+      display: block
+    }
+
+    .req-expand {
+      background: var(--surface);
+      border-top: 2px solid var(--gold);
+      animation: slideDown .2s ease
+    }
+
+    .req-inner {
+      padding: 1.5rem 1.75rem;
+      position: relative
+    }
+
+    .req-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 2rem
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAV -->
+  <nav class="top-nav">
+    <a class="nav-logo" href="iqcommune-real-deal-training.html">
+      <div class="logo-col">
+        <div class="logo-mark"><span class="logo-iq">iq</span><span class="logo-commune">commune</span></div>
+        <div class="logo-tag">Where financial intelligence connects</div>
+      </div>
+      <div class="logo-div"></div>
+      <div class="logo-sec"><span>Admin</span><span>Console</span></div>
+    </a>
+    <div class="nav-center">
+      <div class="nav-search">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input type="text" placeholder="Search across practitioners, sessions, requests…"
+          oninput="globalSearch(this.value)" />
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-admin">Admin</span>
+      <div class="nav-icon-btn" onclick="showToast('3 notifications pending')">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="nav-avatar">AD</div>
+    </div>
+  </nav>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sb-sec">Pipeline</div>
+      <div class="sb-item" id="nav-requests" onclick="switchTab('requests',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Session Requests
+        <span class="sb-badge red">3</span>
+      </div>
+      <div class="sb-item active" id="nav-practitioners" onclick="switchTab('practitioners',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Practitioners
+        <span class="sb-badge">6</span>
+      </div>
+      <div class="sb-item" id="nav-sessions" onclick="switchTab('sessions',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+        Sessions
+        <span class="sb-badge green">2</span>
+      </div>
+      <div class="sb-item" id="nav-agreements" onclick="switchTab('agreements',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        Agreements
+        <span class="sb-badge green">4</span>
+      </div>
+      <div class="sb-item" id="nav-photos" onclick="switchTab('photos',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+        Photos
+        <span class="sb-badge" id="photos-badge">0</span>
+      </div>
+      <div class="sb-div"></div>
+      <div class="sb-sec">Finance</div>
+      <div class="sb-item" id="nav-payouts" onclick="switchTab('payouts',this)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+        Payouts
+        <span class="sb-badge red">2</span>
+      </div>
+      <div class="sb-div"></div>
+      <div class="sb-sec">System</div>
+      <div class="sb-item" onclick="showToast('Settings — coming soon')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+        </svg>
+        Settings
+      </div>
+      <div class="sb-footer">
+        <div class="sb-footer-name">Admin User</div>
+        <div class="sb-footer-role">hello@iqcommune.com</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: SESSION REQUESTS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panel-requests">
+        <div class="page-hdr">
+          <div>
+            <h1>Session Requests</h1>
+            <p>Incoming requests from iqcommune.com — review, match, and confirm</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-ghost btn-sm" onclick="showToast('Exported')">Export</button>
+          </div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-cell">
+            <div class="stat-num" id="rq-all">5</div>
+            <div class="stat-label">Total requests</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="rq-new">3</div>
+            <div class="stat-label">New — unreviewed</div>
+            <div class="stat-delta red">↑ needs action</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="rq-matched">1</div>
+            <div class="stat-label">Matched</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-cell">
+              <div class="stat-num" id="rq-conf">1</div>
+              <div class="stat-label">Confirmed</div>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SPOC / Requester</th>
+                <th>Topic</th>
+                <th>Audience type</th>
+                <th>City</th>
+                <th>Group size</th>
+                <th>Min. commitment</th>
+                <th>Preferred dates</th>
+                <th>Received</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="req-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: PRACTITIONERS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel active" id="panel-practitioners">
+        <div class="page-hdr">
+          <div>
+            <h1>Practitioner pipeline</h1>
+            <p>Manage applications, onboarding, and empanelment</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-ghost btn-sm" onclick="showToast('Exported')">Export</button>
+            <button class="btn btn-dark btn-sm" onclick="showToast('Add form — coming soon')">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add manually
+            </button>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-cell" onclick="prFilter('all',this)">
+            <div class="stat-num" id="pr-all">6</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-cell" onclick="prFilter('Applied',this)">
+            <div class="stat-num" id="pr-app">1</div>
+            <div class="stat-label">Applied</div>
+          </div>
+          <div class="stat-cell" onclick="prFilter('Screening Done',this)">
+            <div class="stat-num" id="pr-scr">1</div>
+            <div class="stat-label">Screening done</div>
+            <div class="stat-delta">↑ action needed</div>
+          </div>
+          <div class="stat-cell" onclick="prFilter('Agreement Sent',this)">
+            <div class="stat-num" id="pr-sent">1</div>
+            <div class="stat-label">Agreement sent</div>
+          </div>
+          <div class="stat-cell" onclick="prFilter('Empanelled',this)">
+            <div class="stat-num" id="pr-emp">1</div>
+            <div class="stat-label">Empanelled</div>
+            <div class="stat-delta">Active</div>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <span class="filter-label">Filter:</span>
+          <div class="chip active" onclick="prChip(this,'all')">All</div>
+          <div class="chip" onclick="prChip(this,'Applied')">Applied</div>
+          <div class="chip" onclick="prChip(this,'Under Review')">Under review</div>
+          <div class="chip" onclick="prChip(this,'Screening Done')">Screening done</div>
+          <div class="chip" onclick="prChip(this,'Agreement Sent')">Agreement sent</div>
+          <div class="chip" onclick="prChip(this,'Empanelled')">Empanelled</div>
+          <div class="chip" onclick="prChip(this,'Rejected')">Rejected</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Practitioner</th>
+                <th>Module</th>
+                <th>City</th>
+                <th>Applied on</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="pr-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="pr-empty" style="display:none">No practitioners match this filter.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: SESSIONS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panel-sessions">
+        <div class="page-hdr">
+          <div>
+            <h1>Sessions</h1>
+            <p>Create sessions, send confirmations, and track delivery</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-gold btn-sm" onclick="showToast('New session form — scroll down')">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create session
+            </button>
+          </div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-cell">
+            <div class="stat-num">5</div>
+            <div class="stat-label">Total sessions</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">2</div>
+            <div class="stat-label">Upcoming</div>
+            <div class="stat-delta">Next: 28 Jun</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">2</div>
+            <div class="stat-label">Consent pending</div>
+            <div class="stat-delta red">↑ action needed</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">3</div>
+            <div class="stat-label">Completed</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Practitioner</th>
+                <th>Date & venue</th>
+                <th>Audience</th>
+                <th>Participants</th>
+                <th>Payout (₹)</th>
+                <th>Consent</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="sess-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: AGREEMENTS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panel-agreements">
+        <div class="page-hdr">
+          <div>
+            <h1>Agreements</h1>
+            <p>All signed empanelment agreements with timestamps</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-ghost btn-sm" onclick="showToast('Exported')">Export</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Practitioner</th>
+                <th>Agreement ref.</th>
+                <th>Module</th>
+                <th>Signed on</th>
+                <th>Timestamp</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="agr-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: PAYOUTS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panel-payouts">
+        <div class="page-hdr">
+          <div>
+            <h1>Payouts</h1>
+            <p>Track practitioner payments per session — mark paid after bank transfer</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-ghost btn-sm" onclick="showToast('Exported')">Export</button>
+          </div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-cell">
+            <div class="stat-num">₹41,500</div>
+            <div class="stat-label">Total paid out</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">₹14,000</div>
+            <div class="stat-label">Pending payment</div>
+            <div class="stat-delta red">↑ 2 sessions</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">5</div>
+            <div class="stat-label">Sessions invoiced</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num">3</div>
+            <div class="stat-label">Paid this month</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Practitioner</th>
+                <th>Session</th>
+                <th>Session date</th>
+                <th>Payout (₹)</th>
+                <th>Pay to</th>
+                <th>Method</th>
+                <th>Invoice ref.</th>
+                <th>Payment status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="pay-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+     TAB: PHOTOS
+════════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panel-photos">
+        <div class="page-hdr">
+          <div>
+            <h1>Session Photos</h1>
+            <p>Review submitted photo sets — approve for gallery or mark for deletion. All photos auto-expire 30 days
+              after submission.</p>
+          </div>
+          <div class="page-hdr-r">
+            <button class="btn btn-ghost btn-sm" onclick="showToast('Exported')">Export log</button>
+          </div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-cell">
+            <div class="stat-num" id="ph-stat-total">0</div>
+            <div class="stat-label">Total submissions</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="ph-stat-pending">0</div>
+            <div class="stat-label">Pending review</div>
+            <div class="stat-delta red" id="ph-stat-pending-delta"></div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="ph-stat-approved">0</div>
+            <div class="stat-label">Approved / Published</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="ph-stat-expiring">0</div>
+            <div class="stat-label">Expiring within 7 days</div>
+            <div class="stat-delta red" id="ph-stat-expiring-delta"></div>
+          </div>
+        </div>
+        <div class="photo-notice">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          Photos are stored for <strong>30 days from submission date</strong>. Anything not approved before expiry is
+          automatically deleted — no action needed. To generate a post-session photo submission link for a practitioner,
+          go to <strong>Sessions → Completed</strong> and click <strong>Photo link</strong>.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Practitioner</th>
+                <th>Session ref.</th>
+                <th>Module</th>
+                <th>City</th>
+                <th>Submitted</th>
+                <th>Expires</th>
+                <th>Days left</th>
+                <th>Photos</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="photos-tbody"></tbody>
+          </table>
+        </div>
+        <div class="photo-empty" id="photos-empty">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          <div class="photo-empty-title">No photo submissions yet</div>
+          <div class="photo-empty-sub">Generate a photo link from the Sessions panel after a session is completed — the
+            practitioner submits via their unique link and it appears here.</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <!-- EMAIL DRAFT MODAL -->
+  <div class="draft-overlay" id="draft-overlay" onclick="handleDraftOverlay(event)">
+    <div class="draft-modal">
+      <div class="draft-header">
+        <div>
+          <div class="draft-header-title" id="draft-title">Draft message</div>
+          <div class="draft-header-sub" id="draft-sub">Pre-filled · copy and send via your preferred channel</div>
+        </div>
+        <button class="draft-close" onclick="closeDraft()">✕</button>
+      </div>
+      <div class="draft-tabs">
+        <button class="draft-tab active" onclick="switchDraftTab('email',this)">Email</button>
+        <button class="draft-tab" onclick="switchDraftTab('whatsapp',this)">WhatsApp</button>
+      </div>
+      <div class="draft-body">
+        <div class="draft-meta" id="draft-meta"></div>
+        <!-- EMAIL PANEL -->
+        <div class="draft-panel active" id="dp-email">
+          <div class="draft-subject" id="draft-subject-line"></div>
+          <div class="draft-text" id="draft-email-body"></div>
+        </div>
+        <!-- WHATSAPP PANEL -->
+        <div class="draft-panel" id="dp-whatsapp">
+          <div class="draft-text" id="draft-wa-body"></div>
+        </div>
+      </div>
+      <div class="draft-footer">
+        <div class="draft-note">Edit as needed before sending. Nothing is sent automatically.</div>
+        <button class="btn btn-ghost btn-sm" onclick="copyDraft()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copy
+        </button>
+        <button class="btn btn-dark btn-sm" onclick="openInMail()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+            <polyline points="22,6 12,13 2,6" />
+          </svg>
+          Open in mail
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ═══════════════════════════════════════════
+    // DATA
+    // ═══════════════════════════════════════════
+
+    const practitioners = [
+      { id: 1, name: 'Priya Sharma', ini: 'PS', role: 'Certified Financial Planner', org: 'Independent CFP Practice', module: 'Foundations of Personal Finance', city: 'Hyderabad', state: 'Telangana', exp: '9–12 yrs', email: 'priya.sharma@gmail.com', date: '12 Jun 2025', status: 'Empanelled', ref: '0041', upi: 'priya.sharma@upi', bank: '—' },
+      { id: 2, name: 'Vikram Kulkarni', ini: 'VK', role: 'Equity Analyst', org: 'Motilal Oswal', module: 'Equity Investing Simplified', city: 'Mumbai', state: 'Maharashtra', exp: '9–12 yrs', email: 'vikram.k@gmail.com', date: '14 Jun 2025', status: 'Agreement Sent', ref: '0042', upi: 'vikramk@oksbi', bank: '—' },
+      { id: 3, name: 'Anita Menon', ini: 'AM', role: 'Portfolio Manager', org: 'HDFC AMC', module: 'Asset Allocation & Portfolio Construction', city: 'Bengaluru', state: 'Karnataka', exp: '13–18 yrs', email: 'anita.menon@gmail.com', date: '18 Jun 2025', status: 'Screening Done', ref: '0043', upi: '—', bank: 'HDFC 4521 / HDFC0001' },
+      { id: 4, name: 'Rohan Desai', ini: 'RD', role: 'Wealth Advisor', org: 'IIFL Wealth', module: 'Retirement & Goal-Based Financial Planning', city: 'Pune', state: 'Maharashtra', exp: '5–8 yrs', email: 'rohan.desai@gmail.com', date: '20 Jun 2025', status: 'Under Review', ref: '0044', upi: 'rohan.d@paytm', bank: '—' },
+      { id: 5, name: 'Sneha Nair', ini: 'SN', role: 'CFP & Retirement Specialist', org: 'Independent Practice', module: 'Retirement & Goal-Based Financial Planning', city: 'Chennai', state: 'Tamil Nadu', exp: '9–12 yrs', email: 'sneha.nair@gmail.com', date: '22 Jun 2025', status: 'Applied', ref: '0045', upi: '—', bank: '—' },
+      { id: 6, name: 'Karan Mehta', ini: 'KM', role: 'Relationship Manager', org: 'Axis Bank Wealth', module: 'Investment Solutions & Portfolio Strategies', city: 'Delhi', state: 'Delhi', exp: '5–8 yrs', email: 'karan.mehta@gmail.com', date: '23 Jun 2025', status: 'Rejected', ref: '0046', upi: '—', bank: '—' },
+    ];
+
+    const sessions = [
+      { id: 'S001', module: 'Equity Investing Simplified', practitioner: 'Vikram Kulkarni', prId: 2, date: '28 Jun 2025', time: '10:00 AM – 12:30 PM', venue: 'WeWork BKC, Mumbai', audience: 'Organisations & Institutions', participants: 18, payout: 8500, consent: 'Consent done', status: 'Upcoming', ref: 'IQC-S001' },
+      { id: 'S002', module: 'Foundations of Personal Finance', practitioner: 'Priya Sharma', prId: 1, date: '05 Jul 2025', time: '3:00 PM – 6:00 PM', venue: 'Regus Madhapur, Hyderabad', audience: 'Groups', participants: 12, payout: 5500, consent: 'Pending consent', status: 'Upcoming', ref: 'IQC-S002' },
+      { id: 'S003', module: 'Asset Allocation & Portfolio Construction', practitioner: 'Anita Menon', prId: 3, date: '15 Jun 2025', time: '10:00 AM – 1:00 PM', venue: 'Client office, Bengaluru', audience: 'AMCs & Wealth Firms', participants: 20, payout: 12000, consent: 'Consent done', status: 'Completed', ref: 'IQC-S003' },
+      { id: 'S004', module: 'Retirement & Goal-Based Financial Planning', practitioner: 'Priya Sharma', prId: 1, date: '02 Jun 2025', time: '11:00 AM – 1:30 PM', venue: 'Regus Madhapur, Hyderabad', audience: 'Groups', participants: 14, payout: 6000, consent: 'Consent done', status: 'Completed', ref: 'IQC-S004' },
+      { id: 'S005', module: 'Retirement & Goal-Based Financial Planning', practitioner: 'Priya Sharma', prId: 1, date: '20 May 2025', time: '4:00 PM – 6:30 PM', venue: 'WeWork Banjara Hills, Hyd', audience: 'Groups', participants: 10, payout: 4500, consent: 'Consent done', status: 'Completed', ref: 'IQC-S005' },
+    ];
+
+    const agreements = [
+      { id: 1, name: 'Priya Sharma', ini: 'PS', ref: 'IQC-EMP-0041', module: 'Foundations of Personal Finance', signed: '12 Jun 2025', ts: '12 Jun 2025  09:42:17', method: 'Drawn signature', status: 'Active' },
+      { id: 2, name: 'Vikram Kulkarni', ini: 'VK', ref: 'IQC-EMP-0042', module: 'Equity Investing Simplified', signed: '15 Jun 2025', ts: '15 Jun 2025  11:18:04', method: 'Typed signature', status: 'Active' },
+      { id: 3, name: 'Anita Menon', ini: 'AM', ref: 'IQC-EMP-0043', module: 'Asset Allocation & Portfolio Construction', signed: '19 Jun 2025', ts: '19 Jun 2025  14:55:30', method: 'Drawn signature', status: 'Active' },
+      { id: 4, name: 'Rohan Desai', ini: 'RD', ref: 'IQC-EMP-0044', module: 'Retirement & Goal-Based Financial Planning', signed: '—', ts: 'Pending', method: '—', status: 'Pending signature' },
+    ];
+
+    const payouts = [
+      { id: 1, name: 'Priya Sharma', ini: 'PS', session: 'IQC-S004', module: 'Retirement & Goal-Based Financial Planning', sessDate: '02 Jun 2025', payout: 6000, payTo: 'Priya Sharma', method: 'UPI — priya.sharma@upi', invRef: 'IQC-INV-0021', status: 'Paid', paidOn: '09 Jun 2025' },
+      { id: 2, name: 'Priya Sharma', ini: 'PS', session: 'IQC-S005', module: 'Retirement & Goal-Based Financial Planning', sessDate: '20 May 2025', payout: 4500, payTo: 'Priya Sharma', method: 'UPI — priya.sharma@upi', invRef: 'IQC-INV-0019', status: 'Paid', paidOn: '27 May 2025' },
+      { id: 3, name: 'Anita Menon', ini: 'AM', session: 'IQC-S003', module: 'Asset Allocation & Portfolio Construction', sessDate: '15 Jun 2025', payout: 12000, payTo: 'Anita Menon', method: 'Bank — HDFC 4521', invRef: 'IQC-INV-0023', status: 'Paid', paidOn: '22 Jun 2025' },
+      { id: 4, name: 'Vikram Kulkarni', ini: 'VK', session: 'IQC-S001', module: 'Equity Investing Simplified', sessDate: '28 Jun 2025', payout: 8500, payTo: 'Vikram Kulkarni', method: 'UPI — vikramk@oksbi', invRef: 'IQC-INV-0025', status: 'Pending', paidOn: '—' },
+      { id: 5, name: 'Priya Sharma', ini: 'PS', session: 'IQC-S002', module: 'Foundations of Personal Finance', sessDate: '05 Jul 2025', payout: 5500, payTo: 'Priya Sharma', method: 'UPI — priya.sharma@upi', invRef: 'IQC-INV-0026', status: 'Pending', paidOn: '—' },
+    ];
+
+    const requests = [
+      { id: 'R001', name: 'Suresh Patel', org: 'TechCorp India Pvt Ltd', city: 'Mumbai', state: 'Maharashtra', type: 'Organisations & Institutions', topic: 'Investment Solutions & Portfolio Strategies', size: '16–25', minCommit: 16, venue: 'TechCorp conference room, Mumbai', dates: 'July 2nd week', received: '10 Jun 2025', status: 'Matched', assignedTo: 'Priya Sharma', email: 'suresh.p@techcorp.in' },
+      { id: 'R002', name: 'Deepa Krishnan', org: 'Friends & colleagues group', city: 'Bengaluru', state: 'Karnataka', type: 'Groups', topic: 'Equity Investing Simplified', size: '9–15', minCommit: 9, venue: '', dates: 'July last week', received: '13 Jun 2025', status: 'New', assignedTo: '—', email: 'deepa.k@gmail.com' },
+      { id: 'R003', name: 'Kotak Wealth Mgmt', org: 'Kotak Mahindra Wealth', city: 'Bengaluru', state: 'Karnataka', type: 'AMCs & Wealth Firms', topic: 'Retirement & Goal-Based Financial Planning', size: '16–25', minCommit: 16, venue: 'Client office, Bengaluru', dates: 'Anytime July', received: '14 Jun 2025', status: 'Confirmed', assignedTo: 'Priya Sharma', email: 'training@kotak.com' },
+      { id: 'R004', name: 'Priya Menon', org: 'Residential community group', city: 'Hyderabad', state: 'Telangana', type: 'Groups', topic: 'Foundations of Personal Finance', size: '5–8', minCommit: 5, venue: 'Prestige Society clubhouse, Hyderabad', dates: 'Aug 1st week', received: '18 Jun 2025', status: 'New', assignedTo: '—', email: 'priyam@gmail.com' },
+      { id: 'R005', name: 'MedCare Hospitals', org: 'MedCare Hospital Group', city: 'Chennai', state: 'Tamil Nadu', type: 'Organisations & Institutions', topic: 'Retirement & Goal-Based Financial Planning', size: '16–25', minCommit: 16, venue: 'MedCare HQ training room, Chennai', dates: 'July 3rd week', received: '20 Jun 2025', status: 'New', assignedTo: '—', email: 'hr@medcare.in' },
+    ];
+
+    // ═══════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════
+    let prFilter_ = 'all';
+    let prSelected = null;
+    let reqSelected = null;
+    let genLink = '';
+    let genPhotoLinkStr = '';
+
+    // ═══════════════════════════════════════════
+    // TAB SWITCHING
+    // ═══════════════════════════════════════════
+    function switchTab(name, el) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.sb-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      el.classList.add('active');
+      prSelected = null; reqSelected = null;
+      renderAll();
+    }
+
+    // ═══════════════════════════════════════════
+    // PRACTITIONERS
+    // ═══════════════════════════════════════════
+    const prStatusMeta = {
+      'Applied': { cls: 's-applied', label: 'Applied' },
+      'Under Review': { cls: 's-review', label: 'Under review' },
+      'Screening Done': { cls: 's-screening', label: 'Screening done' },
+      'Agreement Sent': { cls: 's-sent', label: 'Agreement sent' },
+      'Empanelled': { cls: 's-empanelled', label: 'Empanelled' },
+      'Rejected': { cls: 's-rejected', label: 'Rejected' },
+    };
+    const pipeline = ['Applied', 'Under Review', 'Screening Done', 'Agreement Sent', 'Empanelled'];
+    const pDates = { 'Applied': '12 Jun', 'Under Review': '13 Jun', 'Screening Done': '16 Jun', 'Agreement Sent': '17 Jun', 'Empanelled': '18 Jun' };
+
+    function renderPractitioners() {
+      const rows = practitioners.filter(p => prFilter_ === 'all' || p.status === prFilter_);
+      document.getElementById('pr-empty').style.display = rows.length ? 'none' : 'block';
+      document.getElementById('pr-tbody').innerHTML = rows.map(p => {
+        const sm = prStatusMeta[p.status];
+        const isSel = prSelected === p.id;
+        const prRow = `<tr class="dr ${isSel ? 'sel' : ''}" id="prrow-${p.id}" onclick="togglePr(${p.id})">
+      <td><div class="p-cell"><div class="p-av">${p.ini}</div><div><div class="p-name">${p.name}</div><div class="p-sub">${p.role} · ${p.org}</div></div></div></td>
+      <td style="color:var(--ink-m)">${p.module}</td>
+      <td style="color:var(--ink-m)">${p.city}${p.state ? `<div style="font-size:10px;color:var(--ink-f)">${p.state}</div>` : ''}</td>
+      <td style="color:var(--ink-f);font-size:12px">${p.date}</td>
+      <td><span class="pill ${sm.cls}"><span class="pd"></span>${sm.label}</span></td>
+    </tr>`;
+        return prRow + (isSel ? prProfileHTML(p) : '');
+      }).join('');
+      // stats
+      document.getElementById('pr-all').textContent = practitioners.length;
+      document.getElementById('pr-app').textContent = practitioners.filter(p => p.status === 'Applied').length;
+      document.getElementById('pr-scr').textContent = practitioners.filter(p => p.status === 'Screening Done').length;
+      document.getElementById('pr-sent').textContent = practitioners.filter(p => p.status === 'Agreement Sent').length;
+      document.getElementById('pr-emp').textContent = practitioners.filter(p => p.status === 'Empanelled').length;
+    }
+
+    function prProfileHTML(p) {
+      const ci = pipeline.indexOf(p.status);
+      const pipeHTML = pipeline.map((step, i) => {
+        let cls = 'pn-pend', icon = i + 1;
+        if (p.status !== 'Rejected' && (i < ci || p.status === 'Empanelled')) { cls = 'pn-done'; icon = '✓'; }
+        else if (i === ci && p.status !== 'Rejected') { cls = 'pn-active'; }
+        return `<div class="pipe-step"><div class="pn ${cls}">${icon}</div><span class="pipe-label">${step}</span>${cls !== 'pn-pend' ? `<span class="pipe-date">${pDates[step] || ''}</span>` : ''}</div>`;
+      }).join('');
+
+      const showGen = p.status === 'Screening Done';
+      const sm = prStatusMeta[p.status];
+      return `<tr class="profile-row" id="prprofile-${p.id}"><td colspan="5"><div class="profile-card"><div class="profile-inner">
+    <button class="prof-close" onclick="closePr(event)">✕</button>
+    <div class="prof-grid">
+      <div>
+        <div class="p-cell" style="margin-bottom:.5rem"><div class="prof-av-lg">${p.ini}</div><div><div class="prof-name">${p.name}</div><div class="prof-role">${p.role}</div><div class="prof-org">${p.org}</div></div></div>
+        <div class="kv">
+          <div class="kv-row"><span class="kv-l">Module</span><span class="kv-v">${p.module}</span></div>
+          <div class="kv-row"><span class="kv-l">City</span><span class="kv-v">${p.city}</span></div>
+          <div class="kv-row"><span class="kv-l">State</span><span class="kv-v">${p.state || '—'}</span></div>
+          <div class="kv-row"><span class="kv-l">Experience</span><span class="kv-v">${p.exp}</span></div>
+          <div class="kv-row"><span class="kv-l">Email</span><span class="kv-v" style="font-size:12px">${p.email}</span></div>
+          <div class="kv-row"><span class="kv-l">Applied</span><span class="kv-v">${p.date}</span></div>
+          <div class="kv-row"><span class="kv-l">Ref.</span><span class="kv-v">IQC-EMP-${p.ref}</span></div>
+          <div class="kv-row"><span class="kv-l">Payment</span><span class="kv-v" style="font-size:12px">${p.upi !== '—' ? 'UPI: ' + p.upi : 'Bank: ' + p.bank}</span></div>
+          <div class="kv-row"><span class="kv-l">Status</span><span class="pill ${sm.cls}"><span class="pd"></span>${sm.label}</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-title">Pipeline progress</div>
+        <div class="pipeline">${pipeHTML}</div>
+      </div>
+      <div class="prof-actions">
+        <div class="sec-title">Update status</div>
+        <select class="status-sel" onchange="updatePrStatus(${p.id},this.value)">
+          ${['Applied', 'Under Review', 'Screening Done', 'Agreement Sent', 'Empanelled', 'Rejected'].map(s => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        ${showGen ? `<button class="gen-link-btn" onclick="genAgreementLink(${p.id})">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Generate & send agreement link
+        </button>`: ''}
+        <div class="link-prev" id="lp-${p.id}"></div>
+        <div class="link-btns" id="lb-${p.id}" style="display:none">
+          <button class="link-btn" onclick="copyLink()"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy link</button>
+          <button class="link-btn send" onclick="showToast('Email sent to ${p.name} ✓')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Send email</button>
+        </div>
+        <div class="sec-btns">
+          <button class="sec-btn" onclick="showToast('Message panel opening…')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Message</button>
+          <button class="sec-btn" onclick="showToast('Notes saved')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Notes</button>
+        </div>
+      </div>
+    </div>
+  </div></div></td></tr>`;
+    }
+
+    function togglePr(id) { prSelected = prSelected === id ? null : id; renderPractitioners(); if (prSelected) { const r = document.getElementById('prprofile-' + prSelected); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }
+    function closePr(e) { e.stopPropagation(); prSelected = null; renderPractitioners(); }
+    function updatePrStatus(id, v) { const p = practitioners.find(x => x.id === id); p.status = v; renderPractitioners(); showToast('Status updated to "' + v + '"'); }
+    function prFilter(v, el) { prFilter_ = v; document.querySelectorAll('#panel-practitioners .stat-cell').forEach(c => c.classList.remove('active')); el.classList.add('active'); prSelected = null; renderPractitioners(); }
+    function prChip(el, v) { document.querySelectorAll('#panel-practitioners .chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); prFilter_ = v; prSelected = null; renderPractitioners(); }
+    function genAgreementLink(id) {
+      const p = practitioners.find(x => x.id === id);
+      const params = new URLSearchParams({ name: p.name, role: p.role, org: p.org, module: p.module, city: p.city, state: p.state || '', ref: p.ref, email: p.email });
+      genLink = 'iqcommune-onboarding.html?' + params.toString();
+      const lp = document.getElementById('lp-' + id); if (lp) { lp.textContent = genLink; lp.classList.add('show'); }
+      const lb = document.getElementById('lb-' + id); if (lb) lb.style.display = 'flex';
+      p.status = 'Agreement Sent'; renderPractitioners(); showToast('Link generated — ready to send to ' + p.name);
+    }
+    function copyLink() { if (genLink) navigator.clipboard.writeText(genLink).catch(() => { }); showToast('Link copied to clipboard'); }
+
+    // ═══════════════════════════════════════════
+    // SESSIONS
+    // ═══════════════════════════════════════════
+    function renderSessions() {
+      document.getElementById('sess-tbody').innerHTML = sessions.map(s => {
+        const cCls = s.consent === 'Consent done' ? 's-consent-done' : 's-pending-consent';
+        const sCls = s.status === 'Upcoming' ? 's-sent' : s.status === 'Completed' ? 's-empanelled' : 's-review';
+        return `<tr class="dr" onclick="showToast('Session detail view — coming soon')">
+      <td><div class="p-name">${s.module}</div><div class="p-sub">${s.ref}</div></td>
+      <td><div class="p-cell"><div class="p-av" style="width:28px;height:28px;font-size:10px">${s.practitioner.split(' ').map(n => n[0]).join('')}</div><span style="font-size:13px;color:var(--ink)">${s.practitioner}</span></div></td>
+      <td><div style="font-size:13px;color:var(--ink)">${s.date}</div><div style="font-size:11px;color:var(--ink-f)">${s.time} · ${s.venue}</div></td>
+      <td style="font-size:12px;color:var(--ink-m)">${s.audience}</td>
+      <td style="color:var(--ink);font-weight:500">${s.participants}</td>
+      <td style="font-weight:500;color:var(--ink)">₹${s.payout.toLocaleString()}</td>
+      <td><span class="pill ${cCls}"><span class="pd"></span>${s.consent}</span></td>
+      <td><span class="pill ${sCls}"><span class="pd"></span>${s.status}</span></td>
+      <td>${s.consent === 'Pending consent'
+            ? `<button class="btn btn-gold btn-xs" onclick="event.stopPropagation();showToast('Confirmation link sent to ${s.practitioner}')">Send confirmation</button>`
+            : s.status === 'Completed'
+              ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();genPhotoLink('${s.id}')">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Photo link
+            </button>`
+              : '<span style="font-size:11px;color:var(--ink-f)">—</span>'
+          }</td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ═══════════════════════════════════════════
+    // AGREEMENTS
+    // ═══════════════════════════════════════════
+    function renderAgreements() {
+      document.getElementById('agr-tbody').innerHTML = agreements.map(a => {
+        const sCls = a.status === 'Active' ? 's-empanelled' : 's-pending-consent';
+        return `<tr class="dr" onclick="showToast('Agreement PDF preview — coming soon')">
+      <td><div class="p-cell"><div class="p-av">${a.ini}</div><div><div class="p-name">${a.name}</div></div></div></td>
+      <td style="font-size:12px;font-family:monospace;color:var(--ink-m)">${a.ref}</td>
+      <td style="color:var(--ink-m);font-size:13px">${a.module}</td>
+      <td style="color:var(--ink-m);font-size:13px">${a.signed}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--ink-f)">${a.ts}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${a.method}</td>
+      <td><span class="pill ${sCls}"><span class="pd"></span>${a.status}</span></td>
+      <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showToast('Downloading agreement…')">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button></td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ═══════════════════════════════════════════
+    // PAYOUTS
+    // ═══════════════════════════════════════════
+    function renderPayouts() {
+      document.getElementById('pay-tbody').innerHTML = payouts.map((p, idx) => {
+        const isPaid = p.status === 'Paid';
+        const sCls = isPaid ? 's-pay-done' : 's-pay-pending';
+        return `<tr class="dr">
+      <td><div class="p-cell"><div class="p-av">${p.ini}</div><span class="p-name">${p.name}</span></div></td>
+      <td style="font-size:12px;font-family:monospace;color:var(--ink-m)">${p.session}</td>
+      <td style="color:var(--ink-m);font-size:13px">${p.sessDate}</td>
+      <td style="font-weight:600;color:var(--ink);font-size:14px">₹${p.payout.toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${p.payTo}</td>
+      <td style="font-size:11px;color:var(--ink-f)">${p.method}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--ink-f)">${p.invRef}</td>
+      <td>
+        <span class="pill ${sCls}"><span class="pd"></span>${isPaid ? 'Paid — ' + p.paidOn : 'Pending'}</span>
+      </td>
+      <td>
+        ${!isPaid ? `<div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-gold btn-xs" onclick="markPaid(${idx})">Mark as paid</button>
+          <button class="btn btn-ghost btn-xs" onclick="openDraft('payout-reminder',null,payouts[${idx}])">Draft reminder</button>
+        </div>`: '<span style="font-size:11px;color:var(--ink-f)">✓ Done</span>'}
+      </td>
+    </tr>`;
+      }).join('');
+    }
+    function markPaid(idx) {
+      const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      payouts[idx].status = 'Paid'; payouts[idx].paidOn = today;
+      renderPayouts(); showToast('Payment marked as paid — ' + payouts[idx].name);
+    }
+
+    // ═══════════════════════════════════════════
+    // SESSION REQUESTS
+    // ═══════════════════════════════════════════
+    const reqMeta = {
+      'New': { cls: 's-new', label: 'New' },
+      'Matched': { cls: 's-matched', label: 'Matched' },
+      'Confirmed': { cls: 's-confirmed', label: 'Confirmed' },
+      'Completed': { cls: 's-completed', label: 'Completed' },
+    };
+    function renderRequests() {
+      document.getElementById('req-tbody').innerHTML = requests.map(r => {
+        const rm = reqMeta[r.status];
+        const isSel = reqSelected === r.id;
+        const row = `<tr class="dr ${isSel ? 'sel' : ''}" id="reqrow-${r.id}" onclick="toggleReq('${r.id}')">
+      <td><div class="p-name">${r.name}</div><div class="p-sub">${r.org}</div>${r.venue ? '<div style="font-size:10px;color:var(--green);margin-top:2px;">📍 Venue offered</div>' : ''}</td>
+      <td style="color:var(--ink-m)">${r.topic}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${r.type}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${r.city || '—'}${r.state ? '<div style="font-size:10px;color:var(--ink-f)">' + r.state + '</div>' : ''}</td>
+      <td style="color:var(--ink-m)">${r.size} people</td>
+      <td style="font-weight:600;color:var(--gold-dark)">${r.minCommit} pax</td>
+      <td style="font-size:12px;color:var(--ink-m)">${r.dates}</td>
+      <td style="font-size:12px;color:var(--ink-f)">${r.received}</td>
+      <td><span class="pill ${rm.cls}"><span class="pd"></span>${rm.label}</span></td>
+      <td>${r.status === 'New' ? `<button class="btn btn-dark btn-xs" onclick="event.stopPropagation();reviewReq('${r.id}')">Review</button>` : '<span style="font-size:11px;color:var(--ink-f)">${r.assignedTo}</span>'}</td>
+    </tr>`;
+        return row + (isSel ? reqExpandHTML(r) : '');
+      }).join('');
+      document.getElementById('rq-all').textContent = requests.length;
+      document.getElementById('rq-new').textContent = requests.filter(r => r.status === 'New').length;
+      document.getElementById('rq-matched').textContent = requests.filter(r => r.status === 'Matched').length;
+      document.getElementById('rq-conf').textContent = requests.filter(r => r.status === 'Confirmed').length;
+    }
+
+    function reqExpandHTML(r) {
+      const avail = practitioners.filter(p => p.status === 'Empanelled' && p.module === r.topic);
+      const availHTML = avail.length
+        ? avail.map(p => `<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border)"><div class="p-cell"><div class="p-av" style="width:28px;height:28px;font-size:10px">${p.ini}</div><div><div class="p-name">${p.name}</div><div class="p-sub">${p.city}${p.state ? ', ' + p.state : ''}</div></div></div><button class="btn btn-gold btn-xs" onclick="assignPractitioner('${r.id}','${p.name}')">Assign</button></div>`).join('')
+        : `<div style="font-size:12px;color:var(--ink-f);padding:.5rem 0">No empanelled practitioners match this module yet.</div>`;
+      return `<tr id="reqexpand-${r.id}"><td colspan="10"><div class="req-expand"><div class="req-inner">
+    <button class="prof-close" onclick="closeReq(event)">✕</button>
+    <div class="req-grid">
+      <div>
+        <div class="sec-title">Request details</div>
+        <div class="kv">
+          <div class="kv-row"><span class="kv-l">From</span><span class="kv-v">${r.name}</span></div>
+          <div class="kv-row"><span class="kv-l">Organisation</span><span class="kv-v">${r.org}</span></div>
+          <div class="kv-row"><span class="kv-l">Email</span><span class="kv-v" style="font-size:12px">${r.email}</span></div>
+          <div class="kv-row"><span class="kv-l">City</span><span class="kv-v">${r.city || '—'}</span></div>
+          <div class="kv-row"><span class="kv-l">State</span><span class="kv-v">${r.state || '—'}</span></div>
+          <div class="kv-row"><span class="kv-l">Topic</span><span class="kv-v">${r.topic}</span></div>
+          <div class="kv-row"><span class="kv-l">Audience</span><span class="kv-v">${r.type}</span></div>
+          <div class="kv-row"><span class="kv-l">SPOC</span><span class="kv-v">${r.name} (primary contact)</span></div>
+          <div class="kv-row"><span class="kv-l">Group size</span><span class="kv-v">${r.size} people</span></div>
+          <div class="kv-row"><span class="kv-l">Min. commitment</span><span class="kv-v" style="color:var(--gold-dark);font-weight:600">${r.minCommit} participants</span></div>
+          <div class="kv-row"><span class="kv-l">Venue</span><span class="kv-v" style="font-size:12px">${r.venue || 'Not specified — we will arrange'}</span></div>
+          <div class="kv-row"><span class="kv-l">Preferred dates</span><span class="kv-v">${r.dates}</span></div>
+          <div class="kv-row"><span class="kv-l">Received</span><span class="kv-v">${r.received}</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-title">Available practitioners for this module</div>
+        ${availHTML}
+      </div>
+      <div>
+        <div class="sec-title">Actions</div>
+        <div style="display:flex;flex-direction:column;gap:.65rem">
+          <select class="status-sel" onchange="updateReqStatus('${r.id}',this.value)">
+            ${['New', 'Matched', 'Confirmed', 'Completed'].map(s => `<option ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+          <button class="btn btn-dark btn-sm" onclick="openDraft('followup-client', null, requests.find(x=>x.id==='${r.id}'))">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Draft follow-up to client
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="showToast('Create session from this request — coming soon')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Create session from request
+          </button>
+        </div>
+      </div>
+    </div>
+  </div></div></td></tr>`;
+    }
+
+    function toggleReq(id) { reqSelected = reqSelected === id ? null : id; renderRequests(); }
+    function closeReq(e) { e.stopPropagation(); reqSelected = null; renderRequests(); }
+    function reviewReq(id) { const r = requests.find(x => x.id === id); r.status = 'Matched'; reqSelected = id; renderRequests(); showToast('Request moved to Matched'); }
+    function updateReqStatus(id, v) { const r = requests.find(x => x.id === id); r.status = v; renderRequests(); showToast('Request status updated to "' + v + '"'); }
+
+    function assignPractitioner(rid, pname) {
+      const r = requests.find(x => x.id === rid);
+      const p = practitioners.find(x => x.name === pname);
+      r.assignedTo = pname; r.status = 'Matched';
+      renderRequests();
+      // Open availability check draft
+      openDraft('availability', p, r);
+    }
+
+    // ═══════════════════════════════════════════
+    // EMAIL DRAFT MODAL
+    // ═══════════════════════════════════════════
+    let currentDraftEmail = '';
+    let currentDraftSubject = '';
+    let currentDraftEmail2 = '';
+    let currentDraftWA = '';
+    let currentDraftMode = 'email';
+
+    function openDraft(type, practitioner, context) {
+      const modal = document.getElementById('draft-overlay');
+      const p = practitioner;
+      const r = context;
+
+      let title = '', sub = '', meta = '', subject = '', emailBody = '', waBody = '';
+
+      if (type === 'availability') {
+        title = 'Availability check — ' + p.name;
+        sub = 'Send to practitioner · ' + p.email;
+        currentDraftEmail2 = p.email;
+        meta = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> ${r.topic} · ${r.dates} · ${r.size} participants · ${r.type}`;
+        subject = 'iqcommune — Availability check for a session request';
+        emailBody =
+          `Hi ${p.name.split(' ')[0]},
+
+Hope you're well. We have a training session request that matches your module — wanted to check your availability before we confirm anything.
+
+Session details:
+  Module:    ${r.topic}
+  Audience:  ${r.type}
+  Group size: ${r.size} participants
+  Preferred dates: ${r.dates}
+  City: ${r.city || p.city}
+
+If you're available and open to taking this session, please let us know a preferred date and time within the above window and we'll confirm the booking.
+
+If the timing doesn't work, no worries at all — just say so and we'll check with another practitioner.
+
+Warm regards,
+iqcommune team
+hello@iqcommune.com`;
+
+        waBody =
+          `Hi ${p.name.split(' ')[0]}, this is iqcommune. Hope you're doing well!
+
+We have a session request that matches your module — wanted to check your availability quickly.
+
+📚 Module: ${r.topic}
+👥 Audience: ${r.type} · ${r.size} participants
+📅 Preferred dates: ${r.dates}
+
+Are you available to take this? If yes, please share a preferred date/time within the window above and we'll lock it in. If not, no worries!
+
+— iqcommune team`;
+      }
+
+      else if (type === 'followup-client') {
+        title = 'Follow-up to client — ' + r.name;
+        sub = 'Send to requester · ' + r.email;
+        currentDraftEmail2 = r.email;
+        meta = `<strong>To:</strong> ${r.name} &nbsp;·&nbsp; ${r.email}<br/><strong>Re:</strong> ${r.topic} request · received ${r.received}`;
+        subject = 'iqcommune — Update on your training session request';
+        emailBody =
+          `Hi ${r.name.split(' ')[0]},
+
+Thank you for your interest in iqcommune. We've reviewed your request for a session on ${r.topic}.
+
+We're currently aligning a practitioner for your group and will confirm the session details — including date, time, and venue — within 2–3 working days.
+
+For reference, your request details:
+  Topic: ${r.topic}
+  Group: ${r.size} participants · ${r.type}
+  Preferred window: ${r.dates}
+
+If anything has changed or you have a more specific date in mind, feel free to reply to this email.
+
+Warm regards,
+iqcommune team
+hello@iqcommune.com`;
+
+        waBody =
+          `Hi ${r.name.split(' ')[0]}, this is iqcommune!
+
+Thanks for your training request on *${r.topic}*. We've reviewed it and are aligning a practitioner for your group.
+
+We'll confirm session details (date, time, venue) within 2–3 working days.
+
+Your group: ${r.size} participants · ${r.type}
+Preferred: ${r.dates}
+
+Feel free to reply here if anything changes!
+
+— iqcommune team`;
+      }
+
+      else if (type === 'payout-reminder') {
+        const py = context; // context is a payout record here
+        title = 'Payout reminder — ' + py.name;
+        sub = 'Internal reminder for payment processing';
+        currentDraftEmail2 = 'hello@iqcommune.com';
+        meta = `<strong>Payout:</strong> ₹${py.payout.toLocaleString()} &nbsp;·&nbsp; Session: ${py.session} &nbsp;·&nbsp; Due by: 7 working days from ${py.sessDate}`;
+        subject = 'iqcommune — Payout pending: ' + py.name + ' · ' + py.session;
+        emailBody =
+          `Internal payout reminder
+
+Practitioner: ${py.name}
+Session: ${py.session} — ${py.module}
+Session date: ${py.sessDate}
+Amount: ₹${py.payout.toLocaleString()}
+Pay to: ${py.payTo}
+Method: ${py.method}
+Invoice ref: ${py.invRef}
+
+Please process the payment and mark as paid in the console.
+
+— iqcommune admin`;
+
+        waBody =
+          `iqcommune internal reminder 🔔
+
+Payout pending:
+👤 ${py.name}
+📅 Session: ${py.sessDate}
+💰 Amount: ₹${py.payout.toLocaleString()}
+📲 Method: ${py.method}
+Invoice: ${py.invRef}
+
+Please process and mark paid in console.`;
+      }
+
+      // Populate modal
+      document.getElementById('draft-title').textContent = title;
+      document.getElementById('draft-sub').textContent = sub;
+      document.getElementById('draft-meta').innerHTML = meta;
+      document.getElementById('draft-subject-line').textContent = 'Subject: ' + subject;
+      document.getElementById('draft-email-body').textContent = emailBody;
+      document.getElementById('draft-wa-body').textContent = waBody;
+
+      currentDraftSubject = subject;
+      currentDraftEmail = emailBody;
+      currentDraftWA = waBody;
+      currentDraftMode = 'email';
+
+      // Reset to email tab
+      document.querySelectorAll('.draft-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.draft-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('.draft-tab').classList.add('active');
+      document.getElementById('dp-email').classList.add('active');
+
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDraft() {
+      document.getElementById('draft-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function handleDraftOverlay(e) { if (e.target === document.getElementById('draft-overlay')) closeDraft(); }
+
+    function switchDraftTab(mode, btn) {
+      currentDraftMode = mode;
+      document.querySelectorAll('.draft-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.draft-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('dp-' + mode).classList.add('active');
+    }
+
+    function copyDraft() {
+      const text = currentDraftMode === 'email'
+        ? 'Subject: ' + currentDraftSubject + '\n\n' + currentDraftEmail
+        : currentDraftWA;
+      navigator.clipboard.writeText(text).catch(() => { });
+      showToast('Copied to clipboard');
+    }
+
+    function openInMail() {
+      const mailto = 'mailto:' + currentDraftEmail2
+        + '?subject=' + encodeURIComponent(currentDraftSubject)
+        + '&body=' + encodeURIComponent(currentDraftEmail);
+      window.open(mailto);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDraft(); });
+
+    // ═══════════════════════════════════════════
+    // GLOBAL SEARCH
+    // ═══════════════════════════════════════════
+    function globalSearch(q) { showToast(q ? 'Searching for "' + q + '"…' : ''); }
+
+    // ═══════════════════════════════════════════
+    // UTILS
+    // ═══════════════════════════════════════════
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800); }
+
+    // ═══════════════════════════════════════════
+    // PHOTOS
+    // ═══════════════════════════════════════════
+    const photoSubmissions = [
+      { id: 'PH001', practitioner: 'Anita Menon', ini: 'AM', ref: 'IQC-EMP-0043', session: 'IQC-S003', module: 'Asset Allocation & Portfolio Construction', city: 'Bengaluru', org: 'HDFC AMC', submitted: '15 Jun 2025', expiry: '15 Jul 2025', photoCount: 8, status: 'Approved' },
+      { id: 'PH002', practitioner: 'Priya Sharma', ini: 'PS', ref: 'IQC-EMP-0041', session: 'IQC-S004', module: 'Retirement & Goal-Based Financial Planning', city: 'Hyderabad', org: 'Study Circle', submitted: '03 Jun 2025', expiry: '03 Jul 2025', photoCount: 6, status: 'Pending' },
+    ];
+
+
+    function genPhotoLink(sessionId) {
+      const s = sessions.find(x => String(x.id) === String(sessionId));
+      if (!s) { showToast('Session not found'); return; }
+      const pr = practitioners.find(x => x.id === s.prId);
+      if (!pr) { showToast('Practitioner not found for this session'); return; }
+      const dateParam = s.date.split(' ').reverse().join('-'); // rough — real app would use ISO date
+      const params = new URLSearchParams({
+        name: pr.name,
+        role: pr.role,
+        org: pr.org,
+        ref: pr.ref,
+        mode: 'photos',
+        session: s.ref,
+        module: s.module,
+        city: s.venue.split(',').pop().trim(),
+        date: new Date().toISOString().split('T')[0],
+        org2: s.audience.includes('Org') ? s.practitioner : ''
+      });
+      genPhotoLinkStr = 'iqcommune-onboarding.html?' + params.toString();
+      navigator.clipboard.writeText(genPhotoLinkStr).catch(() => { });
+      showToast('Photo link generated & copied — send to ' + pr.name);
+    }
+
+    function daysUntil(dateStr) {
+      const [d, m, y] = dateStr.split(' ');
+      const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+      const expiry = new Date(parseInt(y), months[m], parseInt(d));
+      return Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+    }
+
+    function renderPhotos() {
+      const tbody = document.getElementById('photos-tbody');
+      const empty = document.getElementById('photos-empty');
+      if (!photoSubmissions.length) {
+        tbody.innerHTML = '';
+        empty.classList.add('visible');
+        updatePhotoStats();
+        return;
+      }
+      empty.classList.remove('visible');
+      tbody.innerHTML = photoSubmissions.map(ph => {
+        const days = daysUntil(ph.expiry);
+        const daysCls = days <= 5 ? 'days-urgent' : days <= 10 ? 'days-warn' : 'days-ok';
+        const pct = Math.max(0, Math.min(100, Math.round(days / 30 * 100)));
+        const barColor = days <= 5 ? '#c0392b' : days <= 10 ? '#c9982a' : '#2a6b2a';
+        const sCls = ph.status === 'Approved' ? 's-ph-approved' : ph.status === 'Expired' ? 's-ph-expired' : 's-ph-pending';
+        return `<tr class="dr">
+      <td><div class="p-cell"><div class="p-av" style="width:28px;height:28px;font-size:10px">${ph.ini}</div><div><div class="p-name">${ph.practitioner}</div><div class="p-sub" style="font-size:10px;font-family:monospace">${ph.ref}</div></div></div></td>
+      <td style="font-size:12px;font-family:monospace;color:var(--ink-m)">${ph.session}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${ph.module}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${ph.city}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${ph.submitted}</td>
+      <td style="font-size:12px;color:var(--ink-m)">${ph.expiry}</td>
+      <td>
+        <span class="${daysCls}" style="font-size:12px">${days > 0 ? days + 'd' : 'Expired'}</span>
+        <div class="expiry-bar"><div class="expiry-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      </td>
+      <td style="font-weight:500;color:var(--ink)">${ph.photoCount} photos</td>
+      <td><span class="pill ${sCls}"><span class="pd"></span>${ph.status}</span></td>
+      <td>
+        <div style="display:flex;gap:5px;align-items:center">
+          ${ph.status === 'Pending' ? `<button class="btn btn-gold btn-xs" onclick="approvePhoto('${ph.id}')">Approve</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="showToast('Opening photo set…')">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            View
+          </button>
+          <button class="btn btn-ghost btn-xs" onclick="deletePhoto('${ph.id}')">Delete</button>
+        </div>
+      </td>
+    </tr>`;
+      }).join('');
+      updatePhotoStats();
+    }
+
+    function approvePhoto(id) {
+      const ph = photoSubmissions.find(x => x.id === id);
+      if (ph) { ph.status = 'Approved'; renderPhotos(); showToast('Photos approved — added to gallery queue'); }
+    }
+    function deletePhoto(id) {
+      const idx = photoSubmissions.findIndex(x => x.id === id);
+      if (idx > -1) { const name = photoSubmissions[idx].practitioner; photoSubmissions.splice(idx, 1); renderPhotos(); showToast('Photo set deleted — ' + name); }
+    }
+
+    function updatePhotoStats() {
+      const total = photoSubmissions.length;
+      const pending = photoSubmissions.filter(p => p.status === 'Pending').length;
+      const approved = photoSubmissions.filter(p => p.status === 'Approved').length;
+      const expiring = photoSubmissions.filter(p => daysUntil(p.expiry) <= 7 && p.status === 'Pending').length;
+      document.getElementById('ph-stat-total').textContent = total;
+      document.getElementById('ph-stat-pending').textContent = pending;
+      document.getElementById('ph-stat-approved').textContent = approved;
+      document.getElementById('ph-stat-expiring').textContent = expiring;
+      const pendingDelta = document.getElementById('ph-stat-pending-delta');
+      const expiringDelta = document.getElementById('ph-stat-expiring-delta');
+      if (pendingDelta) pendingDelta.textContent = pending ? '↑ action needed' : '';
+      if (expiringDelta) expiringDelta.textContent = expiring ? '↑ review urgently' : '';
+      const badge = document.getElementById('photos-badge');
+      if (badge) { badge.textContent = pending; badge.className = pending ? 'sb-badge red' : 'sb-badge'; }
+    }
+
+    function renderAll() { renderPractitioners(); renderSessions(); renderAgreements(); renderPayouts(); renderRequests(); renderPhotos(); }
+    renderAll();
+  </script>
+</body>
+
+</html>
