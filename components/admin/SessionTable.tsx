@@ -25,6 +25,13 @@ interface Session {
   payout_id?: string | null;
 }
 
+function fmt12h(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
@@ -188,7 +195,7 @@ export function SessionTable({
                       : "—"}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 2 }}>
-                    {s.start_time}–{s.end_time}
+                    {fmt12h(s.start_time)}–{fmt12h(s.end_time)}
                   </div>
                   <div
                     style={{
