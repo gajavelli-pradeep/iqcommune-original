@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
+import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { initials } from "@/lib/format";
 
 interface Payout {
   id: string;
@@ -15,18 +17,35 @@ interface Payout {
   status: string;
   tds_rate?: number | null;
   session: { ref_code: string; module: string; session_date: string | null } | null;
-  practitioner: { name: string; upi_id: string | null; bank_account: string | null; bank_name: string | null } | null;
+  practitioner: {
+    name: string;
+    upi_id: string | null;
+    bank_account: string | null;
+    bank_name: string | null;
+  } | null;
 }
 
 const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
 
-function initials(name: string): string {
-  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
-}
+const HEADERS = [
+  "Practitioner",
+  "Session",
+  "Session date",
+  "Payout (₹)",
+  "Pay to",
+  "Method",
+  "Invoice ref.",
+  "Payment status",
+  "Action",
+];
 
 function fmtSessionDate(d: string | null): string {
   if (!d) return "—";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function payToDetail(p: Payout): string {
@@ -48,7 +67,11 @@ function paidMethodLabel(p: Payout): string {
 
 function fmtPaidAt(d: string | null): string {
   if (!d) return "Paid";
-  return `Paid — ${new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+  return `Paid — ${new Date(d).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })}`;
 }
 
 export function PayoutTable({
@@ -63,46 +86,64 @@ export function PayoutTable({
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
-  const [draft, setDraft] = useState<{ open: boolean; name?: string; invoice?: string; net?: string; module?: string }>({ open: false });
+  const [draft, setDraft] = useState<{
+    open: boolean;
+    name?: string;
+    invoice?: string;
+    net?: string;
+    module?: string;
+  }>({ open: false });
+
   const visible = statusFilter === "all" ? data : data.filter((p) => p.status === statusFilter);
 
-  const markPaid = useCallback(async (id: string) => {
-    const payment_method = methodMap[id] || "UPI";
-    const res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paidOn: new Date().toISOString(), payment_method }),
-    });
-    if (res.ok) {
-      const paid_at = new Date().toISOString();
-      setData((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, status: "Paid", paid_at, payment_method } : p
-        )
-      );
-      onRowChange?.(id, { status: "Paid", paid_at, payment_method });
-      setToast("Payout marked as paid");
-      setTimeout(() => setToast(""), 3000);
-    } else {
-      const body = await res.json().catch(() => ({})) as { error?: string };
-      setToast(body.error ?? "Failed to mark payout as paid — please try again.");
-      setTimeout(() => setToast(""), 5000);
-    }
-  }, [methodMap, onRowChange]);
+  const markPaid = useCallback(
+    async (id: string) => {
+      const payment_method = methodMap[id] || "UPI";
+      const res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paidOn: new Date().toISOString(), payment_method }),
+      });
+      if (res.ok) {
+        const paid_at = new Date().toISOString();
+        setData((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, status: "Paid", paid_at, payment_method } : p))
+        );
+        onRowChange?.(id, { status: "Paid", paid_at, payment_method });
+        setToast("Payout marked as paid");
+        setTimeout(() => setToast(""), 3000);
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setToast(body.error ?? "Failed to mark payout as paid — please try again.");
+        setTimeout(() => setToast(""), 5000);
+      }
+    },
+    [methodMap, onRowChange]
+  );
 
   const pending = data.filter((p) => p.status === "Pending");
   const totalPendingGross = pending.reduce((sum, p) => sum + p.gross_amount, 0);
-  const totalPendingNet   = pending.reduce((sum, p) => sum + p.net_amount, 0);
-  const totalPendingTds   = totalPendingGross - totalPendingNet;
-
+  const totalPendingNet = pending.reduce((sum, p) => sum + p.net_amount, 0);
+  const totalPendingTds = totalPendingGross - totalPendingNet;
   const totalGross = visible.reduce((sum, p) => sum + p.gross_amount, 0);
-  const totalNet   = visible.reduce((sum, p) => sum + p.net_amount, 0);
+  const totalNet = visible.reduce((sum, p) => sum + p.net_amount, 0);
 
   return (
     <div>
       {pending.length > 0 && (
-        <div style={{ background: "#faeeda", border: "1px solid #fac775", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13 }}>
-          <strong>{pending.length} pending payout{pending.length > 1 ? "s" : ""}</strong>
+        <div
+          style={{
+            background: "#faeeda",
+            border: "1px solid #fac775",
+            borderRadius: 8,
+            padding: "10px 16px",
+            marginBottom: 16,
+            fontSize: 13,
+          }}
+        >
+          <strong>
+            {pending.length} pending payout{pending.length > 1 ? "s" : ""}
+          </strong>
           {" — "}gross: {formatInr(totalPendingGross)}
           {totalPendingTds > 0 && (
             <span style={{ color: "#854f0b" }}> · TDS: {formatInr(totalPendingTds)}</span>
@@ -111,137 +152,225 @@ export function PayoutTable({
         </div>
       )}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              {["Practitioner", "Session", "Session date", "Payout (₹)", "Pay to", "Method", "Invoice ref.", "Payment status", "Action"].map((h) => (
-                <th key={h} style={thStyle}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((p) => {
-              const detail  = payToDetail(p);
-              const ini     = initials(p.practitioner?.name ?? "?");
-              return (
-                <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                  {/* Practitioner — avatar + name */}
-                  <td style={tdStyle}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {ini}
-                      </div>
-                      <span style={{ fontWeight: 500 }}>{p.practitioner?.name ?? "—"}</span>
+      <AdminTable
+        headers={HEADERS}
+        isEmpty={visible.length === 0}
+        emptyText={data.length === 0 ? "No payouts yet" : "No payouts match the current filter"}
+      >
+        <>
+          {visible.map((p) => {
+            const detail = payToDetail(p);
+            const ini = initials(p.practitioner?.name ?? "?");
+            return (
+              <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                {/* Practitioner */}
+                <td style={TD}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: "50%",
+                        background: "#f5e9c8",
+                        color: "#8a6510",
+                        fontWeight: 600,
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {ini}
                     </div>
-                  </td>
-                  {/* Session — ref + module */}
-                  <td style={tdStyle}>
-                    <div style={{ fontSize: 12, fontFamily: "monospace" }}>{p.session?.ref_code ?? "—"}</div>
-                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.session?.module}</div>
-                  </td>
-                  {/* Session date */}
-                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
-                    {fmtSessionDate(p.session?.session_date ?? null)}
-                  </td>
-                  {/* Payout (₹) */}
-                  <td style={tdStyle}>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
-                  </td>
-                  {/* Pay to — name + UPI/bank sub-line */}
-                  <td style={tdStyle}>
-                    <div style={{ fontSize: 13 }}>{p.practitioner?.name ?? "—"}</div>
-                    {detail && (
-                      <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--ink-faint)", marginTop: 1 }}>{detail}</div>
-                    )}
-                  </td>
-                  {/* Method — select + account hint (pending) or "UPI — handle" combined (paid) */}
-                  <td style={tdStyle}>
-                    {p.status === "Pending" ? (
-                      <div>
-                        <select
-                          value={methodMap[p.id] ?? "UPI"}
-                          onChange={(e) => setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))}
-                          style={{ fontSize: 12, padding: "4px 22px 4px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") no-repeat right 7px center, #fcfbf8", appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
+                    <span style={{ fontWeight: 500 }}>{p.practitioner?.name ?? "—"}</span>
+                  </div>
+                </td>
+                {/* Session */}
+                <td style={TD}>
+                  <div style={{ fontSize: 12, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                    {p.session?.ref_code ?? "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.session?.module}</div>
+                </td>
+                {/* Session date */}
+                <td style={{ ...TD, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
+                  {fmtSessionDate(p.session?.session_date ?? null)}
+                </td>
+                {/* Payout (₹) */}
+                <td style={TD}>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
+                </td>
+                {/* Pay to */}
+                <td style={TD}>
+                  <div style={{ fontSize: 13 }}>{p.practitioner?.name ?? "—"}</div>
+                  {detail && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "monospace",
+                        color: "var(--ink-faint)",
+                        marginTop: 1,
+                      }}
+                    >
+                      {detail}
+                    </div>
+                  )}
+                </td>
+                {/* Method */}
+                <td style={TD}>
+                  {p.status === "Pending" ? (
+                    <div>
+                      <select
+                        value={methodMap[p.id] ?? "UPI"}
+                        onChange={(e) =>
+                          setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))
+                        }
+                        style={selectStyle}
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                      {detail && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontFamily: "monospace",
+                            color: "var(--ink-faint)",
+                            marginTop: 3,
+                          }}
                         >
-                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                        {payToDetail(p) && (
-                          <div style={{ fontSize: 10, fontFamily: "monospace", color: "var(--ink-faint)", marginTop: 3 }}>{payToDetail(p)}</div>
-                        )}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{paidMethodLabel(p)}</span>
-                    )}
-                  </td>
-                  {/* Invoice ref. */}
-                  <td style={tdStyle}>
-                    <span style={{ fontFamily: "monospace", fontSize: 12 }}>{p.invoice_ref}</span>
-                  </td>
-                  {/* Payment status — "Paid — 09 Jun 2025" or StatusPill */}
-                  <td style={tdStyle}>
-                    {p.status === "Paid" ? (
-                      <span style={{ display: "inline-block", background: "#d4edda", color: "#2a6b2a", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>
-                        {fmtPaidAt(p.paid_at)}
-                      </span>
-                    ) : (
-                      <StatusPill status={p.status} />
-                    )}
-                  </td>
-                  {/* Action */}
-                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      {p.status === "Pending" ? (
-                        <>
-                          <button
-                            onClick={() => markPaid(p.id)}
-                            style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
-                          >
-                            Mark as paid
-                          </button>
-                          <button
-                            onClick={() => setDraft({ open: true, name: p.practitioner?.name ?? "", invoice: p.invoice_ref, net: formatInr(p.net_amount), module: p.session?.module ?? "" })}
-                            style={{ background: "rgba(20,18,12,.07)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
-                          >
-                            Draft reminder
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
+                          {detail}
+                        </div>
                       )}
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {/* Summary row — colSpan matches 9-column layout */}
-            {visible.length > 0 && (
-              <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
-                <td colSpan={3} style={{ ...tdStyle, fontSize: 11, fontWeight: 600, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Total ({visible.length} payout{visible.length > 1 ? "s" : ""})
+                  ) : (
+                    <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+                      {paidMethodLabel(p)}
+                    </span>
+                  )}
                 </td>
-                <td style={tdStyle}>
-                  <div style={{ fontWeight: 500 }}>{formatInr(totalGross)} gross</div>
-                  <div style={{ fontWeight: 600 }}>{formatInr(totalNet)} net</div>
+                {/* Invoice ref. */}
+                <td style={TD}>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                    {p.invoice_ref}
+                  </span>
                 </td>
-                <td colSpan={5} style={tdStyle} />
+                {/* Payment status */}
+                <td style={TD}>
+                  {p.status === "Paid" ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        background: "#d4edda",
+                        color: "#2a6b2a",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "3px 10px",
+                        borderRadius: 100,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {fmtPaidAt(p.paid_at)}
+                    </span>
+                  ) : (
+                    <StatusPill status={p.status} />
+                  )}
+                </td>
+                {/* Action */}
+                <td style={{ ...TD, whiteSpace: "nowrap" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {p.status === "Pending" ? (
+                      <>
+                        <button
+                          onClick={() => markPaid(p.id)}
+                          style={{
+                            background: "#c9982a",
+                            color: "#14161d",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "5px 12px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Mark as paid
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDraft({
+                              open: true,
+                              name: p.practitioner?.name ?? "",
+                              invoice: p.invoice_ref,
+                              net: formatInr(p.net_amount),
+                              module: p.session?.module ?? "",
+                            })
+                          }
+                          style={{
+                            background: "rgba(20,18,12,.07)",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "5px 10px",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Draft reminder
+                        </button>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
+                    )}
+                  </div>
+                </td>
               </tr>
-            )}
+            );
+          })}
 
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
-                  {data.length === 0 ? "No payouts yet" : "No payouts match the current filter"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          {/* Summary row — always rendered when isEmpty=false */}
+          <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
+            <td
+              colSpan={3}
+              style={{
+                ...TD,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--ink-faint)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Total ({visible.length} payout{visible.length > 1 ? "s" : ""})
+            </td>
+            <td style={TD}>
+              <div style={{ fontWeight: 500 }}>{formatInr(totalGross)} gross</div>
+              <div style={{ fontWeight: 600 }}>{formatInr(totalNet)} net</div>
+            </td>
+            <td colSpan={5} style={TD} />
+          </tr>
+        </>
+      </AdminTable>
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--ink)", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: "var(--ink)",
+            color: "#fff",
+            padding: "10px 18px",
+            borderRadius: 8,
+            fontSize: 13,
+            zIndex: 9999,
+          }}
+        >
           {toast}
         </div>
       )}
@@ -259,6 +388,18 @@ export function PayoutTable({
   );
 }
 
-const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
-const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
+const CHEVRON_GOLD =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
+
+const selectStyle: React.CSSProperties = {
+  fontSize: 12,
+  padding: "4px 22px 4px 8px",
+  borderRadius: 6,
+  border: "1px solid rgba(20,18,12,.18)",
+  background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`,
+  appearance: "none",
+  WebkitAppearance: "none",
+  color: "#14161d",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};

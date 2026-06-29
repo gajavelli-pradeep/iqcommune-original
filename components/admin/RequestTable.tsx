@@ -3,6 +3,7 @@
 import { useState, useCallback, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { AdminTable, TD } from "@/components/admin/AdminTable";
 
 interface SessionRequest {
   id: string;
@@ -43,7 +44,20 @@ interface DraftState {
   recipientEmail?: string;
 }
 
-function buildRequestFollowupEmail(r: SessionRequest): string {
+const HEADERS = [
+  "SPOC / Requester",
+  "Topic",
+  "Audience type",
+  "City",
+  "Group size",
+  "Min. commitment",
+  "Preferred dates",
+  "Received",
+  "Status",
+  "Actions",
+];
+
+function buildFollowupEmail(r: SessionRequest): string {
   return `Dear ${r.name},
 
 Thank you for reaching out to iqcommune.
@@ -63,7 +77,7 @@ Warm regards,
 The iqcommune Team`;
 }
 
-function buildRequestFollowupWA(r: SessionRequest): string {
+function buildFollowupWA(r: SessionRequest): string {
   return `Hi ${r.name}! 👋
 
 This is the iqcommune team. We've received your session request for *${r.topic}* (${r.group_size ?? "TBD"} participants, ${r.preferred_dates ?? "flexible"}).
@@ -97,54 +111,66 @@ export function RequestTable({
     setTimeout(() => setToast(""), 3000);
   };
 
-  const updateStatus = useCallback(async (id: string, status: string) => {
-    const res = await fetch(`/api/admin/session-requests?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-      onRowChange?.(id, { status });
-      showToast("Status updated");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Update failed: ${error ?? res.status}`);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onRowChange]);
+  const updateStatus = useCallback(
+    async (id: string, status: string) => {
+      const res = await fetch(`/api/admin/session-requests?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+        onRowChange?.(id, { status });
+        showToast("Status updated");
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Update failed: ${error ?? res.status}`);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [onRowChange]
+  );
 
-  const assignPractitioner = useCallback(async (id: string, practitionerId: string) => {
-    const res = await fetch(`/api/admin/session-requests?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignedTo: practitionerId }),
-    });
-    if (res.ok) {
-      const pr = empanelled.find((p) => p.id === practitionerId);
-      setData((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? { ...r, assigned_to: practitionerId, assigned_practitioner: pr ? { name: pr.name } : r.assigned_practitioner }
-            : r
-        )
-      );
-      onRowChange?.(id, { assigned_to: practitionerId });
-      showToast("Practitioner assigned");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Assignment failed: ${error ?? res.status}`);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empanelled, onRowChange]);
+  const assignPractitioner = useCallback(
+    async (id: string, practitionerId: string) => {
+      const res = await fetch(`/api/admin/session-requests?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedTo: practitionerId }),
+      });
+      if (res.ok) {
+        const pr = empanelled.find((p) => p.id === practitionerId);
+        setData((prev) =>
+          prev.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  assigned_to: practitionerId,
+                  assigned_practitioner: pr
+                    ? { name: pr.name }
+                    : r.assigned_practitioner,
+                }
+              : r
+          )
+        );
+        onRowChange?.(id, { assigned_to: practitionerId });
+        showToast("Practitioner assigned");
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Assignment failed: ${error ?? res.status}`);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [empanelled, onRowChange]
+  );
 
   const openDraft = useCallback((r: SessionRequest) => {
     setDraft({
       open: true,
       title: `Follow-up: ${r.name}`,
       subject: `Your iqcommune session request — ${r.topic}`,
-      emailBody: buildRequestFollowupEmail(r),
-      waBody: buildRequestFollowupWA(r),
+      emailBody: buildFollowupEmail(r),
+      waBody: buildFollowupWA(r),
       recipientName: r.name,
       recipientEmail: r.email,
     });
@@ -152,176 +178,324 @@ export function RequestTable({
 
   return (
     <div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              {["SPOC / Requester", "Topic", "Audience type", "City", "Group size", "Min. commitment", "Preferred dates", "Received", "Status", "Actions"].map((h) => (
-                <th key={h} style={thStyle}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((r) => {
-              const isExpanded = expandedRow === r.id;
-              return (
-                <Fragment key={r.id}>
-                  <tr
-                    onClick={() => setExpandedRow(isExpanded ? null : r.id)}
-                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
-                  >
-                    <td style={tdStyle}>
-                      <div style={{ fontWeight: 500 }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org ? `${r.org} · ` : ""}{r.email}</div>
-                      {r.phone && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>}
-                    </td>
-                    <td style={tdStyle}>{r.topic}</td>
-                    <td style={tdStyle}>{r.audience_type}</td>
-                    <td style={tdStyle}>
-                      <div>{r.city ?? "—"}</div>
-                      {r.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.state}</div>}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>{r.group_size ?? "—"}</td>
-                    <td style={{ ...tdStyle, fontWeight: 500, whiteSpace: "nowrap" }}>
-                      {r.min_commit != null ? (
-                        <>
-                          {r.min_commit}
-                          <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>guaranteed</div>
-                        </>
-                      ) : "—"}
-                    </td>
-                    <td style={tdStyle}>{r.preferred_dates ?? "—"}</td>
-                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
-                      {new Date(r.created_at).toLocaleDateString("en-IN")}
-                    </td>
-                    <td style={tdStyle}><StatusPill status={r.status} /></td>
-                    <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      {r.status === "New" ? (
-                        <button
-                          onClick={() => { updateStatus(r.id, "Matched"); setExpandedRow(r.id); }}
-                          style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 100, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
-                        >
-                          Review
-                        </button>
-                      ) : (
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <select
-                            value={r.status}
-                            onChange={(e) => updateStatus(r.id, e.target.value)}
-                            style={selectStyle}
-                          >
-                            {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                          <button onClick={() => openDraft(r)} style={btnStyle}>Email draft</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-
-                  {isExpanded && (
-                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
-                        <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}>
-                            {/* Col 1: Request details */}
-                            <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Request details</div>
-                              {[
-                                ["From", r.name],
-                                ["Organisation", r.org ?? "—"],
-                                ["Email", r.email],
-                                ["City", r.city ?? "—"],
-                                ["State", r.state ?? "—"],
-                                ["Topic", r.topic],
-                                ["Audience", r.audience_type],
-                                ["Group size", r.group_size ?? "—"],
-                                ["Min. commitment", r.min_commit != null ? `${r.min_commit} participants` : "—"],
-                                ["Venue", r.venue || "Not specified — we will arrange"],
-                                ["Preferred dates", r.preferred_dates ?? "—"],
-                              ].map(([label, value]) => (
-                                <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
-                                  <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>{label}</span>
-                                  <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Col 2: Available practitioners */}
-                            <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Available practitioners</div>
-                              {(() => {
-                                const matching = empanelled.filter((p) => (p.modules ?? []).some((m) => m === r.topic));
-                                if (matching.length === 0) return (
-                                  <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>No empanelled practitioners match this module yet.</div>
-                                );
-                                return matching.map((p) => (
-                                  <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0", borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{p.name}</span>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); assignPractitioner(r.id, p.id); }}
-                                      style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                    >
-                                      Assign
-                                    </button>
-                                  </div>
-                                ));
-                              })()}
-                              {r.assigned_practitioner && (
-                                <div style={{ marginTop: "0.75rem", fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Assigned: {r.assigned_practitioner.name}</div>
-                              )}
-                            </div>
-
-                            {/* Col 3: Actions */}
-                            <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Actions</div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                                <select
-                                  value={r.status}
-                                  onChange={(e) => { e.stopPropagation(); updateStatus(r.id, e.target.value); }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
-                                >
-                                  {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); openDraft(r); }}
-                                  style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
-                                >
-                                  Draft follow-up to client
-                                </button>
-                                <button
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
-                                >
-                                  Create session from request
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
+      <AdminTable
+        headers={HEADERS}
+        isEmpty={visible.length === 0}
+        emptyText={
+          data.length === 0 ? "No session requests yet" : "No requests match the current filter"
+        }
+      >
+        {visible.map((r) => {
+          const isExpanded = expandedRow === r.id;
+          return (
+            <Fragment key={r.id}>
+              <tr
+                onClick={() => setExpandedRow(isExpanded ? null : r.id)}
+                style={{
+                  borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)",
+                  cursor: "pointer",
+                  background: isExpanded ? "#f8f7f4" : undefined,
+                }}
+              >
+                {/* SPOC / Requester */}
+                <td style={TD}>
+                  <div style={{ fontWeight: 500 }}>{r.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                    {r.org ? `${r.org} · ` : ""}
+                    {r.email}
+                  </div>
+                  {r.phone && (
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>
                   )}
-                </Fragment>
-              );
-            })}
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
-                  {data.length === 0 ? "No session requests yet" : "No requests match the current filter"}
+                </td>
+                {/* Topic */}
+                <td style={TD}>{r.topic}</td>
+                {/* Audience type */}
+                <td style={TD}>{r.audience_type}</td>
+                {/* City */}
+                <td style={TD}>
+                  <div>{r.city ?? "—"}</div>
+                  {r.state && (
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.state}</div>
+                  )}
+                </td>
+                {/* Group size */}
+                <td style={{ ...TD, textAlign: "center" }}>{r.group_size ?? "—"}</td>
+                {/* Min. commitment */}
+                <td style={{ ...TD, fontWeight: 500, whiteSpace: "nowrap" }}>
+                  {r.min_commit != null ? (
+                    <>
+                      {r.min_commit}
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>
+                        guaranteed
+                      </div>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                {/* Preferred dates */}
+                <td style={TD}>{r.preferred_dates ?? "—"}</td>
+                {/* Received */}
+                <td style={{ ...TD, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
+                  {new Date(r.created_at).toLocaleDateString("en-IN")}
+                </td>
+                {/* Status */}
+                <td style={TD}>
+                  <StatusPill status={r.status} />
+                </td>
+                {/* Actions */}
+                <td style={TD} onClick={(e) => e.stopPropagation()}>
+                  {r.status === "New" ? (
+                    <button
+                      onClick={() => {
+                        updateStatus(r.id, "Matched");
+                        setExpandedRow(r.id);
+                      }}
+                      style={darkBtn}
+                    >
+                      Review
+                    </button>
+                  ) : (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <select
+                        value={r.status}
+                        onChange={(e) => updateStatus(r.id, e.target.value)}
+                        style={selectStyle}
+                      >
+                        {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <button onClick={() => openDraft(r)} style={ghostBtn}>
+                        Email draft
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+              {isExpanded && (
+                <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                  <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                    <div
+                      style={{
+                        border: "1px solid rgba(20,18,12,.10)",
+                        borderRadius: 8,
+                        background: "#fff",
+                        padding: "1rem 1.25rem",
+                        borderTop: "2px solid #c9982a",
+                      }}
+                    >
+                      <div
+                        style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}
+                      >
+                        {/* Col 1: Request details */}
+                        <div>
+                          <SectionLabel>Request details</SectionLabel>
+                          {[
+                            ["From", r.name],
+                            ["Organisation", r.org ?? "—"],
+                            ["Email", r.email],
+                            ["City", r.city ?? "—"],
+                            ["State", r.state ?? "—"],
+                            ["Topic", r.topic],
+                            ["Audience", r.audience_type],
+                            ["Group size", r.group_size ?? "—"],
+                            [
+                              "Min. commitment",
+                              r.min_commit != null ? `${r.min_commit} participants` : "—",
+                            ],
+                            ["Venue", r.venue || "Not specified — we will arrange"],
+                            ["Preferred dates", r.preferred_dates ?? "—"],
+                          ].map(([label, value]) => (
+                            <div
+                              key={label}
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                                marginBottom: "0.45rem",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  color: "var(--ink-faint)",
+                                  width: 110,
+                                  flexShrink: 0,
+                                  fontSize: 12,
+                                }}
+                              >
+                                {label}
+                              </span>
+                              <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>
+                                {value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Col 2: Available practitioners */}
+                        <div>
+                          <SectionLabel>Available practitioners</SectionLabel>
+                          {(() => {
+                            const matching = empanelled.filter((p) =>
+                              (p.modules ?? []).some((m) => m === r.topic)
+                            );
+                            if (matching.length === 0)
+                              return (
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "var(--ink-faint)",
+                                    padding: "0.5rem 0",
+                                  }}
+                                >
+                                  No empanelled practitioners match this module yet.
+                                </div>
+                              );
+                            return matching.map((p) => (
+                              <div
+                                key={p.id}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  padding: "0.45rem 0",
+                                  borderBottom: "1px solid rgba(20,18,12,.07)",
+                                }}
+                              >
+                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                                  {p.name}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    assignPractitioner(r.id, p.id);
+                                  }}
+                                  style={{
+                                    background: "#c9982a",
+                                    color: "#14161d",
+                                    border: "none",
+                                    borderRadius: 100,
+                                    padding: "3px 10px",
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  Assign
+                                </button>
+                              </div>
+                            ));
+                          })()}
+                          {r.assigned_practitioner && (
+                            <div
+                              style={{ marginTop: "0.75rem", fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}
+                            >
+                              ✓ Assigned: {r.assigned_practitioner.name}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Col 3: Actions */}
+                        <div>
+                          <SectionLabel>Actions</SectionLabel>
+                          <div
+                            style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}
+                          >
+                            <select
+                              value={r.status}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                updateStatus(r.id, e.target.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: "100%",
+                                padding: "9px 12px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(20,18,12,.18)",
+                                fontFamily: "inherit",
+                                fontSize: 13,
+                                color: "var(--ink)",
+                                background: "#f8f7f4",
+                                outline: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map(
+                                (s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                )
+                              )}
+                            </select>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDraft(r);
+                              }}
+                              style={{
+                                background: "var(--ink)",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}
+                            >
+                              Draft follow-up to client
+                            </button>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                background: "#fff",
+                                color: "var(--ink)",
+                                border: "1px solid rgba(20,18,12,.18)",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}
+                            >
+                              Create session from request
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          );
+        })}
+      </AdminTable>
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--ink)", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: 13, zIndex: 9999 }}>
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: "var(--ink)",
+            color: "#fff",
+            padding: "10px 18px",
+            borderRadius: 8,
+            fontSize: 13,
+            zIndex: 9999,
+          }}
+        >
           {toast}
         </div>
       )}
@@ -340,18 +514,57 @@ export function RequestTable({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, color: "var(--ink)" }}>{value}</div>
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--ink-faint)",
+        marginBottom: "0.85rem",
+      }}
+    >
+      {children}
     </div>
   );
 }
 
-const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
-const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
-const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
-const selectStyle: React.CSSProperties = { fontSize: 12, padding: "5px 22px 5px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`, appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" };
-const btnStyle: React.CSSProperties = { background: "rgba(20,18,12,.07)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" };
+const CHEVRON_GOLD =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
+
+const selectStyle: React.CSSProperties = {
+  fontSize: 12,
+  padding: "5px 22px 5px 8px",
+  borderRadius: 6,
+  border: "1px solid rgba(20,18,12,.18)",
+  background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`,
+  appearance: "none",
+  WebkitAppearance: "none",
+  color: "#14161d",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const darkBtn: React.CSSProperties = {
+  background: "var(--ink)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 100,
+  padding: "4px 10px",
+  fontSize: 11,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontWeight: 500,
+};
+
+const ghostBtn: React.CSSProperties = {
+  background: "rgba(20,18,12,.07)",
+  border: "none",
+  borderRadius: 6,
+  padding: "5px 10px",
+  fontSize: 12,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};

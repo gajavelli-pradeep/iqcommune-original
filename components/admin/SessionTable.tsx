@@ -4,6 +4,7 @@ import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
+import { AdminTable, TD } from "@/components/admin/AdminTable";
 
 interface Session {
   id: string;
@@ -25,7 +26,20 @@ interface Session {
 }
 
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
-type StatusFilter = typeof STATUS_FILTERS[number];
+type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+const HEADERS = [
+  "Ref",
+  "Module",
+  "Practitioner",
+  "Date & venue",
+  "Audience",
+  "Pax",
+  "Payout",
+  "Consent",
+  "Status",
+  "",
+];
 
 export function SessionTable({
   initialData,
@@ -38,16 +52,25 @@ export function SessionTable({
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
 }) {
-  // Read directly from props so newly-created sessions (added upstream) appear immediately.
   const data = initialData;
   const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
-  const statusFilter: StatusFilter = STATUS_FILTERS.includes(statusFilterProp as StatusFilter)
+  const statusFilter: StatusFilter = STATUS_FILTERS.includes(
+    statusFilterProp as StatusFilter
+  )
     ? (statusFilterProp as StatusFilter)
     : internalStatus;
-  const setStatusFilter = (f: StatusFilter) => (onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f));
+  const setStatusFilter = (f: StatusFilter) =>
+    onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f);
+
   const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [draft, setDraft] = useState<{ open: boolean; title?: string; subject?: string; emailBody?: string; waBody?: string }>({ open: false });
+  const [draft, setDraft] = useState<{
+    open: boolean;
+    title?: string;
+    subject?: string;
+    emailBody?: string;
+    waBody?: string;
+  }>({ open: false });
 
   const query = search.toLowerCase();
   const visible = data.filter((s) => {
@@ -77,7 +100,9 @@ export function SessionTable({
           flexWrap: "wrap",
         }}
       >
-        <span style={{ fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>Filter:</span>
+        <span style={{ fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
+          Filter:
+        </span>
         {STATUS_FILTERS.map((f) => {
           const isActive = statusFilter === f;
           return (
@@ -120,154 +145,170 @@ export function SessionTable({
         </div>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table
-          style={{
-            ...tableStyle,
-            border: "1px solid rgba(20,18,12,.10)",
-            borderRadius: "0 0 10px 10px",
-            overflow: "hidden",
-          }}
-        >
-          <thead>
-            <tr>
-              {["Ref", "Module", "Practitioner", "Date & venue", "Audience", "Pax", "Payout", "Consent", "Status", ""].map((h) => (
-                <th key={h} style={thStyle}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((s) => {
-              const isExpanded = expandedRow === s.id;
-              return (
-                <Fragment key={s.id}>
-                  <tr
-                    onClick={() => setExpandedRow(isExpanded ? null : s.id)}
-                    style={{
-                      borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)",
-                      cursor: "pointer",
-                      background: isExpanded ? "#f8f7f4" : undefined,
-                    }}
-                  >
-                    <td style={tdStyle}><span style={{ fontFamily: "monospace", fontSize: 12 }}>{s.ref_code}</span></td>
-                    <td style={tdStyle}>{s.module}</td>
-                    <td style={tdStyle}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{s.practitioner?.name ?? "—"}</div>
-                      {s.practitioner?.email && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.practitioner.email}</div>}
-                    </td>
-                    <td style={tdStyle}>
-                      <div>{s.session_date} · {s.start_time}–{s.end_time}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{s.venue}</div>
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 12 }}>{s.audience_type ?? "—"}</td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>{s.participants}</td>
-                    <td style={{ ...tdStyle, fontWeight: 500 }}>
-                      {formatInr(s.payout_amount)}
-                      {s.tds_applicable && (
-                        <div style={{ fontSize: 10, color: "#854f0b", fontWeight: 400, marginTop: 1 }}>
-                          TDS {s.tds_rate ?? 0}%
-                        </div>
-                      )}
-                    </td>
-                    <td style={tdStyle}><StatusPill status={s.consent_status} /></td>
-                    <td style={tdStyle}><StatusPill status={s.status} /></td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        {s.payout_id && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onNavigate?.("payouts"); }}
-                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
-                          >
-                            Payout →
-                          </button>
-                        )}
-                        {s.status === "Upcoming" && s.consent_status === "Pending consent" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDraft({
-                                open: true,
-                                title: `Send confirmation — ${s.ref_code}`,
-                                subject: `Your iqcommune session is confirmed — ${s.session_date}`,
-                                emailBody: `Dear ${s.practitioner?.name ?? "Practitioner"},\n\nYour session has been confirmed.\n\nRef: ${s.ref_code}\nModule: ${s.module}\nDate: ${s.session_date} · ${s.start_time}–${s.end_time}\nVenue: ${s.venue}\nParticipants: ${s.participants}\n\nPlease sign the consent form when you receive the link.\n\nWarm regards,\nThe iqcommune Team`,
-                                waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
-                              });
-                            }}
-                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
-                          >
-                            Send confirmation
-                          </button>
-                        )}
-                        {s.status === "Completed" && (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
-                                if (!res.ok) {
-                                  const body = await res.json().catch(() => ({})) as { error?: string };
-                                  alert(body.error ?? "Could not generate photo link");
-                                  return;
-                                }
-                                const { url } = await res.json() as { url: string };
-                                await navigator.clipboard.writeText(url);
-                                alert(`Photo link copied:\n${url}`);
-                              } catch {
-                                alert("Failed to generate photo link. Please try again.");
-                              }
-                            }}
-                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
-                          >
-                            Photo link
-                          </button>
-                        )}
-                        <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>{isExpanded ? "▲" : "▼"}</span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  {isExpanded && (
-                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
-                        <div
-                          style={{
-                            border: "1px solid rgba(20,18,12,.10)",
-                            borderRadius: 8,
-                            background: "#fff",
-                            padding: "1rem 1.25rem",
-                          }}
-                        >
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.65rem 2rem" }}>
-                            <SField label="Reference" value={s.ref_code} mono />
-                            <SField label="Module" value={s.module} />
-                            <SField label="Status" value={s.status} />
-                            <SField label="Date" value={`${s.session_date} · ${s.start_time}–${s.end_time}`} />
-                            <SField label="Venue" value={s.venue} />
-                            <SField label="Audience" value={s.audience_type} />
-                            <SField label="Participants" value={String(s.participants)} />
-                            <SField label="Payout" value={formatInr(s.payout_amount)} />
-                            {s.tds_applicable && <SField label="TDS rate" value={`${s.tds_rate ?? 0}%`} />}
-                            <SField label="Consent" value={s.consent_status} />
-                            <SField label="Practitioner" value={s.practitioner?.name ?? "—"} />
-                            {s.practitioner?.email && <SField label="Practitioner email" value={s.practitioner.email} />}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
+      <AdminTable
+        headers={HEADERS}
+        isEmpty={visible.length === 0}
+        emptyText={data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
+        connected
+      >
+        {visible.map((s) => {
+          const isExpanded = expandedRow === s.id;
+          return (
+            <Fragment key={s.id}>
+              <tr
+                onClick={() => setExpandedRow(isExpanded ? null : s.id)}
+                style={{
+                  borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)",
+                  cursor: "pointer",
+                  background: isExpanded ? "#f8f7f4" : undefined,
+                }}
+              >
+                <td style={TD}>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                    {s.ref_code}
+                  </span>
+                </td>
+                <td style={TD}>{s.module}</td>
+                <td style={TD}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{s.practitioner?.name ?? "—"}</div>
+                  {s.practitioner?.email && (
+                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                      {s.practitioner.email}
+                    </div>
                   )}
-                </Fragment>
-              );
-            })}
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
-                  {data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
+                </td>
+                <td style={TD}>
+                  <div>
+                    {s.session_date} · {s.start_time}–{s.end_time}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
+                    {s.venue}
+                  </div>
+                </td>
+                <td style={{ ...TD, fontSize: 12 }}>{s.audience_type ?? "—"}</td>
+                <td style={{ ...TD, textAlign: "center" }}>{s.participants}</td>
+                <td style={{ ...TD, fontWeight: 500 }}>
+                  {formatInr(s.payout_amount)}
+                  {s.tds_applicable && (
+                    <div style={{ fontSize: 10, color: "#854f0b", fontWeight: 400, marginTop: 1 }}>
+                      TDS {s.tds_rate ?? 0}%
+                    </div>
+                  )}
+                </td>
+                <td style={TD}>
+                  <StatusPill status={s.consent_status} />
+                </td>
+                <td style={TD}>
+                  <StatusPill status={s.status} />
+                </td>
+                <td style={{ ...TD, whiteSpace: "nowrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {s.payout_id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate?.("payouts");
+                        }}
+                        style={actionBtn("#c9982a", "#14161d")}
+                      >
+                        Payout →
+                      </button>
+                    )}
+                    {s.status === "Upcoming" && s.consent_status === "Pending consent" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDraft({
+                            open: true,
+                            title: `Send confirmation — ${s.ref_code}`,
+                            subject: `Your iqcommune session is confirmed — ${s.session_date}`,
+                            emailBody: `Dear ${s.practitioner?.name ?? "Practitioner"},\n\nYour session has been confirmed.\n\nRef: ${s.ref_code}\nModule: ${s.module}\nDate: ${s.session_date} · ${s.start_time}–${s.end_time}\nVenue: ${s.venue}\nParticipants: ${s.participants}\n\nPlease sign the consent form when you receive the link.\n\nWarm regards,\nThe iqcommune Team`,
+                            waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
+                          });
+                        }}
+                        style={actionBtn("#c9982a", "#14161d")}
+                      >
+                        Send confirmation
+                      </button>
+                    )}
+                    {s.status === "Completed" && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
+                            if (!res.ok) {
+                              const body = (await res.json().catch(() => ({}))) as {
+                                error?: string;
+                              };
+                              alert(body.error ?? "Could not generate photo link");
+                              return;
+                            }
+                            const { url } = (await res.json()) as { url: string };
+                            await navigator.clipboard.writeText(url);
+                            alert(`Photo link copied:\n${url}`);
+                          } catch {
+                            alert("Failed to generate photo link. Please try again.");
+                          }
+                        }}
+                        style={actionBtn("#fff", "#14161d", true)}
+                      >
+                        Photo link
+                      </button>
+                    )}
+                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                      {isExpanded ? "▲" : "▼"}
+                    </span>
+                  </div>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+              {isExpanded && (
+                <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                  <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                    <div
+                      style={{
+                        border: "1px solid rgba(20,18,12,.10)",
+                        borderRadius: 8,
+                        background: "#fff",
+                        padding: "1rem 1.25rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(3, 1fr)",
+                          gap: "0.65rem 2rem",
+                        }}
+                      >
+                        <SField label="Reference" value={s.ref_code} mono />
+                        <SField label="Module" value={s.module} />
+                        <SField label="Status" value={s.status} />
+                        <SField
+                          label="Date"
+                          value={`${s.session_date} · ${s.start_time}–${s.end_time}`}
+                        />
+                        <SField label="Venue" value={s.venue} />
+                        <SField label="Audience" value={s.audience_type} />
+                        <SField label="Participants" value={String(s.participants)} />
+                        <SField label="Payout" value={formatInr(s.payout_amount)} />
+                        {s.tds_applicable && (
+                          <SField label="TDS rate" value={`${s.tds_rate ?? 0}%`} />
+                        )}
+                        <SField label="Consent" value={s.consent_status} />
+                        <SField label="Practitioner" value={s.practitioner?.name ?? "—"} />
+                        {s.practitioner?.email && (
+                          <SField label="Practitioner email" value={s.practitioner.email} />
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          );
+        })}
+      </AdminTable>
 
       <ContactDraftModal
         open={draft.open}
@@ -284,12 +325,41 @@ export function SessionTable({
 function SField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, color: "var(--ink)", fontFamily: mono ? "monospace" : undefined }}>{value}</div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--ink-faint)",
+          marginBottom: 2,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{ fontSize: 13, color: "var(--ink)", fontFamily: mono ? "monospace" : undefined }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
-const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)" };
-const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
+function actionBtn(
+  bg: string,
+  color: string,
+  bordered = false
+): React.CSSProperties {
+  return {
+    fontSize: 11,
+    padding: "3px 9px",
+    borderRadius: 100,
+    border: bordered ? "1px solid rgba(20,18,12,.18)" : "none",
+    background: bg,
+    color,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontWeight: 600,
+  };
+}

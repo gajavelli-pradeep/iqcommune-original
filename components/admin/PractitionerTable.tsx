@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useId, useRef, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
+import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { initials } from "@/lib/format";
 
 type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"];
 
@@ -17,9 +19,6 @@ const STATUSES = [
 
 const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
 
-function initials(name: string): string {
-  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
-}
 
 export function PractitionerTable({
   initialData,
@@ -149,19 +148,12 @@ export function PractitionerTable({
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              {["Practitioner", "Module", "City", "Applied on", "Status", "Actions"].map(
-                (h) => (
-                  <th key={h} scope="col" style={thStyle}>{h}</th>
-                )
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((p) => {
+      <AdminTable
+        headers={["Practitioner", "Module", "City", "Applied on", "Status", "Actions"]}
+        isEmpty={visible.length === 0}
+        emptyText="No practitioners in this stage"
+      >
+        {visible.map((p) => {
               const isExpanded = expandedRow === p.id;
               return (
                 <Fragment key={p.id}>
@@ -177,7 +169,7 @@ export function PractitionerTable({
                     }}
                   >
                     {/* Practitioner — avatar + name (primary) + role (sub-line) */}
-                    <td style={tdStyle}>
+                    <td style={TD}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           {initials(p.name)}
@@ -189,20 +181,20 @@ export function PractitionerTable({
                       </div>
                     </td>
                     {/* Module */}
-                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-soft)" }}>{(p.modules ?? []).join(", ") || "—"}</td>
+                    <td style={{ ...TD, fontSize: 12, color: "var(--ink-soft)" }}>{(p.modules ?? []).join(", ") || "—"}</td>
                     {/* City */}
-                    <td style={tdStyle}>
+                    <td style={TD}>
                       <div>{p.city}</div>
                       {p.state && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.state}</div>}
                     </td>
                     {/* Applied on */}
-                    <td style={{ ...tdStyle, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
+                    <td style={{ ...TD, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                       {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                     </td>
-                    <td style={tdStyle}>
+                    <td style={TD}>
                       <StatusPill status={p.status} />
                     </td>
-                    <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                    <td style={TD} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: "flex", gap: 6 }}>
                         <select
                           value={p.status}
@@ -328,16 +320,7 @@ export function PractitionerTable({
                 </Fragment>
               );
             })}
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
-                  No practitioners in this stage
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      </AdminTable>
 
       {/* Generated link modal */}
       {genLink && (
@@ -456,9 +439,6 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
   );
 }
 
-const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 12px", background: "#f8f7f4", fontWeight: 500, fontSize: 11, color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.1)", whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
 const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
 const selectStyle: React.CSSProperties = { fontSize: 12, padding: "5px 22px 5px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`, appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" };
 
