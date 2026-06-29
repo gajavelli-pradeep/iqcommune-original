@@ -36,6 +36,21 @@ function payToDetail(p: Payout): string {
   return "";
 }
 
+function paidMethodLabel(p: Payout): string {
+  const method = p.payment_method ?? "—";
+  const upi = p.practitioner?.upi_id;
+  const bank = p.practitioner?.bank_account;
+  const bankName = p.practitioner?.bank_name;
+  if (upi && (method === "UPI" || method === "IMPS")) return `${method} — ${upi}`;
+  if (bank) return `${method} — ${bankName ? `${bankName} ` : ""}···${bank.slice(-4)}`;
+  return method;
+}
+
+function fmtPaidAt(d: string | null): string {
+  if (!d) return "Paid";
+  return `Paid — ${new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+}
+
 export function PayoutTable({
   initialData,
   onRowChange,
@@ -100,7 +115,7 @@ export function PayoutTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {["Practitioner", "Session", "Session date", "Gross / TDS / Net", "Pay to", "Method", "Invoice", "Status", "Actions"].map((h) => (
+              {["Practitioner", "Session", "Session date", "Payout (₹)", "Pay to", "Method", "Invoice ref.", "Payment status", "Action"].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -131,18 +146,14 @@ export function PayoutTable({
                   <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
                     {fmtSessionDate(p.session?.session_date ?? null)}
                   </td>
-                  {/* Gross / TDS / Net 3-line stack */}
+                  {/* Payout (₹) — net amount prominently; TDS note as sub-line if applicable */}
                   <td style={tdStyle}>
-                    <div style={{ fontWeight: 500 }}>{formatInr(p.gross_amount)}</div>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
                     {tds > 0 && (
-                      <div style={{ fontSize: 11, color: "#854f0b", marginTop: 1 }}>
-                        − TDS {tdsRate ? `${tdsRate}%` : ""} {formatInr(tds)}
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
+                        gross {formatInr(p.gross_amount)}{tdsRate ? ` · TDS ${tdsRate}%` : ""}
                       </div>
                     )}
-                    <div style={{ fontWeight: 600, color: tds > 0 ? "var(--ink)" : undefined, fontSize: tds > 0 ? 13 : undefined }}>
-                      {tds > 0 && <span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink-faint)", marginRight: 3 }}>net</span>}
-                      {formatInr(p.net_amount)}
-                    </div>
                   </td>
                   {/* Pay to — name + UPI/bank sub-line */}
                   <td style={tdStyle}>
@@ -151,27 +162,40 @@ export function PayoutTable({
                       <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--ink-faint)", marginTop: 1 }}>{detail}</div>
                     )}
                   </td>
-                  {/* Method — select (pending) or label (paid) */}
+                  {/* Method — select + account hint (pending) or "UPI — handle" combined (paid) */}
                   <td style={tdStyle}>
                     {p.status === "Pending" ? (
-                      <select
-                        value={methodMap[p.id] ?? "UPI"}
-                        onChange={(e) => setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))}
-                        style={{ fontSize: 12, padding: "4px 22px 4px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") no-repeat right 7px center, #fcfbf8", appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
-                      >
-                        {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-                      </select>
+                      <div>
+                        <select
+                          value={methodMap[p.id] ?? "UPI"}
+                          onChange={(e) => setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))}
+                          style={{ fontSize: 12, padding: "4px 22px 4px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") no-repeat right 7px center, #fcfbf8", appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        {payToDetail(p) && (
+                          <div style={{ fontSize: 10, fontFamily: "monospace", color: "var(--ink-faint)", marginTop: 3 }}>{payToDetail(p)}</div>
+                        )}
+                      </div>
                     ) : (
-                      <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{p.payment_method ?? "—"}</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{paidMethodLabel(p)}</span>
                     )}
                   </td>
-                  {/* Invoice ref */}
+                  {/* Invoice ref. */}
                   <td style={tdStyle}>
                     <span style={{ fontFamily: "monospace", fontSize: 12 }}>{p.invoice_ref}</span>
                   </td>
-                  {/* Status */}
-                  <td style={tdStyle}><StatusPill status={p.status} /></td>
-                  {/* Actions */}
+                  {/* Payment status — "Paid — 09 Jun 2025" or StatusPill */}
+                  <td style={tdStyle}>
+                    {p.status === "Paid" ? (
+                      <span style={{ display: "inline-block", background: "#d4edda", color: "#2a6b2a", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>
+                        {fmtPaidAt(p.paid_at)}
+                      </span>
+                    ) : (
+                      <StatusPill status={p.status} />
+                    )}
+                  </td>
+                  {/* Action */}
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {p.status === "Pending" ? (
@@ -180,7 +204,7 @@ export function PayoutTable({
                             onClick={() => markPaid(p.id)}
                             style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
                           >
-                            Mark paid
+                            Mark as paid
                           </button>
                           <button
                             onClick={() => setDraft({ open: true, name: p.practitioner?.name ?? "", invoice: p.invoice_ref, net: formatInr(p.net_amount), module: p.session?.module ?? "" })}
@@ -190,9 +214,7 @@ export function PayoutTable({
                           </button>
                         </>
                       ) : (
-                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-                          {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN") : "—"}
-                        </span>
+                        <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
                       )}
                     </div>
                   </td>

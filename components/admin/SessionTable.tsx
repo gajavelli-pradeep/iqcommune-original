@@ -131,7 +131,7 @@ export function SessionTable({
         >
           <thead>
             <tr>
-              {["Ref", "Module", "Practitioner", "Date", "Venue", "Audience", "Pax", "Payout", "Consent", "Status", ""].map((h) => (
+              {["Ref", "Module", "Practitioner", "Date & venue", "Audience", "Pax", "Payout", "Consent", "Status", ""].map((h) => (
                 <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
@@ -156,10 +156,9 @@ export function SessionTable({
                       {s.practitioner?.email && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.practitioner.email}</div>}
                     </td>
                     <td style={tdStyle}>
-                      <div>{s.session_date}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{s.start_time}–{s.end_time}</div>
+                      <div>{s.session_date} · {s.start_time}–{s.end_time}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{s.venue}</div>
                     </td>
-                    <td style={tdStyle}>{s.venue}</td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>{s.audience_type ?? "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>{s.participants}</td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>
@@ -182,7 +181,7 @@ export function SessionTable({
                             Payout →
                           </button>
                         )}
-                        {s.status === "Upcoming" && s.consent_status !== "Signed" && (
+                        {s.status === "Upcoming" && s.consent_status === "Pending consent" && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -194,17 +193,28 @@ export function SessionTable({
                                 waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
                               });
                             }}
-                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
+                            style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "none", background: "#c9982a", color: "#14161d", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
                           >
                             Send confirmation
                           </button>
                         )}
                         {s.status === "Completed" && (
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              const url = `${window.location.origin}/onboarding?session=${encodeURIComponent(s.ref_code)}&mode=photos`;
-                              navigator.clipboard.writeText(url).then(() => alert(`Photo link copied:\n${url}`));
+                              try {
+                                const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
+                                if (!res.ok) {
+                                  const body = await res.json().catch(() => ({})) as { error?: string };
+                                  alert(body.error ?? "Could not generate photo link");
+                                  return;
+                                }
+                                const { url } = await res.json() as { url: string };
+                                await navigator.clipboard.writeText(url);
+                                alert(`Photo link copied:\n${url}`);
+                              } catch {
+                                alert("Failed to generate photo link. Please try again.");
+                              }
                             }}
                             style={{ fontSize: 11, padding: "3px 9px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "#14161d", cursor: "pointer", fontFamily: "inherit" }}
                           >
@@ -218,7 +228,7 @@ export function SessionTable({
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={11} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                      <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div
                           style={{
                             border: "1px solid rgba(20,18,12,.10)",
@@ -250,7 +260,7 @@ export function SessionTable({
             })}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={11} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--ink-faint)", fontSize: 13 }}>
                   {data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
                 </td>
               </tr>
