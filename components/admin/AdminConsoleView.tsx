@@ -659,7 +659,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabStatsRow tab="requests" counts={counts} activeFilter={tabFilters.requests ?? "all"} onStatClick={(f) => setTabFilter("requests", f)} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} />
             </div>
           </div>
         )}
@@ -717,6 +717,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 initialData={photosData}
                 statusFilter={tabFilters.photos ?? "All"}
                 onStatusFilterChange={(f) => setTabFilter("photos", f)}
+                isSuperAdmin={isSuperAdmin}
                 onStatusChange={(id, status) =>
                   setPhotosData((prev) =>
                     status === "Deleted"

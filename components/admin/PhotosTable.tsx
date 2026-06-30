@@ -70,11 +70,13 @@ export function PhotosTable({
   statusFilter: statusFilterProp,
   onStatusFilterChange,
   onStatusChange,
+  isSuperAdmin = false,
 }: {
   initialData: PhotoSubmission[];
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
   onStatusChange?: (id: string, status: string) => void;
+  isSuperAdmin?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");

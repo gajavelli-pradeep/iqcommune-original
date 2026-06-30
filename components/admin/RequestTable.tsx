@@ -92,17 +92,22 @@ export function RequestTable({
   practitioners = [],
   onRowChange,
   statusFilter = "all",
+  isSuperAdmin = false,
+  onHardDeleted,
 }: {
   initialData: SessionRequest[];
   practitioners?: Practitioner[];
   onRowChange?: (id: string, patch: { status?: string; assigned_to?: string | null }) => void;
   statusFilter?: string;
+  isSuperAdmin?: boolean;
+  onHardDeleted?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
   const visible = statusFilter === "all" ? data : data.filter((r) => r.status === statusFilter);
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
+  const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
 
   const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
@@ -246,34 +251,57 @@ export function RequestTable({
                 </td>
                 {/* Actions */}
                 <td style={TD} onClick={(e) => e.stopPropagation()}>
-                  {r.status === "New" ? (
-                    <button
-                      onClick={() => {
-                        updateStatus(r.id, "Matched");
-                        setExpandedRow(r.id);
-                      }}
-                      style={darkBtn}
-                    >
-                      Review
-                    </button>
-                  ) : (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <select
-                        value={r.status}
-                        onChange={(e) => updateStatus(r.id, e.target.value)}
-                        style={selectStyle}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {r.status === "New" ? (
+                      <button
+                        onClick={() => {
+                          updateStatus(r.id, "Matched");
+                          setExpandedRow(r.id);
+                        }}
+                        style={darkBtn}
                       >
-                        {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                      <button onClick={() => openDraft(r)} style={ghostBtn}>
-                        Email draft
+                        Review
                       </button>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select
+                          value={r.status}
+                          onChange={(e) => updateStatus(r.id, e.target.value)}
+                          style={selectStyle}
+                        >
+                          {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        <button onClick={() => openDraft(r)} style={ghostBtn}>
+                          Email draft
+                        </button>
+                      </div>
+                    )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!window.confirm(`Delete request from ${r.name} permanently? This cannot be undone.`)) return;
+                          const res = await fetch(`/api/admin/super/requests/${r.id}`, { method: "DELETE" });
+                          if (res.ok) {
+                            setData((prev) => prev.filter((x) => x.id !== r.id));
+                            onHardDeleted?.(r.id);
+                          } else {
+                            setDeleteFailedId(r.id);
+                            setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
+                          }
+                        }}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid var(--red-border)", background: "none", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start" }}
+                        title={`Delete request from ${r.name} permanently`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                        {deleteFailedId === r.id ? "Delete failed!" : "Delete"}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
 
