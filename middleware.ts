@@ -50,10 +50,9 @@ export async function middleware(request: NextRequest) {
       new URL(isSuperAdmin ? "/console/super" : "/console", request.url)
     );
   }
-  if (isSuperLoginPath && isAdmin) {
-    return NextResponse.redirect(
-      new URL(isSuperAdmin ? "/console/super" : "/console", request.url)
-    );
+  // Only auto-redirect away from super-login if already authenticated as super_admin
+  if (isSuperLoginPath && isSuperAdmin) {
+    return NextResponse.redirect(new URL("/console/super", request.url));
   }
 
   return response;
