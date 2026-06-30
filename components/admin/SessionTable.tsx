@@ -97,6 +97,8 @@ export function SessionTable({
   } | null>(null);
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [copiedPhotoId, setCopiedPhotoId] = useState<string | null>(null);
+  const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{
     open: boolean;
     title?: string;
@@ -302,18 +304,14 @@ export function SessionTable({
                           e.stopPropagation();
                           try {
                             const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
-                            if (!res.ok) {
-                              const body = (await res.json().catch(() => ({}))) as {
-                                error?: string;
-                              };
-                              alert(body.error ?? "Could not generate photo link");
-                              return;
-                            }
+                            if (!res.ok) return;
                             const { url } = (await res.json()) as { url: string };
-                            await navigator.clipboard.writeText(url);
-                            alert(`Photo link copied:\n${url}`);
+                            window.open(url, "_blank", "noopener,noreferrer");
+                            navigator.clipboard.writeText(url).catch(() => undefined);
+                            setCopiedPhotoId(s.id);
+                            setTimeout(() => setCopiedPhotoId((c) => (c === s.id ? null : c)), 2500);
                           } catch {
-                            alert("Failed to generate photo link. Please try again.");
+                            // silently ignore — user can retry
                           }
                         }}
                         style={{ ...actionBtn("#fff", "#14161d", true), display: "inline-flex", alignItems: "center", gap: 4 }}
@@ -323,7 +321,7 @@ export function SessionTable({
                           <circle cx="8.5" cy="8.5" r="1.5" />
                           <polyline points="21 15 16 10 5 21" />
                         </svg>
-                        Photo link
+                        {copiedPhotoId === s.id ? "Link copied!" : "Photo link"}
                       </button>
                     )}
                     {s.status === "Completed" && (() => {
@@ -361,13 +359,16 @@ export function SessionTable({
                           if (!window.confirm(`Delete session ${s.ref_code} permanently? This cannot be undone.`)) return;
                           const res = await fetch(`/api/admin/super/sessions/${s.id}`, { method: "DELETE" });
                           if (res.ok) onHardDeleted?.(s.id);
-                          else alert("Delete failed — please try again.");
+                          else {
+                            setDeleteFailedId(s.id);
+                            setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
+                          }
                         }}
                         style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid #fca5a5", background: "none", color: "#991b1b", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
                         title={`Delete session ${s.ref_code} permanently`}
                       >
                         <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-                        Delete
+                        {deleteFailedId === s.id ? "Delete failed!" : "Delete"}
                       </button>
                     )}
                   </div>
