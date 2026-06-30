@@ -25,27 +25,40 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Guard both sides: if ADMIN_EMAIL is unset, process.env.ADMIN_EMAIL is undefined,
-  // and null?.email is also undefined — undefined === undefined would be true without !!user.
+  const role = user?.app_metadata?.role;
+  const isSuperAdmin = !!user && role === "super_admin";
   const isAdmin =
     !!user &&
-    (user.app_metadata?.role === "admin" ||
+    (role === "admin" ||
+      role === "super_admin" ||
       (!!process.env.ADMIN_EMAIL &&
         user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()));
 
-  const isConsole = request.nextUrl.pathname.startsWith("/console");
-  const isLogin = request.nextUrl.pathname === "/login";
+  const { pathname } = request.nextUrl;
+  const isConsolePath = pathname.startsWith("/console");
+  const isLoginPath = pathname === "/login";
+  const isSuperLoginPath = pathname === "/super-login";
 
-  if (isConsole && !isAdmin) {
+  // Protect /console — unauthenticated users → /login
+  if (isConsolePath && !isAdmin) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  if (isLogin && isAdmin) {
-    return NextResponse.redirect(new URL("/console", request.url));
+
+  // Redirect already-logged-in users away from login pages
+  if (isLoginPath && isAdmin) {
+    return NextResponse.redirect(
+      new URL(isSuperAdmin ? "/console/super" : "/console", request.url)
+    );
+  }
+  if (isSuperLoginPath && isAdmin) {
+    return NextResponse.redirect(
+      new URL(isSuperAdmin ? "/console/super" : "/console", request.url)
+    );
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/console/:path*", "/login"],
+  matcher: ["/console/:path*", "/login", "/super-login"],
 };

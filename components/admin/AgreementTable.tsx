@@ -19,7 +19,15 @@ function isThisMonth(d: Date): boolean {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
-export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
+export function AgreementTable({
+  initialData,
+  isSuperAdmin = false,
+  onHardDeleted,
+}: {
+  initialData: Agreement[];
+  isSuperAdmin?: boolean;
+  onHardDeleted?: (id: string) => void;
+}) {
   const [toast, setToast] = useState("");
 
   const total     = initialData.length;
@@ -248,6 +256,22 @@ export function AgreementTable({ initialData }: { initialData: Agreement[] }) {
                     </svg>
                     Download
                   </button>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!window.confirm(`Delete agreement for ${row.practitioner_name} permanently? This cannot be undone.`)) return;
+                        const res = await fetch(`/api/admin/super/agreements/${row.id}`, { method: "DELETE" });
+                        if (res.ok) onHardDeleted?.(row.id);
+                        else showToast("Delete failed — please try again.");
+                      }}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid #fca5a5", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                      title={`Delete agreement for ${row.practitioner_name} permanently`}
+                    >
+                      <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

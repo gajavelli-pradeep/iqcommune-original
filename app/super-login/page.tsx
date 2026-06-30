@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function SuperLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,15 +23,20 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    const dest = data.user.app_metadata?.role === "super_admin" ? "/console/super" : "/console";
-    router.push(dest);
+    if (data.user.app_metadata?.role !== "super_admin") {
+      await supabase.auth.signOut();
+      setError("This login is for super admins only.");
+      setLoading(false);
+      return;
+    }
+    router.push("/console/super");
   }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "var(--surface-soft)",
+        background: "var(--ink)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -40,8 +45,8 @@ export default function LoginPage() {
     >
       <div
         style={{
-          background: "var(--surface)",
-          border: "1px solid rgba(20,18,12,.1)",
+          background: "#1e2028",
+          border: "1px solid rgba(255,255,255,.1)",
           borderRadius: 14,
           padding: "2.5rem 2rem",
           width: "100%",
@@ -49,42 +54,39 @@ export default function LoginPage() {
         }}
       >
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>iqcommune</div>
-          <div style={{ fontSize: 14, color: "var(--ink-faint)", marginTop: 4 }}>
-            Admin console — sign in to continue
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--surface)" }}>
+            iqcommune
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <ShieldIcon />
+            Super Admin — restricted access
           </div>
         </div>
 
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }} noValidate>
           <div>
-            <label
-              htmlFor="email"
-              style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5 }}
-            >
+            <label htmlFor="sa-email" style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5, color: "rgba(255,255,255,.7)" }}>
               Email
             </label>
             <input
-              id="email"
+              id="sa-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
               style={inputStyle}
-              placeholder="admin@iqcommune.in"
+              placeholder="superadmin@iqcommune.in"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5 }}
-            >
+            <label htmlFor="sa-password" style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5, color: "rgba(255,255,255,.7)" }}>
               Password
             </label>
             <div style={{ position: "relative" }}>
               <input
-                id="password"
+                id="sa-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -110,12 +112,12 @@ export default function LoginPage() {
                   border: "none",
                   borderRadius: "0 7px 7px 0",
                   cursor: "pointer",
-                  color: "var(--ink-faint)",
+                  color: "rgba(255,255,255,.4)",
                   padding: 0,
                   flexShrink: 0,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-faint)")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.8)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.4)")}
               >
                 {showPassword ? <EyeOff /> : <Eye />}
               </button>
@@ -126,12 +128,12 @@ export default function LoginPage() {
             <div
               role="alert"
               style={{
-                background: "var(--red-light)",
-                border: "1px solid var(--red-border)",
+                background: "rgba(220,53,69,.15)",
+                border: "1px solid rgba(220,53,69,.4)",
                 borderRadius: 8,
                 padding: "10px 12px",
                 fontSize: 13,
-                color: "var(--red)",
+                color: "#ff6b6b",
               }}
             >
               {error}
@@ -140,12 +142,11 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="btn-cta"
             disabled={loading}
             style={{
               padding: "12px",
-              background: "var(--ink)",
-              color: "var(--surface)",
+              background: "var(--gold)",
+              color: "var(--ink)",
               border: "none",
               borderRadius: 100,
               fontSize: 14,
@@ -156,11 +157,19 @@ export default function LoginPage() {
               marginTop: 4,
             }}
           >
-            {loading ? "Signing in…" : "Sign in →"}
+            {loading ? "Verifying…" : "Sign in →"}
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width={13} height={13} fill="none" stroke="var(--gold)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
   );
 }
 
@@ -183,14 +192,14 @@ function EyeOff() {
   );
 }
 
-// outline removed — globals.css :focus-visible provides the gold ring
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(255,255,255,.15)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
-  background: "var(--surface)",
+  background: "rgba(255,255,255,.07)",
+  color: "var(--surface)",
   boxSizing: "border-box",
 };

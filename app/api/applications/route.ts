@@ -8,6 +8,7 @@ import { encryptOptional } from "@/lib/encrypt";
 import { sendEmail } from "@/lib/email/brevo";
 import { applicationConfirmation } from "@/lib/email/templates";
 import { guardEmailSend } from "@/lib/email/idempotency";
+import { signStatusUrl } from "@/lib/hmac";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
@@ -95,9 +96,10 @@ export async function POST(req: NextRequest) {
   if (!alreadySent) {
     try {
       const { subject, htmlContent } = applicationConfirmation({
-        name:    `${d.firstName} ${d.lastName}`,
-        ref:     ref_code,
-        modules: [...d.modules],
+        name:      `${d.firstName} ${d.lastName}`,
+        ref:       ref_code,
+        modules:   [...d.modules],
+        statusUrl: signStatusUrl(ref_code),
       });
       await sendEmail({
         to:          d.email,

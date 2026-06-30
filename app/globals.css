@@ -550,4 +550,23 @@ textarea:focus-visible {
   }
 }
 
+/* ── Topic select: optgroup visual hierarchy ─────────────────────────────── */
+/* Inline style= on <optgroup>/<option> is ignored by all browsers; CSS only. */
+select.topic-select optgroup {
+  color: var(--ink-soft);
+  font-style: normal;
+  font-weight: 700;
+  background: var(--surface-sunken);
+}
+select.topic-select option {
+  color: var(--ink);
+  font-weight: 400;
+  background: var(--surface);
+}
+select.topic-select option[value="Not sure — help me choose"] {
+  color: var(--gold-dark);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+}
+
 /* build: premium pass v2 */

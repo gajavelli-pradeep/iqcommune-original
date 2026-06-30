@@ -92,6 +92,23 @@ export function PhotosTable({
     statusFilter === "All" ? true : p.status === statusFilter
   );
 
+  const reject = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/admin/photos/${id}/reject`, { method: "PATCH" });
+      if (res.ok) {
+        setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Rejected" } : p)));
+        onStatusChange?.(id, "Rejected");
+        setToast("Photo submission rejected");
+        setTimeout(() => setToast(""), 3000);
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setToast(body.error ?? "Rejection failed");
+        setTimeout(() => setToast(""), 4000);
+      }
+    },
+    [onStatusChange]
+  );
+
   const approve = useCallback(
     async (id: string) => {
       const res = await fetch(`/api/admin/photos/${id}/approve`, { method: "PATCH" });
@@ -204,7 +221,7 @@ export function PhotosTable({
           const days = daysLeft(p.expiry_date);
           const isUrgent = days <= 7 && p.status === "Pending";
           const ini = initials(p.practitioner_name);
-          const canView = p.status === "Pending" || p.status === "Approved";
+          const canView = p.status === "Pending" || p.status === "Approved" || p.status === "Rejected";
           return (
             <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
               {/* Practitioner */}
@@ -289,6 +306,16 @@ export function PhotosTable({
                       Approve
                     </button>
                   )}
+                  {p.status === "Pending" && (
+                    <button onClick={() => reject(p.id)} style={ghostBtn}>
+                      Reject
+                    </button>
+                  )}
+                  {p.status === "Approved" && (
+                    <button onClick={() => reject(p.id)} style={ghostBtn}>
+                      Revoke
+                    </button>
+                  )}
                   {canView && (
                     <button onClick={() => setViewId(p.id)} style={ghostBtn}>
                       <svg
@@ -308,7 +335,7 @@ export function PhotosTable({
                       View
                     </button>
                   )}
-                  {canView && (
+                  {canView && p.status !== "Rejected" && (
                     <button onClick={() => remove(p.id)} style={ghostBtn}>
                       Delete
                     </button>
@@ -348,7 +375,8 @@ export function PhotosTable({
           status={viewingRow.status}
           onClose={() => setViewId(null)}
           onApprove={viewingRow.status === "Pending" ? approve : undefined}
-          onDelete={remove}
+          onReject={viewingRow.status === "Pending" || viewingRow.status === "Approved" ? reject : undefined}
+          onDelete={viewingRow.status !== "Rejected" ? remove : undefined}
         />
       )}
     </div>

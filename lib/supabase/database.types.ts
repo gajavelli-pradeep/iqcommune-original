@@ -38,6 +38,8 @@ export interface Database {
           family_ifsc: string | null;
           status: string;
           ref_code: string | null;
+          avg_rating: number;
+          feedback_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -66,6 +68,8 @@ export interface Database {
           family_ifsc?: string | null;
           status?: string;
           ref_code?: string | null;
+          avg_rating?: number;
+          feedback_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -94,9 +98,56 @@ export interface Database {
           family_ifsc?: string | null;
           status?: string;
           ref_code?: string | null;
+          avg_rating?: number;
+          feedback_count?: number;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      session_feedback: {
+        Row: {
+          id: string;
+          session_id: string;
+          practitioner_id: string;
+          overall_rating: number | null;
+          subsections: Json | null;
+          comments: string | null;
+          collected_by: string | null;
+          collected_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          practitioner_id: string;
+          overall_rating?: number | null;
+          subsections?: Json | null;
+          comments?: string | null;
+          collected_by?: string | null;
+          collected_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          overall_rating?: number | null;
+          subsections?: Json | null;
+          comments?: string | null;
+          collected_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "session_feedback_session_id_fkey";
+            columns: ["session_id"];
+            referencedRelation: "sessions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "session_feedback_practitioner_id_fkey";
+            columns: ["practitioner_id"];
+            referencedRelation: "practitioners";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       session_requests: {
         Row: {
@@ -457,6 +508,34 @@ export interface Database {
           brevo_message_id?: string | null;
           status?: string;
           sent_at?: string;
+        };
+        Relationships: [];
+      };
+      super_admin_audit_log: {
+        Row: {
+          id: string;
+          actor_email: string;
+          action: string;
+          record_table: string;
+          record_id: string;
+          snapshot: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_email: string;
+          action: string;
+          record_table: string;
+          record_id: string;
+          snapshot?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: {
+          actor_email?: string;
+          action?: string;
+          record_table?: string;
+          record_id?: string;
+          snapshot?: Record<string, unknown> | null;
         };
         Relationships: [];
       };

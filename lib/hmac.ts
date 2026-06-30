@@ -96,3 +96,21 @@ export function verifyPhotoLinkParams(
     return false;
   }
 }
+
+// ── Application status links ───────────────────────────────────────────────
+// Sent in the confirmation email so practitioners can check their pipeline.
+
+export function signStatusUrl(refCode: string): string {
+  const sig  = sign(`status:${refCode}`);
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  return `${base}/status?ref=${encodeURIComponent(refCode)}&token=${sig}`;
+}
+
+export function verifyStatusToken(refCode: string, token: string): boolean {
+  try {
+    const expected = sign(`status:${refCode}`);
+    return timingSafeEqual(token, expected);
+  } catch {
+    return false;
+  }
+}

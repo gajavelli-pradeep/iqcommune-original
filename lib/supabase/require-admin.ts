@@ -28,6 +28,7 @@ export async function requireAdmin(): Promise<NextResponse | null> {
   // set app_metadata.role = 'admin' via Supabase dashboard instead.
   const isAdmin =
     user.app_metadata?.role === "admin" ||
+    user.app_metadata?.role === "super_admin" ||
     (!!process.env.ADMIN_EMAIL &&
       user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase());
 

@@ -9,6 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const isAdmin =
     !!user &&
     (user.app_metadata?.role === "admin" ||
+      user.app_metadata?.role === "super_admin" ||
       (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL));
 
   if (!isAdmin) redirect("/login");

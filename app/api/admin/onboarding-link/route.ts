@@ -94,6 +94,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create agreement record" }, { status: 500 });
   }
 
+  // Advance practitioner status to "Agreement Sent" server-side.
+  // The email is auto-sent below; status must not depend on the admin clicking a modal button.
+  const { error: statusErr } = await supabase
+    .from("practitioners")
+    .update({ status: "Agreement Sent" })
+    .eq("id", practitionerId)
+    .eq("status", "Screening Done");
+  if (statusErr) {
+    log.error("Onboarding link: status update failed", { error: statusErr.message, practitionerId });
+    // Non-fatal — link was generated; admin can correct status manually.
+  }
+
   // Auto-send agreement link email (idempotent).
   // revokeEmailSend on failure allows the next call to retry.
   const alreadySent = await guardEmailSend("agreement_link", refCode, p.email);

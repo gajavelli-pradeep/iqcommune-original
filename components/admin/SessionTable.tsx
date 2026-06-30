@@ -3,6 +3,7 @@
 import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 
@@ -23,6 +24,12 @@ interface Session {
   status: string;
   practitioner: { name: string; email: string } | null;
   payout_id?: string | null;
+  session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
+}
+
+interface FeedbackState {
+  id: string;
+  overall_rating: number | null;
 }
 
 function fmt12h(t: string): string {
@@ -53,11 +60,15 @@ export function SessionTable({
   onNavigate,
   statusFilter: statusFilterProp,
   onStatusFilterChange,
+  isSuperAdmin = false,
+  onHardDeleted,
 }: {
   initialData: Session[];
   onNavigate?: (tab: string) => void;
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
+  isSuperAdmin?: boolean;
+  onHardDeleted?: (id: string) => void;
 }) {
   const data = initialData;
   const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
@@ -70,6 +81,21 @@ export function SessionTable({
     onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f);
 
   const [search, setSearch] = useState("");
+  const [feedbackBySession, setFeedbackBySession] = useState<Record<string, FeedbackState>>(() => {
+    const map: Record<string, FeedbackState> = {};
+    for (const s of initialData) {
+      const fb = s.session_feedback?.[0];
+      if (fb) map[s.id] = { id: fb.id, overall_rating: fb.overall_rating };
+    }
+    return map;
+  });
+  const [feedbackModal, setFeedbackModal] = useState<{
+    sessionId: string;
+    sessionRef: string;
+    practitionerName: string;
+    existing?: FeedbackState | null;
+  } | null>(null);
+
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<{
     open: boolean;
@@ -300,6 +326,50 @@ export function SessionTable({
                         Photo link
                       </button>
                     )}
+                    {s.status === "Completed" && (() => {
+                      const fb = feedbackBySession[s.id];
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFeedbackModal({
+                              sessionId:        s.id,
+                              sessionRef:       s.ref_code,
+                              practitionerName: s.practitioner?.name ?? "—",
+                              existing:         fb ?? null,
+                            });
+                          }}
+                          style={{ ...actionBtn("#fff", "#14161d", true), display: "inline-flex", alignItems: "center", gap: 3 }}
+                        >
+                          {fb ? (
+                            <>
+                              <svg width={11} height={11} viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
+                                <path d="M5.5 0L6.9 4.1H11L7.6 6.6 8.9 10.7 5.5 8.2 2.1 10.7 3.4 6.6 0 4.1H4.1Z" />
+                              </svg>
+                              {fb.overall_rating !== null ? fb.overall_rating.toFixed(1) : "—"}
+                            </>
+                          ) : (
+                            "Feedback"
+                          )}
+                        </button>
+                      );
+                    })()}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!window.confirm(`Delete session ${s.ref_code} permanently? This cannot be undone.`)) return;
+                          const res = await fetch(`/api/admin/super/sessions/${s.id}`, { method: "DELETE" });
+                          if (res.ok) onHardDeleted?.(s.id);
+                          else alert("Delete failed — please try again.");
+                        }}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid #fca5a5", background: "none", color: "#991b1b", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                        title={`Delete session ${s.ref_code} permanently`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -359,6 +429,22 @@ export function SessionTable({
         emailBody={draft.emailBody}
         waBody={draft.waBody}
       />
+
+      {feedbackModal && (
+        <FeedbackModal
+          sessionId={feedbackModal.sessionId}
+          sessionRef={feedbackModal.sessionRef}
+          practitionerName={feedbackModal.practitionerName}
+          existing={feedbackModal.existing}
+          onClose={() => setFeedbackModal(null)}
+          onSaved={(result) => {
+            setFeedbackBySession((prev) => ({
+              ...prev,
+              [feedbackModal.sessionId]: { id: result.id, overall_rating: result.overall_rating },
+            }));
+          }}
+        />
+      )}
     </div>
   );
 }

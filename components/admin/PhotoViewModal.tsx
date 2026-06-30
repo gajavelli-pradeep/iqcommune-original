@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 
 interface ViewPayload {
   urls: string[];
+  downloadUrls: string[];
   meta: {
     practitioner_ref: string;
     session_ref: string;
@@ -18,6 +19,7 @@ export function PhotoViewModal({
   status,
   onClose,
   onApprove,
+  onReject,
   onDelete,
 }: {
   id: string;
@@ -25,6 +27,7 @@ export function PhotoViewModal({
   status: string;
   onClose: () => void;
   onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
   const [payload, setPayload] = useState<ViewPayload | null>(null);
@@ -102,12 +105,9 @@ export function PhotoViewModal({
             payload.urls.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
                 {payload.urls.map((url, i) => (
-                  <a
+                  <div
                     key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "block", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(20,18,12,.08)" }}
+                    style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(20,18,12,.08)" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -116,7 +116,39 @@ export function PhotoViewModal({
                       loading="lazy"
                       style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }}
                     />
-                  </a>
+                    {payload.downloadUrls[i] && (
+                      <a
+                        href={payload.downloadUrls[i]}
+                        download={`iqcommune-photo-${i + 1}.jpg`}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Download photo"
+                        style={{
+                          position: "absolute",
+                          bottom: 6,
+                          right: 6,
+                          background: "rgba(20,18,12,.72)",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "4px 8px",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          textDecoration: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          backdropFilter: "blur(4px)",
+                        }}
+                        aria-label={`Download photo ${i + 1}`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="7 10 12 15 17 10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Save
+                      </a>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
@@ -128,7 +160,7 @@ export function PhotoViewModal({
         </div>
 
         {/* Footer actions */}
-        {(onApprove || onDelete) && (
+        {(onApprove || onReject || onDelete) && (
           <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
             {onDelete && (
               <button
@@ -136,6 +168,14 @@ export function PhotoViewModal({
                 style={{ background: "rgba(20,18,12,.07)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
               >
                 Delete
+              </button>
+            )}
+            {(status === "Pending" || status === "Approved") && onReject && (
+              <button
+                onClick={() => { onReject(id); onClose(); }}
+                style={{ background: "rgba(20,18,12,.07)", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                {status === "Approved" ? "Revoke approval" : "Reject"}
               </button>
             )}
             {status === "Pending" && onApprove && (

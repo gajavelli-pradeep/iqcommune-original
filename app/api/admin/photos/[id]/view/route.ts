@@ -47,8 +47,13 @@ export async function GET(
     return NextResponse.json({ error: "Failed to generate photo URLs" }, { status: 500 });
   }
 
+  const { data: downloadSigned } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(keys, SIGNED_URL_TTL_SECONDS, { download: true });
+
   return NextResponse.json({
     urls: (signed ?? []).map((s) => s.signedUrl).filter(Boolean),
+    downloadUrls: (downloadSigned ?? []).map((s) => s.signedUrl).filter(Boolean),
     meta,
   });
 }

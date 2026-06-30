@@ -9,6 +9,8 @@ import { AgreementTable, type Agreement } from "@/components/admin/AgreementTabl
 import { PhotosTable } from "@/components/admin/PhotosTable";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
+import { PayoutFormModal } from "@/components/admin/PayoutFormModal";
+import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
 import { useAdminUI } from "@/components/admin/AdminUIContext";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -17,6 +19,7 @@ import type { Database } from "@/lib/supabase/database.types";
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
+  session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
 };
 type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
@@ -67,6 +70,7 @@ interface Props {
   agreements: Agreement[];
   photos: PhotoRow[];
   email?: string;
+  isSuperAdmin?: boolean;
 }
 
 // Gap 13 & 14: no trailing periods, correct titles
@@ -295,9 +299,9 @@ const goldBtnStyle: React.CSSProperties = {
 
 // ─── Tab panel header component — Gap 6, 33 ───────────────────────────────────
 // Renders the white .page-hdr bar (full-width, border-bottom) without duplicate title
-function TabHeader({ tab, onAction }: { tab: string; onAction?: (label: string) => void }) {
+function TabHeader({ tab, onAction, extraActions = [] }: { tab: string; onAction?: (label: string) => void; extraActions?: ActionButton[] }) {
   const meta = TAB_META[tab] ?? { title: tab, subtitle: "" };
-  const actions = TAB_ACTIONS[tab] ?? [];
+  const actions = [...(TAB_ACTIONS[tab] ?? []), ...extraActions];
 
   return (
     <div
@@ -396,7 +400,7 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email, isSuperAdmin = false }: Props) {
   const { globalSearch, setGlobalSearch, activeTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -410,6 +414,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   // Header-action modals
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
+  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
 
   // Lifted data state — tables notify us via callbacks so counts stay reactive
   const [requestsData, setRequestsData] = useState(requests);
@@ -417,6 +423,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [practitionersData, setPractitionersData] = useState(practitioners);
   const [payoutsData, setPayoutsData] = useState(payouts);
   const [photosData, setPhotosData] = useState(photos);
+  const [agreementsData, setAgreementsData] = useState(agreements);
 
   // Derive counts from local state — updates instantly when any action fires
   const pendingPayoutList = payoutsData.filter((p) => p.status === "Pending");
@@ -447,7 +454,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     totalPayouts:       payoutsData.length,
     paidPayouts:        paidPayoutList.length,
     // DB stores agreements awaiting signature as "Pending signature"; signed = "Active".
-    pendingAgreements:  agreements.filter((a) => a.status === "Pending signature").length,
+    pendingAgreements:  agreementsData.filter((a) => a.status === "Pending signature").length,
     totalPhotos:        photosData.length,
     pendingPhotos:      photosData.filter((p) => p.status === "Pending").length,
     approvedPhotos:     photosData.filter((p) => p.status === "Approved").length,
@@ -526,6 +533,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   function handleHeaderAction(label: string) {
     if (label.includes("Create session")) setSessionModalOpen(true);
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
+    else if (label.includes("Create payout")) setPayoutModalOpen(true);
+    else if (label.includes("Credentials")) setCredentialsOpen(true);
     else if (label === "Export") exportActiveTab();
   }
 
@@ -660,7 +669,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="practitioners" onAction={handleHeaderAction} />
             <TabStatsRow tab="practitioners" counts={counts} activeFilter={tabFilters.practitioners ?? "all"} onStatClick={(f) => setTabFilter("practitioners", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} />
             </div>
           </div>
         )}
@@ -670,7 +679,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="sessions" onAction={handleHeaderAction} />
             <TabStatsRow tab="sessions" counts={counts} activeFilter={tabFilters.sessions ?? "All"} onStatClick={(f) => setTabFilter("sessions", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} />
             </div>
           </div>
         )}
@@ -680,17 +689,21 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="agreements" onAction={handleHeaderAction} />
             {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <AgreementTable initialData={agreements} />
+              <AgreementTable initialData={agreementsData} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} />
             </div>
           </div>
         )}
 
         {activeTab === "payouts" && (
           <div>
-            <TabHeader tab="payouts" onAction={handleHeaderAction} />
+            <TabHeader
+              tab="payouts"
+              onAction={handleHeaderAction}
+              extraActions={isSuperAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
+            />
             <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} />
             </div>
           </div>
         )}
@@ -718,7 +731,11 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
 
         {activeTab === "settings" && (
           <div>
-            <TabHeader tab="settings" onAction={handleHeaderAction} />
+            <TabHeader
+              tab="settings"
+              onAction={handleHeaderAction}
+              extraActions={isSuperAdmin ? [{ label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin account passwords" }] : []}
+            />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <div
                 style={{
@@ -751,6 +768,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         open={practitionerModalOpen}
         onClose={() => setPractitionerModalOpen(false)}
         onCreated={(p) => { setPractitionersData((prev) => [p, ...prev]); }}
+      />
+      <PayoutFormModal
+        open={payoutModalOpen}
+        onClose={() => setPayoutModalOpen(false)}
+        onCreated={(p) => { setPayoutsData((prev) => [p, ...prev]); }}
+      />
+      <CredentialsModal
+        open={credentialsOpen}
+        onClose={() => setCredentialsOpen(false)}
       />
     </div>
   );

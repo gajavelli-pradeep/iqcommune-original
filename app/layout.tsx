@@ -52,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${dmSans.className}`}>
+    <html lang="en" className={`${dmSans.variable} ${dmSans.className}`} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

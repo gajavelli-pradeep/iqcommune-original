@@ -78,10 +78,14 @@ export function PayoutTable({
   initialData,
   onRowChange,
   statusFilter = "all",
+  isSuperAdmin = false,
+  onHardDeleted,
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
   statusFilter?: string;
+  isSuperAdmin?: boolean;
+  onHardDeleted?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
@@ -95,6 +99,21 @@ export function PayoutTable({
   }>({ open: false });
 
   const visible = statusFilter === "all" ? data : data.filter((p) => p.status === statusFilter);
+
+  const handleHardDelete = useCallback(
+    async (id: string) => {
+      if (!window.confirm("Delete this payout permanently? This cannot be undone.")) return;
+      const res = await fetch(`/api/admin/super/payouts/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setData((prev) => prev.filter((p) => p.id !== id));
+        onHardDeleted?.(id);
+      } else {
+        setToast("Delete failed — please try again.");
+        setTimeout(() => setToast(""), 3000);
+      }
+    },
+    [onHardDeleted]
+  );
 
   const markPaid = useCallback(
     async (id: string) => {
@@ -326,6 +345,16 @@ export function PayoutTable({
                       </>
                     ) : (
                       <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
+                    )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => handleHardDelete(p.id)}
+                        style={{ background: "none", border: "1px solid #fca5a5", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                        title={`Delete payout ${p.invoice_ref} permanently`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                        Delete
+                      </button>
                     )}
                   </div>
                 </td>

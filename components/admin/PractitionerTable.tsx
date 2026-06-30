@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useId, useRef, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
+import { PipelineStepper } from "@/components/shared/PipelineStepper";
 import type { Database } from "@/lib/supabase/database.types";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
@@ -25,11 +26,15 @@ export function PractitionerTable({
   onStatusChange,
   filter: filterProp,
   onFilterChange,
+  isSuperAdmin = false,
+  onHardDeleted,
 }: {
   initialData: Practitioner[];
   onStatusChange?: (id: string, status: string) => void;
   filter?: string;
   onFilterChange?: (f: string) => void;
+  isSuperAdmin?: boolean;
+  onHardDeleted?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
 
@@ -84,11 +89,14 @@ export function PractitionerTable({
       if (res.ok) {
         const body = await res.json();
         setGenLink({ ...body, practitioner: p });
+        // API advances status server-side; reflect immediately in local state.
+        setData((prev) => prev.map((pr) => pr.id === p.id ? { ...pr, status: "Agreement Sent" } : pr));
+        onStatusChange?.(p.id, "Agreement Sent");
       } else {
         showToast("Failed to generate link");
       }
     },
-    [showToast]
+    [showToast, onStatusChange]
   );
 
   const sendAgreementEmail = useCallback(
@@ -104,14 +112,13 @@ export function PractitionerTable({
         }),
       });
       if (res.ok) {
-        await updateStatus(p.id, "Agreement Sent");
         setGenLink(null);
         showToast("Agreement link sent via email");
       } else {
         showToast("Email failed — copy link manually");
       }
     },
-    [updateStatus, showToast]
+    [showToast]
   );
 
   function closeGenLink() {
@@ -149,7 +156,7 @@ export function PractitionerTable({
 
       {/* Table */}
       <AdminTable
-        headers={["Practitioner", "Module", "City", "Applied on", "Status", "Actions"]}
+        headers={["Practitioner", "Module", "City", "Applied on", "Rating", "Status", ""]}
         isEmpty={visible.length === 0}
         emptyText="No practitioners in this stage"
       >
@@ -191,29 +198,44 @@ export function PractitionerTable({
                     <td style={{ ...TD, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                       {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                     </td>
+                    {/* Rating */}
+                    <td style={{ ...TD, whiteSpace: "nowrap" }}>
+                      {p.feedback_count > 0 ? (
+                        <div>
+                          <span style={{ color: "var(--gold-dark)", fontWeight: 600, fontSize: 13 }}>★</span>
+                          <span style={{ fontWeight: 600, fontSize: 13, marginLeft: 3 }}>
+                            {Number(p.avg_rating).toFixed(1)}
+                          </span>
+                          <div style={{ fontSize: 10, color: "var(--ink-faint)", marginTop: 1 }}>
+                            {p.feedback_count} session{p.feedback_count !== 1 ? "s" : ""}
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
+                      )}
+                    </td>
                     <td style={TD}>
                       <StatusPill status={p.status} />
                     </td>
-                    <td style={TD} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select
-                          value={p.status}
-                          onChange={(e) => updateStatus(p.id, e.target.value)}
-                          style={selectStyle}
-                        >
-                          {STATUSES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                        {p.status === "Screening Done" && (
-                          <button
-                            onClick={(e) => { lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                            style={btnStyle("#c9982a", "#14161d")}
-                          >
-                            Gen. link
-                          </button>
-                        )}
-                      </div>
+                    {/* Expand chevron */}
+                    <td style={{ ...TD, width: 32, textAlign: "center", color: "var(--ink-faint)" }}>
+                      <svg
+                        width={14}
+                        height={14}
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        style={{
+                          transition: "transform .2s",
+                          transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        }}
+                      >
+                        <path d="M2 4.5L7 9.5L12 4.5" />
+                      </svg>
                     </td>
                   </tr>
 
@@ -251,35 +273,16 @@ export function PractitionerTable({
 
                             {/* Col 2: Pipeline progress */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline progress</div>
-                              {PIPELINE_ORDER.map((step, i) => {
-                                const stepIdx = PIPELINE_ORDER.indexOf(p.status as typeof PIPELINE_ORDER[number]);
-                                const thisIdx = i;
-                                const state = thisIdx < stepIdx ? "done" : thisIdx === stepIdx ? "active" : "pending";
-                                return (
-                                  <div key={step} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.6rem" }}>
-                                    <div style={{
-                                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700,
-                                      ...(state === "done" ? { background: "#2a6b2a", color: "#fff" } :
-                                         state === "active" ? { background: "var(--ink)", color: "#fff" } :
-                                         { background: "#f8f7f4", border: "1.5px solid rgba(20,18,12,.18)", color: "var(--ink-faint)" }),
-                                    }}>
-                                      {state === "done" ? "✓" : i + 1}
-                                    </div>
-                                    <span style={{
-                                      fontSize: 13,
-                                      ...(state === "done" ? { color: "#2a6b2a", fontWeight: 500 } :
-                                         state === "active" ? { color: "var(--ink)", fontWeight: 600 } :
-                                         { color: "var(--ink-faint)" }),
-                                    }}>{step}</span>
-                                  </div>
-                                );
-                              })}
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline Progress</div>
+                              <PipelineStepper
+                                status={p.status}
+                                timestamps={{ Applied: p.created_at ?? undefined }}
+                              />
                             </div>
 
                             {/* Col 3: Actions */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Actions</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Update Status</div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
                                 <select
                                   value={p.status}
@@ -291,14 +294,40 @@ export function PractitionerTable({
                                     <option key={s} value={s}>{s}</option>
                                   ))}
                                 </select>
+
+                                {/* Message + Notes */}
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(
+                                        `mailto:${p.email}?subject=${encodeURIComponent(`iqcommune — ${p.name}`)}`
+                                      );
+                                    }}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
+                                  >
+                                    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    Message
+                                  </button>
+                                  <button
+                                    disabled
+                                    title="Coming soon"
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "not-allowed", fontFamily: "inherit", color: "var(--ink-faint)", opacity: 0.6 }}
+                                  >
+                                    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Notes
+                                  </button>
+                                </div>
+
                                 {p.status === "Screening Done" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                                    style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Generate agreement link
                                   </button>
                                 )}
+
                                 {(p.upi_id || p.bank_account) && (
                                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
                                     <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
@@ -308,6 +337,28 @@ export function PractitionerTable({
                                         <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{value}</span>
                                       </div>
                                     ))}
+                                  </div>
+                                )}
+
+                                {isSuperAdmin && (
+                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #fca5a5" }}>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!window.confirm(`Delete ${p.name} permanently? This cannot be undone.`)) return;
+                                        const res = await fetch(`/api/admin/super/practitioners/${p.id}`, { method: "DELETE" });
+                                        if (res.ok) {
+                                          setData((prev) => prev.filter((pr) => pr.id !== p.id));
+                                          onHardDeleted?.(p.id);
+                                          setExpandedRow(null);
+                                        } else {
+                                          showToast("Delete failed — please try again.");
+                                        }
+                                      }}
+                                      style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    >
+                                      Delete practitioner permanently
+                                    </button>
                                   </div>
                                 )}
                               </div>

@@ -24,12 +24,12 @@ export const BUNDLES = [
 ] as const;
 
 // Flat list used by form <select> and API validation.
-export const TOPICS = [...MODULES, ...BUNDLES] as const;
+export const TOPICS = [...MODULES, ...BUNDLES, "Not sure — help me choose"] as const;
 
 export const SessionRequestSchema = z
   .object({
     firstName:       z.string().min(1, "Required"),
-    lastName:        z.string().min(1, "Required"),
+    lastName:        z.string().optional(),
     email:           z.string().email("Invalid email"),
     phone:           z.string().min(6, "Required"),
     city:            z.string().min(1, "Required"),
@@ -40,7 +40,7 @@ export const SessionRequestSchema = z
     groupSize:       z.enum(GROUP_SIZE_OPTIONS).optional(),
     minCommit:       z.number().int().min(1).optional(),
     venue:           z.string().optional(),
-    preferredDates:  z.string().optional(),
+    preferredDates:  z.string().min(1, "Required"),
     notes:           z.string().optional(),
     spocDeclaration: z.literal(true, { message: "SPOC declaration is required" }),
   })

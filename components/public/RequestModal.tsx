@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { TOPICS } from "@/lib/schemas/session-request";
+import { MODULES, BUNDLES } from "@/lib/schemas/session-request";
 import { selectReset, selectChevronBg } from "@/components/ui/selectStyle";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -22,13 +22,10 @@ const AUDIENCE_CHIPS: { id: AudienceType; label: string }[] = [
 // Gap 15 & 16: org and amc context text updated to match source (with rich JSX rendered separately)
 const AUDIENCE_CONTEXT_TEXT: Record<AudienceType, string> = {
   group:
-    "You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day.",
+    "You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day. You can also request a 6-hour bundled session covering two related modules — this requires a minimum of 9 participants.",
   org:   "", // rendered as JSX below
   amc:   "", // rendered as JSX below
 };
-
-// Topic list is owned by the schema so the modal can never drift out of sync with what the API accepts.
-const TOPIC_OPTIONS = TOPICS;
 
 const GROUP_SIZE_OPTIONS: { value: GroupSize; label: string }[] = [
   { value: "5-8",   label: "5 – 8 people" },
@@ -235,6 +232,7 @@ function OrgContextContent() {
     <>
       Covers corporates, educational institutions, hospitals, media &amp; production houses — any organisation upskilling its people. We&apos;ll tailor the session to your team&apos;s goals and align the right practitioner.{" "}
       <strong style={{ color: "#14161d" }}>Please note — venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong>
+      {" "}You can also request a 6-hour bundled session — select a bundle option in the topic field below.
     </>
   );
 }
@@ -244,6 +242,7 @@ function AmcContextContent() {
     <>
       We&apos;ll match the right practitioner and structure the session around your goals.{" "}
       <strong style={{ color: "#14161d" }}>Venue and setup are on your end — we take care of the content and delivery.</strong>
+      {" "}You can also request a 6-hour bundled session — select a bundle option in the topic field below.
     </>
   );
 }
@@ -344,8 +343,8 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
       setValidationError("Please choose an audience type to continue.");
       return;
     }
-    if (!form.firstName || !form.email || !form.phone || !form.city || !form.state || !form.topic) {
-      setValidationError("Please fill in all required fields (name, email, phone, city, state, topic) to continue.");
+    if (!form.firstName || !form.email || !form.phone || !form.city || !form.state || !form.topic || !form.dateWindow) {
+      setValidationError("Please fill in all required fields (name, email, phone, city, state, topic, preferred date window) to continue.");
       return;
     }
     if (audience === "group" && !form.groupSize) {
@@ -676,7 +675,9 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       type="text"
                       value={form.org}
                       onChange={e => updateField("org", e.target.value)}
-                      placeholder={selectedAudience === "amc" ? "e.g. Bluepeak Wealth" : "e.g. Acme Corp"}
+                      placeholder={selectedAudience === "amc"
+                        ? "e.g. HDFC AMC, Mirae Asset, Axis Securities, Anand Rathi Wealth"
+                        : "e.g. TechCorp India, St. Xavier's College, Apollo Hospitals"}
                       style={inputStyle}
                     />
                   </div>
@@ -687,16 +688,24 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   <label htmlFor="modal-topic" style={labelStyle}>Topic of interest</label>
                   <select
                     id="modal-topic"
+                    className="topic-select"
                     value={form.topic}
                     onChange={e => updateField("topic", e.target.value)}
                     style={selectStyle}
                     required
                   >
                     <option value="">Select a training topic…</option>
-                    {TOPIC_OPTIONS.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
+                    <optgroup label="Modules">
+                      {MODULES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </optgroup>
+                    <optgroup label="Bundled Sessions (6 hrs)">
+                      {BUNDLES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </optgroup>
+                    <option value="Not sure — help me choose">Not sure — help me choose</option>
                   </select>
+                  <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
+                    Bundled (6-hour) sessions are open to all audiences. For Groups, this requires a minimum of 9 participants.
+                  </div>
                 </div>
 
                 {/* ── Group size + Date row (Groups audience only) ── */}
@@ -741,8 +750,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {selectedAudience && selectedAudience !== "group" && (
                   <div style={{ marginBottom: "1rem" }}>
                     <label htmlFor="modal-datewindow-ng" style={labelStyle}>
-                      Preferred date window{" "}
-                      <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
+                      Preferred date window
                     </label>
                     <input
                       id="modal-datewindow-ng"
@@ -815,6 +823,22 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   </div>
                 )}
 
+                {/* ── Notes ── */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="modal-notes" style={labelStyle}>
+                    Anything else?{" "}
+                    <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
+                  </label>
+                  <textarea
+                    id="modal-notes"
+                    rows={2}
+                    value={form.notes}
+                    onChange={e => updateField("notes", e.target.value)}
+                    placeholder="e.g. specific focus areas, preferred language, city…"
+                    style={inputStyle}
+                  />
+                </div>
+
                 {/* ── SPOC declaration (all audiences, per-audience wording) ── */}
                 {selectedAudience && (
                   <div style={{ marginBottom: "1rem" }}>
@@ -844,25 +868,25 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                             <>
                               I confirm I am registering as the{" "}
                               <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
-                              for this group and that{" "}
+                              for this group and that at least{" "}
                               <strong style={{ color: "#14161d" }}>
                                 {form.groupSize
                                   ? SPOC_MIN_LABEL[form.groupSize as Exclude<GroupSize, "">]
-                                  : "at least 5 participants"}
+                                  : "5 participants"}
                               </strong>{" "}
                               will attend. I acknowledge that the minimum attendance commitment applies regardless of actual turnout on the day.
                             </>
                           ) : selectedAudience === "org" ? (
                             <>
-                              I confirm I am the{" "}
-                              <strong style={{ color: "#14161d" }}>primary contact (SPOC)</strong>{" "}
-                              for this organisation&apos;s session request and am authorised to proceed on its behalf.
+                              I confirm I am registering as the{" "}
+                              <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
+                              for this organisation and will coordinate internally on session logistics, venue, and participant attendance.
                             </>
                           ) : (
                             <>
-                              I confirm I am the{" "}
-                              <strong style={{ color: "#14161d" }}>primary contact (SPOC)</strong>{" "}
-                              for this firm&apos;s session request and am authorised to proceed on its behalf.
+                              I confirm I am registering as the{" "}
+                              <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
+                              for this firm and will coordinate internally on session logistics, venue, and participant attendance.
                             </>
                           )}
                         </span>
@@ -870,22 +894,6 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     </div>
                   </div>
                 )}
-
-                {/* ── Notes ── */}
-                <div style={{ marginBottom: "1rem" }}>
-                  <label htmlFor="modal-notes" style={labelStyle}>
-                    Anything else?{" "}
-                    <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
-                  </label>
-                  <textarea
-                    id="modal-notes"
-                    rows={2}
-                    value={form.notes}
-                    onChange={e => updateField("notes", e.target.value)}
-                    placeholder="e.g. specific focus areas, preferred language, city…"
-                    style={inputStyle}
-                  />
-                </div>
 
                 {/* ── Validation error ── */}
                 {validationError && (

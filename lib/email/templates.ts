@@ -110,18 +110,26 @@ export function applicationConfirmation({
   name,
   ref,
   modules,
+  statusUrl,
 }: {
   name: string;
   ref: string;
   modules: string[];
+  statusUrl?: string;
 }): { subject: string; htmlContent: string } {
   const first = esc(name.split(" ")[0] || "there");
+  const statusBtn = statusUrl
+    ? `<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(statusUrl)}" style="${GOLD_BTN}">Track your application →</a>
+</div>`
+    : "";
   return {
     subject: `iqcommune — Application received (${escSubject(ref)})`,
     htmlContent: `<div style="${BASE}">
 <p>Hi ${first},</p>
 <p>Thank you for applying to become an iqcommune practitioner. We've received your application and will review it shortly.</p>
 <p><strong>Modules applied for:</strong><br>${modules.map(esc).join("<br>")}</p>
+${statusBtn}
 <p>We'll be in touch within 3–5 working days. For questions, email <a href="mailto:practitioners@iqcommune.com">practitioners@iqcommune.com</a></p>
 <p>Warm regards,<br>iqcommune team</p>
 </div>`,

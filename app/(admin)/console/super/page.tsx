@@ -1,10 +1,12 @@
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSuperAdminUser } from "@/lib/supabase/require-super-admin";
 import { AdminConsoleView } from "@/components/admin/AdminConsoleView";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Admin Console" };
+export const metadata: Metadata = { title: "Super Admin Console" };
 export const dynamic = "force-dynamic";
 
 type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
@@ -37,15 +39,12 @@ async function getData() {
     db.from("agreements").select("*, practitioner:practitioners(name, role)").order("signed_at", { ascending: false }).limit(200),
     db.from("photo_submissions").select("*").order("submitted_at", { ascending: false }).limit(200),
   ]);
-  // Surface DB errors so Next.js error.tsx handles them — empty tables on query failure
-  // are worse than an error page because they look like "no data" to the admin.
   if (practitioners.error) throw new Error(`Practitioners load failed: ${practitioners.error.message}`);
   if (sessions.error)      throw new Error(`Sessions load failed: ${sessions.error.message}`);
   if (requests.error)      throw new Error(`Session requests load failed: ${requests.error.message}`);
   if (payouts.error)       throw new Error(`Payouts load failed: ${payouts.error.message}`);
   if (agreementsRes.error) throw new Error(`Agreements load failed: ${agreementsRes.error.message}`);
 
-  // Join session_feedback in JS — avoids FK-based PostgREST join that fails on stale schema cache
   const feedbackBySession = Object.fromEntries(
     (sessionFeedback.data ?? []).map((f) => [f.session_id, { id: f.id, overall_rating: f.overall_rating }])
   );
@@ -54,17 +53,14 @@ async function getData() {
     session_feedback: feedbackBySession[s.id] ? [feedbackBySession[s.id]] : [],
   })) as SessionRow[];
 
-  // Build ref→name map from already-fetched practitioners — zero extra queries
   const nameByRef: Record<string, string> = {};
   for (const p of practitioners.data ?? []) {
     if (p.ref_code) nameByRef[p.ref_code] = p.name;
   }
-  // Photos query failure is non-fatal — show empty state rather than crashing the admin
   const photos: PhotoRow[] = (photosRes.data ?? []).map((p) => ({
     ...p,
     practitioner_name: nameByRef[p.practitioner_ref] ?? p.practitioner_ref,
   }));
-
   const agreements: Agreement[] = ((agreementsRes.data ?? []) as AgreementFetchRow[]).map((a) => ({
     ...a,
     practitioner_name: a.practitioner?.name ?? "—",
@@ -80,7 +76,10 @@ async function getData() {
   };
 }
 
-export default async function ConsolePage() {
+export default async function SuperAdminPage() {
+  const saUser = await getSuperAdminUser();
+  if (!saUser) redirect("/console");
+
   const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
   return (
     <AdminConsoleView
@@ -90,7 +89,8 @@ export default async function ConsolePage() {
       payouts={payouts}
       agreements={agreements}
       photos={photos}
-      email={process.env.ADMIN_EMAIL}
+      email={saUser.email}
+      isSuperAdmin={true}
     />
   );
 }

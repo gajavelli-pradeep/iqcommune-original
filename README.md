@@ -8,18 +8,18 @@ A platform connecting learners with active finance practitioners for in-person e
 
 ## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19 + Tailwind v4 (`@theme` in `app/globals.css`) |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth (admin role via `app_metadata.role = 'admin'`) |
-| Email | Brevo (transactional) |
-| Rate limiting | Upstash Redis |
-| PDF | jsPDF |
-| Forms | React Hook Form + Zod v4 |
-| Testing | Vitest (unit) · Playwright (e2e) |
-| Deployment | Vercel — `main` branch is the active deployment |
+| Layer         | Technology                                                   |
+| ------------- | ------------------------------------------------------------ |
+| Framework     | Next.js 16 (App Router)                                      |
+| UI            | React 19 + Tailwind v4 (`@theme` in `app/globals.css`)       |
+| Database      | Supabase (PostgreSQL)                                        |
+| Auth          | Supabase Auth (admin role via `app_metadata.role = 'admin'`) |
+| Email         | Brevo (transactional)                                        |
+| Rate limiting | Upstash Redis                                                |
+| PDF           | jsPDF                                                        |
+| Forms         | React Hook Form + Zod v4                                     |
+| Testing       | Vitest (unit) · Playwright (e2e)                             |
+| Deployment    | Vercel — `main` branch is the active deployment              |
 
 ---
 
@@ -44,20 +44,20 @@ Open [http://localhost:3000](http://localhost:3000).
 
 All variables are validated at boot in `lib/env.ts` — the server will refuse to start with missing or malformed values.
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role (server-only) |
-| `HMAC_SECRET` | Min 32 chars — signs onboarding URLs (`lib/hmac.ts`) |
-| `ENCRYPTION_KEY` | Exactly 64 hex chars (32 bytes) — AES-256-GCM encryption |
-| `BREVO_API_KEY` | Brevo transactional email key |
-| `BREVO_SENDER_EMAIL` | Verified sender address |
-| `NEXT_PUBLIC_BASE_URL` | Full origin e.g. `https://iqcommune.vercel.app` |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis URL (rate limiting) |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token |
-| `SUPABASE_PHOTOS_BUCKET` | Supabase Storage bucket name for photo submissions |
-| `CRON_SECRET` | Min 16 chars — authenticates `/api/cron/*` requests |
+| Variable                        | Description                                              |
+| ------------------------------- | -------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key                                        |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role (server-only)                      |
+| `HMAC_SECRET`                   | Min 32 chars — signs onboarding URLs (`lib/hmac.ts`)     |
+| `ENCRYPTION_KEY`                | Exactly 64 hex chars (32 bytes) — AES-256-GCM encryption |
+| `BREVO_API_KEY`                 | Brevo transactional email key                            |
+| `BREVO_SENDER_EMAIL`            | Verified sender address                                  |
+| `NEXT_PUBLIC_BASE_URL`          | Full origin e.g. `https://iqcommune.vercel.app`          |
+| `UPSTASH_REDIS_REST_URL`        | Upstash Redis URL (rate limiting)                        |
+| `UPSTASH_REDIS_REST_TOKEN`      | Upstash Redis token                                      |
+| `SUPABASE_PHOTOS_BUCKET`        | Supabase Storage bucket name for photo submissions       |
+| `CRON_SECRET`                   | Min 16 chars — authenticates `/api/cron/*` requests      |
 
 > **`ADMIN_EMAIL`** is a dev-only convenience for bootstrap. In production, grant admin access via `app_metadata.role = 'admin'` in Supabase Auth directly.
 
@@ -118,25 +118,26 @@ Brand: **ink + cream + gold** — premium professional-services. All colors come
 
 ### Token Map
 
-| Category | Token | Value |
-|----------|-------|-------|
-| Text | `--ink` | `#14161d` |
-| Text muted | `--ink-muted` | `#383b47` |
-| Text soft | `--ink-soft` | `#5b5e6c` |
-| Text faint | `--ink-faint` | `#71717f` |
-| Surface | `--surface` | `#ffffff` |
-| Surface soft | `--surface-soft` | `#f8f7f4` |
-| Surface sunken | `--surface-sunken` | `#f4f2ec` |
-| Input | `--input-paper` | `#fcfbf8` |
-| Brand | `--gold` | `#c9982a` |
-| Brand light | `--gold-light` | `#f5e9c8` |
-| Brand dark | `--gold-dark` | `#8a6510` |
-| Success | `--green` / `--green-light` | |
-| Error | `--red` / `--red-light` | |
-| Info | `--blue` / `--blue-light` | |
-| Warning | `--amber` / `--amber-light` | |
+| Category       | Token                       | Value     |
+| -------------- | --------------------------- | --------- |
+| Text           | `--ink`                     | `#14161d` |
+| Text muted     | `--ink-muted`               | `#383b47` |
+| Text soft      | `--ink-soft`                | `#5b5e6c` |
+| Text faint     | `--ink-faint`               | `#71717f` |
+| Surface        | `--surface`                 | `#ffffff` |
+| Surface soft   | `--surface-soft`            | `#f8f7f4` |
+| Surface sunken | `--surface-sunken`          | `#f4f2ec` |
+| Input          | `--input-paper`             | `#fcfbf8` |
+| Brand          | `--gold`                    | `#c9982a` |
+| Brand light    | `--gold-light`              | `#f5e9c8` |
+| Brand dark     | `--gold-dark`               | `#8a6510` |
+| Success        | `--green` / `--green-light` |           |
+| Error          | `--red` / `--red-light`     |           |
+| Info           | `--blue` / `--blue-light`   |           |
+| Warning        | `--amber` / `--amber-light` |           |
 
 **Color rules:**
+
 - Semantics are reserved — `--green` = success, `--red` = true errors only, `--gold` = brand/primary.
 - Gold text on light surfaces → use `--gold-dark` (raw gold fails WCAG AA contrast).
 - Gold fill buttons → use `--ink` label, never white (white-on-gold fails WCAG AA).
@@ -144,20 +145,20 @@ Brand: **ink + cream + gold** — premium professional-services. All colors come
 
 ### CSS Classes (globals.css)
 
-| Class | Purpose |
-|-------|---------|
-| `.btn-cta` | CTA buttons — lift + brighten + arrow nudge on hover |
-| `.topic-card`, `.role-card`, `.module-card`, etc. | Cards — lift + accent border + icon fill on hover |
-| `.hover-lift` | Trust bar / ribbon items — gentle translateY(-2px) |
-| `.row-hover` | Table rows — gold tint on hover |
-| `.aud-chip` | Audience selection chips — lift + gold border on hover |
-| `.faq-row` | FAQ accordion rows — surface-soft background on hover |
-| `.foot-link` | Footer / muted links — gold color on hover |
-| `.link-arrow` | Text links with chevron — gold color + arrow nudge |
-| `.nav-logo` | Site logo — opacity fade + lift |
-| `.iq-animate` / `.iq-visible` | Scroll-triggered entrance animations |
-| `.hero-stagger` | Hero content stagger entrance |
-| `.page-transition` | Page-level fade-up transition |
+| Class                                             | Purpose                                                |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `.btn-cta`                                        | CTA buttons — lift + brighten + arrow nudge on hover   |
+| `.topic-card`, `.role-card`, `.module-card`, etc. | Cards — lift + accent border + icon fill on hover      |
+| `.hover-lift`                                     | Trust bar / ribbon items — gentle translateY(-2px)     |
+| `.row-hover`                                      | Table rows — gold tint on hover                        |
+| `.aud-chip`                                       | Audience selection chips — lift + gold border on hover |
+| `.faq-row`                                        | FAQ accordion rows — surface-soft background on hover  |
+| `.foot-link`                                      | Footer / muted links — gold color on hover             |
+| `.link-arrow`                                     | Text links with chevron — gold color + arrow nudge     |
+| `.nav-logo`                                       | Site logo — opacity fade + lift                        |
+| `.iq-animate` / `.iq-visible`                     | Scroll-triggered entrance animations                   |
+| `.hero-stagger`                                   | Hero content stagger entrance                          |
+| `.page-transition`                                | Page-level fade-up transition                          |
 
 All hover rules are guarded with `@media (hover: hover)` — touch devices never trigger sticky hover states.
 
@@ -190,6 +191,7 @@ Migrations live in `supabase/migrations/` and are applied sequentially:
 ```
 
 Apply to a local Supabase instance with:
+
 ```bash
 supabase db push
 ```
