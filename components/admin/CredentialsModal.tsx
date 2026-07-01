@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 interface AdminUser {
   id: string;
@@ -96,6 +97,20 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   // The modal is conditionally mounted (see AdminConsoleView), so every open is a
   // fresh mount — useState defaults handle the reset; the effect only loads data.
   useEffect(() => { loadUsers(); loadInvites(); }, [loadUsers, loadInvites]);
+
+  // Live: keep the invites list in sync across super-admin sessions.
+  useRealtimeChannel("admin_invites", (payload) => {
+    if (payload.eventType === "INSERT") {
+      const row = payload.new as unknown as AdminInvite;
+      setInvites((prev) => (prev.some((i) => i.id === row.id) ? prev : [row, ...prev]));
+    } else if (payload.eventType === "UPDATE") {
+      const row = payload.new as unknown as AdminInvite;
+      setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, ...row } : i)));
+    } else if (payload.eventType === "DELETE") {
+      const id = (payload.old as { id?: string })?.id;
+      setInvites((prev) => prev.filter((i) => i.id !== id));
+    }
+  });
 
   async function handleCreateInvite() {
     const email = inviteEmail.trim();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 interface GalleryPhoto {
   id: string;
@@ -65,6 +66,10 @@ export function GalleryManager() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Live: any change to gallery_photos (from another admin) refetches — the row's
+  // signed image URL is resolved server-side, so a light refetch beats patching.
+  useRealtimeChannel("gallery_photos", load);
 
   async function handleUpload() {
     if (!file) { setError("Choose an image first."); return; }

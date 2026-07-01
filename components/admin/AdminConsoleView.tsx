@@ -19,7 +19,7 @@ import { GalleryManager } from "@/components/admin/GalleryManager";
 import { ActivityLogView } from "@/components/admin/ActivityLogView";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
 import { useAdminUI } from "@/components/admin/AdminUIContext";
-import { useRealtimeList } from "@/lib/hooks/use-realtime-list";
+import { useRealtimeList, useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -564,6 +564,22 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
       const name = practitionersData.find((p) => p.ref_code === r.practitioner_ref)?.name;
       return { ...r, practitioner_name: name ?? r.practitioner_ref };
     },
+  });
+
+  // Feedback lives inside a session row (rating shown inline), not its own tab —
+  // so patch the matching session live when feedback is recorded/updated/removed.
+  useRealtimeChannel("session_feedback", (payload) => {
+    const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+      id?: string; session_id?: string; overall_rating?: number | null;
+    };
+    if (!row?.session_id) return;
+    setSessionsData((prev) =>
+      prev.map((s) =>
+        s.id === row.session_id
+          ? { ...s, session_feedback: payload.eventType === "DELETE" ? [] : [{ id: row.id as string, overall_rating: row.overall_rating ?? null }] }
+          : s
+      )
+    );
   });
 
   // Derive counts from local state — updates instantly when any action fires

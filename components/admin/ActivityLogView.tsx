@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 interface ActivityRow {
   id: string;
@@ -132,6 +133,16 @@ export function ActivityLogView() {
     setOffset(next);
     load(false, actor, action, next);
   };
+
+  // Live: new audit rows appear at the top as admins act (respects active filters).
+  useRealtimeChannel("super_admin_audit_log", (payload) => {
+    if (payload.eventType !== "INSERT") return;
+    const row = payload.new as unknown as ActivityRow;
+    if (action && row.action !== action) return;
+    if (actor && !row.actor_email?.toLowerCase().includes(actor.toLowerCase())) return;
+    setRows((prev) => (prev.some((r) => r.id === row.id) ? prev : [row, ...prev]));
+    setTotal((t) => t + 1);
+  });
 
   return (
     <div>

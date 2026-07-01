@@ -5,13 +5,48 @@ import type { Dispatch, SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-// Generic live-list hook: a drop-in replacement for useState(initial) that also
-// subscribes to Supabase Realtime and merges INSERT/UPDATE/DELETE into the list
-// in place — no refetch, no page refresh. Any admin table becomes live in ~2 lines.
-//
-// Requirements per table: Realtime enabled (in the supabase_realtime publication)
-// + an RLS SELECT policy the signed-in admin satisfies (see migration 0022).
+type Change = RealtimePostgresChangesPayload<Record<string, unknown>>;
 
+// ── Low-level primitive ──────────────────────────────────────────────────────
+// Subscribe to a table's changes and call `onChange` for every INSERT/UPDATE/
+// DELETE. The socket carries the signed-in user's JWT (required so RLS lets the
+// events through); for public/anon pages there's no session and the anon key is
+// used — pair that with a public RLS policy. Use this directly when you need to
+// patch cross-table state or refetch derived data; use useRealtimeList for a
+// plain list. getSession() is async (session lives in cookies) so we set auth
+// before subscribing.
+export function useRealtimeChannel(table: string, onChange: (payload: Change) => void) {
+  const handlerRef = useRef(onChange);
+  useEffect(() => {
+    handlerRef.current = onChange;
+  });
+
+  useEffect(() => {
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let cancelled = false;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session?.access_token) supabase.realtime.setAuth(session.access_token);
+
+      channel = supabase
+        .channel(`realtime:${table}`)
+        .on("postgres_changes", { event: "*", schema: "public", table }, (payload) => handlerRef.current(payload))
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [table]);
+}
+
+// ── List hook ────────────────────────────────────────────────────────────────
+// Drop-in replacement for useState(initial) that also live-merges Realtime
+// events into the list. Any admin table becomes live in ~2 lines.
 type Row = { id: string };
 
 interface Options<T extends Row> {
@@ -30,7 +65,7 @@ interface Options<T extends Row> {
 
 function applyChange<T extends Row>(
   prev: T[],
-  payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
+  payload: Change,
   transform?: (raw: Record<string, unknown>) => T,
   keep?: (row: T) => boolean
 ): T[] {
@@ -46,7 +81,6 @@ function applyChange<T extends Row>(
   if (payload.eventType === "UPDATE") {
     const raw = payload.new as Partial<T> & { id: string };
     const existing = prev.find((x) => x.id === raw.id);
-    // Merge only the changed columns so joins/derived fields on `existing` survive.
     const merged = existing ? { ...existing, ...raw } : shape(payload.new);
     if (keep && !keep(merged)) return prev.filter((x) => x.id !== raw.id); // e.g. soft-deleted
     if (!existing) return [merged, ...prev]; // re-entered the list (e.g. restored)
@@ -66,7 +100,6 @@ export function useRealtimeList<T extends Row>(
 ): [T[], Dispatch<SetStateAction<T[]>>] {
   const [data, setData] = useState<T[]>(initial);
 
-  // Latest transform/keep without forcing a re-subscribe (they close over live state).
   const transformRef = useRef(transform);
   const keepRef = useRef(keep);
   useEffect(() => {
@@ -74,34 +107,9 @@ export function useRealtimeList<T extends Row>(
     keepRef.current = keep;
   });
 
-  useEffect(() => {
-    const supabase = createClient();
-    let channel: ReturnType<typeof supabase.channel> | undefined;
-    let cancelled = false;
-
-    // The Realtime socket must carry the signed-in user's JWT, otherwise it
-    // authenticates as `anon` and RLS rejects every change. getSession() is
-    // async (session lives in cookies), so set auth before subscribing.
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (session?.access_token) supabase.realtime.setAuth(session.access_token);
-
-      channel = supabase
-        .channel(`realtime:${table}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table },
-          (payload) => setData((prev) => applyChange(prev, payload, transformRef.current, keepRef.current))
-        )
-        .subscribe();
-    })();
-
-    return () => {
-      cancelled = true;
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [table]);
+  useRealtimeChannel(table, (payload) =>
+    setData((prev) => applyChange(prev, payload, transformRef.current, keepRef.current))
+  );
 
   return [data, setData];
 }

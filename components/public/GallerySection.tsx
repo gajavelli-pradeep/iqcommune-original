@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 // Fallback placeholders — shown until an admin publishes real photos (managed in
 // the console Gallery tab → GET /api/gallery). Real photos carry the two overlay
@@ -48,7 +49,7 @@ export function GallerySection() {
   const total = slides.length;
   const maxOffset = Math.max(0, total - VISIBLE);
 
-  useEffect(() => {
+  const loadGallery = useCallback(() => {
     fetch("/api/gallery")
       .then((r) => r.json())
       .then((j) => {
@@ -60,6 +61,12 @@ export function GallerySection() {
       })
       .catch(() => { /* keep placeholders */ });
   }, []);
+
+  useEffect(() => { loadGallery(); }, [loadGallery]);
+
+  // Live: when an admin publishes/updates a gallery photo, the public homepage
+  // refreshes on its own (anon reads only published rows — see migration 0024).
+  useRealtimeChannel("gallery_photos", loadGallery);
 
   const applyOffset = useCallback((idx: number) => {
     if (trackRef.current) {
