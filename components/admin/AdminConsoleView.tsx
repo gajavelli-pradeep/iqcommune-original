@@ -15,6 +15,7 @@ import { PayoutEditModal } from "@/components/admin/PayoutEditModal";
 import { AgreementEditModal } from "@/components/admin/AgreementEditModal";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { TrashModal } from "@/components/admin/TrashModal";
+import { GalleryManager } from "@/components/admin/GalleryManager";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
 import { useAdminUI } from "@/components/admin/AdminUIContext";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -116,6 +117,7 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
   photos:         { title: "Session Photos",          subtitle: "Review session photos submitted by practitioners — approve or delete within 30 days" },
+  gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
 
@@ -239,6 +241,11 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
       <circle cx="12" cy="13" r="4"/>
     </svg>
   ),
+  gallery: (
+    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+    </svg>
+  ),
   // Gap 20: broadcast/signal icon, not gear
   settings: (
     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -274,6 +281,7 @@ function buildSections(counts: Counts): SidebarSection[] {
     {
       heading: "System",
       items: [
+        { label: "Gallery", tab: "gallery" },
         { label: "Settings", tab: "settings" },
       ],
     },
@@ -783,6 +791,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   )
                 }
               />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "gallery" && (
+          <div>
+            <TabHeader tab="gallery" onAction={handleHeaderAction} />
+            <div style={{ padding: "1.5rem 1.75rem" }}>
+              <GalleryManager />
             </div>
           </div>
         )}

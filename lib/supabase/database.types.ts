@@ -12,6 +12,37 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      gallery_photos: {
+        Row: {
+          id: string;
+          storage_path: string;
+          caption_top_left: string | null;
+          caption_bottom_right: string | null;
+          sort_order: number;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          storage_path: string;
+          caption_top_left?: string | null;
+          caption_bottom_right?: string | null;
+          sort_order?: number;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          storage_path?: string;
+          caption_top_left?: string | null;
+          caption_bottom_right?: string | null;
+          sort_order?: number;
+          published?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       practitioners: {
         Row: {
           id: string;
