@@ -16,8 +16,10 @@ import { AgreementEditModal } from "@/components/admin/AgreementEditModal";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { TrashModal } from "@/components/admin/TrashModal";
 import { GalleryManager } from "@/components/admin/GalleryManager";
+import { ActivityLogView } from "@/components/admin/ActivityLogView";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
 import { useAdminUI } from "@/components/admin/AdminUIContext";
+import { useRealtimeList } from "@/lib/hooks/use-realtime-list";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -120,6 +122,7 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
   photos:         { title: "Session Photos",          subtitle: "Review session photos submitted by practitioners — approve or delete within 30 days" },
   gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
+  activity:       { title: "Activity",              subtitle: "Every admin & super-admin action — who did what, when, and before → after" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
 
@@ -248,6 +251,11 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
       <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
     </svg>
   ),
+  activity: (
+    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
   // Gap 20: broadcast/signal icon, not gear
   settings: (
     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -261,7 +269,7 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
 type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: string };
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
-function buildSections(counts: Counts, galleryVisible: boolean): SidebarSection[] {
+function buildSections(counts: Counts, galleryVisible: boolean, isSuperAdmin: boolean): SidebarSection[] {
   return [
     {
       heading: "Pipeline",
@@ -284,6 +292,7 @@ function buildSections(counts: Counts, galleryVisible: boolean): SidebarSection[
       heading: "System",
       items: [
         ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
+        ...(isSuperAdmin ? [{ label: "Activity", tab: "activity" }] : []),
         { label: "Settings", tab: "settings" },
       ],
     },
@@ -447,7 +456,7 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email, isSuperAdmin = false, galleryAdminAccess = true }: Props) {
-  const { globalSearch, setGlobalSearch, activeTab, setActiveTab } = useAdminUI();
+  const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
   // Jump to a tab and exit the global-search overlay.
@@ -464,19 +473,20 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
-  // SA-controlled: whether regular admins may manage the gallery (drives the sidebar + toggle).
-  const [galleryAccess, setGalleryAccess] = useState(galleryAdminAccess);
-  const galleryVisible = isSuperAdmin || galleryAccess;
+  // Gallery visibility: super admins always; a regular admin only when the SA has
+  // granted THIS account access (`galleryAdminAccess` prop = the signed-in admin's
+  // own app_metadata.gallery_access). Per-admin grants are managed in Credentials.
+  const galleryVisible = isSuperAdmin || galleryAdminAccess;
 
-  async function toggleGalleryAccess(next: boolean) {
-    setGalleryAccess(next); // optimistic
-    const res = await fetch("/api/admin/super/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ galleryAdminAccess: next }),
-    });
-    if (!res.ok) setGalleryAccess(!next); // revert on failure
-  }
+  // The URL can carry any ?tab= value (deep link / refresh). Fall back to the
+  // default if it names a tab this user can't see (Activity = SA-only, Gallery
+  // gated) so a hand-crafted link never renders a blank panel.
+  const availableTabs = new Set<string>([
+    "requests", "practitioners", "sessions", "agreements", "payouts", "photos", "settings",
+    ...(galleryVisible ? ["gallery"] : []),
+    ...(isSuperAdmin ? ["activity"] : []),
+  ]);
+  const activeTab = availableTabs.has(rawActiveTab) ? rawActiveTab : "practitioners";
 
   // Super-admin edit modals (null = closed)
   const [editingPractitioner, setEditingPractitioner] = useState<PractitionerRow | null>(null);
@@ -485,23 +495,76 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [editingPayout, setEditingPayout] = useState<PayoutRow | null>(null);
   const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null);
 
-  // Lifted data state — tables notify us via callbacks so counts stay reactive
-  const [requestsData, setRequestsData] = useState(requests);
-  const [sessionsData, setSessionsData] = useState(sessions);
-  const [practitionersData, setPractitionersData] = useState(practitioners);
-  const [payoutsData, setPayoutsData] = useState(payouts);
-  const [photosData, setPhotosData] = useState(photos);
-  const [agreementsData, setAgreementsData] = useState(agreements);
+  // Lifted, LIVE data state — every core dataset streams via Supabase Realtime
+  // (useRealtimeList is a drop-in for useState): rows insert/update/delete in
+  // place, no refresh. `transform` rebuilds joined/derived fields on INSERT;
+  // UPDATE merges only raw columns so joins already on a row survive. Order
+  // matters — sessions/payouts/agreements read practitioners/sessions to rebuild
+  // their joins, so practitioners is declared first.
+  const [practitionersData, setPractitionersData] = useRealtimeList<PractitionerRow>({
+    table: "practitioners",
+    initial: practitioners,
+    transform: (raw) => ({ ...(raw as unknown as PractitionerRow), subsection_averages: null }),
+    keep: (r) => !r.deleted_at,
+  });
 
-  // Re-sync agreements when the server props change (e.g. after PractitionerTable
-  // generates an onboarding link and calls router.refresh()) so the new
-  // "Pending signature" row surfaces without a full page reload. Render-phase
-  // sync (React's "adjust state on prop change" pattern) avoids an effect.
-  const [prevAgreements, setPrevAgreements] = useState(agreements);
-  if (prevAgreements !== agreements) {
-    setPrevAgreements(agreements);
-    setAgreementsData(agreements);
-  }
+  const [sessionsData, setSessionsData] = useRealtimeList<SessionRow>({
+    table: "sessions",
+    initial: sessions,
+    transform: (raw) => {
+      const r = raw as unknown as SessionRow;
+      const p = practitionersData.find((x) => x.id === r.practitioner_id);
+      return { ...r, practitioner: p ? { name: p.name, email: p.email } : null, session_feedback: [], photos_submitted: false };
+    },
+    keep: (r) => !r.deleted_at,
+  });
+
+  const [payoutsData, setPayoutsData] = useRealtimeList<PayoutRow>({
+    table: "payouts",
+    initial: payouts,
+    transform: (raw) => {
+      const r = raw as unknown as PayoutRow;
+      const p = practitionersData.find((x) => x.id === r.practitioner_id);
+      const s = sessionsData.find((x) => x.id === r.session_id);
+      return {
+        ...r,
+        practitioner: p ? { name: p.name, upi_id: p.upi_id, bank_account: p.bank_account, bank_name: p.bank_name } : null,
+        session: s ? { ref_code: s.ref_code, module: s.module, session_date: s.session_date } : null,
+      };
+    },
+    keep: (r) => !r.deleted_at,
+  });
+
+  const [agreementsData, setAgreementsData] = useRealtimeList<Agreement>({
+    table: "agreements",
+    initial: agreements,
+    transform: (raw) => {
+      const r = raw as unknown as Agreement;
+      const p = practitionersData.find((x) => x.id === (raw as { practitioner_id?: string }).practitioner_id);
+      return { ...r, practitioner_name: p?.name ?? "—", practitioner_role: p?.role ?? "—" };
+    },
+    keep: (r) => !r.deleted_at,
+  });
+
+  const [requestsData, setRequestsData] = useRealtimeList<RequestRow>({
+    table: "session_requests",
+    initial: requests,
+    // A new request arrives unassigned; on UPDATE only raw columns merge, so an
+    // existing row's joined practitioner name is preserved.
+    transform: (raw) => ({ ...(raw as unknown as RequestRow), assigned_practitioner: null }),
+    keep: (r) => !r.deleted_at,
+  });
+
+  const [photosData, setPhotosData] = useRealtimeList<PhotoRow>({
+    table: "photo_submissions",
+    initial: photos,
+    // Derive the practitioner name from the ref, matching the server-side mapping.
+    transform: (raw) => {
+      const r = raw as unknown as PhotoRow;
+      const name = practitionersData.find((p) => p.ref_code === r.practitioner_ref)?.name;
+      return { ...r, practitioner_name: name ?? r.practitioner_ref };
+    },
+  });
 
   // Derive counts from local state — updates instantly when any action fires
   const pendingPayoutList = payoutsData.filter((p) => p.status === "Pending");
@@ -614,11 +677,11 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label.includes("Add request")) setRequestModalOpen(true);
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
     else if (label === "Trash") setTrashOpen(true);
-    else if (label.includes("Credentials")) setCredentialsOpen(true);
+    else if (label.includes("Credentials") || label.includes("Invite admin")) setCredentialsOpen(true);
     else if (label === "Export") exportActiveTab();
   }
 
-  const sections = buildSections(counts, galleryVisible);
+  const sections = buildSections(counts, galleryVisible, isSuperAdmin);
 
 
   return (
@@ -819,43 +882,46 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           </div>
         )}
 
+        {activeTab === "activity" && isSuperAdmin && (
+          <div>
+            <TabHeader tab="activity" onAction={handleHeaderAction} />
+            <div style={{ padding: "1.5rem 1.75rem" }}>
+              <ActivityLogView />
+            </div>
+          </div>
+        )}
+
         {activeTab === "settings" && (
           <div>
             <TabHeader
               tab="settings"
               onAction={handleHeaderAction}
-              extraActions={isSuperAdmin ? [{ label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin account passwords" }] : []}
+              extraActions={isSuperAdmin ? [{ label: "Invite admin", variant: "primary" as const, ariaLabel: "Invite a new admin" }, { label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin accounts and access" }] : []}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               {isSuperAdmin && (
-                <div style={{ background: "#fff", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 14 }}>Permissions</div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Gallery — allow admins to manage</div>
-                      <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>
-                        When off, only super admins can curate the “Sessions in the room” gallery.
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Admin accounts &amp; access</div>
+                      <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 3, maxWidth: 460, lineHeight: 1.6 }}>
+                        Invite new admins, set passwords, promote to super admin, and grant each admin
+                        gallery access individually. Every action is recorded in the Activity log.
                       </div>
                     </div>
                     <button
-                      role="switch"
-                      aria-checked={galleryAccess}
-                      aria-label="Allow admins to manage the gallery"
-                      onClick={() => toggleGalleryAccess(!galleryAccess)}
-                      style={{
-                        flexShrink: 0, width: 42, height: 24, borderRadius: 100, border: "none", cursor: "pointer",
-                        background: galleryAccess ? "var(--green)" : "rgba(20,18,12,.20)",
-                        position: "relative", transition: "background .15s", padding: 0,
-                      }}
+                      onClick={() => setCredentialsOpen(true)}
+                      style={{ ...primaryBtnStyle, flexShrink: 0 }}
+                      aria-label="Open admin accounts and access"
                     >
-                      <span style={{ position: "absolute", top: 2, left: galleryAccess ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 2px rgba(0,0,0,.25)" }} />
+                      Manage admins
                     </button>
                   </div>
                 </div>
               )}
               <div
                 style={{
-                  background: "#ffffff",
+                  background: "var(--surface)",
                   border: "1px solid rgba(20,18,12,.10)",
                   borderRadius: 10,
                   padding: "2.5rem",

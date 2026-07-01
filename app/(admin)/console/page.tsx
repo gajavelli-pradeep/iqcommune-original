@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { AdminConsoleView } from "@/components/admin/AdminConsoleView";
-import { isGalleryAdminAccessEnabled } from "@/lib/settings";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
 import type { Metadata } from "next";
@@ -102,7 +102,10 @@ async function getData() {
 
 export default async function ConsolePage() {
   const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
-  const galleryAdminAccess = await isGalleryAdminAccessEnabled();
+  // This admin's OWN gallery access — granted per-account by a super admin.
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const galleryAdminAccess = user?.app_metadata?.gallery_access === true;
   return (
     <AdminConsoleView
       practitioners={practitioners}
@@ -111,7 +114,7 @@ export default async function ConsolePage() {
       payouts={payouts}
       agreements={agreements}
       photos={photos}
-      email={process.env.ADMIN_EMAIL}
+      email={user?.email ?? process.env.ADMIN_EMAIL}
       galleryAdminAccess={galleryAdminAccess}
     />
   );

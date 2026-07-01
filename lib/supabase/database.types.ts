@@ -12,6 +12,63 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      admin_invites: {
+        Row: {
+          id: string;
+          email: string;
+          role: string;
+          token_hash: string;
+          status: string;
+          invited_by: string;
+          created_at: string;
+          expires_at: string;
+          accepted_at: string | null;
+          created_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          role?: string;
+          token_hash: string;
+          status?: string;
+          invited_by: string;
+          created_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_user_id?: string | null;
+        };
+        Update: {
+          email?: string;
+          role?: string;
+          token_hash?: string;
+          status?: string;
+          invited_by?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      admin_credentials: {
+        Row: {
+          user_id: string;
+          password_cipher: string;
+          set_by: string;
+          set_at: string;
+        };
+        Insert: {
+          user_id: string;
+          password_cipher: string;
+          set_by: string;
+          set_at?: string;
+        };
+        Update: {
+          password_cipher?: string;
+          set_by?: string;
+          set_at?: string;
+        };
+        Relationships: [];
+      };
       app_settings: {
         Row: {
           key: string;
@@ -594,6 +651,7 @@ export interface Database {
         Row: {
           id: string;
           actor_email: string;
+          actor_role: string;
           action: string;
           record_table: string;
           record_id: string;
@@ -603,6 +661,7 @@ export interface Database {
         Insert: {
           id?: string;
           actor_email: string;
+          actor_role?: string;
           action: string;
           record_table: string;
           record_id: string;
@@ -611,6 +670,7 @@ export interface Database {
         };
         Update: {
           actor_email?: string;
+          actor_role?: string;
           action?: string;
           record_table?: string;
           record_id?: string;

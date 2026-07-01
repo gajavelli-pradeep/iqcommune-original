@@ -38,3 +38,25 @@ export async function requireAdmin(): Promise<NextResponse | null> {
 
   return null;
 }
+
+// Attribution helper for the activity log — returns the authenticated admin's
+// email and role, or null when not an admin. `role` is 'super_admin' when the
+// account carries that metadata, otherwise 'admin' (covers the ADMIN_EMAIL
+// bootstrap fallback, which is treated as a plain admin).
+export async function getAdminUser(): Promise<{ email: string; role: "admin" | "super_admin" } | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const metaRole = user.app_metadata?.role;
+  const isBootstrap =
+    !!process.env.ADMIN_EMAIL &&
+    user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+
+  if (metaRole !== "admin" && metaRole !== "super_admin" && !isBootstrap) return null;
+
+  return {
+    email: user.email ?? "unknown",
+    role: metaRole === "super_admin" ? "super_admin" : "admin",
+  };
+}

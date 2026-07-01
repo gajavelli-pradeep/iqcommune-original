@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { requireSuperAdmin } from "@/lib/supabase/require-super-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 
 // Return a submission to Pending for re-review (distinct from Reject → Rejected):
@@ -48,6 +49,16 @@ export async function PATCH(
   if (updateErr) {
     log.error("Photo revoke update failed", { error: updateErr.message, submissionId: id });
     return NextResponse.json({ error: "Failed to revoke approval" }, { status: 500 });
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: submission.status === "Rejected" ? "reopen_photos" : "revoke_photo_approval",
+      recordTable: "photo_submissions", recordId: id,
+      snapshot: { before: { status: submission.status }, after: { status: "Pending" } },
+    });
   }
 
   return new NextResponse(null, { status: 204 });

@@ -2,12 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin, getSuperAdminUser } from "@/lib/supabase/require-super-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logSuperAdminAction } from "@/lib/super-admin-audit";
+import { storeAdminPassword, getAdminPassword } from "@/lib/admin-password-vault";
 import { log } from "@/lib/logger";
 import { z } from "zod";
+
+export const dynamic = "force-dynamic";
 
 const Schema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+// Reveal the current SA-set password for an account (admin or super_admin), or
+// null if none stored. SA-only; each reveal is audited.
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
+  const { id } = await params;
+  const stored = await getAdminPassword(id);
+
+  if (stored) {
+    const actor = await getSuperAdminUser();
+    await logSuperAdminAction({
+      actorEmail: actor?.email ?? "unknown",
+      action: "view_admin_password",
+      recordTable: "auth.users",
+      recordId: id,
+    });
+  }
+
+  return NextResponse.json({
+    data: stored
+      ? { password: stored.password, set_by: stored.setBy, set_at: stored.setAt }
+      : null,
+  });
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -43,6 +75,9 @@ export async function PATCH(
   }
 
   const actor = await getSuperAdminUser();
+  // Store the SA-set password (encrypted) so the SA can reveal/copy it later.
+  await storeAdminPassword(id, body.data.password, actor?.email ?? "unknown");
+
   await logSuperAdminAction({
     actorEmail: actor?.email ?? "unknown",
     action: "set_password",

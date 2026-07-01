@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 import { signOnboardingUrl } from "@/lib/hmac";
 import { sendEmail } from "@/lib/email/brevo";
@@ -133,6 +134,15 @@ export async function POST(req: NextRequest) {
       });
       await revokeEmailSend("agreement_link", refCode);
     }
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "generate_agreement_link", recordTable: "practitioners", recordId: practitionerId,
+      snapshot: { name: p.name, ref_code: p.ref_code, before: { status: p.status }, after: { status: "Agreement Sent" } },
+    });
   }
 
   return NextResponse.json({ url, refCode });

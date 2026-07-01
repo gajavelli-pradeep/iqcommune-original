@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
@@ -80,6 +81,15 @@ export async function POST(req: NextRequest) {
   if (error) {
     log.error("Admin session request POST failed", { error: error.message });
     return NextResponse.json({ error: "Failed to create request" }, { status: 500 });
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "create_session_request", recordTable: "session_requests", recordId: data.id,
+      snapshot: { name: d.name, org: d.org, topic: d.topic, after: { status: d.status } },
+    });
   }
   return NextResponse.json({ data }, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 
 export async function POST(
@@ -77,5 +78,14 @@ export async function POST(
     gross,
     net,
   });
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "create_payout", recordTable: "payouts", recordId: payout.id,
+      snapshot: { invoice_ref: invoiceRef, session_ref: session.ref_code, after: { status: "Pending", gross, net } },
+    });
+  }
   return NextResponse.json({ data: payout }, { status: 201 });
 }

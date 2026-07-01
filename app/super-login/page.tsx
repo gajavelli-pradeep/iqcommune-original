@@ -43,14 +43,48 @@ export default function SuperLoginPage() {
         padding: "2rem",
       }}
     >
+      {/* globals.css forces `input:focus/hover { background:#fff !important }` for the
+          app's LIGHT surfaces. This login sits on a DARK card, so scope an override
+          (higher specificity + !important) to keep the field transparent — the wrapper
+          div owns the visible surface + gold focus ring. Also normalise placeholder +
+          the stubborn Chrome autofill background. */}
+      <style>{`
+        /* globals.css uses input:hover:not(:focus) (specificity 0,2,1) with
+           !important. To win, our selectors must out-specify it, hence the
+           extra :not() qualifiers below (specificity 0,3,0). */
+        .sa-input,
+        .sa-input:hover:not(:focus),
+        .sa-input:focus:not(:hover),
+        .sa-input:focus-visible,
+        .sa-input:hover:focus {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          outline: none !important;
+          color: var(--surface) !important;
+        }
+        .sa-input::placeholder { color: rgba(255,255,255,.32); }
+        .sa-input:-webkit-autofill,
+        .sa-input:-webkit-autofill:hover,
+        .sa-input:-webkit-autofill:focus,
+        .sa-input:-webkit-autofill:active {
+          -webkit-text-fill-color: #fff !important;
+          caret-color: #fff !important;
+          -webkit-box-shadow: inset 0 0 0 1000px #2a2c34 !important;
+          box-shadow: inset 0 0 0 1000px #2a2c34 !important;
+          transition: background-color 9999s ease-in-out 0s !important;
+        }
+      `}</style>
+
       <div
         style={{
           background: "#1e2028",
           border: "1px solid rgba(255,255,255,.1)",
-          borderRadius: 14,
+          borderRadius: 16,
           padding: "2.5rem 2rem",
           width: "100%",
           maxWidth: 400,
+          boxShadow: "0 24px 60px rgba(0,0,0,.45)",
         }}
       >
         <div style={{ marginBottom: 28 }}>
@@ -63,66 +97,53 @@ export default function SuperLoginPage() {
           </div>
         </div>
 
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }} noValidate>
-          <div>
-            <label htmlFor="sa-email" style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5, color: "rgba(255,255,255,.7)" }}>
-              Email
-            </label>
-            <input
-              id="sa-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              style={inputStyle}
-              placeholder="superadmin@iqcommune.in"
-            />
-          </div>
+        <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }} noValidate>
+          <Field
+            id="sa-email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+            placeholder="superadmin@iqcommune.in"
+            icon={<MailIcon />}
+          />
 
-          <div>
-            <label htmlFor="sa-password" style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 5, color: "rgba(255,255,255,.7)" }}>
-              Password
-            </label>
-            <div style={{ position: "relative" }}>
-              <input
-                id="sa-password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                style={{ ...inputStyle, paddingRight: 42 }}
-                placeholder="••••••••••"
-              />
+          <Field
+            id="sa-password"
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            placeholder="••••••••••"
+            icon={<LockIcon />}
+            trailing={
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 style={{
-                  position: "absolute",
-                  right: 1,
-                  top: 1,
-                  bottom: 1,
-                  width: 40,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  width: 34,
+                  height: 34,
                   background: "transparent",
                   border: "none",
-                  borderRadius: "0 7px 7px 0",
+                  borderRadius: 8,
                   cursor: "pointer",
                   color: "rgba(255,255,255,.4)",
                   padding: 0,
                   flexShrink: 0,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.8)")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.85)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.4)")}
               >
                 {showPassword ? <EyeOff /> : <Eye />}
               </button>
-            </div>
-          </div>
+            }
+          />
 
           {error && (
             <div
@@ -165,10 +186,105 @@ export default function SuperLoginPage() {
   );
 }
 
+// ── Reusable dark-surface field: leading icon, gold focus ring, optional
+//    trailing adornment. One component for both inputs (structure is identical). ──
+function Field({
+  id,
+  label,
+  type,
+  value,
+  onChange,
+  autoComplete,
+  placeholder,
+  icon,
+  trailing,
+}: {
+  id: string;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  placeholder: string;
+  icon: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div>
+      <label htmlFor={id} style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 7, color: "rgba(255,255,255,.7)" }}>
+        {label}
+      </label>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: focused ? "rgba(255,255,255,.10)" : "rgba(255,255,255,.055)",
+          border: `1px solid ${focused ? "var(--gold)" : "rgba(255,255,255,.14)"}`,
+          borderRadius: 10,
+          padding: "0 10px 0 12px",
+          height: 46,
+          boxShadow: focused ? "0 0 0 3px rgba(201,152,42,.22)" : "none",
+          transition: "border-color .15s, box-shadow .15s, background .15s",
+        }}
+      >
+        <span style={{ display: "flex", flexShrink: 0, color: focused ? "var(--gold)" : "rgba(255,255,255,.38)", transition: "color .15s" }}>
+          {icon}
+        </span>
+        <input
+          id={id}
+          className="sa-input"
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          required
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: "100%",
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            color: "var(--surface)",
+            fontSize: 14,
+            fontFamily: "inherit",
+            padding: 0,
+          }}
+        />
+        {trailing}
+      </div>
+    </div>
+  );
+}
+
 function ShieldIcon() {
   return (
     <svg width={13} height={13} fill="none" stroke="var(--gold)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width={17} height={17} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width={17} height={17} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }
@@ -191,15 +307,3 @@ function EyeOff() {
     </svg>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid rgba(255,255,255,.15)",
-  borderRadius: 8,
-  fontSize: 14,
-  fontFamily: "inherit",
-  background: "rgba(255,255,255,.07)",
-  color: "var(--surface)",
-  boxSizing: "border-box",
-};

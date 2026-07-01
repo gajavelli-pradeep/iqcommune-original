@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,6 +111,15 @@ export async function POST(
   }
 
   log.info("Session feedback created", { sessionId, feedbackId: created.id });
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "record_session_feedback", recordTable: "sessions", recordId: sessionId,
+      snapshot: { feedback_id: created.id, after: { overall_rating: created.overall_rating } },
+    });
+  }
   return NextResponse.json(created, { status: 201 });
 }
 
@@ -173,5 +183,14 @@ export async function PATCH(
   }
 
   log.info("Session feedback updated", { sessionId, feedbackId: existing.id });
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "update_session_feedback", recordTable: "sessions", recordId: sessionId,
+      snapshot: { feedback_id: existing.id, after: { overall_rating: updated.overall_rating } },
+    });
+  }
   return NextResponse.json(updated);
 }

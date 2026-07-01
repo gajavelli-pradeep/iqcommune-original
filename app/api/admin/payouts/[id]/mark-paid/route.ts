@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
 import { payoutPaid } from "@/lib/email/templates";
@@ -57,6 +58,15 @@ export async function PATCH(
   }
 
   log.info("Payout marked paid", { payoutId: id, paidOn: body.data.paidOn, practitionerId: payout.practitioner_id });
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "mark_payout_paid", recordTable: "payouts", recordId: id,
+      snapshot: { invoice_ref: payout.invoice_ref, before: { status: payout.status }, after: { status: "Paid", paid_at: body.data.paidOn } },
+    });
+  }
 
   // Notify practitioner (idempotent)
   const { data: practitioner } = await supabase

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin, getSuperAdminUser } from "@/lib/supabase/require-super-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logSuperAdminAction } from "@/lib/super-admin-audit";
+import { storeAdminPassword } from "@/lib/admin-password-vault";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
@@ -26,6 +27,7 @@ export async function GET() {
       id: u.id,
       email: u.email,
       role: u.app_metadata?.role ?? "admin",
+      gallery_access: u.app_metadata?.gallery_access === true,
       last_sign_in_at: u.last_sign_in_at,
       created_at: u.created_at,
     }));
@@ -72,6 +74,9 @@ export async function POST(req: NextRequest) {
   }
 
   const actor = await getSuperAdminUser();
+  // Store the SA-chosen password (encrypted) so it can be revealed/copied later.
+  await storeAdminPassword(data.user.id, password, actor?.email ?? "unknown");
+
   await logSuperAdminAction({
     actorEmail: actor?.email ?? "unknown",
     action: "create_admin",
@@ -87,6 +92,7 @@ export async function POST(req: NextRequest) {
         id: u.id,
         email: u.email,
         role: (u.app_metadata?.role as string) ?? role,
+        gallery_access: u.app_metadata?.gallery_access === true,
         last_sign_in_at: u.last_sign_in_at ?? null,
         created_at: u.created_at,
       },

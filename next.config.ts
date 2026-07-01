@@ -30,7 +30,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // 'self' covers Next.js self-hosted fonts (_next/static/media/ and __nextjs_font/)
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co",
+              // wss:// is required for Supabase Realtime (websocket) subscriptions.
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "img-src 'self' data: https://*.supabase.co",
               ...(isDev ? ["frame-src 'self' http://localhost:3001"] : []),
             ].join("; "),

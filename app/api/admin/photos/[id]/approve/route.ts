@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
 import { photoApproved } from "@/lib/email/templates";
@@ -46,6 +47,15 @@ export async function PATCH(
       { error: `Submission is not in Pending status (current: ${submission.status})` },
       { status: 409 }
     );
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "approve_photos", recordTable: "photo_submissions", recordId: id,
+      snapshot: { session_ref: submission.session_ref, before: { status: submission.status }, after: { status: "Approved" } },
+    });
   }
 
   // Notify practitioner (idempotent, best-effort)

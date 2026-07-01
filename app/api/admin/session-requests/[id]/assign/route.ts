@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
@@ -51,6 +52,15 @@ export async function PATCH(
   }
   if (!updated) {
     return NextResponse.json({ error: "Session request not found" }, { status: 404 });
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "assign_practitioner", recordTable: "session_requests", recordId: id,
+      snapshot: { assigned_to: body.data.practitionerId, practitioner_name: practitioner.name, after: { status: "Matched" } },
+    });
   }
   return NextResponse.json({ assignedTo: practitioner.name }, { status: 200 });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logActivity } from "@/lib/super-admin-audit";
 import { log } from "@/lib/logger";
 
 const REJECTABLE = ["Pending", "Approved"] as const;
@@ -41,6 +42,15 @@ export async function PATCH(
   if (updateErr) {
     log.error("Photo reject update failed", { error: updateErr.message, submissionId: id });
     return NextResponse.json({ error: "Failed to reject submission" }, { status: 500 });
+  }
+
+  const actor = await getAdminUser();
+  if (actor) {
+    await logActivity({
+      actorEmail: actor.email, actorRole: actor.role,
+      action: "reject_photos", recordTable: "photo_submissions", recordId: id,
+      snapshot: { before: { status: submission.status }, after: { status: "Rejected" } },
+    });
   }
 
   return new NextResponse(null, { status: 204 });
