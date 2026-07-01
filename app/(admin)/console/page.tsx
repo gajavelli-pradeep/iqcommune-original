@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminConsoleView } from "@/components/admin/AdminConsoleView";
+import { isGalleryAdminAccessEnabled } from "@/lib/settings";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
 import type { Metadata } from "next";
@@ -101,6 +102,7 @@ async function getData() {
 
 export default async function ConsolePage() {
   const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
+  const galleryAdminAccess = await isGalleryAdminAccessEnabled();
   return (
     <AdminConsoleView
       practitioners={practitioners}
@@ -110,6 +112,7 @@ export default async function ConsolePage() {
       agreements={agreements}
       photos={photos}
       email={process.env.ADMIN_EMAIL}
+      galleryAdminAccess={galleryAdminAccess}
     />
   );
 }

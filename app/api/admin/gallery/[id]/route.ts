@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireGalleryAccess } from "@/lib/supabase/require-gallery-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/logger";
 import { z } from "zod";
@@ -23,7 +23,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireGalleryAccess();
   if (denied) return denied;
 
   const { id } = await params;
@@ -59,7 +59,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireGalleryAccess();
   if (denied) return denied;
 
   const { id } = await params;

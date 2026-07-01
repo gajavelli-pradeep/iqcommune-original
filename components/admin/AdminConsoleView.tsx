@@ -107,6 +107,8 @@ interface Props {
   photos: PhotoRow[];
   email?: string;
   isSuperAdmin?: boolean;
+  /** SA-controlled flag — whether regular admins may manage the gallery. */
+  galleryAdminAccess?: boolean;
 }
 
 // Gap 13 & 14: no trailing periods, correct titles
@@ -259,7 +261,7 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
 type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: string };
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
-function buildSections(counts: Counts): SidebarSection[] {
+function buildSections(counts: Counts, galleryVisible: boolean): SidebarSection[] {
   return [
     {
       heading: "Pipeline",
@@ -281,7 +283,7 @@ function buildSections(counts: Counts): SidebarSection[] {
     {
       heading: "System",
       items: [
-        { label: "Gallery", tab: "gallery" },
+        ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
         { label: "Settings", tab: "settings" },
       ],
     },
@@ -444,7 +446,7 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email, isSuperAdmin = false }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email, isSuperAdmin = false, galleryAdminAccess = true }: Props) {
   const { globalSearch, setGlobalSearch, activeTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -462,6 +464,19 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  // SA-controlled: whether regular admins may manage the gallery (drives the sidebar + toggle).
+  const [galleryAccess, setGalleryAccess] = useState(galleryAdminAccess);
+  const galleryVisible = isSuperAdmin || galleryAccess;
+
+  async function toggleGalleryAccess(next: boolean) {
+    setGalleryAccess(next); // optimistic
+    const res = await fetch("/api/admin/super/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ galleryAdminAccess: next }),
+    });
+    if (!res.ok) setGalleryAccess(!next); // revert on failure
+  }
 
   // Super-admin edit modals (null = closed)
   const [editingPractitioner, setEditingPractitioner] = useState<PractitionerRow | null>(null);
@@ -603,7 +618,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label === "Export") exportActiveTab();
   }
 
-  const sections = buildSections(counts);
+  const sections = buildSections(counts, galleryVisible);
 
 
   return (
@@ -795,7 +810,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           </div>
         )}
 
-        {activeTab === "gallery" && (
+        {activeTab === "gallery" && galleryVisible && (
           <div>
             <TabHeader tab="gallery" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
@@ -812,6 +827,32 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               extraActions={isSuperAdmin ? [{ label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin account passwords" }] : []}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
+              {isSuperAdmin && (
+                <div style={{ background: "#fff", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 14 }}>Permissions</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Gallery — allow admins to manage</div>
+                      <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>
+                        When off, only super admins can curate the “Sessions in the room” gallery.
+                      </div>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={galleryAccess}
+                      aria-label="Allow admins to manage the gallery"
+                      onClick={() => toggleGalleryAccess(!galleryAccess)}
+                      style={{
+                        flexShrink: 0, width: 42, height: 24, borderRadius: 100, border: "none", cursor: "pointer",
+                        background: galleryAccess ? "var(--green)" : "rgba(20,18,12,.20)",
+                        position: "relative", transition: "background .15s", padding: 0,
+                      }}
+                    >
+                      <span style={{ position: "absolute", top: 2, left: galleryAccess ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 2px rgba(0,0,0,.25)" }} />
+                    </button>
+                  </div>
+                </div>
+              )}
               <div
                 style={{
                   background: "#ffffff",
@@ -822,7 +863,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 }}
               >
                 <div style={{ fontSize: 13, color: "var(--ink-faint)", lineHeight: 1.65 }}>
-                  Settings panel — coming soon.
+                  More settings — coming soon.
                 </div>
               </div>
             </div>

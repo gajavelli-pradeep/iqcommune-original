@@ -12,6 +12,24 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value: Json;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       gallery_photos: {
         Row: {
           id: string;

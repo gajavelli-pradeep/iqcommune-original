@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSuperAdminUser } from "@/lib/supabase/require-super-admin";
+import { isGalleryAdminAccessEnabled } from "@/lib/settings";
 import { AdminConsoleView } from "@/components/admin/AdminConsoleView";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
@@ -100,6 +101,7 @@ export default async function SuperAdminPage() {
   if (!saUser) redirect("/console");
 
   const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
+  const galleryAdminAccess = await isGalleryAdminAccessEnabled();
   return (
     <AdminConsoleView
       practitioners={practitioners}
@@ -110,6 +112,7 @@ export default async function SuperAdminPage() {
       photos={photos}
       email={saUser.email}
       isSuperAdmin={true}
+      galleryAdminAccess={galleryAdminAccess}
     />
   );
 }

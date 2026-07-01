@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireGalleryAccess } from "@/lib/supabase/require-gallery-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/logger";
 
@@ -25,7 +25,7 @@ function withUrl(supabase: ReturnType<typeof createAdminClient>, row: { storage_
 
 // GET — all gallery photos (published + drafts), in display order, for the admin manager.
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requireGalleryAccess();
   if (denied) return denied;
 
   const supabase = createAdminClient();
@@ -46,7 +46,7 @@ export async function GET() {
 
 // POST — upload a new gallery photo (multipart: photo + captions + published).
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireGalleryAccess();
   if (denied) return denied;
 
   let form: FormData;
