@@ -20,6 +20,7 @@ export function PhotoViewModal({
   onClose,
   onApprove,
   onReject,
+  onRevoke,
   onDelete,
 }: {
   id: string;
@@ -28,6 +29,7 @@ export function PhotoViewModal({
   onClose: () => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onRevoke?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
   const [payload, setPayload] = useState<ViewPayload | null>(null);
@@ -132,7 +134,7 @@ export function PhotoViewModal({
                       loading="lazy"
                       style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }}
                     />
-                    {payload.downloadUrls[i] && (
+                    {payload.downloadUrls?.[i] && (
                       <a
                         href={payload.downloadUrls[i]}
                         download={`iqcommune-photo-${i + 1}.jpg`}
@@ -176,9 +178,9 @@ export function PhotoViewModal({
         </div>
 
         {/* Footer actions */}
-        {(onApprove || onReject || onDelete || (payload && payload.downloadUrls.length > 0)) && (
+        {(onApprove || onReject || onRevoke || onDelete || (payload?.downloadUrls?.length ?? 0) > 0) && (
           <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }}>
-            {payload && payload.downloadUrls.length > 0 && (
+            {(payload?.downloadUrls?.length ?? 0) > 0 && (
               <button
                 onClick={downloadAll}
                 style={{ marginRight: "auto", background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
@@ -186,7 +188,7 @@ export function PhotoViewModal({
                 <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Download all ({payload.downloadUrls.length})
+                Download all ({payload?.downloadUrls?.length ?? 0})
               </button>
             )}
             {onDelete && (
@@ -197,12 +199,20 @@ export function PhotoViewModal({
                 Delete
               </button>
             )}
-            {(status === "Pending" || status === "Approved") && onReject && (
+            {status === "Pending" && onReject && (
               <button
                 onClick={() => { onReject(id); onClose(); }}
                 style={{ background: "rgba(20,18,12,.07)", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
               >
-                {status === "Approved" ? "Revoke approval" : "Reject"}
+                Reject
+              </button>
+            )}
+            {status === "Approved" && onRevoke && (
+              <button
+                onClick={() => { onRevoke(id); onClose(); }}
+                style={{ background: "rgba(20,18,12,.07)", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Revoke approval
               </button>
             )}
             {status === "Pending" && onApprove && (

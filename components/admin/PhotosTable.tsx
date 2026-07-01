@@ -114,6 +114,23 @@ export function PhotosTable({
     [onStatusChange]
   );
 
+  const revoke = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/admin/photos/${id}/revoke`, { method: "PATCH" });
+      if (res.ok) {
+        setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Pending" } : p)));
+        onStatusChange?.(id, "Pending");
+        setToast("Approval revoked — back to Pending");
+        setTimeout(() => setToast(""), 3000);
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setToast(body.error ?? "Revoke failed");
+        setTimeout(() => setToast(""), 4000);
+      }
+    },
+    [onStatusChange]
+  );
+
   const approve = useCallback(
     async (id: string) => {
       const res = await fetch(`/api/admin/photos/${id}/approve`, { method: "PATCH" });
@@ -324,7 +341,7 @@ export function PhotosTable({
                     </button>
                   )}
                   {p.status === "Approved" && (
-                    <button onClick={() => reject(p.id)} style={ghostBtn}>
+                    <button onClick={() => revoke(p.id)} style={ghostBtn}>
                       Revoke
                     </button>
                   )}
@@ -387,7 +404,8 @@ export function PhotosTable({
           status={viewingRow.status}
           onClose={() => setViewId(null)}
           onApprove={viewingRow.status === "Pending" ? approve : undefined}
-          onReject={viewingRow.status === "Pending" || viewingRow.status === "Approved" ? reject : undefined}
+          onReject={viewingRow.status === "Pending" ? reject : undefined}
+          onRevoke={viewingRow.status === "Approved" ? revoke : undefined}
           onDelete={viewingRow.status !== "Rejected" ? remove : undefined}
         />
       )}

@@ -35,7 +35,7 @@ export async function GET(
   };
 
   if (keys.length === 0) {
-    return NextResponse.json({ urls: [], meta });
+    return NextResponse.json({ urls: [], downloadUrls: [], meta });
   }
 
   const { data: signed, error: signErr } = await supabase.storage
