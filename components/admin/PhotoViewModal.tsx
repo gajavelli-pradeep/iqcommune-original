@@ -207,12 +207,12 @@ export function PhotoViewModal({
                 Reject
               </button>
             )}
-            {status === "Approved" && onRevoke && (
+            {(status === "Approved" || status === "Rejected") && onRevoke && (
               <button
                 onClick={() => { onRevoke(id); onClose(); }}
                 style={{ background: "rgba(20,18,12,.07)", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
               >
-                Revoke approval
+                {status === "Rejected" ? "Reopen" : "Revoke approval"}
               </button>
             )}
             {status === "Pending" && onApprove && (

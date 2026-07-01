@@ -120,7 +120,7 @@ export function PhotosTable({
       if (res.ok) {
         setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Pending" } : p)));
         onStatusChange?.(id, "Pending");
-        setToast("Approval revoked — back to Pending");
+        setToast("Returned to Pending for re-review");
         setTimeout(() => setToast(""), 3000);
       } else {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -345,6 +345,11 @@ export function PhotosTable({
                       Revoke
                     </button>
                   )}
+                  {p.status === "Rejected" && isSuperAdmin && (
+                    <button onClick={() => revoke(p.id)} style={ghostBtn} title="Reopen — return this set to Pending for re-review">
+                      Reopen
+                    </button>
+                  )}
                   {canView && (
                     <button onClick={() => setViewId(p.id)} style={ghostBtn}>
                       <svg
@@ -405,7 +410,7 @@ export function PhotosTable({
           onClose={() => setViewId(null)}
           onApprove={viewingRow.status === "Pending" ? approve : undefined}
           onReject={viewingRow.status === "Pending" ? reject : undefined}
-          onRevoke={viewingRow.status === "Approved" ? revoke : undefined}
+          onRevoke={viewingRow.status === "Approved" || (viewingRow.status === "Rejected" && isSuperAdmin) ? revoke : undefined}
           onDelete={viewingRow.status !== "Rejected" ? remove : undefined}
         />
       )}

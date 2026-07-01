@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireSuperAdmin } from "@/lib/supabase/require-super-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/logger";
 
-// Revoke an approval — returns an Approved submission to Pending for re-review
-// (distinct from Reject, which sets Rejected).
+// Return a submission to Pending for re-review (distinct from Reject → Rejected):
+//   • Approved → Pending — any admin ("Revoke approval").
+//   • Rejected → Pending — Super Admin only ("Reopen").
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -25,19 +27,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Photo submission not found" }, { status: 404 });
   }
 
-  if (submission.status !== "Approved") {
+  if (submission.status === "Rejected") {
+    // Reopening a rejected set is a Super-Admin-only recovery action.
+    const denySA = await requireSuperAdmin();
+    if (denySA) return denySA;
+  } else if (submission.status !== "Approved") {
     return NextResponse.json(
       { error: `Cannot revoke a submission with status "${submission.status}"` },
       { status: 409 }
     );
   }
 
-  // Atomic — WHERE status = 'Approved' guards against a concurrent change.
+  // Atomic — WHERE status IN (...) guards against a concurrent change.
   const { error: updateErr } = await supabase
     .from("photo_submissions")
     .update({ status: "Pending" })
     .eq("id", id)
-    .eq("status", "Approved");
+    .in("status", ["Approved", "Rejected"]);
 
   if (updateErr) {
     log.error("Photo revoke update failed", { error: updateErr.message, submissionId: id });
