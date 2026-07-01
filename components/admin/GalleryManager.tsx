@@ -21,12 +21,40 @@ export function GalleryManager() {
 
   // Upload form
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [topLeft, setTopLeft] = useState("");
   const [bottomRight, setBottomRight] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  // Object-URL lifecycle: created in the picker (event handler), revoked here on change/unmount.
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  // Validate client-side before accepting a file (drag-drop can bypass the input's accept).
+  const pickFile = useCallback((f: File | null | undefined) => {
+    if (!f) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
+      setError("Please choose a JPEG, PNG or WebP image."); return;
+    }
+    if (f.size > 5 * 1024 * 1024) { setError("Image exceeds the 5 MB limit."); return; }
+    setError("");
+    setFile(f);
+    setPreviewUrl(URL.createObjectURL(f));
+  }, []);
+
+  const clearFile = useCallback(() => {
+    setFile(null);
+    setPreviewUrl(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }, []);
+
+  const fmtBytes = (b: number) => (b < 1024 * 1024 ? `${Math.round(b / 1024)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`);
 
   const load = useCallback(() => {
     fetch("/api/admin/gallery")
@@ -52,8 +80,7 @@ export function GalleryManager() {
       if (!res.ok) { setError(j.error ?? "Upload failed."); }
       else {
         setPhotos((prev) => [...prev, j.data as GalleryPhoto]);
-        setFile(null); setTopLeft(""); setBottomRight("");
-        if (fileRef.current) fileRef.current.value = "";
+        clearFile(); setTopLeft(""); setBottomRight("");
         flash("Photo added to the gallery.");
       }
     } catch { setError("Network error."); }
@@ -127,8 +154,55 @@ export function GalleryManager() {
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 12 }}>Add a photo</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>Image (JPEG / PNG / WebP · max 5 MB)</label>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontSize: 13, fontFamily: "inherit" }} />
+            <label style={labelStyle}>Image</label>
+            {/* Hidden native input, driven by the dropzone below */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => pickFile(e.target.files?.[0])}
+              style={{ display: "none" }}
+            />
+            {file && previewUrl ? (
+              // Selected-file preview card
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 10, border: "1px solid rgba(20,18,12,.15)", borderRadius: 10, background: "var(--surface-soft)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewUrl} alt="" style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid rgba(20,18,12,.1)" }} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{fmtBytes(file.size)}</div>
+                </div>
+                <button type="button" onClick={() => fileRef.current?.click()} style={smallBtn}>Change</button>
+                <button type="button" onClick={clearFile} aria-label="Remove image" style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)" }}>Remove</button>
+              </div>
+            ) : (
+              // Empty dropzone
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileRef.current?.click()}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files?.[0]); }}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "1.75rem 1rem", textAlign: "center", cursor: "pointer",
+                  border: `1.5px dashed ${dragging ? "var(--gold)" : "rgba(20,18,12,.22)"}`,
+                  borderRadius: 10,
+                  background: dragging ? "var(--input-hover)" : "var(--input-paper)",
+                  transition: "border-color .12s, background .12s",
+                }}
+              >
+                <svg width={26} height={26} fill="none" stroke="var(--ink-faint)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <div style={{ fontSize: 13, color: "var(--ink)" }}>
+                  <span style={{ fontWeight: 600, color: "var(--gold-dark)" }}>Click to upload</span> or drag &amp; drop
+                </div>
+                <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>JPEG, PNG or WebP · up to 5 MB</div>
+              </div>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Top-left caption (gold pill — e.g. topic)</label>
