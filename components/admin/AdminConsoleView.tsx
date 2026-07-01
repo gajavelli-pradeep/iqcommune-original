@@ -27,6 +27,7 @@ type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"] & {
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
+  photos_submitted?: boolean;
 };
 type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;

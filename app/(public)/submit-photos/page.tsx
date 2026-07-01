@@ -36,12 +36,11 @@ function Loading() {
   );
 }
 
-// 3-step progress stepper matching V2
+// Progress stepper
 function Stepper() {
   const steps = [
     { label: "Session completed", state: "done"    as const, num: 1 },
     { label: "Submit session photos", state: "active" as const, num: 2 },
-    { label: "Reviewed & published", state: "pending" as const, num: 3 },
   ];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto" }}>

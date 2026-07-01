@@ -16,6 +16,7 @@ type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"] & {
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
+  photos_submitted?: boolean;
 };
 type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
@@ -51,9 +52,12 @@ async function getData() {
   const feedbackBySession = Object.fromEntries(
     (sessionFeedback.data ?? []).map((f) => [f.session_id, { id: f.id, overall_rating: f.overall_rating }])
   );
+  // photo_submissions.session_ref === sessions.ref_code — flag sessions that have photos.
+  const refsWithPhotos = new Set((photosRes.data ?? []).map((p) => p.session_ref));
   const sessionsWithFeedback: SessionRow[] = (sessions.data ?? []).map((s) => ({
     ...s,
     session_feedback: feedbackBySession[s.id] ? [feedbackBySession[s.id]] : [],
+    photos_submitted: s.ref_code ? refsWithPhotos.has(s.ref_code) : false,
   })) as SessionRow[];
 
   const nameByRef: Record<string, string> = {};

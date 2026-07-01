@@ -57,6 +57,22 @@ export function PhotoViewModal({
     if (e.target === e.currentTarget) onClose();
   };
 
+  // Download every image. Supabase's download-signed URLs carry a
+  // Content-Disposition: attachment header, so triggering each one saves the
+  // file. Stagger the clicks so the browser doesn't drop rapid-fire downloads.
+  const downloadAll = useCallback(async () => {
+    const urls = payload?.downloadUrls ?? [];
+    for (let i = 0; i < urls.length; i++) {
+      const a = document.createElement("a");
+      a.href = urls[i];
+      a.download = `iqcommune-photo-${i + 1}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }, [payload]);
+
   return (
     <div
       onClick={handleOverlayClick}
@@ -160,8 +176,19 @@ export function PhotoViewModal({
         </div>
 
         {/* Footer actions */}
-        {(onApprove || onReject || onDelete) && (
-          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
+        {(onApprove || onReject || onDelete || (payload && payload.downloadUrls.length > 0)) && (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }}>
+            {payload && payload.downloadUrls.length > 0 && (
+              <button
+                onClick={downloadAll}
+                style={{ marginRight: "auto", background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download all ({payload.downloadUrls.length})
+              </button>
+            )}
             {onDelete && (
               <button
                 onClick={() => { onDelete(id); onClose(); }}

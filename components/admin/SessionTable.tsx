@@ -26,6 +26,7 @@ interface Session {
   practitioner: { name: string; email: string } | null;
   payout_id?: string | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
+  photos_submitted?: boolean;
 }
 
 interface FeedbackState {
@@ -327,6 +328,18 @@ export function SessionTable({
                           <polyline points="21 15 16 10 5 21" />
                         </svg>
                         {copiedPhotoId === s.id ? "Link copied!" : "Photo link"}
+                      </button>
+                    )}
+                    {s.status === "Completed" && s.photos_submitted && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onNavigate?.("photos"); }}
+                        style={{ ...actionBtn("var(--green-light)", "var(--green)", true), display: "inline-flex", alignItems: "center", gap: 4 }}
+                        title="Photos received — open the Session Photos tab"
+                      >
+                        <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Photos received
                       </button>
                     )}
                     {s.status === "Completed" && (() => {
