@@ -10,13 +10,20 @@ import { PhotosTable } from "@/components/admin/PhotosTable";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
 import { PayoutFormModal } from "@/components/admin/PayoutFormModal";
+import { RequestFormModal } from "@/components/admin/RequestFormModal";
+import { PayoutEditModal } from "@/components/admin/PayoutEditModal";
+import { AgreementEditModal } from "@/components/admin/AgreementEditModal";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
+import { TrashModal } from "@/components/admin/TrashModal";
 import { GlobalSearchResults } from "@/components/admin/GlobalSearchResults";
 import { useAdminUI } from "@/components/admin/AdminUIContext";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import type { Database } from "@/lib/supabase/database.types";
 
-type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
+type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
+type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"] & {
+  subsection_averages?: SubsectionAverages | null;
+};
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
@@ -31,6 +38,33 @@ type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
 type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
   practitioner_name: string;
 };
+
+// Map a joined session row into the NewSession shape the edit modal expects.
+function toNewSession(row: SessionRow): NewSession {
+  return {
+    id:              row.id,
+    ref_code:        row.ref_code,
+    module:          row.module,
+    practitioner_id: row.practitioner_id,
+    session_date:    row.session_date,
+    start_time:      row.start_time,
+    end_time:        row.end_time,
+    venue:           row.venue,
+    audience_type:   row.audience_type,
+    participants:    row.participants,
+    payout_amount:   row.payout_amount,
+    tds_applicable:  row.tds_applicable,
+    tds_rate:        row.tds_rate,
+    consent_status:  row.consent_status,
+    status:          row.status,
+    request_id:      row.request_id,
+    created_at:      row.created_at,
+    updated_at:      row.updated_at,
+    deleted_at:      row.deleted_at,
+    practitioner:    row.practitioner,
+    payout_id:       null,
+  };
+}
 
 interface Counts {
   applied: number;
@@ -146,6 +180,7 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
   // Gap 15: only 'Export', no 'Draft message'
   requests:      [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export session requests" },
+    { label: "+ Add request", variant: "primary", ariaLabel: "Log a session request manually" },
   ],
   // Gap 15: 'Export' (not 'Export CSV'), 'Add manually' (dark), no 'Draft message'
   practitioners: [
@@ -415,7 +450,16 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+
+  // Super-admin edit modals (null = closed)
+  const [editingPractitioner, setEditingPractitioner] = useState<PractitionerRow | null>(null);
+  const [editingSession, setEditingSession] = useState<NewSession | null>(null);
+  const [editingRequest, setEditingRequest] = useState<RequestRow | null>(null);
+  const [editingPayout, setEditingPayout] = useState<PayoutRow | null>(null);
+  const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null);
 
   // Lifted data state — tables notify us via callbacks so counts stay reactive
   const [requestsData, setRequestsData] = useState(requests);
@@ -424,6 +468,16 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [payoutsData, setPayoutsData] = useState(payouts);
   const [photosData, setPhotosData] = useState(photos);
   const [agreementsData, setAgreementsData] = useState(agreements);
+
+  // Re-sync agreements when the server props change (e.g. after PractitionerTable
+  // generates an onboarding link and calls router.refresh()) so the new
+  // "Pending signature" row surfaces without a full page reload. Render-phase
+  // sync (React's "adjust state on prop change" pattern) avoids an effect.
+  const [prevAgreements, setPrevAgreements] = useState(agreements);
+  if (prevAgreements !== agreements) {
+    setPrevAgreements(agreements);
+    setAgreementsData(agreements);
+  }
 
   // Derive counts from local state — updates instantly when any action fires
   const pendingPayoutList = payoutsData.filter((p) => p.status === "Pending");
@@ -533,7 +587,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   function handleHeaderAction(label: string) {
     if (label.includes("Create session")) setSessionModalOpen(true);
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
+    else if (label.includes("Add request")) setRequestModalOpen(true);
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
+    else if (label === "Trash") setTrashOpen(true);
     else if (label.includes("Credentials")) setCredentialsOpen(true);
     else if (label === "Export") exportActiveTab();
   }
@@ -659,7 +715,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabStatsRow tab="requests" counts={counts} activeFilter={tabFilters.requests ?? "all"} onStatClick={(f) => setTabFilter("requests", f)} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
             </div>
           </div>
         )}
@@ -669,7 +725,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="practitioners" onAction={handleHeaderAction} />
             <TabStatsRow tab="practitioners" counts={counts} activeFilter={tabFilters.practitioners ?? "all"} onStatClick={(f) => setTabFilter("practitioners", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} onEdit={isSuperAdmin ? (p) => setEditingPractitioner(p) : undefined} />
             </div>
           </div>
         )}
@@ -679,7 +735,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="sessions" onAction={handleHeaderAction} />
             <TabStatsRow tab="sessions" counts={counts} activeFilter={tabFilters.sessions ?? "All"} onStatClick={(f) => setTabFilter("sessions", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
             </div>
           </div>
         )}
@@ -689,7 +745,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="agreements" onAction={handleHeaderAction} />
             {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <AgreementTable initialData={agreementsData} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} />
+              <AgreementTable initialData={agreementsData} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} />
             </div>
           </div>
         )}
@@ -703,7 +759,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             />
             <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
             </div>
           </div>
         )}
@@ -735,7 +791,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader
               tab="settings"
               onAction={handleHeaderAction}
-              extraActions={isSuperAdmin ? [{ label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin account passwords" }] : []}
+              extraActions={isSuperAdmin ? [{ label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin account passwords" }] : []}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <div
@@ -775,10 +831,86 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         onClose={() => setPayoutModalOpen(false)}
         onCreated={(p) => { setPayoutsData((prev) => [p, ...prev]); }}
       />
-      <CredentialsModal
-        open={credentialsOpen}
-        onClose={() => setCredentialsOpen(false)}
+      <RequestFormModal
+        open={requestModalOpen}
+        onClose={() => setRequestModalOpen(false)}
+        onCreated={(r) => { setRequestsData((prev) => [r, ...prev]); }}
       />
+      {credentialsOpen && (
+        <CredentialsModal
+          open
+          onClose={() => setCredentialsOpen(false)}
+          currentEmail={email}
+        />
+      )}
+      {trashOpen && <TrashModal open onClose={() => setTrashOpen(false)} />}
+
+      {/* Super-admin edit modals — mounted only while a record is being edited */}
+      {editingPractitioner && (
+        <PractitionerFormModal
+          key={editingPractitioner.id}
+          open
+          onClose={() => setEditingPractitioner(null)}
+          initialData={editingPractitioner}
+          onCreated={() => {}}
+          onUpdated={(p) => setPractitionersData((prev) => prev.map((x) => (x.id === p.id ? p : x)))}
+        />
+      )}
+      {editingSession && (
+        <SessionFormModal
+          key={editingSession.id}
+          open
+          onClose={() => setEditingSession(null)}
+          practitioners={practitionersData.map((p) => ({ id: p.id, name: p.name, email: p.email, status: p.status }))}
+          initialData={editingSession}
+          onCreated={() => {}}
+          onUpdated={(s) =>
+            setSessionsData((prev) =>
+              prev.map((x) =>
+                x.id === s.id
+                  ? {
+                      ...x,
+                      ref_code: s.ref_code, module: s.module, practitioner_id: s.practitioner_id,
+                      session_date: s.session_date, start_time: s.start_time, end_time: s.end_time,
+                      venue: s.venue, audience_type: s.audience_type, participants: s.participants,
+                      payout_amount: s.payout_amount, tds_applicable: s.tds_applicable, tds_rate: s.tds_rate,
+                      consent_status: s.consent_status, status: s.status, updated_at: s.updated_at,
+                      practitioner: s.practitioner,
+                    }
+                  : x
+              )
+            )
+          }
+        />
+      )}
+      {editingRequest && (
+        <RequestFormModal
+          key={editingRequest.id}
+          open
+          onClose={() => setEditingRequest(null)}
+          initialData={editingRequest}
+          onCreated={() => {}}
+          onUpdated={(r) => setRequestsData((prev) => prev.map((x) => (x.id === r.id ? r : x)))}
+        />
+      )}
+      {editingPayout && (
+        <PayoutEditModal
+          key={editingPayout.id}
+          open
+          onClose={() => setEditingPayout(null)}
+          initialData={editingPayout}
+          onSaved={(p) => setPayoutsData((prev) => prev.map((x) => (x.id === p.id ? p : x)))}
+        />
+      )}
+      {editingAgreement && (
+        <AgreementEditModal
+          key={editingAgreement.id}
+          open
+          onClose={() => setEditingAgreement(null)}
+          initialData={editingAgreement}
+          onSaved={(a) => setAgreementsData((prev) => prev.map((x) => (x.id === a.id ? a : x)))}
+        />
+      )}
     </div>
   );
 }

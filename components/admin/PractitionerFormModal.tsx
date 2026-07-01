@@ -8,21 +8,45 @@ type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"];
 
 const STATUSES = ["Applied", "Under Review", "Screening Done", "Agreement Sent", "Empanelled", "Rejected"] as const;
 
+const EMPTY = { name: "", email: "", role: "", city: "", experience: "", phone: "", org: "", modules: "", status: "Applied" };
+
+function fromRecord(p: Practitioner): typeof EMPTY {
+  return {
+    name:       p.name ?? "",
+    email:      p.email ?? "",
+    role:       p.role ?? "",
+    city:       p.city ?? "",
+    experience: p.experience ?? "",
+    phone:      p.phone ?? "",
+    org:        p.org ?? "",
+    modules:    (p.modules ?? []).join(", "),
+    status:     p.status ?? "Applied",
+  };
+}
+
 export function PractitionerFormModal({
   open,
   onClose,
   onCreated,
+  initialData = null,
+  onUpdated,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (p: Practitioner) => void;
+  /** When set, the modal switches to edit mode (Super Admin only). */
+  initialData?: Practitioner | null;
+  onUpdated?: (p: Practitioner) => void;
 }) {
-  const empty = { name: "", email: "", role: "", city: "", experience: "", phone: "", org: "", modules: "", status: "Applied" };
-  const [form, setForm] = useState(empty);
+  const isEdit = !!initialData;
+  // Lazy initializer seeds from the record on mount. Edit instances are mounted
+  // fresh per record (see the `key` at the call site), so no prop-sync effect
+  // is needed — which also keeps this clear of react-hooks/set-state-in-effect.
+  const [form, setForm] = useState(() => (initialData ? fromRecord(initialData) : EMPTY));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const set = (k: keyof typeof empty) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function submit() {
@@ -32,23 +56,41 @@ export function PractitionerFormModal({
       return;
     }
     setSaving(true);
+
+    const modules = form.modules.split(",").map((m) => m.trim()).filter(Boolean);
     let res: Response;
     try {
-      res = await fetch("/api/admin/practitioners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          role: form.role,
-          city: form.city,
-          experience: form.experience,
-          phone: form.phone || undefined,
-          org: form.org || undefined,
-          modules: form.modules.split(",").map((m) => m.trim()).filter(Boolean),
-          status: form.status,
-        }),
-      });
+      res = isEdit
+        ? await fetch(`/api/admin/super/practitioners/${initialData!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: form.name,
+              email: form.email,
+              role: form.role,
+              city: form.city,
+              experience: form.experience,
+              phone: form.phone || null,
+              org: form.org || null,
+              modules,
+              status: form.status,
+            }),
+          })
+        : await fetch("/api/admin/practitioners", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: form.name,
+              email: form.email,
+              role: form.role,
+              city: form.city,
+              experience: form.experience,
+              phone: form.phone || undefined,
+              org: form.org || undefined,
+              modules,
+              status: form.status,
+            }),
+          });
     } catch {
       setSaving(false);
       setError("Network error — please try again.");
@@ -56,10 +98,11 @@ export function PractitionerFormModal({
     }
     setSaving(false);
     if (res.status === 409) { setError("A practitioner with this email already exists."); return; }
-    if (!res.ok) { setError("Could not add practitioner. Check the fields and try again."); return; }
+    if (!res.ok) { setError(`Could not ${isEdit ? "save changes" : "add practitioner"}. Check the fields and try again.`); return; }
     const { data } = await res.json();
-    onCreated(data as Practitioner);
-    setForm(empty);
+    if (isEdit) onUpdated?.(data as Practitioner);
+    else onCreated(data as Practitioner);
+    if (!isEdit) setForm(EMPTY);
     onClose();
   }
 
@@ -67,13 +110,13 @@ export function PractitionerFormModal({
     <FormModal
       open={open}
       onClose={onClose}
-      title="Add practitioner"
-      subtitle="Manually create a practitioner record"
+      title={isEdit ? "Edit practitioner" : "Add practitioner"}
+      subtitle={isEdit ? "Update this practitioner record" : "Manually create a practitioner record"}
       footer={
         <>
           <button type="button" style={ghostBtn} onClick={onClose}>Cancel</button>
           <button type="button" style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
-            {saving ? "Adding…" : "Add practitioner"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Add practitioner"}
           </button>
         </>
       }

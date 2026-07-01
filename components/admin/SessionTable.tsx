@@ -6,6 +6,7 @@ import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface Session {
   id: string;
@@ -62,6 +63,7 @@ export function SessionTable({
   onStatusFilterChange,
   isSuperAdmin = false,
   onHardDeleted,
+  onEdit,
 }: {
   initialData: Session[];
   onNavigate?: (tab: string) => void;
@@ -69,6 +71,7 @@ export function SessionTable({
   onStatusFilterChange?: (f: string) => void;
   isSuperAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const data = initialData;
   const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
@@ -99,6 +102,8 @@ export function SessionTable({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [copiedPhotoId, setCopiedPhotoId] = useState<string | null>(null);
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [draft, setDraft] = useState<{
     open: boolean;
     title?: string;
@@ -352,20 +357,39 @@ export function SessionTable({
                         </button>
                       );
                     })()}
+                    {isSuperAdmin && onEdit && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(s.id); }}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "none", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                        title={`Edit session ${s.ref_code}`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                    )}
                     {isSuperAdmin && (
                       <button
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          if (!window.confirm(`Delete session ${s.ref_code} permanently? This cannot be undone.`)) return;
-                          const res = await fetch(`/api/admin/super/sessions/${s.id}`, { method: "DELETE" });
-                          if (res.ok) onHardDeleted?.(s.id);
-                          else {
-                            setDeleteFailedId(s.id);
-                            setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
-                          }
+                          setConfirmDialog({
+                            open: true,
+                            title: `Delete session ${s.ref_code}`,
+                            description: "This removes the session from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                            onConfirm: async () => {
+                              closeConfirm();
+                              const res = await fetch(`/api/admin/super/sessions/${s.id}`, { method: "DELETE" });
+                              if (res.ok) onHardDeleted?.(s.id);
+                              else {
+                                setDeleteFailedId(s.id);
+                                setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
+                              }
+                            },
+                          });
                         }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid #fca5a5", background: "none", color: "#991b1b", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
-                        title={`Delete session ${s.ref_code} permanently`}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid #fca5a5", background: "none", color: "#991b1b", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        title={`Delete session ${s.ref_code}`}
                       >
                         <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
                         {deleteFailedId === s.id ? "Delete failed!" : "Delete"}
@@ -446,6 +470,13 @@ export function SessionTable({
           }}
         />
       )}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

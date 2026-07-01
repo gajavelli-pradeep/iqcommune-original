@@ -4,6 +4,7 @@ import { useState, useCallback, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface SessionRequest {
   id: string;
@@ -94,6 +95,7 @@ export function RequestTable({
   statusFilter = "all",
   isSuperAdmin = false,
   onHardDeleted,
+  onEdit,
 }: {
   initialData: SessionRequest[];
   practitioners?: Practitioner[];
@@ -101,13 +103,19 @@ export function RequestTable({
   statusFilter?: string;
   isSuperAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
+  // Reflect parent-driven updates (e.g. a super-admin edit) without an effect.
+  const [prevInitial, setPrevInitial] = useState(initialData);
+  if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const visible = statusFilter === "all" ? data : data.filter((r) => r.status === statusFilter);
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
 
   const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
@@ -280,22 +288,41 @@ export function RequestTable({
                         </button>
                       </div>
                     )}
+                    {isSuperAdmin && onEdit && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "none", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start" }}
+                        title={`Edit request from ${r.name}`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                    )}
                     {isSuperAdmin && (
                       <button
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          if (!window.confirm(`Delete request from ${r.name} permanently? This cannot be undone.`)) return;
-                          const res = await fetch(`/api/admin/super/requests/${r.id}`, { method: "DELETE" });
-                          if (res.ok) {
-                            setData((prev) => prev.filter((x) => x.id !== r.id));
-                            onHardDeleted?.(r.id);
-                          } else {
-                            setDeleteFailedId(r.id);
-                            setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
-                          }
+                          setConfirmDialog({
+                            open: true,
+                            title: `Delete request from ${r.name}`,
+                            description: "This removes the request from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                            onConfirm: async () => {
+                              closeConfirm();
+                              const res = await fetch(`/api/admin/super/requests/${r.id}`, { method: "DELETE" });
+                              if (res.ok) {
+                                setData((prev) => prev.filter((x) => x.id !== r.id));
+                                onHardDeleted?.(r.id);
+                              } else {
+                                setDeleteFailedId(r.id);
+                                setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
+                              }
+                            },
+                          });
                         }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid var(--red-border)", background: "none", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start" }}
-                        title={`Delete request from ${r.name} permanently`}
+                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid var(--red-border)", background: "none", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start", transition: "background .12s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        title={`Delete request from ${r.name}`}
                       >
                         <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
                         {deleteFailedId === r.id ? "Delete failed!" : "Delete"}
@@ -482,22 +509,6 @@ export function RequestTable({
                             >
                               Draft follow-up to client
                             </button>
-                            <button
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                background: "#fff",
-                                color: "var(--ink)",
-                                border: "1px solid rgba(20,18,12,.18)",
-                                borderRadius: 8,
-                                padding: "10px 14px",
-                                fontSize: 13,
-                                fontWeight: 500,
-                                cursor: "pointer",
-                                fontFamily: "inherit",
-                              }}
-                            >
-                              Create session from request
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -537,6 +548,13 @@ export function RequestTable({
         waBody={draft.waBody}
         recipientName={draft.recipientName}
         recipientEmail={draft.recipientEmail}
+      />
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface Payout {
   id: string;
@@ -80,16 +81,23 @@ export function PayoutTable({
   statusFilter = "all",
   isSuperAdmin = false,
   onHardDeleted,
+  onEdit,
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
   statusFilter?: string;
   isSuperAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
+  // Reflect parent-driven updates (e.g. a super-admin edit) without an effect.
+  const [prevInitial, setPrevInitial] = useState(initialData);
+  if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [draft, setDraft] = useState<{
     open: boolean;
     name?: string;
@@ -101,16 +109,23 @@ export function PayoutTable({
   const visible = statusFilter === "all" ? data : data.filter((p) => p.status === statusFilter);
 
   const handleHardDelete = useCallback(
-    async (id: string) => {
-      if (!window.confirm("Delete this payout permanently? This cannot be undone.")) return;
-      const res = await fetch(`/api/admin/super/payouts/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setData((prev) => prev.filter((p) => p.id !== id));
-        onHardDeleted?.(id);
-      } else {
-        setToast("Delete failed — please try again.");
-        setTimeout(() => setToast(""), 3000);
-      }
+    (id: string, invoiceRef: string) => {
+      setConfirmDialog({
+        open: true,
+        title: `Delete payout ${invoiceRef}`,
+        description: "This removes the payout from all lists. It stays recoverable for 30 days, then is permanently purged.",
+        onConfirm: async () => {
+          setConfirmDialog((d) => ({ ...d, open: false }));
+          const res = await fetch(`/api/admin/super/payouts/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            setData((prev) => prev.filter((p) => p.id !== id));
+            onHardDeleted?.(id);
+          } else {
+            setToast("Delete failed — please try again.");
+            setTimeout(() => setToast(""), 3000);
+          }
+        },
+      });
     },
     [onHardDeleted]
   );
@@ -346,11 +361,23 @@ export function PayoutTable({
                     ) : (
                       <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
                     )}
+                    {isSuperAdmin && onEdit && (
+                      <button
+                        onClick={() => onEdit(p.id)}
+                        style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                        title={`Edit payout ${p.invoice_ref}`}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                    )}
                     {isSuperAdmin && (
                       <button
-                        onClick={() => handleHardDelete(p.id)}
-                        style={{ background: "none", border: "1px solid #fca5a5", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
-                        title={`Delete payout ${p.invoice_ref} permanently`}
+                        onClick={() => handleHardDelete(p.id, p.invoice_ref)}
+                        style={{ background: "none", border: "1px solid #fca5a5", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        title={`Delete payout ${p.invoice_ref}`}
                       >
                         <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
                         Delete
@@ -412,6 +439,13 @@ export function PayoutTable({
         emailBody={`Dear ${draft.name},\n\nThis is a reminder regarding your payout for the ${draft.module} session.\n\nInvoice ref: ${draft.invoice}\nNet payout: ${draft.net}\n\nPlease confirm receipt of this payout or let us know if you have any questions.\n\nWarm regards,\nThe iqcommune Team`}
         waBody={`Hi ${draft.name}! 👋\n\nJust a quick note from the iqcommune team — your payout for the *${draft.module}* session is ready.\n\nInvoice: *${draft.invoice}*\nNet: *${draft.net}*\n\nLet us know if you have any questions!`}
         recipientName={draft.name}
+      />
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
       />
     </div>
   );

@@ -10,6 +10,7 @@ export async function GET() {
   const { data, error } = await createAdminClient()
     .from("agreements")
     .select("id, ref_code, practitioner_id, module, signed_at, signature_method, status, storage_path")
+    .is("deleted_at", null)
     .order("signed_at", { ascending: false });
 
   if (error) {

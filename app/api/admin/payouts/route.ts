@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("payouts")
     .select("*, session:sessions(ref_code, module), practitioner:practitioners(name)")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (status && VALID_STATUSES.includes(status as (typeof VALID_STATUSES)[number])) {

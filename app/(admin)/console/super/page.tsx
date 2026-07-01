@@ -9,7 +9,10 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Super Admin Console" };
 export const dynamic = "force-dynamic";
 
-type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"];
+type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
+type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row"] & {
+  subsection_averages: SubsectionAverages | null;
+};
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
@@ -31,12 +34,12 @@ type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
 async function getData() {
   const db = createAdminClient();
   const [practitioners, sessions, sessionFeedback, requests, payouts, agreementsRes, photosRes] = await Promise.all([
-    db.from("practitioners").select("*").order("created_at", { ascending: false }).limit(200),
-    db.from("sessions").select("*, practitioner:practitioners(name, email)").order("session_date", { ascending: false }).limit(200),
+    db.from("practitioners").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
+    db.from("sessions").select("*, practitioner:practitioners(name, email)").is("deleted_at", null).order("session_date", { ascending: false }).limit(200),
     db.from("session_feedback").select("id, session_id, overall_rating"),
-    db.from("session_requests").select("*, assigned_practitioner:practitioners(name)").order("created_at", { ascending: false }).limit(200),
-    db.from("payouts").select("*, session:sessions(ref_code, module, session_date), practitioner:practitioners(name, upi_id, bank_account, bank_name)").order("created_at", { ascending: false }).limit(200),
-    db.from("agreements").select("*, practitioner:practitioners(name, role)").order("signed_at", { ascending: false }).limit(200),
+    db.from("session_requests").select("*, assigned_practitioner:practitioners(name)").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
+    db.from("payouts").select("*, session:sessions(ref_code, module, session_date), practitioner:practitioners(name, upi_id, bank_account, bank_name)").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
+    db.from("agreements").select("*, practitioner:practitioners(name, role)").is("deleted_at", null).order("signed_at", { ascending: false }).limit(200),
     db.from("photo_submissions").select("*").order("submitted_at", { ascending: false }).limit(200),
   ]);
   if (practitioners.error) throw new Error(`Practitioners load failed: ${practitioners.error.message}`);
@@ -66,8 +69,20 @@ async function getData() {
     practitioner_name: a.practitioner?.name ?? "—",
     practitioner_role: a.practitioner?.role ?? "—",
   }));
+
+  // Per-practitioner subsection averages (view). Non-fatal — absent view/data
+  // just means no breakdown is shown.
+  const subsectionAvg = await db.from("practitioner_subsection_averages").select("*");
+  const avgByPractitioner = Object.fromEntries(
+    (subsectionAvg.data ?? []).map((r) => [r.practitioner_id, r])
+  );
+  const practitionersWithAverages: PractitionerRow[] = (practitioners.data ?? []).map((p) => ({
+    ...p,
+    subsection_averages: avgByPractitioner[p.id] ?? null,
+  }));
+
   return {
-    practitioners: (practitioners.data ?? []) as PractitionerRow[],
+    practitioners: practitionersWithAverages,
     sessions: sessionsWithFeedback,
     requests: (requests.data ?? []) as RequestRow[],
     payouts: (payouts.data ?? []) as PayoutRow[],

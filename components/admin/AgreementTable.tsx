@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // Agreements row joined with practitioner name + role
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
@@ -14,26 +15,26 @@ export type Agreement = AgreementRow & {
   practitioner_ini?: string;
 };
 
-function isThisMonth(d: Date): boolean {
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-
 export function AgreementTable({
   initialData,
   isSuperAdmin = false,
   onHardDeleted,
+  onEdit,
 }: {
   initialData: Agreement[];
   isSuperAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const [toast, setToast] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
 
   const total     = initialData.length;
-  const thisMonth = initialData.filter((a) => a.signed_at && isThisMonth(new Date(a.signed_at))).length;
-  // DB stores signed empanelment agreements as status "Active" (see schema check constraint).
-  // DB schema CHECK constraint uses "Active" as the only signed-state value.
+  // DB stores agreements awaiting signature as "Pending signature" and signed
+  // empanelment agreements as "Active" (schema CHECK constraint). Surface a
+  // dedicated Pending tile so pending rows aren't silently folded into Total.
+  const pending   = initialData.filter((a) => a.status === "Pending signature").length;
   const signed    = initialData.filter((a) => a.status === "Active").length;
 
   const showToast = (msg: string) => {
@@ -64,8 +65,8 @@ export function AgreementTable({
       >
         {[
           { label: "Total agreements", value: total },
-          { label: "This month",       value: thisMonth },
-          { label: "Signed",           value: signed },
+          { label: "Pending signature", value: pending },
+          { label: "Active",           value: signed },
         ].map((s) => (
           <div key={s.label} style={{ background: "#fff", padding: "1rem 1.5rem" }}>
             <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1 }}>{s.value}</div>
@@ -256,17 +257,36 @@ export function AgreementTable({
                     </svg>
                     Download
                   </button>
+                  {isSuperAdmin && onEdit && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                      title={`Edit agreement for ${row.practitioner_name}`}
+                    >
+                      <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Edit
+                    </button>
+                  )}
                   {isSuperAdmin && (
                     <button
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-                        if (!window.confirm(`Delete agreement for ${row.practitioner_name} permanently? This cannot be undone.`)) return;
-                        const res = await fetch(`/api/admin/super/agreements/${row.id}`, { method: "DELETE" });
-                        if (res.ok) onHardDeleted?.(row.id);
-                        else showToast("Delete failed — please try again.");
+                        setConfirmDialog({
+                          open: true,
+                          title: `Delete agreement for ${row.practitioner_name}`,
+                          description: "This removes the agreement from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                          onConfirm: async () => {
+                            closeConfirm();
+                            const res = await fetch(`/api/admin/super/agreements/${row.id}`, { method: "DELETE" });
+                            if (res.ok) onHardDeleted?.(row.id);
+                            else showToast("Delete failed — please try again.");
+                          },
+                        });
                       }}
-                      style={{ marginLeft: 6, background: "none", border: "1px solid #fca5a5", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
-                      title={`Delete agreement for ${row.practitioner_name} permanently`}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid #fca5a5", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      title={`Delete agreement for ${row.practitioner_name}`}
                     >
                       <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
                       Delete
@@ -300,6 +320,13 @@ export function AgreementTable({
           {toast}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

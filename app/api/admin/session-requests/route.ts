@@ -14,6 +14,7 @@ export async function GET() {
   const { data, error } = await createAdminClient()
     .from("session_requests")
     .select("*, assigned_practitioner:practitioners(name)")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -21,6 +22,66 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load requests" }, { status: 500 });
   }
   return NextResponse.json({ data });
+}
+
+const CreateSchema = z.object({
+  name:            z.string().min(1),
+  email:           z.string().email(),
+  phone:           z.string().optional(),
+  org:             z.string().optional(),
+  city:            z.string().optional(),
+  state:           z.string().optional(),
+  topic:           z.string().min(1),
+  audienceType:    z.string().min(1),
+  groupSize:       z.string().optional(),
+  minCommit:       z.number().int().optional(),
+  venue:           z.string().optional(),
+  preferredDates:  z.string().optional(),
+  notes:           z.string().optional(),
+  status:          z.enum(["New", "Matched", "Confirmed", "Completed", "Cancelled"]).default("New"),
+});
+
+export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const body = CreateSchema.safeParse(await req.json());
+  if (!body.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: body.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const d = body.data;
+  const { data, error } = await createAdminClient()
+    .from("session_requests")
+    .insert({
+      name:             d.name,
+      email:            d.email,
+      phone:            d.phone ?? null,
+      org:              d.org ?? null,
+      city:             d.city ?? null,
+      state:            d.state ?? null,
+      topic:            d.topic,
+      audience_type:    d.audienceType,
+      group_size:       d.groupSize ?? null,
+      min_commit:       d.minCommit ?? null,
+      venue:            d.venue ?? null,
+      preferred_dates:  d.preferredDates ?? null,
+      notes:            d.notes ?? null,
+      // Admin-created on behalf of a client — SPOC declaration recorded as accepted.
+      spoc_declaration: true,
+      status:           d.status,
+    })
+    .select("*, assigned_practitioner:practitioners(name)")
+    .single();
+
+  if (error) {
+    log.error("Admin session request POST failed", { error: error.message });
+    return NextResponse.json({ error: "Failed to create request" }, { status: 500 });
+  }
+  return NextResponse.json({ data }, { status: 201 });
 }
 
 const PatchSchema = z.object({

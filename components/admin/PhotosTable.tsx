@@ -5,6 +5,7 @@ import { StatusPill } from "@/components/shared/StatusPill";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface PhotoSubmission {
   id: string;
@@ -81,6 +82,8 @@ export function PhotosTable({
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [internalFilter, setInternalFilter] = useState<StatusFilter>("All");
   const statusFilter: StatusFilter = STATUS_FILTERS.includes(
     statusFilterProp as StatusFilter
@@ -129,19 +132,26 @@ export function PhotosTable({
   );
 
   const remove = useCallback(
-    async (id: string) => {
-      if (!confirm("Delete this photo set? This cannot be undone.")) return;
-      const res = await fetch(`/api/admin/photos/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setData((prev) => prev.filter((p) => p.id !== id));
-        onStatusChange?.(id, "Deleted");
-        setToast("Photo set deleted");
-        setTimeout(() => setToast(""), 3000);
-      } else {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setToast(body.error ?? "Delete failed");
-        setTimeout(() => setToast(""), 4000);
-      }
+    (id: string) => {
+      setConfirmDialog({
+        open: true,
+        title: "Delete photo set",
+        description: "This will permanently remove this photo submission and cannot be undone.",
+        onConfirm: async () => {
+          setConfirmDialog((d) => ({ ...d, open: false }));
+          const res = await fetch(`/api/admin/photos/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            setData((prev) => prev.filter((p) => p.id !== id));
+            onStatusChange?.(id, "Deleted");
+            setToast("Photo set deleted");
+            setTimeout(() => setToast(""), 3000);
+          } else {
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            setToast(body.error ?? "Delete failed");
+            setTimeout(() => setToast(""), 4000);
+          }
+        },
+      });
     },
     [onStatusChange]
   );
@@ -381,6 +391,13 @@ export function PhotosTable({
           onDelete={viewingRow.status !== "Rejected" ? remove : undefined}
         />
       )}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

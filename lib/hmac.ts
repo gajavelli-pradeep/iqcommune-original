@@ -73,10 +73,11 @@ function canonicalPhoto(params: PhotoLinkParams): string {
 
 export function signPhotoUrl(
   params: PhotoLinkParams,
-  baseRoute: "/onboarding" | "/submit-photos" = "/submit-photos"
+  baseRoute: "/onboarding" | "/submit-photos" = "/submit-photos",
+  baseUrl?: string
 ): string {
   const sig  = sign(canonicalPhoto(params));
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const base = baseUrl ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const qs   = new URLSearchParams({
     ...params,
     ...(params.org ? { org: params.org } : {}),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface AdminUser {
   id: string;
@@ -13,24 +13,36 @@ interface AdminUser {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** The signed-in super-admin's email — self-destructive actions are hidden for that row. */
+  currentEmail?: string;
 }
 
-export function CredentialsModal({ open, onClose }: Props) {
+export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    setEditingId(null);
-    setNewPassword("");
-    setError("");
+  // Add-admin form
+  const [adding, setAdding] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newAdminPw, setNewAdminPw] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "super_admin">("admin");
+
+  const flash = (msg: string, ok: boolean) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // setState happens only inside the promise callbacks (never synchronously in
+  // the effect body), so this stays clear of react-hooks/set-state-in-effect.
+  const loadUsers = useCallback(() => {
     fetch("/api/admin/super/users")
       .then((r) => r.json())
       .then((j) => {
@@ -39,7 +51,11 @@ export function CredentialsModal({ open, onClose }: Props) {
       })
       .catch(() => setError("Network error."))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, []);
+
+  // The modal is conditionally mounted (see AdminConsoleView), so every open is a
+  // fresh mount — useState defaults handle the reset; the effect only loads data.
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   async function handleSetPassword(userId: string) {
     if (newPassword.length < 8) {
@@ -55,18 +71,88 @@ export function CredentialsModal({ open, onClose }: Props) {
         body: JSON.stringify({ password: newPassword }),
       });
       const j = await res.json();
-      if (!res.ok) {
-        setError(j.error ?? "Failed to update password.");
-      } else {
-        setToast({ msg: "Password updated successfully.", ok: true });
+      if (!res.ok) setError(j.error ?? "Failed to update password.");
+      else {
+        flash("Password updated successfully.", true);
         setEditingId(null);
         setNewPassword("");
-        setTimeout(() => setToast(null), 3000);
       }
     } catch {
       setError("Network error.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCreate() {
+    if (!newEmail || newAdminPw.length < 8) {
+      setError("Email and a password of at least 8 characters are required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/super/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newEmail, password: newAdminPw, role: newRole }),
+      });
+      const j = await res.json();
+      if (!res.ok) setError(j.error ?? "Failed to create admin.");
+      else {
+        flash(`Admin ${newEmail} created.`, true);
+        setAdding(false);
+        setNewEmail("");
+        setNewAdminPw("");
+        setNewRole("admin");
+        if (j.data) setUsers((prev) => [...prev, j.data as AdminUser]);
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleRole(u: AdminUser) {
+    const nextRole = u.role === "super_admin" ? "admin" : "super_admin";
+    setBusyId(u.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/super/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: nextRole }),
+      });
+      const j = await res.json();
+      if (!res.ok) setError(j.error ?? "Failed to update role.");
+      else {
+        flash(`${u.email} is now ${nextRole === "super_admin" ? "Super Admin" : "Admin"}.`, true);
+        setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRemove(u: AdminUser) {
+    setBusyId(u.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/super/users/${u.id}`, { method: "DELETE" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) setError(j.error ?? "Failed to remove admin.");
+      else {
+        flash(`${u.email} removed.`, true);
+        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setBusyId(null);
+      setConfirmRemoveId(null);
     }
   }
 
@@ -92,7 +178,10 @@ export function CredentialsModal({ open, onClose }: Props) {
           background: "var(--surface)",
           borderRadius: 14,
           width: "100%",
-          maxWidth: 520,
+          maxWidth: 560,
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: "0 8px 40px rgba(0,0,0,.18)",
           overflow: "hidden",
         }}
@@ -108,9 +197,9 @@ export function CredentialsModal({ open, onClose }: Props) {
           }}
         >
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Admin Credentials</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Admin Accounts</div>
             <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>
-              Set passwords for admin accounts
+              Create, remove, promote, and set passwords for admin accounts
             </div>
           </div>
           <button
@@ -137,7 +226,7 @@ export function CredentialsModal({ open, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: "16px 22px 22px" }}>
+        <div style={{ padding: "16px 22px 22px", overflowY: "auto" }}>
           {toast && (
             <div
               style={{
@@ -170,6 +259,70 @@ export function CredentialsModal({ open, onClose }: Props) {
             </div>
           )}
 
+          {/* Add admin */}
+          <div style={{ marginBottom: 16 }}>
+            {!adding ? (
+              <button
+                onClick={() => { setAdding(true); setError(""); }}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 14px",
+                  border: "1px solid rgba(20,18,12,.18)",
+                  borderRadius: 8,
+                  background: "var(--surface)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  color: "var(--ink)",
+                }}
+              >
+                + New admin
+              </button>
+            ) : (
+              <div style={{ border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, padding: "14px", background: "var(--surface-soft)", display: "grid", gap: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Create a new admin</div>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => { setNewEmail(e.target.value); setError(""); }}
+                  placeholder="Email address"
+                  autoFocus
+                  style={inputStyle}
+                />
+                <input
+                  type="password"
+                  value={newAdminPw}
+                  onChange={(e) => { setNewAdminPw(e.target.value); setError(""); }}
+                  placeholder="Password (min 8 chars)"
+                  style={inputStyle}
+                />
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as "admin" | "super_admin")}
+                  style={inputStyle}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={handleCreate}
+                    disabled={saving}
+                    style={{ flex: 1, padding: "8px", background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontFamily: "inherit" }}
+                  >
+                    {saving ? "Creating…" : "Create admin"}
+                  </button>
+                  <button
+                    onClick={() => { setAdding(false); setError(""); }}
+                    style={{ padding: "8px 14px", background: "transparent", color: "var(--ink-soft)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {loading ? (
             <div style={{ color: "var(--ink-faint)", fontSize: 13, padding: "12px 0" }}>
               Loading users…
@@ -180,7 +333,10 @@ export function CredentialsModal({ open, onClose }: Props) {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {users.map((u) => (
+              {users.map((u) => {
+                const isSelf = !!currentEmail && u.email?.toLowerCase() === currentEmail.toLowerCase();
+                const busy = busyId === u.id;
+                return (
                 <div
                   key={u.id}
                   style={{
@@ -190,9 +346,12 @@ export function CredentialsModal({ open, onClose }: Props) {
                     background: "var(--surface-soft)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{u.email}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {u.email}
+                        {isSelf && <span style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}> · you</span>}
+                      </div>
                       <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
                         {u.role === "super_admin" ? "Super Admin" : "Admin"}
                         {u.last_sign_in_at
@@ -201,21 +360,30 @@ export function CredentialsModal({ open, onClose }: Props) {
                       </div>
                     </div>
                     {editingId !== u.id && (
-                      <button
-                        onClick={() => { setEditingId(u.id); setNewPassword(""); setError(""); setShowPw(false); }}
-                        style={{
-                          fontSize: 12,
-                          padding: "5px 12px",
-                          border: "1px solid rgba(20,18,12,.18)",
-                          borderRadius: 6,
-                          background: "var(--surface)",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Set password
-                      </button>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => { setEditingId(u.id); setNewPassword(""); setError(""); setShowPw(false); setConfirmRemoveId(null); }}
+                          style={smallBtn}
+                        >
+                          Set password
+                        </button>
+                        {!isSelf && (
+                          <button onClick={() => handleToggleRole(u)} disabled={busy} style={{ ...smallBtn, opacity: busy ? 0.6 : 1 }}>
+                            {u.role === "super_admin" ? "Make Admin" : "Make Super Admin"}
+                          </button>
+                        )}
+                        {!isSelf && (
+                          confirmRemoveId === u.id ? (
+                            <button onClick={() => handleRemove(u)} disabled={busy} style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)", opacity: busy ? 0.6 : 1 }}>
+                              {busy ? "Removing…" : "Confirm remove"}
+                            </button>
+                          ) : (
+                            <button onClick={() => setConfirmRemoveId(u.id)} style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)" }}>
+                              Remove
+                            </button>
+                          )
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -309,7 +477,8 @@ export function CredentialsModal({ open, onClose }: Props) {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -317,3 +486,26 @@ export function CredentialsModal({ open, onClose }: Props) {
     </div>
   );
 }
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px",
+  border: "1px solid rgba(20,18,12,.18)",
+  borderRadius: 8,
+  fontSize: 13,
+  fontFamily: "inherit",
+  background: "var(--surface)",
+  boxSizing: "border-box",
+};
+
+const smallBtn: React.CSSProperties = {
+  fontSize: 12,
+  padding: "5px 12px",
+  border: "1px solid rgba(20,18,12,.18)",
+  borderRadius: 6,
+  background: "var(--surface)",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  whiteSpace: "nowrap",
+  color: "var(--ink)",
+};

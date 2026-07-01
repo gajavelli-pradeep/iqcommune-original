@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useCallback, useEffect, useId, useRef, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { PipelineStepper } from "@/components/shared/PipelineStepper";
 import type { Database } from "@/lib/supabase/database.types";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
-type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"];
+type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
+type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"] & {
+  subsection_averages?: SubsectionAverages | null;
+};
 
 const STATUSES = [
   "Applied",
@@ -28,6 +33,7 @@ export function PractitionerTable({
   onFilterChange,
   isSuperAdmin = false,
   onHardDeleted,
+  onEdit,
 }: {
   initialData: Practitioner[];
   onStatusChange?: (id: string, status: string) => void;
@@ -35,8 +41,10 @@ export function PractitionerTable({
   onFilterChange?: (f: string) => void;
   isSuperAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
+  onEdit?: (p: Practitioner) => void;
 }) {
   const [data, setData] = useState(initialData);
+  const router = useRouter();
 
   // Sync when parent adds a new practitioner (e.g. via PractitionerFormModal).
   // useState(initialData) only consumes the initializer once on mount; subsequent
@@ -51,6 +59,8 @@ export function PractitionerTable({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<{ url: string; refCode: string; practitioner: Practitioner } | null>(null);
   const [toast, setToast] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   // Track which row triggered a modal so focus can be restored on close
   const lastFocusRef = useRef<HTMLElement | null>(null);
 
@@ -123,6 +133,10 @@ export function PractitionerTable({
 
   function closeGenLink() {
     setGenLink(null);
+    // Generating a link creates a "Pending signature" agreement server-side.
+    // Refresh so that row appears in the Agreements tab without a manual reload
+    // (AdminConsoleView re-syncs agreementsData from the refreshed server props).
+    router.refresh();
     setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
   }
 
@@ -269,6 +283,26 @@ export function PractitionerTable({
                                   <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink)" }}>{p.why}</div>
                                 </div>
                               )}
+                              {p.subsection_averages && (p.subsection_averages.rated_sessions ?? 0) > 0 && (
+                                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(20,18,12,.07)" }}>
+                                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginBottom: 6 }}>
+                                    Feedback breakdown · {p.subsection_averages.rated_sessions} rated
+                                  </div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px" }}>
+                                    {([
+                                      ["Content", p.subsection_averages.content_avg],
+                                      ["Delivery", p.subsection_averages.delivery_avg],
+                                      ["Engagement", p.subsection_averages.engagement_avg],
+                                      ["Logistics", p.subsection_averages.logistics_avg],
+                                    ] as const).map(([label, value]) => value != null && (
+                                      <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}>
+                                        <span style={{ color: "var(--ink-faint)" }}>{label}</span>
+                                        <span style={{ color: "var(--ink)", fontWeight: 600 }}>{Number(value).toFixed(1)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Col 2: Pipeline progress */}
@@ -276,7 +310,13 @@ export function PractitionerTable({
                               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline Progress</div>
                               <PipelineStepper
                                 status={p.status}
-                                timestamps={{ Applied: p.created_at ?? undefined }}
+                                timestamps={{
+                                  Applied:            p.created_at ?? undefined,
+                                  "Under Review":     p.under_review_at ?? undefined,
+                                  "Screening Done":   p.screened_at ?? undefined,
+                                  "Agreement Sent":   p.agreement_sent_at ?? undefined,
+                                  Empanelled:         p.empanelled_at ?? undefined,
+                                }}
                               />
                             </div>
 
@@ -340,24 +380,43 @@ export function PractitionerTable({
                                   </div>
                                 )}
 
+                                {isSuperAdmin && onEdit && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onEdit(p); }}
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Edit details
+                                  </button>
+                                )}
+
                                 {isSuperAdmin && (
                                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #fca5a5" }}>
                                     <button
-                                      onClick={async (e) => {
+                                      onClick={(e) => {
                                         e.stopPropagation();
-                                        if (!window.confirm(`Delete ${p.name} permanently? This cannot be undone.`)) return;
-                                        const res = await fetch(`/api/admin/super/practitioners/${p.id}`, { method: "DELETE" });
-                                        if (res.ok) {
-                                          setData((prev) => prev.filter((pr) => pr.id !== p.id));
-                                          onHardDeleted?.(p.id);
-                                          setExpandedRow(null);
-                                        } else {
-                                          showToast("Delete failed — please try again.");
-                                        }
+                                        setConfirmDialog({
+                                          open: true,
+                                          title: `Delete ${p.name}`,
+                                          description: "This removes the practitioner from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                                          onConfirm: async () => {
+                                            closeConfirm();
+                                            const res = await fetch(`/api/admin/super/practitioners/${p.id}`, { method: "DELETE" });
+                                            if (res.ok) {
+                                              setData((prev) => prev.filter((pr) => pr.id !== p.id));
+                                              onHardDeleted?.(p.id);
+                                              setExpandedRow(null);
+                                            } else {
+                                              showToast("Delete failed — please try again.");
+                                            }
+                                          },
+                                        });
                                       }}
-                                      style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                      style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background .12s" }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fecaca")}
+                                      onMouseLeave={(e) => (e.currentTarget.style.background = "#fee2e2")}
                                     >
-                                      Delete practitioner permanently
+                                      Delete practitioner
                                     </button>
                                   </div>
                                 )}
@@ -427,6 +486,13 @@ export function PractitionerTable({
       >
         {toast}
       </div>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

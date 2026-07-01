@@ -11,6 +11,7 @@ export async function GET() {
   const { data, error } = await createAdminClient()
     .from("sessions")
     .select("*, practitioner:practitioners(name, email)")
+    .is("deleted_at", null)
     .order("session_date", { ascending: true });
 
   if (error) {

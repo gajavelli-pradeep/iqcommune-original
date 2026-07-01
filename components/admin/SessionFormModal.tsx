@@ -29,8 +29,28 @@ export interface NewSession {
   request_id: string | null;
   created_at: string;
   updated_at: string | null;
+  deleted_at: string | null;
   practitioner: { name: string; email: string } | null;
   payout_id?: string | null;
+}
+
+const EMPTY = { refCode: "", module: "", practitionerId: "", sessionDate: "", startTime: "", endTime: "", venue: "", audienceType: "", participants: "", payoutAmount: "", tdsApplicable: false, tdsRate: "10" };
+
+function fromSession(s: NewSession): typeof EMPTY {
+  return {
+    refCode:        s.ref_code ?? "",
+    module:         s.module ?? "",
+    practitionerId: s.practitioner_id ?? "",
+    sessionDate:    s.session_date ?? "",
+    startTime:      s.start_time ?? "",
+    endTime:        s.end_time ?? "",
+    venue:          s.venue ?? "",
+    audienceType:   s.audience_type ?? "",
+    participants:   s.participants != null ? String(s.participants) : "",
+    payoutAmount:   s.payout_amount != null ? String(s.payout_amount) : "",
+    tdsApplicable:  !!s.tds_applicable,
+    tdsRate:        s.tds_rate != null ? String(s.tds_rate) : "10",
+  };
 }
 
 export function SessionFormModal({
@@ -38,19 +58,40 @@ export function SessionFormModal({
   onClose,
   practitioners,
   onCreated,
+  initialData = null,
+  onUpdated,
 }: {
   open: boolean;
   onClose: () => void;
   practitioners: PractitionerOption[];
   onCreated: (s: NewSession) => void;
+  /** When set, the modal switches to edit mode (Super Admin only). */
+  initialData?: NewSession | null;
+  onUpdated?: (s: NewSession) => void;
 }) {
+  const isEdit = !!initialData;
   const eligible = practitioners.filter((p) => p.status === "Empanelled");
-  const empty = { refCode: "", module: "", practitionerId: "", sessionDate: "", startTime: "", endTime: "", venue: "", audienceType: "", participants: "", payoutAmount: "", tdsApplicable: false, tdsRate: "10" };
-  const [form, setForm] = useState(empty);
+
+  // In edit mode the session's current practitioner must remain selectable even
+  // if their status is no longer "Empanelled", or the form couldn't save.
+  const options: PractitionerOption[] = (() => {
+    if (isEdit && initialData!.practitioner_id && !eligible.some((p) => p.id === initialData!.practitioner_id)) {
+      return [
+        { id: initialData!.practitioner_id, name: initialData!.practitioner?.name ?? "(current practitioner)", email: initialData!.practitioner?.email ?? "", status: "" },
+        ...eligible,
+      ];
+    }
+    return eligible;
+  })();
+
+  // Lazy initializer seeds from the record on mount. Edit instances are mounted
+  // fresh per record (see the `key` at the call site), so no prop-sync effect is
+  // needed — which also keeps this clear of react-hooks/set-state-in-effect.
+  const [form, setForm] = useState(() => (initialData ? fromSession(initialData) : EMPTY));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const set = (k: keyof typeof empty) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: k === "tdsApplicable" ? (e.target as HTMLInputElement).checked : e.target.value }));
 
   async function submit() {
@@ -61,35 +102,54 @@ export function SessionFormModal({
     setSaving(true);
     let res: Response;
     try {
-      res = await fetch("/api/admin/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          refCode: form.refCode,
-          module: form.module,
-          practitionerId: form.practitionerId,
-          sessionDate: form.sessionDate,
-          startTime: form.startTime,
-          endTime: form.endTime,
-          venue: form.venue,
-          audienceType: form.audienceType,
-          participants: Number(form.participants),
-          payoutAmount: Number(form.payoutAmount),
-          tdsApplicable: form.tdsApplicable,
-          tdsRate: form.tdsApplicable ? Number(form.tdsRate) : undefined,
-        }),
-      });
+      res = isEdit
+        ? await fetch(`/api/admin/super/sessions/${initialData!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ref_code:        form.refCode,
+              module:          form.module,
+              practitioner_id: form.practitionerId,
+              session_date:   form.sessionDate,
+              start_time:     form.startTime,
+              end_time:       form.endTime,
+              venue:          form.venue,
+              audience_type:  form.audienceType,
+              participants:   Number(form.participants),
+              payout_amount:  Number(form.payoutAmount),
+              tds_applicable: form.tdsApplicable,
+              tds_rate:       form.tdsApplicable ? Number(form.tdsRate) : null,
+            }),
+          })
+        : await fetch("/api/admin/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              refCode: form.refCode,
+              module: form.module,
+              practitionerId: form.practitionerId,
+              sessionDate: form.sessionDate,
+              startTime: form.startTime,
+              endTime: form.endTime,
+              venue: form.venue,
+              audienceType: form.audienceType,
+              participants: Number(form.participants),
+              payoutAmount: Number(form.payoutAmount),
+              tdsApplicable: form.tdsApplicable,
+              tdsRate: form.tdsApplicable ? Number(form.tdsRate) : undefined,
+            }),
+          });
     } catch {
       setSaving(false);
       setError("Network error — please try again.");
       return;
     }
     setSaving(false);
-    if (!res.ok) { setError("Could not create session. Check the fields and try again."); return; }
-    const { id } = await res.json();
-    const pr = eligible.find((p) => p.id === form.practitionerId);
-    onCreated({
-      id,
+    if (!res.ok) { setError(`Could not ${isEdit ? "save changes" : "create session"}. Check the fields and try again.`); return; }
+
+    const pr = options.find((p) => p.id === form.practitionerId);
+    const base: NewSession = {
+      id: isEdit ? initialData!.id : (await res.json()).id,
       ref_code: form.refCode,
       module: form.module,
       practitioner_id: form.practitionerId,
@@ -102,15 +162,19 @@ export function SessionFormModal({
       payout_amount: Number(form.payoutAmount),
       tds_applicable: form.tdsApplicable,
       tds_rate: form.tdsApplicable ? Number(form.tdsRate) : null,
-      consent_status: "Pending consent",
-      status: "Upcoming",
-      request_id: null,
-      created_at: new Date().toISOString(),
-      updated_at: null,
-      practitioner: pr ? { name: pr.name, email: pr.email } : null,
-      payout_id: null,
-    });
-    setForm(empty);
+      consent_status: isEdit ? initialData!.consent_status : "Pending consent",
+      status: isEdit ? initialData!.status : "Upcoming",
+      request_id: isEdit ? initialData!.request_id : null,
+      created_at: isEdit ? initialData!.created_at : new Date().toISOString(),
+      updated_at: isEdit ? new Date().toISOString() : null,
+      deleted_at: isEdit ? initialData!.deleted_at : null,
+      practitioner: pr ? { name: pr.name, email: pr.email } : (isEdit ? initialData!.practitioner : null),
+      payout_id: isEdit ? initialData!.payout_id ?? null : null,
+    };
+
+    if (isEdit) onUpdated?.(base);
+    else onCreated(base);
+    if (!isEdit) setForm(EMPTY);
     onClose();
   }
 
@@ -118,18 +182,18 @@ export function SessionFormModal({
     <FormModal
       open={open}
       onClose={onClose}
-      title="Create session"
-      subtitle="Schedule a new session for an empanelled practitioner"
+      title={isEdit ? "Edit session" : "Create session"}
+      subtitle={isEdit ? "Update this session's details" : "Schedule a new session for an empanelled practitioner"}
       footer={
         <>
           <button type="button" style={ghostBtn} onClick={onClose}>Cancel</button>
           <button type="button" style={{ ...primaryBtn, background: "#c9982a", color: "#14161d", fontWeight: 600, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
-            {saving ? "Creating…" : "Create session"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Create session"}
           </button>
         </>
       }
     >
-      {eligible.length === 0 && (
+      {!isEdit && eligible.length === 0 && (
         <div style={{ marginBottom: 12, fontSize: 12, color: "#854f0b", background: "#faeeda", border: "1px solid #fac775", borderRadius: 8, padding: "8px 12px" }}>
           No empanelled practitioners yet — empanel a practitioner before creating sessions.
         </div>
@@ -141,7 +205,7 @@ export function SessionFormModal({
           <Field label="Practitioner">
             <select id="sf-practitioner" name="sf-practitioner" style={fieldSelectStyle} value={form.practitionerId} onChange={set("practitionerId")}>
               <option value="">— select practitioner —</option>
-              {eligible.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.email}</option>)}
+              {options.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.email}</option>)}
             </select>
           </Field>
         </div>

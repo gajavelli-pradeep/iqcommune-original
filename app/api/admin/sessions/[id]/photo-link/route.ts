@@ -4,13 +4,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { signPhotoUrl } from "@/lib/hmac";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
   const { id } = await params;
+  // Derive base URL from the incoming request — works in dev, staging, and production
+  // without needing NEXT_PUBLIC_BASE_URL to be set.
+  const origin = new URL(req.url).origin;
   const supabase = createAdminClient();
 
   const { data: session, error } = await supabase
@@ -49,7 +52,7 @@ export async function GET(
     state:   (practitioner as unknown as Record<string, string>).state ?? "",
     name:    practitioner.name ?? "",
     role:    practitioner.role ?? "",
-  });
+  }, "/submit-photos", origin);
 
   return NextResponse.json({ url });
 }

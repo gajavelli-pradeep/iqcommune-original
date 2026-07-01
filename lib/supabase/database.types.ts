@@ -40,8 +40,13 @@ export interface Database {
           ref_code: string | null;
           avg_rating: number;
           feedback_count: number;
+          under_review_at: string | null;
+          screened_at: string | null;
+          agreement_sent_at: string | null;
+          empanelled_at: string | null;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -70,6 +75,10 @@ export interface Database {
           ref_code?: string | null;
           avg_rating?: number;
           feedback_count?: number;
+          under_review_at?: string | null;
+          screened_at?: string | null;
+          agreement_sent_at?: string | null;
+          empanelled_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -100,7 +109,12 @@ export interface Database {
           ref_code?: string | null;
           avg_rating?: number;
           feedback_count?: number;
+          under_review_at?: string | null;
+          screened_at?: string | null;
+          agreement_sent_at?: string | null;
+          empanelled_at?: string | null;
           updated_at?: string;
+          deleted_at?: string | null;
         };
         Relationships: [];
       };
@@ -171,6 +185,7 @@ export interface Database {
           assigned_to: string | null;
           created_at: string;
           updated_at: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -213,8 +228,17 @@ export interface Database {
           status?: string;
           assigned_to?: string | null;
           updated_at?: string | null;
+          deleted_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "session_requests_assigned_to_fkey";
+            columns: ["assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "practitioners";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       sessions: {
         Row: {
@@ -236,6 +260,7 @@ export interface Database {
           request_id: string | null;
           created_at: string;
           updated_at: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -274,6 +299,7 @@ export interface Database {
           status?: string;
           request_id?: string | null;
           updated_at?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -299,6 +325,7 @@ export interface Database {
           storage_path: string | null;
           created_at: string;
           updated_at: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -325,6 +352,7 @@ export interface Database {
           status?: string;
           storage_path?: string | null;
           updated_at?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -350,6 +378,7 @@ export interface Database {
           status: string;
           created_at: string;
           updated_at: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -376,6 +405,7 @@ export interface Database {
           paid_at?: string | null;
           status?: string;
           updated_at?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -540,8 +570,29 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      practitioner_subsection_averages: {
+        Row: {
+          practitioner_id: string;
+          content_avg: number | null;
+          delivery_avg: number | null;
+          engagement_avg: number | null;
+          logistics_avg: number | null;
+          rated_sessions: number;
+        };
+        Relationships: [];
+      };
+    };
+    Functions: {
+      next_practitioner_ref: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      purge_soft_deleted: {
+        Args: { retention?: string };
+        Returns: { table_name: string; purged: number }[];
+      };
+    };
     Enums: Record<string, never>;
   };
 }

@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     .from("practitioners")
     .select("*")
     .eq("id", practitionerId)
+    .is("deleted_at", null)
     .single();
 
   if (error || !data) {
@@ -51,6 +52,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Practitioner is already empanelled" },
       { status: 409 }
+    );
+  }
+
+  // Status allowlist — the UI hides the button for other stages, but the API
+  // must independently reject Applied / Under Review / Rejected practitioners.
+  // Without this, a direct call could mint a valid signed link for a Rejected
+  // applicant. "Agreement Sent" is allowed so the link can be re-issued.
+  if (!["Screening Done", "Agreement Sent"].includes(p.status ?? "")) {
+    return NextResponse.json(
+      { error: "Can only send agreement at Screening Done stage" },
+      { status: 422 }
     );
   }
 
