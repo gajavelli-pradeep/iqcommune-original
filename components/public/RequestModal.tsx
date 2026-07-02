@@ -19,14 +19,6 @@ const AUDIENCE_CHIPS: { id: AudienceType; label: string }[] = [
   { id: "amc",   label: "AMC / Wealth Firm" },
 ];
 
-// Gap 15 & 16: org and amc context text updated to match source (with rich JSX rendered separately)
-const AUDIENCE_CONTEXT_TEXT: Record<AudienceType, string> = {
-  group:
-    "You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day. You can also request a 6-hour bundled session covering two related modules — this requires a minimum of 9 participants.",
-  org:   "", // rendered as JSX below
-  amc:   "", // rendered as JSX below
-};
-
 const GROUP_SIZE_OPTIONS: { value: GroupSize; label: string }[] = [
   { value: "5-8",   label: "5 – 8 people" },
   { value: "9-15",  label: "9 – 15 people" },
@@ -227,6 +219,16 @@ const labelStyle: React.CSSProperties = {
 
 // ── Context JSX helpers (Gap 15, 16) ─────────────────────────────────────────
 
+function GroupContextContent() {
+  return (
+    <>
+      You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day.{" "}
+      <strong style={{ color: "#14161d" }}>Venue booking and cost are your group&apos;s responsibility — happy to share a few suggestions for your city if you need them.</strong>
+      {" "}You can also request a 6-hour bundled session covering two related modules — this requires a minimum of 9 participants.
+    </>
+  );
+}
+
 function OrgContextContent() {
   return (
     <>
@@ -250,7 +252,7 @@ function AmcContextContent() {
 function ContextContent({ type }: { type: AudienceType }) {
   if (type === "org") return <OrgContextContent />;
   if (type === "amc") return <AmcContextContent />;
-  return <>{AUDIENCE_CONTEXT_TEXT[type]}</>;
+  return <GroupContextContent />;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -770,8 +772,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                 {selectedAudience === "group" && (
                   <div style={{ marginBottom: "1rem" }}>
                     <label htmlFor="modal-venue" style={labelStyle}>
-                      Do you have a venue in mind?{" "}
-                      <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
+                      Your venue details
                     </label>
                     <input
                       id="modal-venue"
@@ -782,7 +783,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       style={inputStyle}
                     />
                     <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
-                      If your group has a preferred space, share it here. If not, we&apos;ll arrange a suitable venue for you.
+                      Venue booking is your group&apos;s responsibility. Share the space you&apos;ve finalised, or let us know if you&apos;d like a few suggestions for your city.
                     </div>
                   </div>
                 )}

@@ -204,16 +204,14 @@ const STEPS: Step[] = [
 
 const IQCOMMUNE_HANDLES: string[] = [
   "All client acquisition and marketing",
-  "Group formation and cohort management",
-  "Venue booking (for groups, if needed)",
+  "Attendance-commitment enforcement with the SPOC",
+  "All coordination with the SPOC — single point of contact",
   "Scheduling, confirmations & logistics",
   "Fee collection and revenue share payout",
-  "Your identity and privacy protection",
 ];
 
 const YOU_BRING: string[] = [
-  "Active, current expertise in your domain",
-  "2–3 hours for each confirmed session",
+  "Hands-on expertise in your domain",
   "Real examples from your current work",
   "Willingness to take genuine questions",
   "Availability confirmation before each session",
@@ -985,7 +983,7 @@ export default function PractitionersPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  <svg width="15" height="15" fill="none" stroke="#9496a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}>
+                  <svg width="15" height="15" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, stroke: "var(--ink-faint)" }}>
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   {text}
@@ -1116,7 +1114,7 @@ export default function PractitionersPage() {
             style={{
               marginTop: "2rem",
               background: "var(--gold-light, #f5e9c8)",
-              border: "1.5px solid #e0c870",
+              border: "1.5px solid var(--gold-border)",
               borderRadius: 12,
               padding: "1.25rem 1.4rem",
               display: "flex",
@@ -1144,7 +1142,7 @@ export default function PractitionersPage() {
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink, #14161d)" }}>
                 Applying for two related modules? They can be bundled.
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--ink-muted, #4a4d5c)", lineHeight: 1.6, marginTop: 3 }}>
+              <div style={{ fontSize: 12.5, color: "var(--ink-muted)", lineHeight: 1.6, marginTop: 3 }}>
                 Three natural pairings run back-to-back as a single 6-hour session. If your expertise spans a pair, indicate that in your application and we&apos;ll discuss it.
               </div>
             </div>
@@ -1161,7 +1159,7 @@ export default function PractitionersPage() {
                     fontWeight: 500,
                     color: "#8a6510",
                     background: "#fff",
-                    border: "1px solid #e0c870",
+                    border: "1px solid var(--gold-border)",
                     borderRadius: 100,
                     padding: "4px 12px",
                     display: "flex",
@@ -1169,7 +1167,7 @@ export default function PractitionersPage() {
                     gap: 6,
                   }}
                 >
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9496a1" }}>0{i + 1}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-faint)" }}>0{i + 1}</span>
                   {pair}
                 </div>
               ))}

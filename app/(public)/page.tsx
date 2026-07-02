@@ -392,7 +392,7 @@ const CTA_REASSURANCE = [
 const HOME_FAQS: FaqItem[] = [
   {
     q: "How do I register if I have a group?",
-    a: "One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, a preferred date window, and a venue if you have one in mind. We align a practitioner and confirm details with you directly. You then coordinate within your group — we handle everything else.",
+    a: "One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, a preferred date window, and your venue details. We align a practitioner and confirm the schedule with you directly. Your group takes care of the venue — we handle the rest, from practitioner match to logistics on our end.",
   },
   {
     q: "Will the practitioner try to sell me financial products?",
@@ -408,7 +408,7 @@ const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Where are the sessions held? Are they online?",
-    a: "All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. The venue is confirmed after your group is formed and shared with you ahead of the session.",
+    a: "All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. Your group finalises the venue once it's formed, and we build the session schedule around it.",
   },
   {
     q: "Can my company book a session for a team?",
@@ -432,7 +432,7 @@ const HOME_FAQS: FaqItem[] = [
       <>
         It depends on your audience type.
         <br /><br />
-        <strong>Groups</strong> — If your group has a preferred space — a society clubhouse, an office room, a community hall — that&apos;s always welcome and we&apos;ll gladly use it. If not, don&apos;t worry at all. We&apos;ll find and book a suitable venue in your city and share the details with the SPOC well ahead of the session.
+        <strong>Groups</strong> — Venue is your group&apos;s responsibility, same as our Organisation and AMC formats — a society clubhouse, an office room, a community hall, anything that fits. If you&apos;re not sure where to start, let us know your city and we&apos;re happy to point you to a few practical options other groups have used — the booking and any cost is on your group.
         <br /><br />
         <strong>Organisations &amp; Institutions</strong> (corporates, educational institutions, hospitals, media houses) — the venue and basic infrastructure (seating, projector or screen) are to be arranged by your organisation. This gives you flexibility to host the session in a familiar setting for your team. We handle the practitioner, content, and delivery.
         <br /><br />
@@ -1007,7 +1007,7 @@ export default function HomePage() {
                         fontWeight: 500,
                         color: "var(--gold-dark)",
                         background: "var(--gold-light)",
-                        border: "1px solid #e0c870",
+                        border: "1px solid var(--gold-border)",
                         padding: "3px 9px",
                         borderRadius: 100,
                       }}
