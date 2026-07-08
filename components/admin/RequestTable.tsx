@@ -119,10 +119,10 @@ export function RequestTable({
 
   const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
-  };
+  }, []);
 
   const updateStatus = useCallback(
     async (id: string, status: string) => {
@@ -139,43 +139,53 @@ export function RequestTable({
         const { error } = await res.json().catch(() => ({ error: res.statusText }));
         showToast(`Update failed: ${error ?? res.status}`);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [onRowChange]
+    [onRowChange, showToast]
   );
 
-  const assignPractitioner = useCallback(
-    async (id: string, practitionerId: string) => {
-      const res = await fetch(`/api/admin/session-requests?id=${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedTo: practitionerId }),
-      });
-      if (res.ok) {
-        const pr = empanelled.find((p) => p.id === practitionerId);
-        setData((prev) =>
-          prev.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  assigned_to: practitionerId,
-                  assigned_practitioner: pr
-                    ? { name: pr.name }
-                    : r.assigned_practitioner,
-                }
-              : r
-          )
-        );
-        onRowChange?.(id, { assigned_to: practitionerId });
-        showToast("Practitioner assigned");
-      } else {
-        const { error } = await res.json().catch(() => ({ error: res.statusText }));
-        showToast(`Assignment failed: ${error ?? res.status}`);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [empanelled, onRowChange]
-  );
+  // V4 §4.2 one-click Assign: open a small dialog for payout + date, then create
+  // the session + confirm the request via /assign. sessionRefById holds the ref
+  // returned by the API for the "→ Session" read-only line.
+  const [assignFor, setAssignFor] = useState<
+    { requestId: string; practitionerId: string; practitionerName: string; venue: string } | null
+  >(null);
+  const [assignPayout, setAssignPayout] = useState("");
+  const [assignDate, setAssignDate] = useState("");
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [sessionRefById, setSessionRefById] = useState<Record<string, string>>({});
+
+  const confirmAssign = async () => {
+    if (!assignFor) return;
+    const payout = Math.round(Number(assignPayout));
+    if (!Number.isFinite(payout) || payout < 0) { showToast("Enter a valid payout amount"); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(assignDate)) { showToast("Pick a session date"); return; }
+    setAssignBusy(true);
+    const res = await fetch(`/api/admin/session-requests/${assignFor.requestId}/assign`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        practitionerId: assignFor.practitionerId,
+        payoutAmount: payout,
+        sessionDate: assignDate,
+        venue: assignFor.venue.trim() || undefined,
+      }),
+    });
+    setAssignBusy(false);
+    if (res.ok) {
+      const { sessionRef } = (await res.json().catch(() => ({}))) as { sessionRef?: string };
+      const { requestId, practitionerId, practitionerName } = assignFor;
+      setData((prev) => prev.map((r) => r.id === requestId
+        ? { ...r, status: "Confirmed", assigned_to: practitionerId, assigned_practitioner: { name: practitionerName } }
+        : r));
+      if (sessionRef) setSessionRefById((m) => ({ ...m, [requestId]: sessionRef }));
+      onRowChange?.(requestId, { status: "Confirmed", assigned_to: practitionerId });
+      showToast(`Confirmed — session ${sessionRef ?? ""} created`);
+      setAssignFor(null); setAssignPayout(""); setAssignDate("");
+    } else {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Assign failed: ${error ?? res.status}`);
+    }
+  };
 
   const openDraft = useCallback((r: SessionRequest) => {
     setDraft({
@@ -327,68 +337,45 @@ export function RequestTable({
                           ))}
                         </div>
 
-                        {/* Col 2: Available practitioners */}
+                        {/* Col 2: Available practitioners (read-only once Confirmed — V4) */}
                         <div>
-                          <SectionLabel>Available practitioners</SectionLabel>
-                          {(() => {
+                          <SectionLabel>{r.status === "Confirmed" ? "Assignment" : "Available practitioners"}</SectionLabel>
+                          {r.status === "Confirmed" ? (
+                            <div style={{ fontSize: 13, color: "#2a6b2a", fontWeight: 500, padding: "0.5rem 0" }}>
+                              ✓ Assigned to {r.assigned_practitioner?.name ?? "—"}
+                              <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400, marginTop: 3 }}>
+                                → Session {sessionRefById[r.id] ?? "created"} · this request is read-only
+                              </div>
+                            </div>
+                          ) : (() => {
                             const matching = empanelled.filter((p) =>
                               (p.modules ?? []).some((m) => m === r.topic)
                             );
                             if (matching.length === 0)
                               return (
-                                <div
-                                  style={{
-                                    fontSize: 12,
-                                    color: "var(--ink-faint)",
-                                    padding: "0.5rem 0",
-                                  }}
-                                >
+                                <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>
                                   No empanelled practitioners match this module yet.
                                 </div>
                               );
                             return matching.map((p) => (
                               <div
                                 key={p.id}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "0.45rem 0",
-                                  borderBottom: "1px solid rgba(20,18,12,.07)",
-                                }}
+                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0", borderBottom: "1px solid rgba(20,18,12,.07)" }}
                               >
-                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-                                  {p.name}
-                                </span>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{p.name}</span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    assignPractitioner(r.id, p.id);
+                                    setAssignFor({ requestId: r.id, practitionerId: p.id, practitionerName: p.name, venue: r.venue ?? "" });
+                                    setAssignPayout(""); setAssignDate("");
                                   }}
-                                  style={{
-                                    background: "#c9982a",
-                                    color: "#14161d",
-                                    border: "none",
-                                    borderRadius: 100,
-                                    padding: "3px 10px",
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    fontFamily: "inherit",
-                                  }}
+                                  style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                 >
                                   Assign
                                 </button>
                               </div>
                             ));
                           })()}
-                          {r.assigned_practitioner && (
-                            <div
-                              style={{ marginTop: "0.75rem", fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}
-                            >
-                              ✓ Assigned: {r.assigned_practitioner.name}
-                            </div>
-                          )}
                         </div>
 
                         {/* Col 3: Actions */}
@@ -397,34 +384,38 @@ export function RequestTable({
                           <div
                             style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}
                           >
-                            <select
-                              value={r.status}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                updateStatus(r.id, e.target.value);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                width: "100%",
-                                padding: "9px 12px",
-                                borderRadius: 8,
-                                border: "1px solid rgba(20,18,12,.18)",
-                                fontFamily: "inherit",
-                                fontSize: 13,
-                                color: "var(--ink)",
-                                background: "#f8f7f4",
-                                outline: "none",
-                                cursor: "pointer",
-                              }}
-                            >
-                              {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map(
-                                (s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                )
-                              )}
-                            </select>
+                            {/* V4: Confirmed is reached only via Assign and is read-only.
+                                Otherwise the request can be left New or Cancelled. */}
+                            {r.status === "Confirmed" ? (
+                              <span style={{ display: "inline-block", fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8, background: "var(--green-light)", color: "var(--green)", textAlign: "center" }}>
+                                Confirmed — read-only
+                              </span>
+                            ) : (
+                              <select
+                                value={r.status}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(r.id, e.target.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  width: "100%",
+                                  padding: "9px 12px",
+                                  borderRadius: 8,
+                                  border: "1px solid rgba(20,18,12,.18)",
+                                  fontFamily: "inherit",
+                                  fontSize: 13,
+                                  color: "var(--ink)",
+                                  background: "#f8f7f4",
+                                  outline: "none",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {["New", "Cancelled"].map((s) => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -529,6 +520,38 @@ export function RequestTable({
         onConfirm={confirmDialog.onConfirm}
         onCancel={closeConfirm}
       />
+
+      {/* Assign dialog (V4 §4.2): payout + session date → creates the session, confirms the request */}
+      {assignFor && (
+        <div
+          onClick={() => !assignBusy && setAssignFor(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(20,18,12,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 420, padding: "1.5rem" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Assign {assignFor.practitionerName}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 4, marginBottom: "1.1rem", lineHeight: 1.5 }}>
+              Creates the session and confirms this request. Start time &amp; duration are set later in Session Consent.
+            </div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>Agreed payout (₹)</label>
+            <input
+              type="number" min={0} value={assignPayout} onChange={(e) => setAssignPayout(e.target.value)}
+              placeholder="e.g. 8000" autoFocus
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, marginBottom: "0.9rem", background: "var(--input-paper)", outline: "none" }}
+            />
+            <label style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>Session date</label>
+            <input
+              type="date" value={assignDate} onChange={(e) => setAssignDate(e.target.value)}
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, marginBottom: "1.25rem", background: "var(--input-paper)", outline: "none" }}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setAssignFor(null)} disabled={assignBusy} style={{ background: "#fff", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}>Cancel</button>
+              <button onClick={confirmAssign} disabled={assignBusy} style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: assignBusy ? "not-allowed" : "pointer", opacity: assignBusy ? 0.6 : 1, fontFamily: "inherit" }}>
+                {assignBusy ? "Assigning…" : "Assign & confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

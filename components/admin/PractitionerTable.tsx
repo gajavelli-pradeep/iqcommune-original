@@ -142,14 +142,14 @@ export function PractitionerTable({
   const lastFocusRef = useRef<HTMLElement | null>(null);
 
   // Status-aware draft: welcome on Empanelled, reject on Rejected, neutral otherwise.
-  const openDraft = useCallback((p: Practitioner) => {
+  const openDraft = useCallback((p: Practitioner, statusForDraft: string = p.status) => {
     let title: string, subject: string, emailBody: string, waBody: string;
-    if (p.status === "Empanelled") {
+    if (statusForDraft === "Empanelled") {
       title = `Welcome: ${p.name}`;
       subject = "Welcome to the iqcommune practitioner network";
       emailBody = buildWelcomeEmail(p.name);
       waBody = buildWelcomeWA(p.name);
-    } else if (p.status === "Rejected") {
+    } else if (statusForDraft === "Rejected") {
       title = `Application update: ${p.name}`;
       subject = "Update on your iqcommune practitioner application";
       emailBody = buildRejectEmail(p.name);
@@ -445,7 +445,9 @@ export function PractitionerTable({
                                   onClick={(e) => e.stopPropagation()}
                                   style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
                                 >
-                                  {STATUSES.map((s) => (
+                                  {/* V4: Empanelled/Rejected are button-only gates — not forward dropdown choices.
+                                      Show the current value if the practitioner is already in a terminal state. */}
+                                  {STATUSES.filter((s) => (s !== "Empanelled" && s !== "Rejected") || s === p.status).map((s) => (
                                     <option key={s} value={s}>{s}</option>
                                   ))}
                                 </select>
@@ -479,6 +481,25 @@ export function PractitionerTable({
                                     style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Generate agreement link
+                                  </button>
+                                )}
+
+                                {/* V4 terminal gates: green Empanel (only at Agreement Sent) + red Reject (any non-terminal).
+                                    Each sets the status and opens the matching welcome / reject draft. */}
+                                {p.status === "Agreement Sent" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Empanelled"); openDraft(p, "Empanelled"); }}
+                                    style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    Empanel practitioner
+                                  </button>
+                                )}
+                                {p.status !== "Empanelled" && p.status !== "Rejected" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Rejected"); openDraft(p, "Rejected"); }}
+                                    style={{ background: "#fff", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    Reject
                                   </button>
                                 )}
 
