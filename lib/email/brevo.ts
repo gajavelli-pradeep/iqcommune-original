@@ -1,8 +1,3 @@
-// Validate at module load — fail early on cold start, not mid-request.
-if (!process.env.BREVO_API_KEY && process.env.NODE_ENV !== "test") {
-  throw new Error("BREVO_API_KEY environment variable is not set");
-}
-
 interface EmailParams {
   to: string;
   name?: string;
@@ -11,6 +6,11 @@ interface EmailParams {
 }
 
 export async function sendEmail(params: EmailParams): Promise<void> {
+  // Validate at send time, not module load — a top-level throw crashes
+  // `next build` page-data collection (build env has no BREVO_API_KEY).
+  if (!process.env.BREVO_API_KEY && process.env.NODE_ENV !== "test") {
+    throw new Error("BREVO_API_KEY environment variable is not set");
+  }
   await attempt(params, 2);
 }
 
