@@ -17,12 +17,12 @@ export type Agreement = AgreementRow & {
 
 export function AgreementTable({
   initialData,
-  isSuperAdmin = false,
+  isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
 }: {
   initialData: Agreement[];
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
@@ -257,7 +257,7 @@ export function AgreementTable({
                     </svg>
                     Download
                   </button>
-                  {isSuperAdmin && onEdit && (
+                  {isGlobalAdmin && onEdit && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}
                       style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
@@ -267,7 +267,7 @@ export function AgreementTable({
                       Edit
                     </button>
                   )}
-                  {isSuperAdmin && (
+                  {isGlobalAdmin && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -277,7 +277,7 @@ export function AgreementTable({
                           description: "This removes the agreement from all lists. It stays recoverable for 30 days, then is permanently purged.",
                           onConfirm: async () => {
                             closeConfirm();
-                            const res = await fetch(`/api/admin/super/agreements/${row.id}`, { method: "DELETE" });
+                            const res = await fetch(`/api/admin/global/agreements/${row.id}`, { method: "DELETE" });
                             if (res.ok) onHardDeleted?.(row.id);
                             else showToast("Delete failed — please try again.");
                           },

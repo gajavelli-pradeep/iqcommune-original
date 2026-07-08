@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { GLOBAL_ADMIN_ROLE, isGlobalAdminRole } from "@/lib/supabase/roles";
 
 // Warn once at module load if ADMIN_EMAIL is active in production.
 // It grants admin access by email address alone and bypasses the proper
@@ -26,9 +27,10 @@ export async function requireAdmin(): Promise<NextResponse | null> {
   // Fallback: ADMIN_EMAIL env var — dev/bootstrap convenience only. Uses case-insensitive
   // comparison since email is case-insensitive by spec. Do not rely on this in production;
   // set app_metadata.role = 'admin' via Supabase dashboard instead.
+  const role = user.app_metadata?.role;
   const isAdmin =
-    user.app_metadata?.role === "admin" ||
-    user.app_metadata?.role === "super_admin" ||
+    role === "admin" ||
+    isGlobalAdminRole(role) ||
     (!!process.env.ADMIN_EMAIL &&
       user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase());
 
@@ -40,10 +42,10 @@ export async function requireAdmin(): Promise<NextResponse | null> {
 }
 
 // Attribution helper for the activity log — returns the authenticated admin's
-// email and role, or null when not an admin. `role` is 'super_admin' when the
-// account carries that metadata, otherwise 'admin' (covers the ADMIN_EMAIL
-// bootstrap fallback, which is treated as a plain admin).
-export async function getAdminUser(): Promise<{ email: string; role: "admin" | "super_admin" } | null> {
+// email and role, or null when not an admin. `role` is 'global_admin' when the
+// account carries that metadata (legacy 'super_admin' counts too), otherwise
+// 'admin' (covers the ADMIN_EMAIL bootstrap fallback, treated as a plain admin).
+export async function getAdminUser(): Promise<{ email: string; role: "admin" | "global_admin" } | null> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -53,10 +55,10 @@ export async function getAdminUser(): Promise<{ email: string; role: "admin" | "
     !!process.env.ADMIN_EMAIL &&
     user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
 
-  if (metaRole !== "admin" && metaRole !== "super_admin" && !isBootstrap) return null;
+  if (metaRole !== "admin" && !isGlobalAdminRole(metaRole) && !isBootstrap) return null;
 
   return {
     email: user.email ?? "unknown",
-    role: metaRole === "super_admin" ? "super_admin" : "admin",
+    role: isGlobalAdminRole(metaRole) ? GLOBAL_ADMIN_ROLE : "admin",
   };
 }

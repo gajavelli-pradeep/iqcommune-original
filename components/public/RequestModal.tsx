@@ -1,9 +1,9 @@
 "use client";
 
+import { selectChevronBg, selectReset } from "@/components/ui/selectStyle";
+import { BUNDLES, BUNDLE_LABELS, MODULES } from "@/lib/schemas/session-request";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MODULES, BUNDLES } from "@/lib/schemas/session-request";
-import { selectReset, selectChevronBg } from "@/components/ui/selectStyle";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -15,38 +15,41 @@ export type ModalVariant = "nav" | "hero" | "gold" | "mobile";
 
 const AUDIENCE_CHIPS: { id: AudienceType; label: string }[] = [
   { id: "group", label: "Group (register as SPOC)" },
-  { id: "org",   label: "Organisations & Institutions" },
-  { id: "amc",   label: "AMC / Wealth Firm" },
+  { id: "org", label: "Organisations & Institutions" },
+  { id: "amc", label: "AMC / Wealth Firm" },
 ];
 
 const GROUP_SIZE_OPTIONS: { value: GroupSize; label: string }[] = [
-  { value: "5-8",   label: "5 – 8 people" },
-  { value: "9-15",  label: "9 – 15 people" },
+  { value: "5-8", label: "5 – 8 people" },
+  { value: "9-15", label: "9 – 15 people" },
   { value: "16-25", label: "16 – 25 people" },
 ];
 
 // ── Modal-id → canonical API/DB vocabulary (must match SessionRequestSchema) ──
 const AUDIENCE_API: Record<AudienceType, string> = {
   group: "Groups",
-  org:   "Organisations & Institutions",
-  amc:   "AMCs & Wealth Firms",
+  org: "Organisations & Institutions",
+  amc: "AMCs & Wealth Firms",
 };
 
 const MIN_COMMIT_VALUE: Record<Exclude<GroupSize, "">, number> = {
-  "5-8":   5,
-  "9-15":  9,
+  "5-8": 5,
+  "9-15": 9,
   "16-25": 16,
 };
 
 const MIN_COMMIT_TEXT: Record<Exclude<GroupSize, "">, string> = {
-  "5-8":   "Your selected range is 5–8 people. The minimum charge applies to 5 participants — even if fewer attend on the day.",
-  "9-15":  "Your selected range is 9–15 people. The minimum charge applies to 9 participants — even if fewer attend on the day.",
-  "16-25": "Your selected range is 16–25 people. The minimum charge applies to 16 participants — even if fewer attend on the day.",
+  "5-8":
+    "Your selected range is 5–8 people. The minimum charge applies to 5 participants — even if fewer attend on the day.",
+  "9-15":
+    "Your selected range is 9–15 people. The minimum charge applies to 9 participants — even if fewer attend on the day.",
+  "16-25":
+    "Your selected range is 16–25 people. The minimum charge applies to 16 participants — even if fewer attend on the day.",
 };
 
 const SPOC_MIN_LABEL: Record<Exclude<GroupSize, "">, string> = {
-  "5-8":   "5 participants",
-  "9-15":  "9 participants",
+  "5-8": "5 participants",
+  "9-15": "9 participants",
   "16-25": "16 participants",
 };
 
@@ -180,7 +183,8 @@ const dialogStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: 520,
   border: "1px solid rgba(20,18,12,0.12)",
-  boxShadow: "0 4px 8px rgba(20,16,10,0.07), 0 28px 56px -14px rgba(20,16,10,0.26)",
+  boxShadow:
+    "0 4px 8px rgba(20,16,10,0.07), 0 28px 56px -14px rgba(20,16,10,0.26)",
   position: "relative",
   margin: "auto",
 };
@@ -198,7 +202,8 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
   resize: "none" as const,
-  transition: "border-color .16s ease, box-shadow .16s ease, background .16s ease",
+  transition:
+    "border-color .16s ease, box-shadow .16s ease, background .16s ease",
 };
 
 const selectStyle: React.CSSProperties = {
@@ -222,9 +227,16 @@ const labelStyle: React.CSSProperties = {
 function GroupContextContent() {
   return (
     <>
-      You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day.{" "}
-      <strong style={{ color: "#14161d" }}>Venue booking and cost are your group&apos;s responsibility — happy to share a few suggestions for your city if you need them.</strong>
-      {" "}You can also request a 6-hour bundled session covering two related modules — this requires a minimum of 9 participants.
+      You are registering as the SPOC (primary contact) for your group. Minimum
+      5 participants required. Sessions are priced per head — the minimum charge
+      applies to the lower bound of your selected group size, regardless of
+      actual attendance on the day.{" "}
+      <strong style={{ color: "#14161d" }}>
+        Venue booking and cost are your group&apos;s responsibility — happy to
+        share a few suggestions for your city if you need them.
+      </strong>{" "}
+      You can also request a 6-hour bundled session covering two related modules
+      — this requires a minimum of 9 participants.
     </>
   );
 }
@@ -232,9 +244,14 @@ function GroupContextContent() {
 function OrgContextContent() {
   return (
     <>
-      Covers corporates, educational institutions, hospitals, media &amp; production houses — any organisation upskilling its people. We&apos;ll tailor the session to your team&apos;s goals and align the right practitioner.{" "}
-      <strong style={{ color: "#14161d" }}>Please note — venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong>
-      {" "}You can also request a 6-hour bundled session — select a bundle option in the topic field below.
+      You are registering as the SPOC for your firm. We'll match the right
+      practitioner and structure the session around your goals.{" "}
+      <strong style={{ color: "#14161d" }}>
+        Please note — venue and basic infrastructure (seating, projector/screen)
+        are to be arranged by your organisation. We handle everything else.
+      </strong>{" "}
+      You can also request a 6-hour bundled session — select a bundle option in
+      the topic field below.
     </>
   );
 }
@@ -242,9 +259,14 @@ function OrgContextContent() {
 function AmcContextContent() {
   return (
     <>
-      We&apos;ll match the right practitioner and structure the session around your goals.{" "}
-      <strong style={{ color: "#14161d" }}>Venue and setup are on your end — we take care of the content and delivery.</strong>
-      {" "}You can also request a 6-hour bundled session — select a bundle option in the topic field below.
+      You are registering as the SPOC for your firm. We&apos;ll match the right
+      practitioner and structure the session around your goals.{" "}
+      <strong style={{ color: "#14161d" }}>
+        Venue and setup are on your end — we take care of the content and
+        delivery.
+      </strong>{" "}
+      You can also request a 6-hour bundled session — select a bundle option in
+      the topic field below.
     </>
   );
 }
@@ -263,42 +285,45 @@ interface RequestModalProps {
 }
 
 export function RequestModal({ variant = "nav" }: RequestModalProps) {
-  const [open, setOpen]                     = useState(false);
-  const [success, setSuccess]               = useState(false);
-  const [selectedAudience, setAudience]     = useState<AudienceType | null>(null);
-  const [form, setForm]                     = useState<FormState>(EMPTY_FORM);
-  const [spocChecked, setSpocChecked]       = useState(false);
+  const [open, setOpen] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [selectedAudience, setAudience] = useState<AudienceType | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [spocChecked, setSpocChecked] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isSubmitting, setIsSubmitting]     = useState(false);
-  const [serverError, setServerError]       = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
-  const titleId    = useId();
-  const dialogRef  = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Auto-focus first focusable element when modal opens
   useEffect(() => {
     if (!open || !dialogRef.current) return;
     const el = dialogRef.current.querySelector<HTMLElement>(
-      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
     );
     el?.focus();
   }, [open]);
 
   // Trap focus within dialog; close on Escape
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") { handleClose(); return; }
+    if (e.key === "Escape") {
+      handleClose();
+      return;
+    }
     if (e.key !== "Tab" || !dialogRef.current) return;
 
     const focusable = Array.from(
       dialogRef.current.querySelectorAll<HTMLElement>(
-        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
     );
     if (!focusable.length) return;
 
     const first = focusable[0];
-    const last  = focusable[focusable.length - 1];
+    const last = focusable[focusable.length - 1];
 
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
@@ -326,12 +351,12 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
     // Reset audience-specific state when switching — SPOC wording changes per audience
     setSpocChecked(false);
     if (a !== "group") {
-      setForm(prev => ({ ...prev, groupSize: "", venue: "" }));
+      setForm((prev) => ({ ...prev, groupSize: "", venue: "" }));
     }
   }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm(prev => ({ ...prev, [key]: value }));
+    setForm((prev) => ({ ...prev, [key]: value }));
     setValidationError("");
   }
 
@@ -345,20 +370,38 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
       setValidationError("Please choose an audience type to continue.");
       return;
     }
-    if (!form.firstName || !form.email || !form.phone || !form.city || !form.state || !form.topic || !form.dateWindow) {
-      setValidationError("Please fill in all required fields (name, email, phone, city, state, topic, preferred date window) to continue.");
+    if (
+      !form.firstName ||
+      !form.email ||
+      !form.phone ||
+      !form.city ||
+      !form.state ||
+      !form.topic ||
+      !form.dateWindow
+    ) {
+      setValidationError(
+        "Please fill in all required fields (name, email, phone, city, state, topic, preferred date window) to continue.",
+      );
       return;
     }
     if (audience === "group" && !form.groupSize) {
       setValidationError("Please select a group size.");
       return;
     }
+    if (audience === "group" && !form.venue.trim()) {
+      setValidationError("Please enter your venue details to continue.");
+      return;
+    }
     if ((audience === "org" || audience === "amc") && !form.org.trim()) {
-      setValidationError("Please enter your organisation or firm name to continue.");
+      setValidationError(
+        "Please enter your organisation or firm name to continue.",
+      );
       return;
     }
     if (bundleGroupSizeError) {
-      setValidationError("Bundle sessions require a minimum group size of 9–15 participants.");
+      setValidationError(
+        "Bundle sessions require a minimum group size of 9–15 participants.",
+      );
       return;
     }
     if (!spocChecked) {
@@ -373,22 +416,28 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
         headers: { "Content-Type": "application/json" },
         // Payload MUST match SessionRequestSchema — see lib/schemas/session-request.ts.
         body: JSON.stringify({
-          firstName:       form.firstName,
-          lastName:        form.lastName,
-          email:           form.email,
-          phone:           form.phone,
-          city:            form.city,
-          state:           form.state,
-          audienceType:    AUDIENCE_API[audience],
-          orgName:         (audience === "org" || audience === "amc") ? form.org.trim() || undefined : undefined,
-          topic:           form.topic,
-          groupSize:       audience === "group" && form.groupSize ? form.groupSize : undefined,
-          minCommit:       audience === "group" && form.groupSize
-                             ? MIN_COMMIT_VALUE[form.groupSize as Exclude<GroupSize, "">]
-                             : undefined,
-          venue:           audience === "group" ? form.venue || undefined : undefined,
-          preferredDates:  form.dateWindow || undefined,
-          notes:           form.notes || undefined,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          city: form.city,
+          state: form.state,
+          audienceType: AUDIENCE_API[audience],
+          orgName:
+            audience === "org" || audience === "amc"
+              ? form.org.trim() || undefined
+              : undefined,
+          topic: form.topic,
+          groupSize:
+            audience === "group" && form.groupSize ? form.groupSize : undefined,
+          minCommit:
+            audience === "group" && form.groupSize
+              ? MIN_COMMIT_VALUE[form.groupSize as Exclude<GroupSize, "">]
+              : undefined,
+          venue:
+            audience === "group" ? form.venue.trim() || undefined : undefined,
+          preferredDates: form.dateWindow || undefined,
+          notes: form.notes || undefined,
           spocDeclaration: true,
         }),
       });
@@ -396,18 +445,19 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
       if (res.ok) {
         setSuccess(true);
       } else {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         setServerError(body.error ?? "Submission failed. Please try again.");
       }
     } catch {
-      setServerError("Network error — please check your connection and try again.");
+      setServerError(
+        "Network error — please check your connection and try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  const showMinCommit =
-    selectedAudience === "group" && form.groupSize !== "";
+  const showMinCommit = selectedAudience === "group" && form.groupSize !== "";
 
   const bundleGroupSizeError =
     selectedAudience === "group" &&
@@ -416,19 +466,39 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
 
   // Gap 1 & 19: resolve trigger style and icon based on variant
   const triggerStyle =
-    variant === "gold"   ? goldTriggerStyle :
-    variant === "hero"   ? heroCTATriggerStyle :
-    variant === "mobile" ? mobileTriggerStyle :
-    navTriggerStyle;
+    variant === "gold"
+      ? goldTriggerStyle
+      : variant === "hero"
+        ? heroCTATriggerStyle
+        : variant === "mobile"
+          ? mobileTriggerStyle
+          : navTriggerStyle;
 
   // Gap 19: CTA section uses speech-bubble icon; nav/hero use arrow icon
   const triggerIcon =
     variant === "gold" ? (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <svg
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ) : (
-      <svg className="btn-arrow" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <svg
+        className="btn-arrow"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
         <path d="M5 12h14M12 5l7 7-7 7" />
       </svg>
     );
@@ -449,529 +519,764 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
         {variant !== "gold" && triggerIcon}
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
-        <div
-          style={overlayStyle}
-          onClick={(e) => e.target === e.currentTarget && handleClose()}
-        >
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            style={dialogStyle}
-            onKeyDown={handleKeyDown}
+            style={overlayStyle}
+            onClick={(e) => e.target === e.currentTarget && handleClose()}
           >
-            {/* Close button */}
-            <button
-              onClick={handleClose}
-              aria-label="Close dialog"
-              style={{
-                position: "absolute",
-                top: "1.25rem",
-                right: "1.25rem",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--ink-faint)",
-                fontSize: 18,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "50%",
-              }}
+            <div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              style={dialogStyle}
+              onKeyDown={handleKeyDown}
             >
-              ✕
-            </button>
-
-            {success ? (
-              /* ── SUCCESS STATE ── */
-              <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
-                <div style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
-                  background: "#eef7ee",
+              {/* Close button */}
+              <button
+                onClick={handleClose}
+                aria-label="Close dialog"
+                style={{
+                  position: "absolute",
+                  top: "1.25rem",
+                  right: "1.25rem",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--ink-faint)",
+                  fontSize: 18,
+                  width: 44,
+                  height: 44,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 1.25rem",
-                  color: "#2a6b2a",
-                }}>
-                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <h3 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.5rem" }}>
-                  Request received!
-                </h3>
-                <p style={{ fontSize: 14, color: "#383b47", lineHeight: 1.65 }}>
-                  We&apos;ll reach out within 2–3 working days to understand your needs better and take the conversation forward. Keep an eye on your inbox and phone.
-                </p>
-              </div>
-            ) : (
-              /* ── FORM STATE ── */
-              <form onSubmit={handleSubmit} noValidate>
-                <h2 id={titleId} style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: "0.3rem" }}>
-                  Request a Session
-                </h2>
-                <p style={{ fontSize: 14, color: "#383b47", marginBottom: "1.4rem" }}>
-                  Tell us a bit about what you need — we&apos;ll be in touch within 2–3 working days to take it forward.
-                </p>
+                  borderRadius: "50%",
+                }}
+              >
+                ✕
+              </button>
 
-                {/* ── Audience chips ── */}
-                <span style={labelStyle}>Who is this for?</span>
-                {/* Gap 23: chip padding changed to 7px 14px to match source */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1.1rem" }}>
-                  {AUDIENCE_CHIPS.map((chip) => (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      className="aud-chip"
-                      onClick={() => handleAudienceSelect(selectedAudience === chip.id ? null : chip.id)}
-                      style={{
-                        padding: "8px 15px",
-                        borderRadius: 100,
-                        // Gap 13: active chip uses gold accent (source .aud-chip.active)
-                        border: "1px solid",
-                        borderColor: selectedAudience === chip.id
-                          ? "#c9982a"
-                          : "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
-                        background: selectedAudience === chip.id ? "#f5e9c8" : "#fcfbf8",
-                        color: selectedAudience === chip.id ? "#8a6510" : "#383b47",
-                        fontSize: 13,
-                        fontWeight: selectedAudience === chip.id ? 600 : 500,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        minHeight: 44,
-                        boxShadow: selectedAudience === chip.id
-                          ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(201,152,42,0.22)"
-                          : "inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 1px rgba(20,18,12,0.03)",
-                      }}
-                      aria-pressed={selectedAudience === chip.id}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Gap 14: context callout always shown; default text when no audience selected */}
-                {/* Gap 22: padding updated to 10px 14px to match source */}
-                <div style={{
-                  background: "#f8f7f4",
-                  border: "1px solid rgba(20,18,12,0.10)",
-                  borderLeft: "3px solid #c9982a",
-                  borderRadius: "0 8px 8px 0",
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  color: "#383b47",
-                  marginBottom: "1.25rem",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 8,
-                }}>
-                  <svg width="14" height="14" fill="none" stroke="#8a6510" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 8v4M12 16h.01" />
-                  </svg>
-                  <span>
-                    {selectedAudience
-                      ? <ContextContent type={selectedAudience} />
-                      : "Select an audience type above and we’ll tailor our follow-up accordingly."}
-                  </span>
-                </div>
-
-                {/* ── Name row ── */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-                  <div>
-                    <label htmlFor="modal-fname" style={labelStyle}>First name</label>
-                    <input
-                      id="modal-fname"
-                      type="text"
-                      value={form.firstName}
-                      onChange={e => updateField("firstName", e.target.value)}
-                      placeholder="Rohan"
-                      style={inputStyle}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="modal-lname" style={labelStyle}>Last name</label>
-                    <input
-                      id="modal-lname"
-                      type="text"
-                      value={form.lastName}
-                      onChange={e => updateField("lastName", e.target.value)}
-                      placeholder="Mehta"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                {/* ── Email ── */}
-                <div style={{ marginBottom: "1rem" }}>
-                  <label htmlFor="modal-email" style={labelStyle}>Email address</label>
-                  <input
-                    id="modal-email"
-                    type="email"
-                    value={form.email}
-                    onChange={e => updateField("email", e.target.value)}
-                    placeholder="rohan@example.com"
-                    style={inputStyle}
-                    required
-                  />
-                </div>
-
-                {/* ── Phone ── */}
-                <div style={{ marginBottom: "1rem" }}>
-                  <label htmlFor="modal-phone" style={labelStyle}>Phone number</label>
-                  <input
-                    id="modal-phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={e => updateField("phone", e.target.value)}
-                    placeholder="+91 98765 43210"
-                    style={inputStyle}
-                    required
-                  />
-                </div>
-
-                {/* ── City + State (all audiences) ── */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-                  <div>
-                    <label htmlFor="modal-city" style={labelStyle}>City</label>
-                    <input
-                      id="modal-city"
-                      type="text"
-                      value={form.city}
-                      onChange={e => updateField("city", e.target.value)}
-                      placeholder="Mumbai"
-                      style={inputStyle}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="modal-state" style={labelStyle}>State</label>
-                    <input
-                      id="modal-state"
-                      type="text"
-                      value={form.state}
-                      onChange={e => updateField("state", e.target.value)}
-                      placeholder="Maharashtra"
-                      style={inputStyle}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* ── Organisation (org / AMC audiences only) ── */}
-                {(selectedAudience === "org" || selectedAudience === "amc") && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label htmlFor="modal-org" style={labelStyle}>
-                      {selectedAudience === "amc" ? "Firm / AMC name" : "Organisation name"}
-                    </label>
-                    <input
-                      id="modal-org"
-                      type="text"
-                      value={form.org}
-                      onChange={e => updateField("org", e.target.value)}
-                      placeholder={selectedAudience === "amc"
-                        ? "e.g. HDFC AMC, Mirae Asset, Axis Securities, Anand Rathi Wealth"
-                        : "e.g. TechCorp India, St. Xavier's College, Apollo Hospitals"}
-                      style={inputStyle}
-                    />
-                  </div>
-                )}
-
-                {/* ── Topic ── */}
-                <div style={{ marginBottom: "1rem" }}>
-                  <label htmlFor="modal-topic" style={labelStyle}>Topic of interest</label>
-                  <select
-                    id="modal-topic"
-                    className="topic-select"
-                    value={form.topic}
-                    onChange={e => updateField("topic", e.target.value)}
-                    style={selectStyle}
-                    required
+              {success ? (
+                /* ── SUCCESS STATE ── */
+                <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                  <div
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: "50%",
+                      background: "#eef7ee",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 1.25rem",
+                      color: "#2a6b2a",
+                    }}
                   >
-                    <option value="">Select a training topic…</option>
-                    <optgroup label="Modules">
-                      {MODULES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </optgroup>
-                    <optgroup label="Bundled Sessions (6 hrs)">
-                      {BUNDLES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </optgroup>
-                    <option value="Not sure — help me choose">Not sure — help me choose</option>
-                  </select>
-                  <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
-                    Bundled (6-hour) sessions are open to all audiences. For Groups, this requires a minimum of 9 participants.
+                    <svg
+                      width="28"
+                      height="28"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </div>
+                  <h3
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 600,
+                      letterSpacing: "-0.01em",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    Request received!
+                  </h3>
+                  <p
+                    style={{ fontSize: 14, color: "#383b47", lineHeight: 1.65 }}
+                  >
+                    We&apos;ll reach out within 2–3 working days to understand
+                    your needs better and take the conversation forward. Keep an
+                    eye on your inbox and phone.
+                  </p>
                 </div>
+              ) : (
+                /* ── FORM STATE ── */
+                <form onSubmit={handleSubmit} noValidate>
+                  <h2
+                    id={titleId}
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 600,
+                      letterSpacing: "-0.01em",
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Request a Session
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#383b47",
+                      marginBottom: "1.4rem",
+                    }}
+                  >
+                    Tell us a bit about what you need — we&apos;ll be in touch
+                    within 2–3 working days to take it forward.
+                  </p>
 
-                {/* ── Group size + Date row (Groups audience only) ── */}
-                {selectedAudience === "group" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-                    <div>
-                      <label htmlFor="modal-groupsize" style={labelStyle}>Group size</label>
-                      <select
-                        id="modal-groupsize"
-                        value={form.groupSize}
-                        onChange={e => updateField("groupSize", e.target.value as GroupSize)}
-                        style={selectStyle}
-                        required
+                  {/* ── Audience chips ── */}
+                  <span style={labelStyle}>Who is this for?</span>
+                  {/* Gap 23: chip padding changed to 7px 14px to match source */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginBottom: "1.1rem",
+                    }}
+                  >
+                    {AUDIENCE_CHIPS.map((chip) => (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        className="aud-chip"
+                        onClick={() =>
+                          handleAudienceSelect(
+                            selectedAudience === chip.id ? null : chip.id,
+                          )
+                        }
+                        style={{
+                          padding: "8px 15px",
+                          borderRadius: 100,
+                          // Gap 13: active chip uses gold accent (source .aud-chip.active)
+                          border: "1px solid",
+                          borderColor:
+                            selectedAudience === chip.id
+                              ? "#c9982a"
+                              : "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+                          background:
+                            selectedAudience === chip.id
+                              ? "#f5e9c8"
+                              : "#fcfbf8",
+                          color:
+                            selectedAudience === chip.id
+                              ? "#8a6510"
+                              : "#383b47",
+                          fontSize: 13,
+                          fontWeight: selectedAudience === chip.id ? 600 : 500,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                          minHeight: 44,
+                          boxShadow:
+                            selectedAudience === chip.id
+                              ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(201,152,42,0.22)"
+                              : "inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 1px rgba(20,18,12,0.03)",
+                        }}
+                        aria-pressed={selectedAudience === chip.id}
                       >
-                        <option value="">Select…</option>
-                        {GROUP_SIZE_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
-                        Sessions are capped at 25 participants.
-                      </div>
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Gap 14: context callout always shown; default text when no audience selected */}
+                  {/* Gap 22: padding updated to 10px 14px to match source */}
+                  <div
+                    style={{
+                      background: "#f8f7f4",
+                      border: "1px solid rgba(20,18,12,0.10)",
+                      borderLeft: "3px solid #c9982a",
+                      borderRadius: "0 8px 8px 0",
+                      padding: "10px 14px",
+                      fontSize: 13,
+                      color: "#383b47",
+                      marginBottom: "1.25rem",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                    }}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="#8a6510"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      style={{ flexShrink: 0, marginTop: 1 }}
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span>
+                      {selectedAudience ? (
+                        <ContextContent type={selectedAudience} />
+                      ) : (
+                        "Select an audience type above and we’ll tailor our follow-up accordingly."
+                      )}
+                    </span>
+                  </div>
+
+                  {/* ── Name row ── */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "0.75rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <div>
+                      <label htmlFor="modal-fname" style={labelStyle}>
+                        First name
+                      </label>
+                      <input
+                        id="modal-fname"
+                        type="text"
+                        value={form.firstName}
+                        onChange={(e) =>
+                          updateField("firstName", e.target.value)
+                        }
+                        placeholder="Rohan"
+                        style={inputStyle}
+                        required
+                      />
                     </div>
                     <div>
-                      <label htmlFor="modal-datewindow" style={labelStyle}>Preferred date window</label>
+                      <label htmlFor="modal-lname" style={labelStyle}>
+                        Last name
+                      </label>
                       <input
-                        id="modal-datewindow"
+                        id="modal-lname"
+                        type="text"
+                        value={form.lastName}
+                        onChange={(e) =>
+                          updateField("lastName", e.target.value)
+                        }
+                        placeholder="Mehta"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+
+                  {/* ── Email ── */}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label htmlFor="modal-email" style={labelStyle}>
+                      Email address
+                    </label>
+                    <input
+                      id="modal-email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => updateField("email", e.target.value)}
+                      placeholder="rohan@example.com"
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
+
+                  {/* ── Phone ── */}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label htmlFor="modal-phone" style={labelStyle}>
+                      Phone number
+                    </label>
+                    <input
+                      id="modal-phone"
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => updateField("phone", e.target.value)}
+                      placeholder="+91 98765 43210"
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
+
+                  {/* ── City + State (all audiences) ── */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "0.75rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <div>
+                      <label htmlFor="modal-city" style={labelStyle}>
+                        City
+                      </label>
+                      <input
+                        id="modal-city"
+                        type="text"
+                        value={form.city}
+                        onChange={(e) => updateField("city", e.target.value)}
+                        placeholder="Mumbai"
+                        style={inputStyle}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="modal-state" style={labelStyle}>
+                        State
+                      </label>
+                      <input
+                        id="modal-state"
+                        type="text"
+                        value={form.state}
+                        onChange={(e) => updateField("state", e.target.value)}
+                        placeholder="Maharashtra"
+                        style={inputStyle}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* ── Organisation (org / AMC audiences only) ── */}
+                  {(selectedAudience === "org" ||
+                    selectedAudience === "amc") && (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label htmlFor="modal-org" style={labelStyle}>
+                        {selectedAudience === "amc"
+                          ? "Firm / AMC name"
+                          : "Organisation name"}
+                      </label>
+                      <input
+                        id="modal-org"
+                        type="text"
+                        value={form.org}
+                        onChange={(e) => updateField("org", e.target.value)}
+                        placeholder={
+                          selectedAudience === "amc"
+                            ? "e.g. HDFC AMC, Mirae Asset, Axis Securities, Anand Rathi Wealth"
+                            : "e.g. TechCorp India, St. Xavier's College, Apollo Hospitals"
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+
+                  {/* ── Topic ── */}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label htmlFor="modal-topic" style={labelStyle}>
+                      Topic of interest
+                    </label>
+                    <select
+                      id="modal-topic"
+                      className="topic-select"
+                      value={form.topic}
+                      onChange={(e) => updateField("topic", e.target.value)}
+                      style={selectStyle}
+                      required
+                    >
+                      <option value="">Select a training topic…</option>
+                      <optgroup label="Modules">
+                        {MODULES.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Bundled Sessions (6 hrs)">
+                        {BUNDLES.map((t) => (
+                          <option key={t} value={t}>
+                            {BUNDLE_LABELS[t]}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="Not sure — help me choose">
+                        Not sure — help me choose
+                      </option>
+                    </select>
+                    <div
+                      style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}
+                    >
+                      Bundled (6-hour) sessions are open to all audiences. For
+                      Groups, this requires a minimum of 9 participants.
+                    </div>
+                  </div>
+
+                  {/* ── Group size + Date row (Groups audience only) ── */}
+                  {selectedAudience === "group" && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "0.75rem",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div>
+                        <label htmlFor="modal-groupsize" style={labelStyle}>
+                          Group size
+                        </label>
+                        <select
+                          id="modal-groupsize"
+                          value={form.groupSize}
+                          onChange={(e) =>
+                            updateField(
+                              "groupSize",
+                              e.target.value as GroupSize,
+                            )
+                          }
+                          style={selectStyle}
+                          required
+                        >
+                          <option value="">Select…</option>
+                          {GROUP_SIZE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#71717f",
+                            marginTop: 4,
+                          }}
+                        >
+                          Sessions are capped at 25 participants.
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="modal-datewindow" style={labelStyle}>
+                          Preferred date window
+                        </label>
+                        <input
+                          id="modal-datewindow"
+                          type="text"
+                          value={form.dateWindow}
+                          onChange={(e) =>
+                            updateField("dateWindow", e.target.value)
+                          }
+                          placeholder="e.g. July last week"
+                          style={inputStyle}
+                        />
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#71717f",
+                            marginTop: 4,
+                          }}
+                        >
+                          Rough window is fine — we confirm offline.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Preferred date (non-group audiences) ── */}
+                  {selectedAudience && selectedAudience !== "group" && (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label htmlFor="modal-datewindow-ng" style={labelStyle}>
+                        Preferred date window
+                      </label>
+                      <input
+                        id="modal-datewindow-ng"
                         type="text"
                         value={form.dateWindow}
-                        onChange={e => updateField("dateWindow", e.target.value)}
+                        onChange={(e) =>
+                          updateField("dateWindow", e.target.value)
+                        }
                         placeholder="e.g. July last week"
                         style={inputStyle}
                       />
-                      <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
+                      <div
+                        style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}
+                      >
                         Rough window is fine — we confirm offline.
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* ── Preferred date (non-group audiences) ── */}
-                {selectedAudience && selectedAudience !== "group" && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label htmlFor="modal-datewindow-ng" style={labelStyle}>
-                      Preferred date window
-                    </label>
-                    <input
-                      id="modal-datewindow-ng"
-                      type="text"
-                      value={form.dateWindow}
-                      onChange={e => updateField("dateWindow", e.target.value)}
-                      placeholder="e.g. July last week"
-                      style={inputStyle}
-                    />
-                    <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
-                      Rough window is fine — we confirm offline.
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Venue (Groups audience only) ── */}
-                {selectedAudience === "group" && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label htmlFor="modal-venue" style={labelStyle}>
-                      Your venue details
-                    </label>
-                    <input
-                      id="modal-venue"
-                      type="text"
-                      value={form.venue}
-                      onChange={e => updateField("venue", e.target.value)}
-                      placeholder="e.g. Society clubhouse, office conference room, community hall…"
-                      style={inputStyle}
-                    />
-                    <div style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}>
-                      Venue booking is your group&apos;s responsibility. Share the space you&apos;ve finalised, or let us know if you&apos;d like a few suggestions for your city.
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Bundle × group size warning ── */}
-                {bundleGroupSizeError && (
-                  <div style={{
-                    background: "#fdf8ee",
-                    border: "1px solid #c9982a",
-                    borderLeft: "3px solid #c9982a",
-                    borderRadius: "0 8px 8px 0",
-                    padding: "0.85rem 1rem",
-                    marginBottom: "0.75rem",
-                    fontSize: 13,
-                    color: "#8a6510",
-                  }}>
-                    Bundles require a minimum group of 9–15 participants. Please select a larger group size to continue with this bundle.
-                  </div>
-                )}
-
-                {/* ── Min commitment callout (Groups only + size selected) ── */}
-                {showMinCommit && (
-                  <div style={{
-                    background: "#f5e9c8",
-                    border: "1px solid var(--gold-border)",
-                    borderLeft: "3px solid #c9982a",
-                    borderRadius: "0 8px 8px 0",
-                    padding: "0.85rem 1rem",
-                    marginBottom: "0.5rem",
-                    fontSize: 13,
-                    color: "#8a6510",
-                    lineHeight: 1.65,
-                  }}>
-                    <strong style={{ color: "#14161d", fontWeight: 600, display: "block", marginBottom: 3 }}>
-                      Minimum attendance commitment
-                    </strong>
-                    {MIN_COMMIT_TEXT[form.groupSize as Exclude<GroupSize, "">]}
-                  </div>
-                )}
-
-                {/* ── Notes ── */}
-                <div style={{ marginBottom: "1rem" }}>
-                  <label htmlFor="modal-notes" style={labelStyle}>
-                    Anything else?{" "}
-                    <span style={{ fontWeight: 400, color: "#71717f" }}>(optional)</span>
-                  </label>
-                  <textarea
-                    id="modal-notes"
-                    rows={2}
-                    value={form.notes}
-                    onChange={e => updateField("notes", e.target.value)}
-                    placeholder="e.g. specific focus areas, preferred language, city…"
-                    style={inputStyle}
-                  />
-                </div>
-
-                {/* ── SPOC declaration (all audiences, per-audience wording) ── */}
-                {selectedAudience && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <div style={{
-                      background: "#f8f7f4",
-                      border: "1.5px solid rgba(20,18,12,0.18)",
-                      borderRadius: 8,
-                      padding: "0.9rem 1rem",
-                    }}>
-                      <label style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 10,
-                        cursor: "pointer",
-                        fontSize: 13,
-                        color: "#383b47",
-                        lineHeight: 1.6,
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={spocChecked}
-                          onChange={e => setSpocChecked(e.target.checked)}
-                          style={{ accentColor: "#c9982a", width: 15, height: 15, flexShrink: 0, marginTop: 3 }}
-                        />
-                        <span>
-                          {selectedAudience === "group" ? (
-                            <>
-                              I confirm I am registering as the{" "}
-                              <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
-                              for this group and that at least{" "}
-                              <strong style={{ color: "#14161d" }}>
-                                {form.groupSize
-                                  ? SPOC_MIN_LABEL[form.groupSize as Exclude<GroupSize, "">]
-                                  : "5 participants"}
-                              </strong>{" "}
-                              will attend. I acknowledge that the minimum attendance commitment applies regardless of actual turnout on the day.
-                            </>
-                          ) : selectedAudience === "org" ? (
-                            <>
-                              I confirm I am registering as the{" "}
-                              <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
-                              for this organisation and will coordinate internally on session logistics, venue, and participant attendance.
-                            </>
-                          ) : (
-                            <>
-                              I confirm I am registering as the{" "}
-                              <strong style={{ color: "#14161d" }}>SPOC (primary contact)</strong>{" "}
-                              for this firm and will coordinate internally on session logistics, venue, and participant attendance.
-                            </>
-                          )}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Validation error ── */}
-                {validationError && (
-                  <div role="alert" style={{
-                    background: "#fdf0f0",
-                    border: "1px solid var(--red-border)",
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    fontSize: 13,
-                    color: "#a32d2d",
-                    marginBottom: "0.75rem",
-                  }}>
-                    {validationError}
-                  </div>
-                )}
-
-                {/* ── Server error ── */}
-                {serverError && (
-                  <div role="alert" style={{
-                    background: "#fdf0f0",
-                    border: "1px solid var(--red-border)",
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    fontSize: 13,
-                    color: "#a32d2d",
-                    marginBottom: "0.75rem",
-                  }}>
-                    {serverError}
-                  </div>
-                )}
-
-                {/* Gap 17: submit button uses SVG arrow icon, not text arrow */}
-                <button
-                  type="submit"
-                  className="btn-cta"
-                  disabled={isSubmitting || !!bundleGroupSizeError}
-                  style={{
-                    width: "100%",
-                    marginTop: "1.25rem",
-                    background: isSubmitting ? "#2a2d38" : "linear-gradient(180deg,#1f222e 0%,#14161d 100%)",
-                    color: "#fff",
-                    fontFamily: "inherit",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    letterSpacing: "0.01em",
-                    padding: 15,
-                    borderRadius: 100,
-                    border: "none",
-                    boxShadow: isSubmitting ? "none" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
-                    cursor: isSubmitting ? "not-allowed" : "pointer",
-                    opacity: isSubmitting ? 0.6 : 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    minHeight: 44,
-                  }}
-                >
-                  {isSubmitting ? "Sending…" : (
-                    <>
-                      Send Request
-                      <svg className="btn-arrow" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </>
                   )}
-                </button>
 
-                <p style={{ fontSize: 12, color: "#71717f", textAlign: "center", marginTop: "0.75rem" }}>
-                  No spam. We&apos;ll only reach out about your session request.
-                </p>
-              </form>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+                  {/* ── Venue (Groups audience only) ── */}
+                  {selectedAudience === "group" && (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label htmlFor="modal-venue" style={labelStyle}>
+                        Your venue details
+                      </label>
+                      <input
+                        id="modal-venue"
+                        type="text"
+                        value={form.venue}
+                        onChange={(e) => updateField("venue", e.target.value)}
+                        placeholder="e.g. Society clubhouse, office conference room, community hall…"
+                        style={inputStyle}
+                        required
+                      />
+                      <div
+                        style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}
+                      >
+                        Venue booking is your group&apos;s responsibility —
+                        please share the space you&apos;ve finalised (or let us
+                        know if you&apos;d like a few suggestions for your
+                        city).
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Bundle × group size warning ── */}
+                  {bundleGroupSizeError && (
+                    <div
+                      style={{
+                        background: "#fdf8ee",
+                        border: "1px solid #c9982a",
+                        borderLeft: "3px solid #c9982a",
+                        borderRadius: "0 8px 8px 0",
+                        padding: "0.85rem 1rem",
+                        marginBottom: "0.75rem",
+                        fontSize: 13,
+                        color: "#8a6510",
+                      }}
+                    >
+                      Bundles require a minimum group of 9–15 participants.
+                      Please select a larger group size to continue with this
+                      bundle.
+                    </div>
+                  )}
+
+                  {/* ── Min commitment callout (Groups only + size selected) ── */}
+                  {showMinCommit && (
+                    <div
+                      style={{
+                        background: "#f5e9c8",
+                        border: "1px solid var(--gold-border)",
+                        borderLeft: "3px solid #c9982a",
+                        borderRadius: "0 8px 8px 0",
+                        padding: "0.85rem 1rem",
+                        marginBottom: "0.5rem",
+                        fontSize: 13,
+                        color: "#8a6510",
+                        lineHeight: 1.65,
+                      }}
+                    >
+                      <strong
+                        style={{
+                          color: "#14161d",
+                          fontWeight: 600,
+                          display: "block",
+                          marginBottom: 3,
+                        }}
+                      >
+                        Minimum attendance commitment
+                      </strong>
+                      {
+                        MIN_COMMIT_TEXT[
+                          form.groupSize as Exclude<GroupSize, "">
+                        ]
+                      }
+                    </div>
+                  )}
+
+                  {/* ── Notes ── */}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label htmlFor="modal-notes" style={labelStyle}>
+                      Anything else?{" "}
+                      <span style={{ fontWeight: 400, color: "#71717f" }}>
+                        (optional)
+                      </span>
+                    </label>
+                    <textarea
+                      id="modal-notes"
+                      rows={2}
+                      value={form.notes}
+                      onChange={(e) => updateField("notes", e.target.value)}
+                      placeholder="e.g. specific focus areas, preferred language, city…"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {/* ── SPOC declaration (all audiences, per-audience wording) ── */}
+                  {selectedAudience && (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div
+                        style={{
+                          background: "#f8f7f4",
+                          border: "1.5px solid rgba(20,18,12,0.18)",
+                          borderRadius: 8,
+                          padding: "0.9rem 1rem",
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 10,
+                            cursor: "pointer",
+                            fontSize: 13,
+                            color: "#383b47",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={spocChecked}
+                            onChange={(e) => setSpocChecked(e.target.checked)}
+                            style={{
+                              accentColor: "#c9982a",
+                              width: 15,
+                              height: 15,
+                              flexShrink: 0,
+                              marginTop: 3,
+                            }}
+                          />
+                          <span>
+                            {selectedAudience === "group" ? (
+                              <>
+                                I confirm I am registering as the{" "}
+                                <strong style={{ color: "#14161d" }}>
+                                  SPOC (primary contact)
+                                </strong>{" "}
+                                for this group and that at least{" "}
+                                <strong style={{ color: "#14161d" }}>
+                                  {form.groupSize
+                                    ? SPOC_MIN_LABEL[
+                                        form.groupSize as Exclude<GroupSize, "">
+                                      ]
+                                    : "5 participants"}
+                                </strong>{" "}
+                                will attend. I confirm I will coordinate venue
+                                and logistics for the session, and acknowledge
+                                that the minimum attendance commitment applies
+                                regardless of actual turnout on the day.
+                              </>
+                            ) : selectedAudience === "org" ? (
+                              <>
+                                I confirm I am registering as the{" "}
+                                <strong style={{ color: "#14161d" }}>
+                                  SPOC (primary contact)
+                                </strong>{" "}
+                                for this organisation and will coordinate
+                                internally on session logistics, venue, and
+                                participant attendance.
+                              </>
+                            ) : (
+                              <>
+                                I confirm I am registering as the{" "}
+                                <strong style={{ color: "#14161d" }}>
+                                  SPOC (primary contact)
+                                </strong>{" "}
+                                for this firm and will coordinate internally on
+                                session logistics, venue, and participant
+                                attendance.
+                              </>
+                            )}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Validation error ── */}
+                  {validationError && (
+                    <div
+                      role="alert"
+                      style={{
+                        background: "#fdf0f0",
+                        border: "1px solid var(--red-border)",
+                        borderRadius: 8,
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        color: "#a32d2d",
+                        marginBottom: "0.75rem",
+                      }}
+                    >
+                      {validationError}
+                    </div>
+                  )}
+
+                  {/* ── Server error ── */}
+                  {serverError && (
+                    <div
+                      role="alert"
+                      style={{
+                        background: "#fdf0f0",
+                        border: "1px solid var(--red-border)",
+                        borderRadius: 8,
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        color: "#a32d2d",
+                        marginBottom: "0.75rem",
+                      }}
+                    >
+                      {serverError}
+                    </div>
+                  )}
+
+                  {/* Gap 17: submit button uses SVG arrow icon, not text arrow */}
+                  <button
+                    type="submit"
+                    className="btn-cta"
+                    disabled={isSubmitting || !!bundleGroupSizeError}
+                    style={{
+                      width: "100%",
+                      marginTop: "1.25rem",
+                      background: isSubmitting
+                        ? "#2a2d38"
+                        : "linear-gradient(180deg,#1f222e 0%,#14161d 100%)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      letterSpacing: "0.01em",
+                      padding: 15,
+                      borderRadius: 100,
+                      border: "none",
+                      boxShadow: isSubmitting
+                        ? "none"
+                        : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
+                      opacity: isSubmitting ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      minHeight: 44,
+                    }}
+                  >
+                    {isSubmitting ? (
+                      "Sending…"
+                    ) : (
+                      <>
+                        Send Request
+                        <svg
+                          className="btn-arrow"
+                          width="15"
+                          height="15"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#71717f",
+                      textAlign: "center",
+                      marginTop: "0.75rem",
+                    }}
+                  >
+                    No spam. We&apos;ll only reach out about your session
+                    request.
+                  </p>
+                </form>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

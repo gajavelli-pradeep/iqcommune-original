@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logActivity } from "@/lib/super-admin-audit";
+import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 
 const REJECTABLE = ["Pending", "Approved"] as const;

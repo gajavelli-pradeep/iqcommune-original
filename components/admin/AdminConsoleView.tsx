@@ -7,6 +7,11 @@ import { RequestTable } from "@/components/admin/RequestTable";
 import { PayoutTable } from "@/components/admin/PayoutTable";
 import { AgreementTable, type Agreement } from "@/components/admin/AgreementTable";
 import { PhotosTable } from "@/components/admin/PhotosTable";
+import { ConsentTable, type ConfirmationRow } from "@/components/admin/ConsentTable";
+import { ConsentFormModal } from "@/components/admin/ConsentFormModal";
+import { MasterDataTable } from "@/components/admin/MasterDataTable";
+import { RolesPermissions } from "@/components/admin/RolesPermissions";
+import { TeamAccessTable } from "@/components/admin/TeamAccessTable";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
 import { PayoutFormModal } from "@/components/admin/PayoutFormModal";
@@ -95,9 +100,12 @@ interface Counts {
   totalPayouts?: number;
   paidPayouts?: number;
   pendingPhotos?: number;
-  approvedPhotos?: number;
+  uploadedPhotos?: number;
   totalPhotos?: number;
   urgentPhotos?: number;
+  awaitingConsent?: number;
+  consentReceived?: number;
+  totalConfirmations?: number;
 }
 
 interface Props {
@@ -107,8 +115,9 @@ interface Props {
   payouts: PayoutRow[];
   agreements: Agreement[];
   photos: PhotoRow[];
+  confirmations: ConfirmationRow[];
   email?: string;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   /** SA-controlled flag — whether regular admins may manage the gallery. */
   galleryAdminAccess?: boolean;
 }
@@ -119,10 +128,11 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   practitioners:  { title: "Practitioner pipeline", subtitle: "Manage applications, onboarding, and empanelment" },
   sessions:       { title: "Sessions",              subtitle: "Create sessions, send confirmations, and track delivery" },
   agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
+  consent:        { title: "Session Consent",        subtitle: "Generate the per-session revenue confirmation and practitioner consent link" },
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
-  photos:         { title: "Session Photos",          subtitle: "Review session photos submitted by practitioners — approve or delete within 30 days" },
+  photos:         { title: "Session Photos",          subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete" },
   gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
-  activity:       { title: "Activity",              subtitle: "Every admin & super-admin action — who did what, when, and before → after" },
+  activity:       { title: "Activity",              subtitle: "Every admin & global-admin action — who did what, when, and before → after" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
 
@@ -161,6 +171,11 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
       { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
     ],
     agreements: [],
+    consent: [
+      { label: "Awaiting consent", value: counts.awaitingConsent ?? 0, delta: (counts.awaitingConsent ?? 0) > 0 ? "↑ action needed" : "All consented", deltaRed: (counts.awaitingConsent ?? 0) > 0 },
+      { label: "Consent received", value: counts.consentReceived ?? 0 },
+      { label: "Total generated",  value: counts.totalConfirmations ?? 0, filter: "all" },
+    ],
     payouts: [
       { label: "Total paid out",    value: counts.paidPayoutGross ? fmt(counts.paidPayoutGross) : "—", filter: "Paid" },
       { label: "Pending payment",   value: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) : (counts.pendingPayouts > 0 ? `${counts.pendingPayouts}` : "—"), delta: counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
@@ -168,10 +183,10 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
       { label: "Paid this month",   value: counts.paidPayoutNet ? fmt(counts.paidPayoutNet) : "—", filter: "Paid" },
     ],
     photos: [
-      { label: "Total",            value: counts.totalPhotos ?? 0, filter: "all" },
-      { label: "Pending review",   value: counts.pendingPhotos ?? 0, delta: (counts.pendingPhotos ?? 0) > 0 ? "↑ action needed" : "All reviewed", deltaRed: (counts.pendingPhotos ?? 0) > 0, filter: "Pending" },
-      { label: "Approved",         value: counts.approvedPhotos ?? 0, filter: "Approved" },
-      { label: "Expiring ≤ 7 days", value: counts.urgentPhotos ?? 0, delta: (counts.urgentPhotos ?? 0) > 0 ? "↑ review soon" : undefined, deltaRed: (counts.urgentPhotos ?? 0) > 0 },
+      { label: "Total",            value: counts.totalPhotos ?? 0, filter: "All" },
+      { label: "Pending",          value: counts.pendingPhotos ?? 0, delta: (counts.pendingPhotos ?? 0) > 0 ? "↑ awaiting upload" : "All uploaded", deltaRed: (counts.pendingPhotos ?? 0) > 0, filter: "Pending" },
+      { label: "Uploaded",         value: counts.uploadedPhotos ?? 0, filter: "Uploaded" },
+      { label: "Expiring ≤ 7 days", value: counts.urgentPhotos ?? 0, delta: (counts.urgentPhotos ?? 0) > 0 ? "↑ download soon" : undefined, deltaRed: (counts.urgentPhotos ?? 0) > 0 },
     ],
     settings: [],
   };
@@ -203,6 +218,9 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
   agreements:    [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export agreements" },
   ],
+  consent:       [
+    { label: "+ Generate consent", variant: "gold", ariaLabel: "Generate a session revenue confirmation", icon: "plus" },
+  ],
   // Gap 15: payouts only 'Export' (no 'Mark paid')
   payouts:       [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export payouts" },
@@ -233,6 +251,11 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
   agreements: (
     <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  ),
+  consent: (
+    <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/>
     </svg>
   ),
   payouts: (
@@ -269,30 +292,32 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
 type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: string };
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
-function buildSections(counts: Counts, galleryVisible: boolean, isSuperAdmin: boolean): SidebarSection[] {
+function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean): SidebarSection[] {
   return [
     {
       heading: "Pipeline",
+      // Order matches V4: Practitioners → Agreements → Session Requests → Sessions → Photos.
       items: [
-        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,   badgeBg: "#a32d2d" },
-        { label: "Practitioners",    tab: "practitioners", badge: counts.applied,            badgeBg: "#c9982a" },
-        { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,    badgeBg: "#2a6b2a" },
+        { label: "Practitioners",    tab: "practitioners", badge: counts.applied,                badgeBg: "#c9982a" },
         // Gap 18: Agreements badge green
         { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
-        { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,           badgeBg: "#a32d2d" },
+        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,        badgeBg: "#a32d2d" },
+        { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,        badgeBg: "#2a6b2a" },
+        { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,          badgeBg: "#a32d2d" },
       ],
     },
     {
       heading: "Finance",
       items: [
-        { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
+        { label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" },
+        { label: "Payouts",         tab: "payouts", badge: counts.pendingPayouts,        badgeBg: "#a32d2d" },
       ],
     },
     {
       heading: "System",
       items: [
         ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
-        ...(isSuperAdmin ? [{ label: "Activity", tab: "activity" }] : []),
+        ...(isGlobalAdmin ? [{ label: "Activity", tab: "activity" }] : []),
         { label: "Settings", tab: "settings" },
       ],
     },
@@ -455,7 +480,7 @@ function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, email, isSuperAdmin = false, galleryAdminAccess = true }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin = false, galleryAdminAccess = true }: Props) {
   const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -470,25 +495,27 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [teamReloadKey, setTeamReloadKey] = useState(0);
   const [trashOpen, setTrashOpen] = useState(false);
-  // Gallery visibility: super admins always; a regular admin only when the SA has
+  // Gallery visibility: global admins always; a regular admin only when the SA has
   // granted THIS account access (`galleryAdminAccess` prop = the signed-in admin's
   // own app_metadata.gallery_access). Per-admin grants are managed in Credentials.
-  const galleryVisible = isSuperAdmin || galleryAdminAccess;
+  const galleryVisible = isGlobalAdmin || galleryAdminAccess;
 
   // The URL can carry any ?tab= value (deep link / refresh). Fall back to the
   // default if it names a tab this user can't see (Activity = SA-only, Gallery
   // gated) so a hand-crafted link never renders a blank panel.
   const availableTabs = new Set<string>([
-    "requests", "practitioners", "sessions", "agreements", "payouts", "photos", "settings",
+    "requests", "practitioners", "sessions", "agreements", "consent", "payouts", "photos", "settings",
     ...(galleryVisible ? ["gallery"] : []),
-    ...(isSuperAdmin ? ["activity"] : []),
+    ...(isGlobalAdmin ? ["activity"] : []),
   ]);
   const activeTab = availableTabs.has(rawActiveTab) ? rawActiveTab : "practitioners";
 
-  // Super-admin edit modals (null = closed)
+  // Global-admin edit modals (null = closed)
   const [editingPractitioner, setEditingPractitioner] = useState<PractitionerRow | null>(null);
   const [editingSession, setEditingSession] = useState<NewSession | null>(null);
   const [editingRequest, setEditingRequest] = useState<RequestRow | null>(null);
@@ -566,6 +593,24 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     },
   });
 
+  // Confirmations stream live (0028 adds the table to the realtime publication + an
+  // admin SELECT policy). Optimistic insert/patch still work — useRealtimeList is a
+  // drop-in for useState and dedupes by id, so the generate/consent events reconcile.
+  const [confirmationsData, setConfirmationsData] = useRealtimeList<ConfirmationRow>({
+    table: "confirmations",
+    initial: confirmations,
+    transform: (raw) => {
+      const r = raw as unknown as ConfirmationRow;
+      const p = practitionersData.find((x) => x.id === r.practitioner_id);
+      return { ...r, practitioner: p ? { name: p.name, email: p.email } : null };
+    },
+    keep: (r) => !r.deleted_at,
+  });
+  const handleConfirmationRowChange = (id: string, patch: Partial<ConfirmationRow>) => {
+    setConfirmationsData((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  };
+  const confirmedSessionIds = confirmationsData.filter((c) => c.status !== "Superseded").map((c) => c.session_id);
+
   // Feedback lives inside a session row (rating shown inline), not its own tab —
   // so patch the matching session live when feedback is recorded/updated/removed.
   useRealtimeChannel("session_feedback", (payload) => {
@@ -612,14 +657,18 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     paidPayouts:        paidPayoutList.length,
     // DB stores agreements awaiting signature as "Pending signature"; signed = "Active".
     pendingAgreements:  agreementsData.filter((a) => a.status === "Pending signature").length,
-    totalPhotos:        photosData.length,
-    pendingPhotos:      photosData.filter((p) => p.status === "Pending").length,
-    approvedPhotos:     photosData.filter((p) => p.status === "Approved").length,
+    // V4 photo model: Pending = completed session with no upload yet; Uploaded = any submission.
+    // Check live photosData too so realtime uploads move a session Pending→Uploaded without reload.
+    pendingPhotos:      sessionsData.filter((s) => s.status === "Completed" && !s.photos_submitted && !photosData.some((ph) => ph.session_ref === s.ref_code)).length,
+    uploadedPhotos:     photosData.length,
+    totalPhotos:        photosData.length + sessionsData.filter((s) => s.status === "Completed" && !s.photos_submitted && !photosData.some((ph) => ph.session_ref === s.ref_code)).length,
     urgentPhotos:       photosData.filter((p) => {
-      if (p.status !== "Pending") return false;
       const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      return days <= 7;
+      return days > 0 && days <= 7;
     }).length,
+    awaitingConsent:    confirmationsData.filter((c) => c.status === "Awaiting consent").length,
+    consentReceived:    confirmationsData.filter((c) => c.status === "Consent received").length,
+    totalConfirmations: confirmationsData.length,
   };
 
   const handleRequestRowChange = (id: string, patch: { status?: string; assigned_to?: string | null }) => {
@@ -692,12 +741,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
     else if (label.includes("Add request")) setRequestModalOpen(true);
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
+    else if (label.includes("Generate consent")) setConsentModalOpen(true);
     else if (label === "Trash") setTrashOpen(true);
     else if (label.includes("Credentials") || label.includes("Invite admin")) setCredentialsOpen(true);
     else if (label === "Export") exportActiveTab();
   }
 
-  const sections = buildSections(counts, galleryVisible, isSuperAdmin);
+  const sections = buildSections(counts, galleryVisible, isGlobalAdmin);
 
 
   return (
@@ -818,7 +868,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabStatsRow tab="requests" counts={counts} activeFilter={tabFilters.requests ?? "all"} onStatClick={(f) => setTabFilter("requests", f)} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
             </div>
           </div>
         )}
@@ -828,7 +878,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="practitioners" onAction={handleHeaderAction} />
             <TabStatsRow tab="practitioners" counts={counts} activeFilter={tabFilters.practitioners ?? "all"} onStatClick={(f) => setTabFilter("practitioners", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} onEdit={isSuperAdmin ? (p) => setEditingPractitioner(p) : undefined} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (p) => setEditingPractitioner(p) : undefined} />
             </div>
           </div>
         )}
@@ -838,7 +888,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="sessions" onAction={handleHeaderAction} />
             <TabStatsRow tab="sessions" counts={counts} activeFilter={tabFilters.sessions ?? "All"} onStatClick={(f) => setTabFilter("sessions", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
             </div>
           </div>
         )}
@@ -848,7 +898,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="agreements" onAction={handleHeaderAction} />
             {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <AgreementTable initialData={agreementsData} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} />
+              <AgreementTable initialData={agreementsData} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} />
             </div>
           </div>
         )}
@@ -858,11 +908,21 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader
               tab="payouts"
               onAction={handleHeaderAction}
-              extraActions={isSuperAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
+              extraActions={isGlobalAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
             />
             <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isSuperAdmin={isSuperAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isSuperAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "consent" && (
+          <div>
+            <TabHeader tab="consent" onAction={handleHeaderAction} />
+            <TabStatsRow tab="consent" counts={counts} activeFilter={tabFilters.consent ?? "all"} onStatClick={(f) => setTabFilter("consent", f)} />
+            <div style={{ padding: "1.5rem 1.75rem" }}>
+              <ConsentTable initialData={confirmationsData} onRowChange={handleConfirmationRowChange} isGlobalAdmin={isGlobalAdmin} />
             </div>
           </div>
         )}
@@ -874,9 +934,22 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <PhotosTable
                 initialData={photosData}
+                pendingSessions={sessionsData
+                  // exclude sessions that already have a submission — checking live
+                  // photosData too (not just the server photos_submitted flag) so a
+                  // realtime upload drops the Pending row without a reload
+                  .filter((s) => s.status === "Completed" && !s.photos_submitted && !photosData.some((ph) => ph.session_ref === s.ref_code))
+                  .map((s) => ({
+                    id: s.id,
+                    session_ref: s.ref_code ?? "—",
+                    practitioner_name: s.practitioner?.name ?? "—",
+                    module: s.module,
+                    venue: s.venue,
+                    session_date: s.session_date,
+                  }))}
                 statusFilter={tabFilters.photos ?? "All"}
                 onStatusFilterChange={(f) => setTabFilter("photos", f)}
-                isSuperAdmin={isSuperAdmin}
+                isGlobalAdmin={isGlobalAdmin}
                 onStatusChange={(id, status) =>
                   setPhotosData((prev) =>
                     status === "Deleted"
@@ -898,7 +971,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           </div>
         )}
 
-        {activeTab === "activity" && isSuperAdmin && (
+        {activeTab === "activity" && isGlobalAdmin && (
           <div>
             <TabHeader tab="activity" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
@@ -912,42 +985,40 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader
               tab="settings"
               onAction={handleHeaderAction}
-              extraActions={isSuperAdmin ? [{ label: "Invite admin", variant: "primary" as const, ariaLabel: "Invite a new admin" }, { label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin accounts and access" }] : []}
+              extraActions={isGlobalAdmin ? [{ label: "Invite admin", variant: "primary" as const, ariaLabel: "Invite a new admin" }, { label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin accounts and access" }] : []}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              {isSuperAdmin && (
+              {/* Practitioner Master Data — offline-contact quick reference (V4) */}
+              <MasterDataTable
+                practitioners={practitionersData.map((p) => ({
+                  id: p.id, name: p.name, phone: p.phone, email: p.email, city: p.city, state: p.state,
+                }))}
+              />
+              {/* Team & Access (V4) — inline management via the admins modal */}
+              {isGlobalAdmin && (
                 <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Admin accounts &amp; access</div>
-                      <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 3, maxWidth: 460, lineHeight: 1.6 }}>
-                        Invite new admins, set passwords, promote to super admin, and grant each admin
-                        gallery access individually. Every action is recorded in the Activity log.
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Team &amp; Access</div>
+                      <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 3, maxWidth: 460, lineHeight: 1.6 }}>
+                        Everyone with console access. Invite new admins, set passwords, promote to global
+                        admin, and grant gallery access — every action is recorded in the Activity log.
                       </div>
                     </div>
                     <button
                       onClick={() => setCredentialsOpen(true)}
                       style={{ ...primaryBtnStyle, flexShrink: 0 }}
-                      aria-label="Open admin accounts and access"
+                      aria-label="Open team and access management"
                     >
-                      Manage admins
+                      Manage team
                     </button>
                   </div>
+                  <TeamAccessTable reloadKey={teamReloadKey} />
                 </div>
               )}
-              <div
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid rgba(20,18,12,.10)",
-                  borderRadius: 10,
-                  padding: "2.5rem",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 13, color: "var(--ink-faint)", lineHeight: 1.65 }}>
-                  More settings — coming soon.
-                </div>
-              </div>
+
+              {/* Roles & Permissions (V4) — reference table, visible to all admins */}
+              <RolesPermissions />
             </div>
           </div>
         )}
@@ -972,6 +1043,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         onClose={() => setPayoutModalOpen(false)}
         onCreated={(p) => { setPayoutsData((prev) => [p, ...prev]); }}
       />
+      <ConsentFormModal
+        key={consentModalOpen ? "consent-open" : "consent-closed"}
+        open={consentModalOpen}
+        onClose={() => setConsentModalOpen(false)}
+        confirmedSessionIds={confirmedSessionIds}
+        onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
+      />
       <RequestFormModal
         open={requestModalOpen}
         onClose={() => setRequestModalOpen(false)}
@@ -980,13 +1058,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
       {credentialsOpen && (
         <CredentialsModal
           open
-          onClose={() => setCredentialsOpen(false)}
+          onClose={() => { setCredentialsOpen(false); setTeamReloadKey((k) => k + 1); }}
           currentEmail={email}
         />
       )}
       {trashOpen && <TrashModal open onClose={() => setTrashOpen(false)} />}
 
-      {/* Super-admin edit modals — mounted only while a record is being edited */}
+      {/* Global-admin edit modals — mounted only while a record is being edited */}
       {editingPractitioner && (
         <PractitionerFormModal
           key={editingPractitioner.id}

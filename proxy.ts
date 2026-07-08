@@ -1,8 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isGlobalAdminRole } from "@/lib/supabase/roles";
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
+
+  // Redirect legacy renamed paths so old bookmarks/links keep working.
+  const rawPath = request.nextUrl.pathname;
+  if (rawPath === "/super-login") return NextResponse.redirect(new URL("/global-login", request.url));
+  // Login lives at the top level, not under /console — send stray attempts there.
+  if (rawPath === "/console/global-login" || rawPath === "/console/super-login") {
+    return NextResponse.redirect(new URL("/global-login", request.url));
+  }
+  if (rawPath === "/console/super" || rawPath.startsWith("/console/super/")) {
+    return NextResponse.redirect(new URL(rawPath.replace("/console/super", "/console/global"), request.url));
+  }
 
   // Refresh Supabase session cookies on every request (required by @supabase/ssr)
   const supabase = createServerClient(
@@ -26,18 +38,18 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const role = user?.app_metadata?.role;
-  const isSuperAdmin = !!user && role === "super_admin";
+  const isGlobalAdmin = !!user && isGlobalAdminRole(role);
   const isAdmin =
     !!user &&
     (role === "admin" ||
-      role === "super_admin" ||
+      isGlobalAdminRole(role) ||
       (!!process.env.ADMIN_EMAIL &&
         user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()));
 
   const { pathname } = request.nextUrl;
   const isConsolePath = pathname.startsWith("/console");
   const isLoginPath = pathname === "/login";
-  const isSuperLoginPath = pathname === "/super-login";
+  const isGlobalLoginPath = pathname === "/global-login";
 
   // Protect /console — unauthenticated users → /login
   if (isConsolePath && !isAdmin) {
@@ -47,17 +59,18 @@ export async function proxy(request: NextRequest) {
   // Redirect already-logged-in users away from login pages
   if (isLoginPath && isAdmin) {
     return NextResponse.redirect(
-      new URL(isSuperAdmin ? "/console/super" : "/console", request.url)
+      new URL(isGlobalAdmin ? "/console/global" : "/console", request.url)
     );
   }
-  // Only auto-redirect away from super-login if already authenticated as super_admin
-  if (isSuperLoginPath && isSuperAdmin) {
-    return NextResponse.redirect(new URL("/console/super", request.url));
+  // Only auto-redirect away from global-login if already authenticated as global_admin
+  if (isGlobalLoginPath && isGlobalAdmin) {
+    return NextResponse.redirect(new URL("/console/global", request.url));
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/console/:path*", "/login", "/super-login"],
+  // "/super-login" is kept so the legacy-path redirect (→ /global-login) fires.
+  matcher: ["/console/:path*", "/login", "/global-login", "/super-login"],
 };

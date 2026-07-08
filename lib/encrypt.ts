@@ -43,3 +43,18 @@ export function encryptOptional(value: string | null | undefined): string | null
   if (!value?.trim()) return null;
   return encrypt(value);
 }
+
+/**
+ * Decrypts a stored value only if it's in our "iv:tag:ct" hex format. Legacy
+ * plaintext (or anything that doesn't match) is returned unchanged, and a
+ * decrypt failure falls back to the raw value — never throws.
+ */
+export function decryptOptional(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (!/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/i.test(value)) return value;
+  try {
+    return decrypt(value);
+  } catch {
+    return value;
+  }
+}

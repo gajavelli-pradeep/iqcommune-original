@@ -8,6 +8,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 
 type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
 type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"] & {
@@ -25,13 +26,88 @@ const STATUSES = [
 
 const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
 
+// ── Draft-message templates (plain text, copy/paste — mirrors RequestTable) ──────
+
+interface DraftState {
+  open: boolean;
+  title?: string;
+  subject?: string;
+  emailBody?: string;
+  waBody?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+}
+
+function buildWelcomeEmail(name: string): string {
+  return `Dear ${name},
+
+Congratulations — you're now empanelled with iqcommune.
+
+We're delighted to welcome you to our practitioner network. Our coordinator will be in touch shortly with session scheduling and next steps.
+
+In the meantime, feel free to reply to this email with any questions.
+
+Warm regards,
+The iqcommune Team`;
+}
+
+function buildWelcomeWA(name: string): string {
+  return `Hi ${name}! 👋
+
+Congratulations — you're now *empanelled* with iqcommune! 🎉
+
+Welcome to our practitioner network. Our coordinator will reach out shortly with session scheduling and next steps.
+
+Reach out any time if you have questions!`;
+}
+
+function buildRejectEmail(name: string): string {
+  return `Dear ${name},
+
+Thank you for your interest in joining the iqcommune practitioner network, and for the time you invested in your application.
+
+After careful review, we're unable to move forward with your empanelment at this stage. This is not a reflection of your expertise — our current cohort needs are simply specific, and we keep applications on file for future openings.
+
+We genuinely appreciate your interest and wish you the very best.
+
+Warm regards,
+The iqcommune Team`;
+}
+
+function buildRejectWA(name: string): string {
+  return `Hi ${name},
+
+Thank you for applying to the iqcommune practitioner network. After careful review, we're unable to move forward with your empanelment at this stage. We'll keep your application on file for future openings.
+
+We truly appreciate your interest and wish you the best.
+
+— The iqcommune Team`;
+}
+
+function buildGeneralEmail(name: string): string {
+  return `Dear ${name},
+
+[Write your message here.]
+
+Warm regards,
+The iqcommune Team`;
+}
+
+function buildGeneralWA(name: string): string {
+  return `Hi ${name}! 👋
+
+[Write your message here.]
+
+— The iqcommune Team`;
+}
 
 export function PractitionerTable({
   initialData,
   onStatusChange,
   filter: filterProp,
   onFilterChange,
-  isSuperAdmin = false,
+  isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
 }: {
@@ -39,7 +115,7 @@ export function PractitionerTable({
   onStatusChange?: (id: string, status: string) => void;
   filter?: string;
   onFilterChange?: (f: string) => void;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (p: Practitioner) => void;
 }) {
@@ -61,8 +137,45 @@ export function PractitionerTable({
   const [toast, setToast] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
+  const [draft, setDraft] = useState<DraftState>({ open: false });
   // Track which row triggered a modal so focus can be restored on close
   const lastFocusRef = useRef<HTMLElement | null>(null);
+
+  // Status-aware draft: welcome on Empanelled, reject on Rejected, neutral otherwise.
+  const openDraft = useCallback((p: Practitioner) => {
+    let title: string, subject: string, emailBody: string, waBody: string;
+    if (p.status === "Empanelled") {
+      title = `Welcome: ${p.name}`;
+      subject = "Welcome to the iqcommune practitioner network";
+      emailBody = buildWelcomeEmail(p.name);
+      waBody = buildWelcomeWA(p.name);
+    } else if (p.status === "Rejected") {
+      title = `Application update: ${p.name}`;
+      subject = "Update on your iqcommune practitioner application";
+      emailBody = buildRejectEmail(p.name);
+      waBody = buildRejectWA(p.name);
+    } else {
+      title = `Message: ${p.name}`;
+      subject = `iqcommune — ${p.name}`;
+      emailBody = buildGeneralEmail(p.name);
+      waBody = buildGeneralWA(p.name);
+    }
+    setDraft({
+      open: true,
+      title,
+      subject,
+      emailBody,
+      waBody,
+      recipientName: p.name,
+      recipientEmail: p.email,
+      recipientPhone: p.phone ?? undefined,
+    });
+  }, []);
+
+  const closeDraft = useCallback(() => {
+    setDraft({ open: false });
+    setTimeout(() => lastFocusRef.current?.focus(), 0);
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -255,9 +368,9 @@ export function PractitionerTable({
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={6} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                      <td colSpan={7} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "2rem", alignItems: "start" }}>
                             {/* Col 1: Profile details */}
                             <div>
                               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Profile</div>
@@ -274,7 +387,7 @@ export function PractitionerTable({
                               ].map(([label, value]) => (
                                 <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
                                   <span style={{ color: "var(--ink-faint)", width: 90, flexShrink: 0, fontSize: 12 }}>{label}</span>
-                                  <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
+                                  <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13, minWidth: 0, overflowWrap: "anywhere" }}>{value}</span>
                                 </div>
                               ))}
                               {p.why && (
@@ -308,16 +421,18 @@ export function PractitionerTable({
                             {/* Col 2: Pipeline progress */}
                             <div>
                               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline Progress</div>
-                              <PipelineStepper
-                                status={p.status}
-                                timestamps={{
-                                  Applied:            p.created_at ?? undefined,
-                                  "Under Review":     p.under_review_at ?? undefined,
-                                  "Screening Done":   p.screened_at ?? undefined,
-                                  "Agreement Sent":   p.agreement_sent_at ?? undefined,
-                                  Empanelled:         p.empanelled_at ?? undefined,
-                                }}
-                              />
+                              {/* cap width so the right-aligned date sits near its label, not at the far column edge */}
+                              <div style={{ maxWidth: 240 }}>
+                                <PipelineStepper
+                                  status={p.status}
+                                  timestamps={{
+                                    Applied:            p.created_at ?? undefined,
+                                    "Screening Done":   p.screened_at ?? undefined,
+                                    "Agreement Sent":   p.agreement_sent_at ?? undefined,
+                                    Empanelled:         p.empanelled_at ?? undefined,
+                                  }}
+                                />
+                              </div>
                             </div>
 
                             {/* Col 3: Actions */}
@@ -340,9 +455,8 @@ export function PractitionerTable({
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.open(
-                                        `mailto:${p.email}?subject=${encodeURIComponent(`iqcommune — ${p.name}`)}`
-                                      );
+                                      lastFocusRef.current = e.currentTarget;
+                                      openDraft(p);
                                     }}
                                     style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
                                   >
@@ -373,14 +487,14 @@ export function PractitionerTable({
                                     <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
                                     {[["UPI", p.upi_id], ["Bank", p.bank_name], ["Account", p.bank_account], ["IFSC", p.ifsc]].filter(([, v]) => v).map(([label, value]) => (
                                       <div key={String(label)} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 12 }}>
-                                        <span style={{ color: "var(--ink-faint)", minWidth: 60 }}>{label}</span>
-                                        <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{value}</span>
+                                        <span style={{ color: "var(--ink-faint)", minWidth: 60, flexShrink: 0 }}>{label}</span>
+                                        <span style={{ fontFamily: "monospace", fontWeight: 500, minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-all" }}>{value}</span>
                                       </div>
                                     ))}
                                   </div>
                                 )}
 
-                                {isSuperAdmin && onEdit && (
+                                {isGlobalAdmin && onEdit && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); onEdit(p); }}
                                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
@@ -390,7 +504,7 @@ export function PractitionerTable({
                                   </button>
                                 )}
 
-                                {isSuperAdmin && (
+                                {isGlobalAdmin && (
                                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #fca5a5" }}>
                                     <button
                                       onClick={(e) => {
@@ -401,7 +515,7 @@ export function PractitionerTable({
                                           description: "This removes the practitioner from all lists. It stays recoverable for 30 days, then is permanently purged.",
                                           onConfirm: async () => {
                                             closeConfirm();
-                                            const res = await fetch(`/api/admin/super/practitioners/${p.id}`, { method: "DELETE" });
+                                            const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
                                             if (res.ok) {
                                               setData((prev) => prev.filter((pr) => pr.id !== p.id));
                                               onHardDeleted?.(p.id);
@@ -492,6 +606,17 @@ export function PractitionerTable({
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
         onCancel={closeConfirm}
+      />
+      <ContactDraftModal
+        open={draft.open}
+        onClose={closeDraft}
+        title={draft.title}
+        subject={draft.subject}
+        emailBody={draft.emailBody}
+        waBody={draft.waBody}
+        recipientName={draft.recipientName}
+        recipientEmail={draft.recipientEmail}
+        recipientPhone={draft.recipientPhone}
       />
     </div>
   );

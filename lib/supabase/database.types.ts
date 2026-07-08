@@ -530,6 +530,90 @@ export interface Database {
           }
         ];
       };
+      confirmations: {
+        Row: {
+          id: string;
+          ref_code: string;
+          session_id: string;
+          practitioner_id: string;
+          session_ref: string;
+          gross_amount: number;
+          tds_rate: number;
+          gst_rate: number;
+          net_amount: number;
+          snapshot: Json;
+          consent_link: string | null;
+          signed_at: string | null;
+          signature_method: string | null;
+          signature_data: string | null;
+          signer_ip: string | null;
+          storage_path: string | null;
+          status: string;
+          issued_on: string;
+          created_at: string;
+          updated_at: string | null;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          ref_code: string;
+          session_id: string;
+          practitioner_id: string;
+          session_ref: string;
+          gross_amount: number;
+          tds_rate?: number;
+          gst_rate?: number;
+          net_amount: number;
+          snapshot: Json;
+          consent_link?: string | null;
+          signed_at?: string | null;
+          signature_method?: string | null;
+          signature_data?: string | null;
+          signer_ip?: string | null;
+          storage_path?: string | null;
+          status?: string;
+          issued_on?: string;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          ref_code?: string;
+          session_id?: string;
+          practitioner_id?: string;
+          session_ref?: string;
+          gross_amount?: number;
+          tds_rate?: number;
+          gst_rate?: number;
+          net_amount?: number;
+          snapshot?: Json;
+          consent_link?: string | null;
+          signed_at?: string | null;
+          signature_method?: string | null;
+          signature_data?: string | null;
+          signer_ip?: string | null;
+          storage_path?: string | null;
+          status?: string;
+          issued_on?: string;
+          updated_at?: string | null;
+          deleted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "confirmations_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "sessions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "confirmations_practitioner_id_fkey";
+            columns: ["practitioner_id"];
+            isOneToOne: false;
+            referencedRelation: "practitioners";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       onboarding_tokens: {
         Row: {
           id: string;
@@ -647,7 +731,7 @@ export interface Database {
         };
         Relationships: [];
       };
-      super_admin_audit_log: {
+      admin_audit_log: {
         Row: {
           id: string;
           actor_email: string;

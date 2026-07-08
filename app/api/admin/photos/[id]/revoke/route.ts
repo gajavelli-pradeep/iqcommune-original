@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
-import { requireSuperAdmin } from "@/lib/supabase/require-super-admin";
+import { requireGlobalAdmin } from "@/lib/supabase/require-global-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logActivity } from "@/lib/super-admin-audit";
+import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 
 // Return a submission to Pending for re-review (distinct from Reject → Rejected):
 //   • Approved → Pending — any admin ("Revoke approval").
-//   • Rejected → Pending — Super Admin only ("Reopen").
+//   • Rejected → Pending — Global Admin only ("Reopen").
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +30,7 @@ export async function PATCH(
 
   if (submission.status === "Rejected") {
     // Reopening a rejected set is a Super-Admin-only recovery action.
-    const denySA = await requireSuperAdmin();
+    const denySA = await requireGlobalAdmin();
     if (denySA) return denySA;
   } else if (submission.status !== "Approved") {
     return NextResponse.json(

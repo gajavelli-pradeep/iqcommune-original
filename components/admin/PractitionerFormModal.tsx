@@ -34,7 +34,7 @@ export function PractitionerFormModal({
   open: boolean;
   onClose: () => void;
   onCreated: (p: Practitioner) => void;
-  /** When set, the modal switches to edit mode (Super Admin only). */
+  /** When set, the modal switches to edit mode (Global Admin only). */
   initialData?: Practitioner | null;
   onUpdated?: (p: Practitioner) => void;
 }) {
@@ -61,7 +61,7 @@ export function PractitionerFormModal({
     let res: Response;
     try {
       res = isEdit
-        ? await fetch(`/api/admin/super/practitioners/${initialData!.id}`, {
+        ? await fetch(`/api/admin/global/practitioners/${initialData!.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

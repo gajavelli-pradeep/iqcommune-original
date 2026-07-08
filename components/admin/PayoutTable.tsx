@@ -79,19 +79,19 @@ export function PayoutTable({
   initialData,
   onRowChange,
   statusFilter = "all",
-  isSuperAdmin = false,
+  isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
   statusFilter?: string;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
-  // Reflect parent-driven updates (e.g. a super-admin edit) without an effect.
+  // Reflect parent-driven updates (e.g. a global-admin edit) without an effect.
   const [prevInitial, setPrevInitial] = useState(initialData);
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
@@ -116,7 +116,7 @@ export function PayoutTable({
         description: "This removes the payout from all lists. It stays recoverable for 30 days, then is permanently purged.",
         onConfirm: async () => {
           setConfirmDialog((d) => ({ ...d, open: false }));
-          const res = await fetch(`/api/admin/super/payouts/${id}`, { method: "DELETE" });
+          const res = await fetch(`/api/admin/global/payouts/${id}`, { method: "DELETE" });
           if (res.ok) {
             setData((prev) => prev.filter((p) => p.id !== id));
             onHardDeleted?.(id);
@@ -361,7 +361,7 @@ export function PayoutTable({
                     ) : (
                       <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
                     )}
-                    {isSuperAdmin && onEdit && (
+                    {isGlobalAdmin && onEdit && (
                       <button
                         onClick={() => onEdit(p.id)}
                         style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
@@ -371,7 +371,7 @@ export function PayoutTable({
                         Edit
                       </button>
                     )}
-                    {isSuperAdmin && (
+                    {isGlobalAdmin && (
                       <button
                         onClick={() => handleHardDelete(p.id, p.invoice_ref)}
                         style={{ background: "none", border: "1px solid #fca5a5", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}

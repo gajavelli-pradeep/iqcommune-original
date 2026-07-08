@@ -55,7 +55,7 @@ const HEADERS = [
   "Preferred dates",
   "Received",
   "Status",
-  "Actions",
+  "Assigned to",
 ];
 
 function buildFollowupEmail(r: SessionRequest): string {
@@ -93,7 +93,7 @@ export function RequestTable({
   practitioners = [],
   onRowChange,
   statusFilter = "all",
-  isSuperAdmin = false,
+  isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
 }: {
@@ -101,12 +101,12 @@ export function RequestTable({
   practitioners?: Practitioner[];
   onRowChange?: (id: string, patch: { status?: string; assigned_to?: string | null }) => void;
   statusFilter?: string;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
-  // Reflect parent-driven updates (e.g. a super-admin edit) without an effect.
+  // Reflect parent-driven updates (e.g. a global-admin edit) without an effect.
   const [prevInitial, setPrevInitial] = useState(initialData);
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const visible = statusFilter === "all" ? data : data.filter((r) => r.status === statusFilter);
@@ -257,78 +257,13 @@ export function RequestTable({
                 <td style={TD}>
                   <StatusPill status={r.status} />
                 </td>
-                {/* Actions */}
-                <td style={TD} onClick={(e) => e.stopPropagation()}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {r.status === "New" ? (
-                      <button
-                        onClick={() => {
-                          updateStatus(r.id, "Matched");
-                          setExpandedRow(r.id);
-                        }}
-                        style={darkBtn}
-                      >
-                        Review
-                      </button>
-                    ) : (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select
-                          value={r.status}
-                          onChange={(e) => updateStatus(r.id, e.target.value)}
-                          style={selectStyle}
-                        >
-                          {["New", "Matched", "Confirmed", "Completed", "Cancelled"].map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                        <button onClick={() => openDraft(r)} style={ghostBtn}>
-                          Email draft
-                        </button>
-                      </div>
-                    )}
-                    {isSuperAdmin && onEdit && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "none", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start" }}
-                        title={`Edit request from ${r.name}`}
-                      >
-                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Edit
-                      </button>
-                    )}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDialog({
-                            open: true,
-                            title: `Delete request from ${r.name}`,
-                            description: "This removes the request from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                            onConfirm: async () => {
-                              closeConfirm();
-                              const res = await fetch(`/api/admin/super/requests/${r.id}`, { method: "DELETE" });
-                              if (res.ok) {
-                                setData((prev) => prev.filter((x) => x.id !== r.id));
-                                onHardDeleted?.(r.id);
-                              } else {
-                                setDeleteFailedId(r.id);
-                                setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
-                              }
-                            },
-                          });
-                        }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid var(--red-border)", background: "none", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start", transition: "background .12s" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                        title={`Delete request from ${r.name}`}
-                      >
-                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-                        {deleteFailedId === r.id ? "Delete failed!" : "Delete"}
-                      </button>
-                    )}
-                  </div>
+                {/* Assigned to (V4: inline summary; all actions live in the expanded dropdown) */}
+                <td style={{ ...TD, fontSize: 12 }}>
+                  {r.status === "New" || !r.assigned_practitioner ? (
+                    <span style={{ color: "var(--ink-faint)" }}>Unassigned</span>
+                  ) : (
+                    <span style={{ color: "var(--ink-muted)" }}>{r.assigned_practitioner.name}</span>
+                  )}
                 </td>
               </tr>
 
@@ -509,6 +444,44 @@ export function RequestTable({
                             >
                               Draft follow-up to client
                             </button>
+                            {isGlobalAdmin && onEdit && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
+                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                                title={`Edit request from ${r.name}`}
+                              >
+                                <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit request
+                              </button>
+                            )}
+                            {isGlobalAdmin && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDialog({
+                                    open: true,
+                                    title: `Delete request from ${r.name}`,
+                                    description: "This removes the request from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                                    onConfirm: async () => {
+                                      closeConfirm();
+                                      const res = await fetch(`/api/admin/global/requests/${r.id}`, { method: "DELETE" });
+                                      if (res.ok) {
+                                        setData((prev) => prev.filter((x) => x.id !== r.id));
+                                        onHardDeleted?.(r.id);
+                                      } else {
+                                        setDeleteFailedId(r.id);
+                                        setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
+                                      }
+                                    },
+                                  });
+                                }}
+                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--red-border)", background: "#fff", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                                title={`Delete request from ${r.name}`}
+                              >
+                                <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                                {deleteFailedId === r.id ? "Delete failed!" : "Delete request"}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -577,40 +550,3 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const CHEVRON_GOLD =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
-
-const selectStyle: React.CSSProperties = {
-  fontSize: 12,
-  padding: "5px 22px 5px 8px",
-  borderRadius: 6,
-  border: "1px solid rgba(20,18,12,.18)",
-  background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`,
-  appearance: "none",
-  WebkitAppearance: "none",
-  color: "#14161d",
-  cursor: "pointer",
-  fontFamily: "inherit",
-};
-
-const darkBtn: React.CSSProperties = {
-  background: "var(--ink)",
-  color: "#fff",
-  border: "none",
-  borderRadius: 100,
-  padding: "4px 10px",
-  fontSize: 11,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  fontWeight: 500,
-};
-
-const ghostBtn: React.CSSProperties = {
-  background: "rgba(20,18,12,.07)",
-  border: "none",
-  borderRadius: 6,
-  padding: "5px 10px",
-  fontSize: 12,
-  cursor: "pointer",
-  fontFamily: "inherit",
-};

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
+import { isGlobalAdminRole } from "@/lib/supabase/roles";
 
 interface ActivityRow {
   id: string;
   actor_email: string;
-  actor_role: "admin" | "super_admin" | string;
+  actor_role: "admin" | "global_admin" | string;
   action: string;
   record_table: string;
   record_id: string;
@@ -110,7 +111,7 @@ export function ActivityLogView() {
     const qs = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
     if (actorF) qs.set("actor", actorF);
     if (actionF) qs.set("action", actionF);
-    fetch(`/api/admin/super/activity?${qs.toString()}`)
+    fetch(`/api/admin/global/activity?${qs.toString()}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.error) { setError(j.error); return; }
@@ -135,7 +136,7 @@ export function ActivityLogView() {
   };
 
   // Live: new audit rows appear at the top as admins act (respects active filters).
-  useRealtimeChannel("super_admin_audit_log", (payload) => {
+  useRealtimeChannel("admin_audit_log", (payload) => {
     if (payload.eventType !== "INSERT") return;
     const row = payload.new as unknown as ActivityRow;
     if (action && row.action !== action) return;
@@ -186,11 +187,11 @@ export function ActivityLogView() {
           {rows.map((r, i) => {
             const trans = transition(r.snapshot);
             const det = detail(r.snapshot);
-            const isSA = r.actor_role === "super_admin";
+            const isSA = isGlobalAdminRole(r.actor_role);
             return (
               <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", borderTop: i === 0 ? "none" : "1px solid rgba(20,18,12,.07)" }}>
                 <span
-                  title={isSA ? "Super Admin" : "Admin"}
+                  title={isSA ? "Global Admin" : "Admin"}
                   style={{ flexShrink: 0, marginTop: 3, width: 8, height: 8, borderRadius: "50%", background: isSA ? "var(--gold)" : "var(--blue)" }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -205,7 +206,7 @@ export function ActivityLogView() {
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                    {isSA ? "Super Admin" : "Admin"} · {r.record_table} · {timeAgo(r.created_at)}
+                    {isSA ? "Global Admin" : "Admin"} · {r.record_table} · {timeAgo(r.created_at)}
                   </div>
                 </div>
               </div>

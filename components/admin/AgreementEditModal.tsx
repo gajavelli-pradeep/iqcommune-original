@@ -55,7 +55,7 @@ export function AgreementEditModal({
 
     let res: Response;
     try {
-      res = await fetch(`/api/admin/super/agreements/${initialData.id}`, {
+      res = await fetch(`/api/admin/global/agreements/${initialData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),

@@ -115,3 +115,22 @@ export function verifyStatusToken(refCode: string, token: string): boolean {
     return false;
   }
 }
+
+// ── Session-consent links ──────────────────────────────────────────────────
+// The confirmation row is the single source of truth, so the link only needs to
+// securely identify it: /consent?ref=<confirmation ref_code>&token=<sig>.
+
+export function signConsentUrl(refCode: string): string {
+  const sig  = sign(`consent:${refCode}`);
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  return `${base}/consent?ref=${encodeURIComponent(refCode)}&token=${sig}`;
+}
+
+export function verifyConsentToken(refCode: string, token: string): boolean {
+  try {
+    const expected = sign(`consent:${refCode}`);
+    return timingSafeEqual(token, expected);
+  } catch {
+    return false;
+  }
+}

@@ -18,7 +18,7 @@ const AdminUIContext = createContext<AdminUI | null>(null);
 // AdminConsoleView, not here.
 const KNOWN_TABS = [
   "requests", "practitioners", "sessions", "agreements",
-  "payouts", "photos", "gallery", "activity", "settings",
+  "consent", "payouts", "photos", "gallery", "activity", "settings",
 ];
 const DEFAULT_TAB = "practitioners";
 

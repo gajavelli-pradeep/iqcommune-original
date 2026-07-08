@@ -374,7 +374,7 @@ textarea:focus,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: var(--gold) !important;
   box-shadow: 0 0 0 3px rgba(201, 152, 42, 0.16), inset 0 1px 2px rgba(15, 17, 23, 0.05) !important;
   outline: none;
@@ -383,7 +383,7 @@ textarea:focus-visible {
   input:hover:not(:focus),
   select:hover:not(:focus),
   textarea:hover:not(:focus) {
-    background: var(--input-hover, #faf8f3) !important;
+    background-color: var(--input-hover, #faf8f3) !important;
     border-color: rgba(20, 18, 12, 0.34) !important;
   }
 }
@@ -500,13 +500,30 @@ textarea:focus-visible {
   .iq-step-connector { display: none; }
 }
 
-/* ── Perk rows + honest/disclosure cards: hover feedback ── */
+/* ── Perk rows: single moving highlight ──────────────────────────────────────
+   The first card carries the gold "active" panel by default; hovering any card
+   moves that highlight to the hovered card — only one is ever lit. Shift-free:
+   every row reserves the 2px accent bar + horizontal padding, so only colour
+   toggles. Icon-fill + a 3px slide reinforce the active card. */
 .iq-perk {
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  transition: background 0.22s ease, border-color 0.22s ease,
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iq-perk--featured {
+  background: rgba(201, 152, 42, 0.09);
+  border-left-color: var(--gold);
 }
 .iq-perk-icon {
+  background: rgba(201, 152, 42, 0.15);
   transition: background 0.22s ease, color 0.22s ease,
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iq-perk--featured .iq-perk-icon {
+  background: rgba(201, 152, 42, 0.28);
 }
 .iq-honest-card,
 .iq-disclosure-card {
@@ -514,13 +531,24 @@ textarea:focus-visible {
     box-shadow 0.28s ease;
 }
 @media (hover: hover) {
+  /* Any hovered card takes the highlight. */
   .iq-perk:hover {
+    background: rgba(201, 152, 42, 0.09);
+    border-left-color: var(--gold);
     transform: translateX(3px);
   }
   .iq-perk:hover .iq-perk-icon {
     background: var(--gold) !important;
     color: var(--ink) !important;
     transform: scale(1.08);
+  }
+  /* While another card is hovered, the default-featured card drops its highlight. */
+  .iq-perks:hover .iq-perk--featured:not(:hover) {
+    background: transparent;
+    border-left-color: transparent;
+  }
+  .iq-perks:hover .iq-perk--featured:not(:hover) .iq-perk-icon {
+    background: rgba(201, 152, 42, 0.15);
   }
   .iq-honest-card:hover {
     transform: translateY(-3px);

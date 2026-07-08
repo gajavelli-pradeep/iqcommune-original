@@ -23,7 +23,7 @@ export default async function StatusPage({ searchParams }: Props) {
         const supabase = createAdminClient();
         const { data } = await supabase
           .from("practitioners")
-          .select("name, role, org, city, state, modules, experience, status, ref_code, created_at")
+          .select("name, role, org, city, state, modules, experience, status, ref_code, created_at, under_review_at, screened_at, agreement_sent_at, empanelled_at")
           .eq("ref_code", ref)
           .single();
         return data ?? null;
@@ -212,7 +212,12 @@ export default async function StatusPage({ searchParams }: Props) {
                   </div>
                   <PipelineStepper
                     status={practitioner.status}
-                    timestamps={{ Applied: practitioner.created_at ?? undefined }}
+                    timestamps={{
+                      Applied:            practitioner.created_at ?? undefined,
+                      "Screening Done":   practitioner.screened_at ?? undefined,
+                      "Agreement Sent":   practitioner.agreement_sent_at ?? undefined,
+                      Empanelled:         practitioner.empanelled_at ?? undefined,
+                    }}
                   />
 
                   {practitioner.status === "Empanelled" && (

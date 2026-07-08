@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/logger";
 
-// Encrypted store of the most recent password a Super Admin SET for an account
+// Encrypted store of the most recent password a Global Admin SET for an account
 // (admin or super_admin), so it can be revealed/copied to hand over. Overwritten
 // on each change. Encryption key is derived from the app's HMAC secret, so a bare
 // DB dump alone cannot decrypt — only the running app can. Rotating HMAC_SECRET

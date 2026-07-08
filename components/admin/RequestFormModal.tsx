@@ -45,7 +45,7 @@ export function RequestFormModal({
   open: boolean;
   onClose: () => void;
   onCreated: (r: RequestRow) => void;
-  /** When set, the modal switches to edit mode (Super Admin only). */
+  /** When set, the modal switches to edit mode (Global Admin only). */
   initialData?: RequestRow | null;
   onUpdated?: (r: RequestRow) => void;
 }) {
@@ -68,7 +68,7 @@ export function RequestFormModal({
     let res: Response;
     try {
       res = isEdit
-        ? await fetch(`/api/admin/super/requests/${initialData!.id}`, {
+        ? await fetch(`/api/admin/global/requests/${initialData!.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

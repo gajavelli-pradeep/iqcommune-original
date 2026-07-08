@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ApplicationForm } from "@/components/public/ApplicationForm";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
-import { SiteHeader } from "@/components/public/SiteHeader";
+import { PractitionerNav } from "@/components/public/PractitionerNav";
 import { SiteFooter } from "@/components/public/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Join as a Practitioner",
   description:
-    "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed. Join the iqcommune practitioner network.",
+    "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed. Join the iqcommune practitioner network.",
   openGraph: {
     title: "Join as a Practitioner",
     description:
-      "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed.",
+      "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed.",
     url: "https://iqcommune.com/practitioners",
     siteName: "iqcommune",
     type: "website",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Join as a Practitioner",
     description:
-      "Finance professionals — share what you actually do, for 2–3 hours, with a small group. No slides needed.",
+      "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed.",
   },
 };
 
@@ -29,13 +29,36 @@ export const metadata: Metadata = {
 
 interface Perk {
   title: string;
-  sub: string;
+  sub: React.ReactNode;
   icon: React.ReactNode;
+  featured?: boolean;
 }
 
 const PERKS: Perk[] = [
   {
-    title: "Earn on the side — without selling",
+    title: "A room that's already interested",
+    sub: "20–25 people who've actively signed up to improve their financial literacy — no cold audience, no convincing anyone to be there. You bring the expertise and the presence; what happens next is yours to make of it.",
+    featured: true,
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+  },
+  {
+    title: "The expensive part, already paid for",
+    sub: "Finding and reaching people who actually want to learn is usually the costliest part of building a practice. That part's on us — entirely.",
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+  },
+  {
+    title: "Earn on the side — with zero sales effort",
     sub: "Revenue share per session. We bring the audience. You just show up and teach.",
     icon: (
       <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
@@ -45,21 +68,17 @@ const PERKS: Perk[] = [
     ),
   },
   {
-    title: "2–3 hours. Your schedule.",
-    sub: "Sessions are short, infrequent, and confirmed with you before anything is committed.",
+    title: "3–6 hours. Your schedule.",
+    sub: (
+      <>
+        Sessions are short, infrequent, and confirmed with you before anything is committed.{" "}
+        <em style={{ fontStyle: "italic" }}>*6 hours only applies if you opt for a bundled session covering two modules.</em>
+      </>
+    ),
     icon: (
       <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  {
-    title: "Your identity stays protected",
-    sub: "We never publish your name or organisation publicly. Your participation is entirely on your terms.",
-    icon: (
-      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
     ),
   },
@@ -89,7 +108,7 @@ const PERKS: Perk[] = [
 
 const TRUST_ITEMS = [
   {
-    text: "Your name & identity are never published",
+    text: "Zero public exposure — you control what's shared",
     icon: (
       <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -430,7 +449,20 @@ export default function PractitionersPage() {
   return (
     <main style={{ background: "var(--surface)", minHeight: "100vh", fontFamily: "inherit" }}>
       <style>{`
+        .nav-pill { transition: background 0.18s, border-color 0.18s; }
+        @media (hover: hover) {
+          .nav-pill:hover { background: rgba(201,152,42,0.06); border-color: var(--gold-dark); }
+          .footer-pill:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.4); color: #fff; }
+        }
+        .nav-pill:focus-visible, .footer-pill:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+        .footer-pill { transition: background 0.18s, border-color 0.18s, color 0.18s; }
+        /* Division-of-work columns share row tracks (subgrid) so corresponding
+           rows are equal height and the divider lines match across both columns. */
+        .handle-grid { grid-template-rows: repeat(6, auto); }
+        .handle-col { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; }
         @media (max-width: 720px) {
+          .handle-grid { grid-template-rows: none !important; }
+          .handle-col { display: block; grid-row: auto !important; grid-template-rows: none !important; }
           .hero-grid { grid-template-columns: 1fr !important; }
           .hero-right-card { display: none !important; }
           .roles-grid { grid-template-columns: 1fr 1fr !important; }
@@ -448,30 +480,7 @@ export default function PractitionersPage() {
       `}</style>
 
       {/* ── §1 NAV ── */}
-      <SiteHeader
-        logoHref="/"
-        badge={["Practitioner", "Network"]}
-        right={
-          <Link
-            href="/"
-            className="foot-link"
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: "var(--ink-muted)",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-            }}
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            Back to main site
-          </Link>
-        }
-      />
+      <PractitionerNav />
 
       {/* ── §2 HERO ── */}
       <section
@@ -641,11 +650,11 @@ export default function PractitionersPage() {
             >
               What this means for you
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div className="iq-perks" style={{ display: "flex", flexDirection: "column" }}>
               {PERKS.map((perk, i) => (
                 <div
                   key={perk.title}
-                  className="iq-perk"
+                  className={perk.featured ? "iq-perk iq-perk--featured" : "iq-perk"}
                   style={{
                     display: "flex",
                     gap: 12,
@@ -656,10 +665,10 @@ export default function PractitionersPage() {
                   }}
                 >
                   <div
+                    className="iq-perk-icon"
                     style={{
                       width: 34,
                       height: 34,
-                      background: "rgba(201,152,42,0.15)",
                       borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
@@ -781,6 +790,7 @@ export default function PractitionersPage() {
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 44,
                     height: 44,
@@ -944,7 +954,8 @@ export default function PractitionersPage() {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: 2,
+              columnGap: 2,
+              rowGap: 0,
               border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 12,
               overflow: "hidden",
@@ -953,7 +964,7 @@ export default function PractitionersPage() {
             }}
           >
             {/* You Bring — left column (V2 order) */}
-            <div style={{ background: "var(--surface-soft)" }}>
+            <div className="handle-col" style={{ background: "var(--surface-soft)" }}>
               <div
                 style={{
                   padding: "1.1rem 1.75rem",
@@ -992,7 +1003,7 @@ export default function PractitionersPage() {
             </div>
 
             {/* We Handle — right column (V2 order) */}
-            <div style={{ background: "var(--surface)" }}>
+            <div className="handle-col" style={{ background: "var(--surface)" }}>
               <div
                 style={{
                   padding: "1.1rem 1.75rem",
@@ -1081,10 +1092,11 @@ export default function PractitionersPage() {
                   border: "1.5px solid rgba(20,18,12,0.10)",
                   borderRadius: 12,
                   padding: "1.25rem",
-                  transition: "border-color 0.2s",
+                  transition: "border-color 0.2s, transform 0.2s",
                 }}
               >
                 <div
+                  className="card-icon"
                   style={{
                     width: 40,
                     height: 40,
@@ -1579,6 +1591,8 @@ export default function PractitionersPage() {
             </p>
           </div>
           {/* Gap 16: form card — no h2 'Apply to join iqcommune', no subtitle paragraph */}
+          {/* overflowX:auto keeps any too-wide field (e.g. the module grid at 320px)
+              inside its own visible scrollbar so the page body never scrolls sideways. */}
           <div
             style={{
               background: "var(--surface)",
@@ -1586,6 +1600,7 @@ export default function PractitionersPage() {
               borderRadius: 20,
               padding: "2.5rem",
               boxShadow: "0 12px 48px rgba(0,0,0,0.06)",
+              overflowX: "auto",
             }}
           >
             <ApplicationForm />
@@ -1634,22 +1649,23 @@ export default function PractitionersPage() {
         top={
           <Link
             href="/"
-            className="foot-link"
+            className="footer-pill"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: "rgba(255,255,255,0.50)",
-              textDecoration: "none",
-              marginBottom: "0.5rem",
               minHeight: 44,
+              fontSize: 13,
+              fontWeight: 500,
+              color: "rgba(255,255,255,0.75)",
+              textDecoration: "none",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 100,
+              padding: "9px 20px",
+              marginBottom: "0.75rem",
             }}
           >
-            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            Back to iqcommune
+            See iqcommune for Learners
           </Link>
         }
       />

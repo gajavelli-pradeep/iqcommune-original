@@ -82,6 +82,8 @@ const thStyle: React.CSSProperties = {
   background: "#f8f7f4",
   fontWeight: 500,
   fontSize: 11,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase", // V4 renders column headers uppercase
   color: "var(--ink-faint)",
   borderBottom: "1px solid rgba(20,18,12,.1)",
   whiteSpace: "nowrap",

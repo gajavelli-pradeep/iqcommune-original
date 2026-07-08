@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { StatusPill } from "@/components/shared/StatusPill";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { downloadPhotoSet } from "@/lib/download-photos";
 
 interface PhotoSubmission {
   id: string;
@@ -21,7 +21,18 @@ interface PhotoSubmission {
   expiry_date: string;
 }
 
-const STATUS_FILTERS = ["All", "Pending", "Approved", "Rejected", "Expired"] as const;
+// Completed sessions with no photo upload yet (V4: "Send reminder" rows).
+export interface PendingUploadSession {
+  id: string;
+  session_ref: string;
+  practitioner_name: string;
+  module: string;
+  venue: string;
+  session_date: string;
+}
+
+// V4 photo statuses: Pending (completed session, no upload yet) → Uploaded.
+const STATUS_FILTERS = ["All", "Pending", "Uploaded"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const HEADERS = [
@@ -68,16 +79,17 @@ function ExpiryBar({ days }: { days: number }) {
 
 export function PhotosTable({
   initialData,
+  pendingSessions = [],
   statusFilter: statusFilterProp,
   onStatusFilterChange,
   onStatusChange,
-  isSuperAdmin = false,
 }: {
   initialData: PhotoSubmission[];
+  pendingSessions?: PendingUploadSession[];
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
   onStatusChange?: (id: string, status: string) => void;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
@@ -93,60 +105,29 @@ export function PhotosTable({
   const setStatusFilter = (f: StatusFilter) =>
     onStatusFilterChange ? onStatusFilterChange(f) : setInternalFilter(f);
 
-  const visible = data.filter((p) =>
-    statusFilter === "All" ? true : p.status === statusFilter
-  );
+  // Every existing submission counts as "Uploaded" (V4). "Pending" = sessions
+  // with no upload yet, so submissions are hidden under the Pending filter.
+  const visible = statusFilter === "Pending" ? [] : data;
+  // "Pending" rows (completed sessions, no upload) show under All + Pending.
+  const pendingRows =
+    statusFilter === "All" || statusFilter === "Pending" ? pendingSessions : [];
 
-  const reject = useCallback(
-    async (id: string) => {
-      const res = await fetch(`/api/admin/photos/${id}/reject`, { method: "PATCH" });
-      if (res.ok) {
-        setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Rejected" } : p)));
-        onStatusChange?.(id, "Rejected");
-        setToast("Photo submission rejected");
-        setTimeout(() => setToast(""), 3000);
-      } else {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setToast(body.error ?? "Rejection failed");
-        setTimeout(() => setToast(""), 4000);
-      }
-    },
-    [onStatusChange]
-  );
-
-  const revoke = useCallback(
-    async (id: string) => {
-      const res = await fetch(`/api/admin/photos/${id}/revoke`, { method: "PATCH" });
-      if (res.ok) {
-        setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Pending" } : p)));
-        onStatusChange?.(id, "Pending");
-        setToast("Returned to Pending for re-review");
-        setTimeout(() => setToast(""), 3000);
-      } else {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setToast(body.error ?? "Revoke failed");
-        setTimeout(() => setToast(""), 4000);
-      }
-    },
-    [onStatusChange]
-  );
-
-  const approve = useCallback(
-    async (id: string) => {
-      const res = await fetch(`/api/admin/photos/${id}/approve`, { method: "PATCH" });
-      if (res.ok) {
-        setData((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Approved" } : p)));
-        onStatusChange?.(id, "Approved");
-        setToast("Photo set approved");
-        setTimeout(() => setToast(""), 3000);
-      } else {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setToast(body.error ?? "Approval failed");
-        setTimeout(() => setToast(""), 4000);
-      }
-    },
-    [onStatusChange]
-  );
+  async function sendReminder(sessionId: string, name: string) {
+    const res = await fetch(`/api/admin/sessions/${sessionId}/photo-link`);
+    if (!res.ok) {
+      setToast("Could not generate reminder link");
+      setTimeout(() => setToast(""), 3500);
+      return;
+    }
+    const { url } = (await res.json()) as { url: string };
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      /* clipboard blocked — link still generated */
+    }
+    setToast(`Reminder link copied — send to ${name}`);
+    setTimeout(() => setToast(""), 3500);
+  }
 
   const remove = useCallback(
     (id: string) => {
@@ -190,9 +171,9 @@ export function PhotosTable({
           lineHeight: 1.5,
         }}
       >
-        Photos auto-expire 30 days after submission. Anything not approved before expiry is
-        automatically deleted — no action needed. To generate a practitioner photo-upload link, go
-        to <strong>Sessions → Completed → Photo link</strong>.
+        Photos auto-expire 30 days after submission — anything not downloaded before expiry is
+        automatically deleted. To generate a practitioner photo-upload link, go to
+        <strong>Sessions → Completed → Photo link</strong>, or use <strong>Send reminder</strong> on a Pending row.
       </div>
 
       {/* Filter chips */}
@@ -238,19 +219,51 @@ export function PhotosTable({
 
       <AdminTable
         headers={HEADERS}
-        isEmpty={visible.length === 0}
+        isEmpty={visible.length === 0 && pendingRows.length === 0}
         emptyText={
-          data.length === 0
+          data.length === 0 && pendingSessions.length === 0
             ? "No photo submissions yet"
             : "No submissions match the current filter"
         }
         connected
       >
+        {pendingRows.map((s) => (
+          <tr key={`pending-${s.id}`} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+            <td style={TD}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {initials(s.practitioner_name)}
+                </div>
+                <div style={{ fontWeight: 500 }}>{s.practitioner_name}</div>
+              </div>
+            </td>
+            <td style={TD}><span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>{s.session_ref}</span></td>
+            <td style={TD}>{s.module}</td>
+            <td style={TD}>{s.venue}</td>
+            <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
+            <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
+            <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
+            <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
+            <td style={TD}>
+              <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 100, background: "var(--amber-light, #fbf1d9)", color: "var(--amber, #854f0b)", whiteSpace: "nowrap" }}>
+                Pending
+              </span>
+            </td>
+            <td style={{ ...TD, whiteSpace: "nowrap" }}>
+              <button onClick={() => sendReminder(s.id, s.practitioner_name)} style={ghostBtn} title="Copy a fresh photo-upload link to send to this practitioner">
+                <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                Send reminder
+              </button>
+            </td>
+          </tr>
+        ))}
         {visible.map((p) => {
           const days = daysLeft(p.expiry_date);
-          const isUrgent = days <= 7 && p.status === "Pending";
+          const isUrgent = days > 0 && days <= 7;
           const ini = initials(p.practitioner_name);
-          const canView = p.status === "Pending" || p.status === "Approved" || p.status === "Rejected";
+          const canView = true; // any existing submission is viewable/downloadable/deletable
           return (
             <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
               {/* Practitioner */}
@@ -308,7 +321,7 @@ export function PhotosTable({
               </td>
               {/* Days left */}
               <td style={TD}>
-                {p.status === "Expired" ? (
+                {days <= 0 ? (
                   <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>Expired</span>
                 ) : (
                   <ExpiryBar days={days} />
@@ -323,33 +336,15 @@ export function PhotosTable({
               <td style={{ ...TD, textAlign: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 500 }}>{p.photo_count}</span>
               </td>
-              {/* Status */}
+              {/* Status — V4: every submission is "Uploaded" */}
               <td style={TD}>
-                <StatusPill status={p.status} />
+                <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 100, background: "var(--green-light, #eef7ee)", color: "var(--green, #2a6b2a)", whiteSpace: "nowrap" }}>
+                  Uploaded
+                </span>
               </td>
               {/* Actions */}
-              <td style={{ ...TD, whiteSpace: "nowrap" }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {p.status === "Pending" && (
-                    <button onClick={() => approve(p.id)} style={goldBtn}>
-                      Approve
-                    </button>
-                  )}
-                  {p.status === "Pending" && (
-                    <button onClick={() => reject(p.id)} style={ghostBtn}>
-                      Reject
-                    </button>
-                  )}
-                  {p.status === "Approved" && (
-                    <button onClick={() => revoke(p.id)} style={ghostBtn}>
-                      Revoke
-                    </button>
-                  )}
-                  {p.status === "Rejected" && isSuperAdmin && (
-                    <button onClick={() => revoke(p.id)} style={ghostBtn} title="Reopen — return this set to Pending for re-review">
-                      Reopen
-                    </button>
-                  )}
+              <td style={TD}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   {canView && (
                     <button onClick={() => setViewId(p.id)} style={ghostBtn}>
                       <svg
@@ -367,6 +362,16 @@ export function PhotosTable({
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                       View
+                    </button>
+                  )}
+                  {canView && (
+                    <button onClick={() => downloadPhotoSet(p.id)} style={ghostBtn} title="Download all photos in this set">
+                      <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download
                     </button>
                   )}
                   {canView && p.status !== "Rejected" && (
@@ -406,12 +411,7 @@ export function PhotosTable({
         <PhotoViewModal
           id={viewId}
           practitionerName={viewingRow.practitioner_name}
-          status={viewingRow.status}
           onClose={() => setViewId(null)}
-          onApprove={viewingRow.status === "Pending" ? approve : undefined}
-          onReject={viewingRow.status === "Pending" ? reject : undefined}
-          onRevoke={viewingRow.status === "Approved" || (viewingRow.status === "Rejected" && isSuperAdmin) ? revoke : undefined}
-          onDelete={viewingRow.status !== "Rejected" ? remove : undefined}
         />
       )}
       <ConfirmDialog
@@ -425,17 +425,6 @@ export function PhotosTable({
   );
 }
 
-const goldBtn: React.CSSProperties = {
-  background: "#c9982a",
-  color: "#14161d",
-  border: "none",
-  borderRadius: 6,
-  padding: "5px 12px",
-  fontSize: 11,
-  fontWeight: 600,
-  cursor: "pointer",
-  fontFamily: "inherit",
-};
 
 const ghostBtn: React.CSSProperties = {
   background: "rgba(20,18,12,.07)",

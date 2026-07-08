@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { isGlobalAdminRole } from "@/lib/supabase/roles";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient();
@@ -9,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const isAdmin =
     !!user &&
     (user.app_metadata?.role === "admin" ||
-      user.app_metadata?.role === "super_admin" ||
+      isGlobalAdminRole(user.app_metadata?.role) ||
       (!!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL));
 
   if (!isAdmin) redirect("/login");

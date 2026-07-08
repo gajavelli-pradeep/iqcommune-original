@@ -65,7 +65,7 @@ export default async function JoinAdminPage({
             Invite unavailable
           </div>
           <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, margin: 0 }}>
-            {state.reason} Please ask your super admin for a new invite link.
+            {state.reason} Please ask your global admin for a new invite link.
           </p>
         </div>
       </div>

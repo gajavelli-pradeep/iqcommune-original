@@ -65,7 +65,7 @@ export function SessionFormModal({
   onClose: () => void;
   practitioners: PractitionerOption[];
   onCreated: (s: NewSession) => void;
-  /** When set, the modal switches to edit mode (Super Admin only). */
+  /** When set, the modal switches to edit mode (Global Admin only). */
   initialData?: NewSession | null;
   onUpdated?: (s: NewSession) => void;
 }) {
@@ -103,7 +103,7 @@ export function SessionFormModal({
     let res: Response;
     try {
       res = isEdit
-        ? await fetch(`/api/admin/super/sessions/${initialData!.id}`, {
+        ? await fetch(`/api/admin/global/sessions/${initialData!.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

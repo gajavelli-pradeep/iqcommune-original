@@ -23,6 +23,17 @@ export const BUNDLES = [
   "Bundle — Asset Allocation & Portfolio Construction + Investment Solutions & Portfolio Strategies (6 hrs)",
 ] as const;
 
+// Short display labels for the bundle <select> options. VALUES above stay canonical
+// (they power TOPICS + validation + the persisted `topic`); only the visible text shortens.
+export const BUNDLE_LABELS: Record<(typeof BUNDLES)[number], string> = {
+  "Bundle — Foundations of Personal Finance + Retirement & Goal-Based Financial Planning (6 hrs)":
+    "Foundations + Retirement & Goals",
+  "Bundle — Equity Investing Simplified + Debt & Fixed Income Investing (6 hrs)":
+    "Equity + Debt & Fixed Income",
+  "Bundle — Asset Allocation & Portfolio Construction + Investment Solutions & Portfolio Strategies (6 hrs)":
+    "Asset Allocation + Portfolio Strategies",
+};
+
 // Flat list used by form <select> and API validation.
 export const TOPICS = [...MODULES, ...BUNDLES, "Not sure — help me choose"] as const;
 
@@ -50,6 +61,13 @@ export const SessionRequestSchema = z
         code: z.ZodIssueCode.custom,
         message: "Group size is required",
         path: ["groupSize"],
+      });
+    }
+    if (data.audienceType === "Groups" && !data.venue?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Venue is required for group sessions",
+        path: ["venue"],
       });
     }
     if (

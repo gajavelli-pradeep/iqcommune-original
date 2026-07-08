@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken, isExpired } from "@/lib/admin-invite";
-import { logActivity } from "@/lib/super-admin-audit";
+import { logActivity } from "@/lib/admin-audit";
 import { storeAdminPassword } from "@/lib/admin-password-vault";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/ip";
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This invite has already been used" }, { status: 410 });
   }
 
-  // Store the password the invitee chose so the Super Admin can reveal it too.
+  // Store the password the invitee chose so the Global Admin can reveal it too.
   // set_by is the invitee's own email — it was self-chosen via the invite.
   await storeAdminPassword(created.user.id, password, invite.email);
 

@@ -31,7 +31,7 @@ export function TrashModal({ open, onClose }: Props) {
 
   // setState only fires inside the promise callbacks — no set-state-in-effect.
   const load = useCallback(() => {
-    fetch("/api/admin/super/trash")
+    fetch("/api/admin/global/trash")
       .then((r) => r.json())
       .then((j) => {
         if (j.items) setItems(j.items);
@@ -48,7 +48,7 @@ export function TrashModal({ open, onClose }: Props) {
     setBusyId(item.id);
     setError("");
     try {
-      const res = await fetch("/api/admin/super/trash", {
+      const res = await fetch("/api/admin/global/trash", {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table: item.table, id: item.id }),

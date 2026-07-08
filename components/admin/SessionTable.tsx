@@ -45,12 +45,11 @@ const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const HEADERS = [
-  "Ref",
-  "Module",
+  "Session", // V4: module (bold) + ref (sub) in one column
   "Practitioner",
   "Date & venue",
   "Audience",
-  "Pax",
+  "Participants",
   "Payout",
   "Consent",
   "Status",
@@ -62,7 +61,7 @@ export function SessionTable({
   onNavigate,
   statusFilter: statusFilterProp,
   onStatusFilterChange,
-  isSuperAdmin = false,
+  isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
 }: {
@@ -70,7 +69,7 @@ export function SessionTable({
   onNavigate?: (tab: string) => void;
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
-  isSuperAdmin?: boolean;
+  isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
@@ -205,11 +204,11 @@ export function SessionTable({
                 }}
               >
                 <td style={TD}>
-                  <span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{s.module}</div>
+                  <div style={{ fontFamily: "monospace", fontSize: 11, color: "var(--ink-faint)", whiteSpace: "nowrap", marginTop: 2 }}>
                     {s.ref_code}
-                  </span>
+                  </div>
                 </td>
-                <td style={TD}>{s.module}</td>
                 <td style={TD}>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{s.practitioner?.name ?? "—"}</div>
                   {s.practitioner?.email && (
@@ -370,7 +369,7 @@ export function SessionTable({
                         </button>
                       );
                     })()}
-                    {isSuperAdmin && onEdit && (
+                    {isGlobalAdmin && onEdit && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onEdit(s.id); }}
                         style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "none", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
@@ -380,7 +379,7 @@ export function SessionTable({
                         Edit
                       </button>
                     )}
-                    {isSuperAdmin && (
+                    {isGlobalAdmin && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -390,7 +389,7 @@ export function SessionTable({
                             description: "This removes the session from all lists. It stays recoverable for 30 days, then is permanently purged.",
                             onConfirm: async () => {
                               closeConfirm();
-                              const res = await fetch(`/api/admin/super/sessions/${s.id}`, { method: "DELETE" });
+                              const res = await fetch(`/api/admin/global/sessions/${s.id}`, { method: "DELETE" });
                               if (res.ok) onHardDeleted?.(s.id);
                               else {
                                 setDeleteFailedId(s.id);
@@ -414,7 +413,7 @@ export function SessionTable({
 
               {isExpanded && (
                 <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                  <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                  <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                     <div
                       style={{
                         border: "1px solid rgba(20,18,12,.10)",

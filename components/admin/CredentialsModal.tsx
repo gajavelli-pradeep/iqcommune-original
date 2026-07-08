@@ -6,7 +6,7 @@ import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 interface AdminUser {
   id: string;
   email: string;
-  role: "admin" | "super_admin";
+  role: "admin" | "global_admin";
   gallery_access: boolean;
   last_sign_in_at: string | null;
   created_at: string;
@@ -31,7 +31,7 @@ const INVITE_STATUS_COLOR: Record<AdminInvite["status"], { fg: string; bg: strin
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** The signed-in super-admin's email — self-destructive actions are hidden for that row. */
+  /** The signed-in global-admin's email — self-destructive actions are hidden for that row. */
   currentEmail?: string;
 }
 
@@ -58,7 +58,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   const [adding, setAdding] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newAdminPw, setNewAdminPw] = useState("");
-  const [newRole, setNewRole] = useState<"admin" | "super_admin">("admin");
+  const [newRole, setNewRole] = useState<"admin" | "global_admin">("admin");
 
   // Invite ("summon") flow
   const [invites, setInvites] = useState<AdminInvite[]>([]);
@@ -77,7 +77,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   // setState happens only inside the promise callbacks (never synchronously in
   // the effect body), so this stays clear of react-hooks/set-state-in-effect.
   const loadUsers = useCallback(() => {
-    fetch("/api/admin/super/users")
+    fetch("/api/admin/global/users")
       .then((r) => r.json())
       .then((j) => {
         if (j.data) setUsers(j.data);
@@ -88,7 +88,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   }, []);
 
   const loadInvites = useCallback(() => {
-    fetch("/api/admin/super/invites")
+    fetch("/api/admin/global/invites")
       .then((r) => r.json())
       .then((j) => { if (j.data) setInvites(j.data as AdminInvite[]); })
       .catch(() => {});
@@ -98,7 +98,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   // fresh mount — useState defaults handle the reset; the effect only loads data.
   useEffect(() => { loadUsers(); loadInvites(); }, [loadUsers, loadInvites]);
 
-  // Live: keep the invites list in sync across super-admin sessions.
+  // Live: keep the invites list in sync across global-admin sessions.
   useRealtimeChannel("admin_invites", (payload) => {
     if (payload.eventType === "INSERT") {
       const row = payload.new as unknown as AdminInvite;
@@ -119,7 +119,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setError("");
     setInviteLink(null);
     try {
-      const res = await fetch("/api/admin/super/invites", {
+      const res = await fetch("/api/admin/global/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -152,7 +152,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setRevokingId(id);
     setError("");
     try {
-      const res = await fetch(`/api/admin/super/invites/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/global/invites/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         setError(j.error ?? "Failed to revoke invite.");
@@ -176,7 +176,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/super/users/${userId}/password`, {
+      const res = await fetch(`/api/admin/global/users/${userId}/password`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: pw }),
@@ -208,7 +208,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/super/users", {
+      const res = await fetch("/api/admin/global/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmail, password: newAdminPw, role: newRole }),
@@ -231,11 +231,11 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   }
 
   async function handleToggleRole(u: AdminUser) {
-    const nextRole = u.role === "super_admin" ? "admin" : "super_admin";
+    const nextRole = u.role === "global_admin" ? "admin" : "global_admin";
     setBusyId(u.id);
     setError("");
     try {
-      const res = await fetch(`/api/admin/super/users/${u.id}`, {
+      const res = await fetch(`/api/admin/global/users/${u.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: nextRole }),
@@ -243,7 +243,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
       const j = await res.json();
       if (!res.ok) setError(j.error ?? "Failed to update role.");
       else {
-        flash(`${u.email} is now ${nextRole === "super_admin" ? "Super Admin" : "Admin"}.`, true);
+        flash(`${u.email} is now ${nextRole === "global_admin" ? "Global Admin" : "Admin"}.`, true);
         setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
       }
     } catch {
@@ -266,7 +266,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setRevealBusyId(u.id);
     setError("");
     try {
-      const res = await fetch(`/api/admin/super/users/${u.id}/password`);
+      const res = await fetch(`/api/admin/global/users/${u.id}/password`);
       const j = await res.json();
       if (!res.ok) {
         setError(j.error ?? "Failed to reveal password.");
@@ -297,7 +297,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     // Optimistic — revert on failure.
     setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, gallery_access: next } : x)));
     try {
-      const res = await fetch(`/api/admin/super/users/${u.id}/permissions`, {
+      const res = await fetch(`/api/admin/global/users/${u.id}/permissions`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ galleryAccess: next }),
@@ -321,7 +321,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     setBusyId(u.id);
     setError("");
     try {
-      const res = await fetch(`/api/admin/super/users/${u.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/global/users/${u.id}`, { method: "DELETE" });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) setError(j.error ?? "Failed to remove admin.");
       else {
@@ -559,11 +559,11 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                 />
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as "admin" | "super_admin")}
+                  onChange={(e) => setNewRole(e.target.value as "admin" | "global_admin")}
                   style={inputStyle}
                 >
                   <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
+                  <option value="global_admin">Global Admin</option>
                 </select>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -614,7 +614,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                         {isSelf && <span style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}> · you</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                        {u.role === "super_admin" ? "Super Admin" : "Admin"}
+                        {u.role === "global_admin" ? "Global Admin" : "Admin"}
                         {u.last_sign_in_at
                           ? ` · last sign-in ${new Date(u.last_sign_in_at).toLocaleDateString("en-IN")}`
                           : ""}
@@ -637,7 +637,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                         </button>
                         {!isSelf && (
                           <button onClick={() => handleToggleRole(u)} disabled={busy} style={{ ...smallBtn, opacity: busy ? 0.6 : 1 }}>
-                            {u.role === "super_admin" ? "Make Admin" : "Make Super Admin"}
+                            {u.role === "global_admin" ? "Make Admin" : "Make Global Admin"}
                           </button>
                         )}
                         {!isSelf && (
@@ -659,7 +659,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(20,18,12,.08)" }}>
                       {revealed[u.id] === null ? (
                         <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-                          No super-admin-set password stored yet. Use <strong>Set password</strong> to create one.
+                          No global-admin-set password stored yet. Use <strong>Set password</strong> to create one.
                         </div>
                       ) : (
                         <>

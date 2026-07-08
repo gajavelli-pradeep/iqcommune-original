@@ -3,6 +3,7 @@
 import { cloneElement, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodV4Resolver } from "@/lib/zodV4Resolver";
+import { SelectField } from "@/components/public/SelectField";
 import {
   ApplicationSchema,
   type Application,
@@ -10,6 +11,8 @@ import {
   EXPERIENCE_OPTIONS,
   TEACH_FREQ_OPTIONS,
 } from "@/lib/schemas/application";
+
+const FAMILY_RELATIONS = ["Spouse", "Parent", "Sibling", "Other"] as const;
 
 export function ApplicationForm() {
   const [success, setSuccess] = useState(false);
@@ -141,13 +144,11 @@ export function ApplicationForm() {
             <input {...register("role")} style={inputStyle} placeholder="Equity Analyst" />
           </Field>
           <Field label="Years of experience" error={errors.experience?.message}>
-            {/* Gap 23: placeholder 'Select…' */}
-            <select {...register("experience")} style={selectStyle}>
-              <option value="">Select…</option>
-              {EXPERIENCE_OPTIONS.map((e) => (
-                <option key={e} value={e}>{e}</option>
-              ))}
-            </select>
+            <SelectField
+              options={EXPERIENCE_OPTIONS}
+              value={watch("experience") ?? ""}
+              onChange={(v) => setValue("experience", v as Application["experience"], { shouldValidate: true })}
+            />
           </Field>
         </div>
 
@@ -228,12 +229,11 @@ export function ApplicationForm() {
 
         {/* Gap 24 & 25: frequency select in teaching preference section, label 'How often could you teach?', placeholder 'Select…' */}
         <Field label="How often could you teach?" error={errors.teachFreq?.message}>
-          <select {...register("teachFreq")} style={selectStyle}>
-            <option value="">Select…</option>
-            {TEACH_FREQ_OPTIONS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
+          <SelectField
+            options={TEACH_FREQ_OPTIONS}
+            value={watch("teachFreq") ?? ""}
+            onChange={(v) => setValue("teachFreq", v as Application["teachFreq"], { shouldValidate: true })}
+          />
         </Field>
       </div>
 
@@ -458,13 +458,11 @@ export function ApplicationForm() {
                 {/* Gap 38: 'Relationship to you', placeholder 'Select…' */}
                 {/* Gap 37: no 'Child' option */}
                 <Field label="Relationship to you">
-                  <select {...register("familyRelation")} style={selectStyle}>
-                    <option value="">Select…</option>
-                    <option value="Spouse">Spouse</option>
-                    <option value="Parent">Parent</option>
-                    <option value="Sibling">Sibling</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <SelectField
+                    options={FAMILY_RELATIONS}
+                    value={watch("familyRelation") ?? ""}
+                    onChange={(v) => setValue("familyRelation", v as Application["familyRelation"], { shouldValidate: true })}
+                  />
                 </Field>
               </div>
 
@@ -684,17 +682,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   outline: "none",
   transition: "border-color .16s ease, box-shadow .16s ease, background .16s ease",
-};
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: "none",
-  WebkitAppearance: "none",
-  cursor: "pointer",
-  paddingRight: 38,
-  backgroundImage:
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 14px center",
 };
 const errStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "#a32d2d", marginTop: 5 };
 const checkCircle: React.CSSProperties = {

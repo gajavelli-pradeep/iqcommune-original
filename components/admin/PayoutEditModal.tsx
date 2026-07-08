@@ -66,7 +66,7 @@ export function PayoutEditModal({
 
     let res: Response;
     try {
-      res = await fetch(`/api/admin/super/payouts/${initialData.id}`, {
+      res = await fetch(`/api/admin/global/payouts/${initialData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),

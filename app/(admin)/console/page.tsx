@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { decryptPaymentFields } from "@/lib/practitioner-payment";
 import { AdminConsoleView } from "@/components/admin/AdminConsoleView";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Agreement } from "@/components/admin/AgreementTable";
@@ -30,10 +31,13 @@ type AgreementFetchRow = Database["public"]["Tables"]["agreements"]["Row"] & {
 type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
   practitioner_name: string;
 };
+type ConfirmationFetchRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
+  practitioner: { name: string; email: string } | null;
+};
 
 async function getData() {
   const db = createAdminClient();
-  const [practitioners, sessions, sessionFeedback, requests, payouts, agreementsRes, photosRes] = await Promise.all([
+  const [practitioners, sessions, sessionFeedback, requests, payouts, agreementsRes, photosRes, confirmationsRes] = await Promise.all([
     db.from("practitioners").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
     db.from("sessions").select("*, practitioner:practitioners(name, email)").is("deleted_at", null).order("session_date", { ascending: false }).limit(200),
     db.from("session_feedback").select("id, session_id, overall_rating"),
@@ -41,6 +45,7 @@ async function getData() {
     db.from("payouts").select("*, session:sessions(ref_code, module, session_date), practitioner:practitioners(name, upi_id, bank_account, bank_name)").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
     db.from("agreements").select("*, practitioner:practitioners(name, role)").is("deleted_at", null).order("signed_at", { ascending: false }).limit(200),
     db.from("photo_submissions").select("*").order("submitted_at", { ascending: false }).limit(200),
+    db.from("confirmations").select("*, practitioner:practitioners(name, email)").is("deleted_at", null).order("issued_on", { ascending: false }).limit(200),
   ]);
   // Surface DB errors so Next.js error.tsx handles them — empty tables on query failure
   // are worse than an error page because they look like "no data" to the admin.
@@ -86,23 +91,30 @@ async function getData() {
     (subsectionAvg.data ?? []).map((r) => [r.practitioner_id, r])
   );
   const practitionersWithAverages: PractitionerRow[] = (practitioners.data ?? []).map((p) => ({
-    ...p,
+    ...decryptPaymentFields(p),
     subsection_averages: avgByPractitioner[p.id] ?? null,
+  }));
+
+  // Payout rows join the practitioner's (encrypted) payment fields — decrypt those too.
+  const payoutsDecrypted = ((payouts.data ?? []) as PayoutRow[]).map((p) => ({
+    ...p,
+    practitioner: p.practitioner ? decryptPaymentFields(p.practitioner) : null,
   }));
 
   return {
     practitioners: practitionersWithAverages,
     sessions: sessionsWithFeedback,
     requests: (requests.data ?? []) as RequestRow[],
-    payouts: (payouts.data ?? []) as PayoutRow[],
+    payouts: payoutsDecrypted,
     agreements,
     photos,
+    confirmations: (confirmationsRes.data ?? []) as ConfirmationFetchRow[],
   };
 }
 
 export default async function ConsolePage() {
-  const { practitioners, sessions, requests, payouts, agreements, photos } = await getData();
-  // This admin's OWN gallery access — granted per-account by a super admin.
+  const { practitioners, sessions, requests, payouts, agreements, photos, confirmations } = await getData();
+  // This admin's OWN gallery access — granted per-account by a global admin.
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const galleryAdminAccess = user?.app_metadata?.gallery_access === true;
@@ -114,6 +126,7 @@ export default async function ConsolePage() {
       payouts={payouts}
       agreements={agreements}
       photos={photos}
+      confirmations={confirmations}
       email={user?.email ?? process.env.ADMIN_EMAIL}
       galleryAdminAccess={galleryAdminAccess}
     />
