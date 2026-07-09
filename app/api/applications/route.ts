@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       email:            d.email,
       phone:            d.phone,
       role:             d.role,
+      org:              d.organisation ?? null,
       experience:       d.experience,
       city:             d.city,
       state:            d.state,

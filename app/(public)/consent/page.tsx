@@ -24,19 +24,22 @@ function Shell({ children }: { children: React.ReactNode }) {
           zIndex: 100,
         }}
       >
-        <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", height: 68 }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68 }}>
           <span style={{ display: "flex", alignItems: "baseline", lineHeight: 1 }}>
             <span style={{ color: "var(--gold)", fontWeight: 700, fontSize: 24, letterSpacing: "-0.04em" }}>iq</span>
             <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 24, letterSpacing: "-0.04em" }}>commune</span>
           </span>
           <span
             style={{
-              marginLeft: 14,
               fontSize: 11,
               fontWeight: 600,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               color: "var(--gold-dark)",
+              background: "var(--gold-light)",
+              border: "1px solid var(--gold-border)",
+              padding: "3px 10px",
+              borderRadius: 100,
             }}
           >
             Session Consent

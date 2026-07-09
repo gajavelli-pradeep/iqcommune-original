@@ -13,7 +13,7 @@ export interface ConfirmationPdfData {
   sessionRef:       string;
   module:           string;
   date:             string;   // display date, e.g. "12 Aug 2026"
-  time:             string;   // "10:00 – 13:00"
+  time:             string;   // "10:00 AM – 1:00 PM"
   venue:            string;
   participants:     number;
   gross:            number;
@@ -22,6 +22,17 @@ export interface ConfirmationPdfData {
   gstRate:          number;
   gstAmount:        number;
   net:              number;
+  // V4 parity fields (optional — older confirmations predate them).
+  agreementRef?:    string;
+  issuedOn?:        string;
+  startTime?:       string;   // "10:00 AM"
+  duration?:        string;   // "3 hours" | "6 hours"
+  city?:            string;
+  state?:           string;
+  audience?:        string;
+  spoc?:            string;
+  invoiceBy?:       string;
+  paymentMethod?:   string;
   // Present once the practitioner has consented; absent on the admin record copy.
   signedAt?:        string | null;
   sigMode?:         "typed" | "drawn" | null;
@@ -80,18 +91,28 @@ export function generateConfirmationPdf(data: ConfirmationPdfData): Buffer {
   y += 8;
   field("Name", data.practitionerName, M, halfW, y);
   field("Session Ref", data.sessionRef, MID + 4, halfW, y);
+  y += 16;
+  field("Empanelment Agreement Ref", data.agreementRef ?? "—", M, halfW, y);
+  field("Issued On", data.issuedOn ?? "—", MID + 4, halfW, y);
   y += 16; rule();
 
   // ── Session details ──
+  const cityState = [data.city, data.state].filter(Boolean).join(", ") || "—";
   y += 10; heading("Session Details");
   y += 8;
   field("Module", data.module, M, halfW, y);
   field("Date", data.date, MID + 4, halfW, y);
   y += 16;
-  field("Time", data.time, M, halfW, y);
+  field("Start Time", data.startTime ?? data.time, M, halfW, y);
+  field("Duration", data.duration ?? "—", MID + 4, halfW, y);
+  y += 16;
+  field("Venue", data.venue, M, halfW, y);
+  field("City, State", cityState, MID + 4, halfW, y);
+  y += 16;
+  field("Audience", data.audience ?? "—", M, halfW, y);
   field("Participants", String(data.participants), MID + 4, halfW, y);
   y += 16;
-  field("Venue", data.venue, M, CW, y);
+  field("SPOC", data.spoc ?? "—", M, CW, y);
   y += 16; rule();
 
   // ── Payout breakdown ──
@@ -114,6 +135,16 @@ export function generateConfirmationPdf(data: ConfirmationPdfData): Buffer {
   lineRow(`Add: GST (${data.gstRate}%)`, `+ ${rs(data.gstAmount)}`);
   lineRow("Net payout", rs(data.net), true);
   y += 4; rule();
+
+  // ── Tax invoice ──
+  y += 10; heading("Tax Invoice");
+  y += 8;
+  field("Invoice to be raised by", data.invoiceBy ?? "—", M, halfW, y);
+  field("Payment method on file", data.paymentMethod ?? "—", MID + 4, halfW, y);
+  y += 14;
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(...MUTED);
+  doc.text("You are responsible for raising this invoice — iqcommune does not raise it on your behalf.", M, y);
+  y += 6; rule();
 
   // ── Signature / consent ──
   y += 10; heading("Practitioner Consent");

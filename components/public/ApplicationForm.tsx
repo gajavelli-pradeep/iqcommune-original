@@ -133,7 +133,7 @@ export function ApplicationForm() {
 
         {/* Gap 56: label 'Phone number' */}
         <Field label="Phone number" error={errors.phone?.message}>
-          <input {...register("phone")} style={inputStyle} placeholder="+91 98765 43210" />
+          <input {...register("phone")} type="tel" inputMode="tel" style={inputStyle} placeholder="+91 98765 43210" />
         </Field>
 
         {/* Gap 19: no Organisation field */}
@@ -151,6 +151,16 @@ export function ApplicationForm() {
             />
           </Field>
         </div>
+
+        {/* Organisation / practice name — the value the disclosure + consent copy
+            promises to share with the session organiser. Optional: blank = independent. */}
+        <Field
+          label="Organisation / practice name"
+          hint="Leave blank if you're independent — we'll describe you as an independent practitioner."
+          error={errors.organisation?.message}
+        >
+          <input {...register("organisation")} style={inputStyle} placeholder="e.g. HDFC Securities" />
+        </Field>
 
         {/* Gap 22: city + state side-by-side with hint */}
         <div style={rowTwo}>

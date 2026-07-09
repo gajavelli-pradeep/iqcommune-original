@@ -30,6 +30,10 @@ export const ApplicationSchema = z
     email: z.string().email("Invalid email"),
     phone: z.string().min(6, "Required"),
     role: z.string().min(1, "Required"),
+    // Optional: the disclosure/consent copy promises to share the practitioner's
+    // organisation or practice name with the session organiser, so the form must
+    // collect it. Blank = independent practitioner.
+    organisation: z.string().optional(),
     experience: z.enum(EXPERIENCE_OPTIONS, { message: "Select experience range" }),
     city:    z.string().min(1, "Required"),
     state:   z.string().min(1, "Required"),

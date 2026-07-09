@@ -10,6 +10,7 @@ import {
   ghostBtn,
 } from "@/components/admin/FormModal";
 import { computeNet } from "@/lib/consent";
+import { DURATION_OPTIONS } from "@/lib/schemas/consent";
 import type { ConfirmationRow } from "@/components/admin/ConsentTable";
 
 interface SessionOption {
@@ -39,7 +40,7 @@ export function ConsentFormModal({
   onCreated: (c: ConfirmationRow) => void;
   confirmedSessionIds: string[];
 }) {
-  const empty = { sessionId: "", gross: "", tdsRate: "", gstRate: "" };
+  const empty = { sessionId: "", gross: "", tdsRate: "", gstRate: "", startTime: "", duration: "3 hours" };
   const [form, setForm] = useState(empty);
   const [sessions, setSessions] = useState<SessionOption[]>([]);
   // Parent remounts this modal on open (via `key`), so state starts fresh each time —
@@ -90,13 +91,14 @@ export function ConsentFormModal({
     setError("");
     if (!selected) return setError("Select an eligible session.");
     if (gross <= 0) return setError("Enter a gross amount.");
+    if (!form.startTime) return setError("Enter the session start time.");
     setSaving(true);
     let res: Response;
     try {
       res = await fetch("/api/admin/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate }),
+        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate, startTime: form.startTime, duration: form.duration }),
       });
     } catch {
       setSaving(false);
@@ -219,6 +221,19 @@ export function ConsentFormModal({
               Practitioner: <strong>{selected.practitioner?.name ?? "Unknown"}</strong> · {selected.participants} pax · {selected.venue}
             </div>
           )}
+
+          <label>
+            <span style={fieldLabelStyle}>Start time *</span>
+            <input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} />
+          </label>
+          <label>
+            <span style={fieldLabelStyle}>Duration *</span>
+            <select style={fieldSelectStyle} value={form.duration} onChange={set("duration")}>
+              {DURATION_OPTIONS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </label>
 
           <label>
             <span style={fieldLabelStyle}>Gross amount (₹) *</span>

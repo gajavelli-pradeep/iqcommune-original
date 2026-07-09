@@ -1,6 +1,6 @@
 "use client";
 
-import { selectChevronBg, selectReset } from "@/components/ui/selectStyle";
+import { SelectField, type SelectFieldItem } from "@/components/public/SelectField";
 import { BUNDLES, BUNDLE_LABELS, MODULES } from "@/lib/schemas/session-request";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -23,6 +23,17 @@ const GROUP_SIZE_OPTIONS: { value: GroupSize; label: string }[] = [
   { value: "5-8", label: "5 – 8 people" },
   { value: "9-15", label: "9 – 15 people" },
   { value: "16-25", label: "16 – 25 people" },
+];
+
+// Topic dropdown: two titled groups + a trailing ungrouped option (label ≠ value
+// for bundles) — the branded SelectField renders this natively.
+const TOPIC_OPTIONS: SelectFieldItem[] = [
+  { label: "Modules", options: MODULES.map((m) => ({ value: m, label: m })) },
+  {
+    label: "Bundled Sessions (6 hrs)",
+    options: BUNDLES.map((b) => ({ value: b, label: BUNDLE_LABELS[b] })),
+  },
+  { value: "Not sure — help me choose", label: "Not sure — help me choose" },
 ];
 
 // ── Modal-id → canonical API/DB vocabulary (must match SessionRequestSchema) ──
@@ -206,13 +217,6 @@ const inputStyle: React.CSSProperties = {
     "border-color .16s ease, box-shadow .16s ease, background .16s ease",
 };
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  ...selectReset,
-  paddingRight: 38,
-  background: selectChevronBg(14),
-};
-
 const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12.5,
@@ -244,11 +248,11 @@ function GroupContextContent() {
 function OrgContextContent() {
   return (
     <>
-      You are registering as the SPOC for your firm. We'll match the right
-      practitioner and structure the session around your goals.{" "}
+      You are registering as the SPOC for your organisation. We&apos;ll tailor
+      the session to your team&apos;s goals and align the right practitioner.{" "}
       <strong style={{ color: "#14161d" }}>
-        Please note — venue and basic infrastructure (seating, projector/screen)
-        are to be arranged by your organisation. We handle everything else.
+        Venue and basic infrastructure (seating, projector/screen) are to be
+        arranged by your organisation. We handle everything else.
       </strong>{" "}
       You can also request a 6-hour bundled session — select a bundle option in
       the topic field below.
@@ -865,33 +869,13 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     <label htmlFor="modal-topic" style={labelStyle}>
                       Topic of interest
                     </label>
-                    <select
+                    <SelectField
                       id="modal-topic"
-                      className="topic-select"
+                      options={TOPIC_OPTIONS}
                       value={form.topic}
-                      onChange={(e) => updateField("topic", e.target.value)}
-                      style={selectStyle}
-                      required
-                    >
-                      <option value="">Select a training topic…</option>
-                      <optgroup label="Modules">
-                        {MODULES.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Bundled Sessions (6 hrs)">
-                        {BUNDLES.map((t) => (
-                          <option key={t} value={t}>
-                            {BUNDLE_LABELS[t]}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <option value="Not sure — help me choose">
-                        Not sure — help me choose
-                      </option>
-                    </select>
+                      onChange={(v) => updateField("topic", v)}
+                      placeholder="Select a training topic…"
+                    />
                     <div
                       style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}
                     >
@@ -914,25 +898,15 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         <label htmlFor="modal-groupsize" style={labelStyle}>
                           Group size
                         </label>
-                        <select
+                        <SelectField
                           id="modal-groupsize"
+                          options={GROUP_SIZE_OPTIONS}
                           value={form.groupSize}
-                          onChange={(e) =>
-                            updateField(
-                              "groupSize",
-                              e.target.value as GroupSize,
-                            )
+                          onChange={(v) =>
+                            updateField("groupSize", v as GroupSize)
                           }
-                          style={selectStyle}
-                          required
-                        >
-                          <option value="">Select…</option>
-                          {GROUP_SIZE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Select…"
+                        />
                         <div
                           style={{
                             fontSize: 11,

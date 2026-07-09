@@ -88,12 +88,10 @@ interface Counts {
   pendingPayoutGross?: number;
   pendingPayoutNet?: number;
   paidPayoutGross?: number;
-  paidPayoutNet?: number;
   nextSessionDate?: string;
   confirmedSessions?: number;
   completedSessions?: number;
   totalRequests?: number;
-  matchedRequests?: number;
   confirmedRequests?: number;
   totalPractitioners?: number;
   totalSessions?: number;
@@ -152,10 +150,9 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
 
   return {
     requests: [
-      { label: "Total requests",    value: counts.totalRequests ?? 0, filter: "all" },
-      { label: "New — unreviewed",  value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0, filter: "New" },
-      { label: "Matched",           value: counts.matchedRequests ?? 0, filter: "Matched" },
-      { label: "Confirmed",         value: counts.confirmedRequests ?? 0, filter: "Confirmed" },
+      { label: "Total requests",           value: counts.totalRequests ?? 0, filter: "all" },
+      { label: "New — unassigned",         value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0, filter: "New" },
+      { label: "Confirmed — session created", value: counts.confirmedRequests ?? 0, filter: "Confirmed" },
     ],
     practitioners: [
       { label: "Total",            value: counts.totalPractitioners ?? 0, filter: "all" },
@@ -180,7 +177,7 @@ function buildTabStats(counts: Counts): Record<string, StatDef[]> {
       { label: "Total paid out",    value: counts.paidPayoutGross ? fmt(counts.paidPayoutGross) : "—", filter: "Paid" },
       { label: "Pending payment",   value: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) : (counts.pendingPayouts > 0 ? `${counts.pendingPayouts}` : "—"), delta: counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
       { label: "Sessions invoiced", value: counts.totalPayouts ?? 0, filter: "all" },
-      { label: "Paid this month",   value: counts.paidPayoutNet ? fmt(counts.paidPayoutNet) : "—", filter: "Paid" },
+      { label: "Paid this month",   value: counts.paidPayouts ?? 0, filter: "Paid" },
     ],
     photos: [
       { label: "Total",            value: counts.totalPhotos ?? 0, filter: "All" },
@@ -643,13 +640,11 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     pendingPayoutGross: pendingPayoutList.reduce((s, p) => s + p.gross_amount, 0),
     pendingPayoutNet:   pendingPayoutList.reduce((s, p) => s + p.net_amount, 0),
     paidPayoutGross:    paidPayoutList.reduce((s, p) => s + p.gross_amount, 0),
-    paidPayoutNet:      paidPayoutList.reduce((s, p) => s + p.net_amount, 0),
     nextSessionDate:    nextSession?.session_date,
     confirmedSessions:  sessionsData.filter((s) => s.status === "Upcoming" && s.consent_status === "Consent given").length,
     completedSessions:  sessionsData.filter((s) => s.status === "Completed").length,
     consentPending:     sessionsData.filter((s) => s.consent_status === "Pending consent").length,
     totalRequests:      requestsData.length,
-    matchedRequests:    requestsData.filter((r) => r.status === "Matched").length,
     confirmedRequests:  requestsData.filter((r) => r.status === "Confirmed").length,
     totalPractitioners: practitionersData.length,
     totalSessions:      sessionsData.length,

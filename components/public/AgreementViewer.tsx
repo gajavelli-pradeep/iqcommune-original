@@ -47,6 +47,10 @@ export function AgreementViewer() {
     resolver: zodV4Resolver(AgreementSignSchema),
     defaultValues: {
       ref: refCode,
+      // Pre-fill the sign fields from the link params so returning practitioners
+      // see their name/designation ready (V4 onboarding parity).
+      fullName: pName,
+      designation: pRole,
       sigMode: "drawn",
       linkSig: params.get("sig") ?? "",
       linkParams: {
@@ -729,7 +733,7 @@ export function AgreementViewer() {
               The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
-              (a) Sessions are typically 2–3 hours in duration, in-person, with a maximum of 25 participants.
+              (a) Sessions are typically 3 hours in duration, in-person, with a maximum of 25 participants — or up to 6 hours for a bundled two-module session.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (b) The Platform will notify the Practitioner of session requests and confirm availability before any commitment is made. The Practitioner is never obligated to accept a session.
@@ -757,7 +761,7 @@ export function AgreementViewer() {
               (a) Before each session is confirmed, the Platform will issue a Per-Session Confirmation setting out: session date and timing, module, number of participants, audience type, confirmed payout amount, TDS applicability, net payout, and expected payment date. The session is not confirmed until the Practitioner provides digital consent.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
-              (b) The Practitioner&apos;s payout per session is determined by the Platform based on the topic, number of participants, and type of audience. The Platform does not disclose total session fees or its own margin.
+              (b) The Practitioner&apos;s payout per session is determined by the Platform based on the topic, number of participants, and type of audience. The Platform does not disclose total session fees or its own margin. Where a session proceeds with attendance at or above the minimum group size committed by the client, the Practitioner&apos;s confirmed payout is unaffected by any shortfall between committed and actual attendance.
             </p>
             <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, paddingLeft: "1.25rem", marginBottom: "0.4rem" }}>
               (c) Payment will be made within 7 working days of the session date, subject to successful completion.

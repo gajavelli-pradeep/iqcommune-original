@@ -18,6 +18,22 @@ function displayDate(iso: string): string {
     : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// "14:30" → "2:30 PM"; add N hours for the end time. Kept local — this is the one
+// place a session's display time is minted (from the admin-entered start + duration).
+function fmt12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h)) return hhmm;
+  const ampm = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+function addHours(hhmm: string, hrs: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h)) return "";
+  const total = (h * 60 + m + hrs * 60) % (24 * 60);
+  return fmt12(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+}
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;
@@ -53,12 +69,12 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { sessionId, gross, tdsRate, gstRate } = parsed.data;
+  const { sessionId, gross, tdsRate, gstRate, startTime, duration } = parsed.data;
   const supabase = createAdminClient();
 
   const { data: session, error: fetchErr } = await supabase
     .from("sessions")
-    .select("id, ref_code, module, practitioner_id, session_date, start_time, end_time, venue, participants, consent_status, status, practitioner:practitioners(name, email)")
+    .select("id, ref_code, module, practitioner_id, request_id, audience_type, session_date, venue, participants, consent_status, status, practitioner:practitioners(name, email, pay_to_family, family_name, upi_id, bank_account)")
     .eq("id", sessionId)
     .is("deleted_at", null)
     .single();
@@ -91,18 +107,65 @@ export async function POST(req: NextRequest) {
 
   const { net, tdsAmount, gstAmount } = computeNet({ gross, tdsRate, gstRate });
   const refCode = generateConfirmationRef();
-  const time = `${session.start_time} – ${session.end_time}`;
   const dateDisplay = displayDate(session.session_date);
+
+  // Mint the display time from the admin-entered start + duration, and persist it
+  // onto the session (Assign left start/end blank — this is where they're captured).
+  const startDisplay = fmt12(startTime);
+  const endDisplay = addHours(startTime, duration === "6 hours" ? 6 : 3);
+  const time = `${startDisplay} – ${endDisplay}`;
+  await supabase.from("sessions").update({ start_time: startDisplay, end_time: endDisplay }).eq("id", sessionId);
+
+  // Enrich the snapshot with V4 fields: SPOC + city/state from the originating
+  // request, the active empanelment agreement ref, and invoice/payment details.
+  let reqRow: { name: string | null; city: string | null; state: string | null } | null = null;
+  if (session.request_id) {
+    const { data } = await supabase
+      .from("session_requests")
+      .select("name, city, state")
+      .eq("id", session.request_id)
+      .maybeSingle();
+    reqRow = data;
+  }
+  const { data: agr } = await supabase
+    .from("agreements")
+    .select("ref_code")
+    .eq("practitioner_id", session.practitioner_id)
+    .eq("status", "Active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const firstName = practitionerName.split(" ")[0] || practitionerName;
+  const agreementRef = agr?.ref_code ?? "—";
+  const issuedOn = displayDate(new Date().toISOString());
+  const city = reqRow?.city ?? "";
+  const state = reqRow?.state ?? "";
+  const audience = session.audience_type;
+  const spoc = reqRow?.name ?? "—";
+  const invoiceBy = practitioner?.pay_to_family && practitioner?.family_name ? practitioner.family_name : practitionerName;
+  const paymentMethod = practitioner?.upi_id ? "UPI" : practitioner?.bank_account ? "Bank transfer" : "—";
 
   const snapshot = {
     practitionerName,
+    firstName,
+    agreementRef,
+    issuedOn,
     sessionRef: session.ref_code,
     module: session.module,
     date: dateDisplay,
     time,
+    startTime: startDisplay,
+    duration,
     venue: session.venue,
+    city,
+    state,
+    audience,
     participants: session.participants,
+    spoc,
     gross, tdsRate, tdsAmount, gstRate, gstAmount, net,
+    invoiceBy,
+    paymentMethod,
   };
 
   const { data: created, error: insertErr } = await supabase
@@ -136,6 +199,8 @@ export async function POST(req: NextRequest) {
       refCode, practitionerName, sessionRef: session.ref_code,
       module: session.module, date: dateDisplay, time, venue: session.venue,
       participants: session.participants, gross, tdsRate, tdsAmount, gstRate, gstAmount, net,
+      agreementRef, issuedOn, startTime: startDisplay, duration,
+      city, state, audience, spoc, invoiceBy, paymentMethod,
     });
     await supabase.from("confirmations").update({ storage_path: storagePath }).eq("id", created.id);
   } catch (pdfErr) {
@@ -149,7 +214,7 @@ export async function POST(req: NextRequest) {
       try {
         const { subject, htmlContent } = sessionConfirmationEmail(practitionerName, {
           refCode: session.ref_code, module: session.module, date: dateDisplay,
-          startTime: session.start_time, endTime: session.end_time, venue: session.venue,
+          startTime: startDisplay, endTime: endDisplay, venue: session.venue,
           participants: session.participants,
           grossAmount: gross, tdsAmount, netAmount: net, tdsRate,
           consentUrl: consentLink,

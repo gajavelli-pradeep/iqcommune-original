@@ -279,7 +279,7 @@ const HOW_STEPS = [
   {
     num: "3",
     title: "We get in touch",
-    desc: "Our team reaches out to confirm details, align the right practitioner, and finalise the venue with you.",
+    desc: "Our team reaches out to confirm details, align the right practitioner, and lock in the schedule with you.",
   },
   {
     num: "4",
