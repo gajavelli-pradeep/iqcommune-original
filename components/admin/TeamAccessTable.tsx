@@ -42,11 +42,6 @@ const smallBtn: React.CSSProperties = {
   fontSize: 12, padding: "6px 12px", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8,
   background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", color: "var(--ink)", whiteSpace: "nowrap",
 };
-const rolePill: React.CSSProperties = {
-  display: "inline-block", fontSize: 12, fontWeight: 500, padding: "3px 10px", borderRadius: 100,
-  background: "var(--surface-sunken)", color: "var(--ink-muted)", whiteSpace: "nowrap",
-};
-const menuDivider: React.CSSProperties = { height: 1, background: "rgba(20,18,12,.08)", margin: "4px 0" };
 
 // Auth accounts carry no display name, so derive a readable one from the email.
 function nameFromEmail(email: string): string {
@@ -263,9 +258,17 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                   </td>
                   <td style={{ ...td, color: "var(--ink-muted)" }}>{m.email}</td>
 
-                  {/* Role — read-only label; change it from the ⋯ actions menu */}
+                  {/* Role — inline dropdown per V4 (disabled for self; the API blocks self-demotion) */}
                   <td style={td}>
-                    <span style={rolePill}>{ROLE_LABEL[m.role]}</span>
+                    <select
+                      value={m.role}
+                      disabled={isSelf || busy}
+                      aria-label={`Role for ${m.email}`}
+                      onChange={(e) => changeRole(m, e.target.value as TeamMember["role"])}
+                      style={{ ...selectStyle, opacity: isSelf || busy ? 0.55 : 1, cursor: isSelf || busy ? "not-allowed" : "pointer" }}
+                    >
+                      {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
                   </td>
 
                   <td style={{ ...td, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>{lastActive(m.last_sign_in_at)}</td>
@@ -294,14 +297,6 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                           padding: 4, textAlign: "left",
                         }}
                       >
-                        {/* Change role (hidden for self — the API blocks self-demotion) */}
-                        {!isSelf && ROLE_OPTIONS.filter((r) => r.value !== m.role).map((r) => (
-                          <button key={r.value} type="button" role="menuitem" style={menuItemStyle}
-                            onClick={() => { setOpenMenuId(null); changeRole(m, r.value); }}>
-                            Make {r.label}
-                          </button>
-                        ))}
-                        {!isSelf && <div style={menuDivider} />}
                         <button type="button" role="menuitem" style={menuItemStyle}
                           onClick={() => { setOpenMenuId(null); setPwEditId(m.id); setPwValue(""); setShowPw(false); }}>
                           Set password
