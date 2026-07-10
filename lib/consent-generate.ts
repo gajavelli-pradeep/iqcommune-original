@@ -25,11 +25,12 @@ function fmt12(hhmm: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
-function addHours(hhmm: string, hrs: number): string {
+// Add N hours to a 24h "HH:MM", returning 24h "HH:MM" (fmt12 handles display).
+function addHours24(hhmm: string, hrs: number): string {
   const [h, m] = hhmm.split(":").map(Number);
   if (Number.isNaN(h)) return "";
   const total = (h * 60 + m + hrs * 60) % (24 * 60);
-  return fmt12(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 export interface GenerateConfirmationInput {
@@ -100,10 +101,12 @@ export async function generateConfirmationForSession(
 
   // Mint the display time from the admin-entered start + duration, and persist it
   // onto the session (Assign left start/end blank — this is where they're captured).
+  const endTime24 = addHours24(startTime, duration === "6 hours" ? 6 : 3);
   const startDisplay = fmt12(startTime);
-  const endDisplay = addHours(startTime, duration === "6 hours" ? 6 : 3);
+  const endDisplay = endTime24 ? fmt12(endTime24) : "";
   const time = `${startDisplay} – ${endDisplay}`;
-  await supabase.from("sessions").update({ start_time: startDisplay, end_time: endDisplay }).eq("id", sessionId);
+  // Persist raw 24h HH:MM onto the session; the display strings feed the snapshot/PDF/email.
+  await supabase.from("sessions").update({ start_time: startTime, end_time: endTime24 }).eq("id", sessionId);
 
   // Enrich the snapshot with V4 fields: SPOC + city/state from the originating
   // request, the active empanelment agreement ref, and invoice/payment details.

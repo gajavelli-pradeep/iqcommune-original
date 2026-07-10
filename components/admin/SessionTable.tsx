@@ -38,8 +38,13 @@ interface FeedbackState {
   overall_rating: number | null;
 }
 
+// Accepts 24h "HH:MM" and formats to "H:MM AM/PM". Tolerant of legacy rows that
+// already stored a display string ("3:37 AM") or blanks — never prints "NaN".
 function fmt12h(t: string): string {
+  if (!t) return "—";
+  if (/[ap]m/i.test(t)) return t.trim(); // already a display string — pass through
   const [h, m] = t.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return t;
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
