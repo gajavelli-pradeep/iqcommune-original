@@ -625,7 +625,7 @@ export default function HomePage() {
               }}
             >
               Real financial insights from{" "}
-              <em style={{ color: "var(--gold)" }}>active</em> professionals{" "}—{" "}backed by years of experience.
+              <span style={{ color: "var(--gold)" }}>active</span> professionals{" "}—{" "}backed by years of experience.
             </h1>
 
             {/* Sub */}

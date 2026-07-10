@@ -531,25 +531,6 @@ textarea:focus-visible {
     box-shadow 0.28s ease;
 }
 @media (hover: hover) {
-  /* Any hovered card takes the highlight. */
-  .iq-perk:hover {
-    background: rgba(201, 152, 42, 0.09);
-    border-left-color: var(--gold);
-    transform: translateX(3px);
-  }
-  .iq-perk:hover .iq-perk-icon {
-    background: var(--gold) !important;
-    color: var(--ink) !important;
-    transform: scale(1.08);
-  }
-  /* While another card is hovered, the default-featured card drops its highlight. */
-  .iq-perks:hover .iq-perk--featured:not(:hover) {
-    background: transparent;
-    border-left-color: transparent;
-  }
-  .iq-perks:hover .iq-perk--featured:not(:hover) .iq-perk-icon {
-    background: rgba(201, 152, 42, 0.15);
-  }
   .iq-honest-card:hover {
     transform: translateY(-3px);
     border-color: rgba(255, 255, 255, 0.22) !important;

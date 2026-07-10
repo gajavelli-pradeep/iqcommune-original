@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { IqMark } from "./IqMark";
 
 /**
  * Shared public-site sticky header. One component, both pages.
@@ -49,7 +50,10 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
             className="nav-logo"
             style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: badge ? 14 : 0 }}
           >
-            <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* IQ mark + wordmark lockup — mark aligned to the wordmark/tagline column */}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <IqMark size={34} />
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ display: "flex", alignItems: "baseline", lineHeight: 1 }}>
                 <span style={{ color: "var(--gold)", fontWeight: 700, fontSize: 26, letterSpacing: "-0.04em" }}>iq</span>
                 <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 26, letterSpacing: "-0.04em" }}>commune</span>
@@ -65,6 +69,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
                 }}
               >
                 Where financial intelligence connects
+              </span>
               </span>
             </span>
 

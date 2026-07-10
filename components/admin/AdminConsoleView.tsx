@@ -130,7 +130,7 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
   photos:         { title: "Session Photos",          subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete" },
   gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
-  activity:       { title: "Activity",              subtitle: "Every admin & global-admin action — who did what, when, and before → after" },
+  activity:       { title: "Activity (90 days)",    subtitle: "Every admin & global-admin action in the last 90 days — who did what, when, and before → after" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
 

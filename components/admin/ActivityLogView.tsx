@@ -109,6 +109,8 @@ export function ActivityLogView() {
   const load = useCallback((reset: boolean, actorF: string, actionF: string, off: number) => {
     setLoading(true);
     const qs = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
+    // Feed is scoped to the last 90 days (see tab title). API filters on `created_at >= from`.
+    qs.set("from", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
     if (actorF) qs.set("actor", actorF);
     if (actionF) qs.set("action", actionF);
     fetch(`/api/admin/global/activity?${qs.toString()}`)

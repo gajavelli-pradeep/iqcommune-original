@@ -165,7 +165,7 @@ export function ApplicationForm() {
         {/* Gap 22: city + state side-by-side with hint */}
         <div style={rowTwo}>
           <Field
-            label="City you're based in"
+            label="City"
             hint="Sessions are in-person — city and state help us match you to local requests."
             error={errors.city?.message}
           >
