@@ -142,6 +142,9 @@ export interface Database {
           family_upi: string | null;
           family_bank: string | null;
           family_ifsc: string | null;
+          pan_gst: string | null;
+          communication_address: string | null;
+          tshirt_size: string | null;
           status: string;
           ref_code: string | null;
           avg_rating: number;
@@ -177,6 +180,9 @@ export interface Database {
           family_upi?: string | null;
           family_bank?: string | null;
           family_ifsc?: string | null;
+          pan_gst?: string | null;
+          communication_address?: string | null;
+          tshirt_size?: string | null;
           status?: string;
           ref_code?: string | null;
           avg_rating?: number;
@@ -211,6 +217,9 @@ export interface Database {
           family_upi?: string | null;
           family_bank?: string | null;
           family_ifsc?: string | null;
+          pan_gst?: string | null;
+          communication_address?: string | null;
+          tshirt_size?: string | null;
           status?: string;
           ref_code?: string | null;
           avg_rating?: number;

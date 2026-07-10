@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email/brevo";
 import { applicationConfirmation } from "@/lib/email/templates";
 import { guardEmailSend } from "@/lib/email/idempotency";
 import { signStatusUrl } from "@/lib/hmac";
+import { getBaseUrl } from "@/lib/base-url";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
@@ -55,10 +56,13 @@ export async function POST(req: NextRequest) {
       experience:       d.experience,
       city:             d.city,
       state:            d.state,
+      communication_address: d.communicationAddress || null,
+      tshirt_size:      d.tshirtSize ?? null,
       modules:          d.modules,
       teach_freq:       d.teachFreq,
       why:              d.why,
-      // payment fields encrypted at rest
+      // payment / tax fields encrypted at rest
+      pan_gst:          encryptOptional(d.panGst),
       upi_id:           encryptOptional(d.upiId),
       bank_name:        encryptOptional(d.bankAccountName),
       bank_account:     encryptOptional(d.bankAccount),
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
         name:      `${d.firstName} ${d.lastName}`,
         ref:       ref_code,
         modules:   [...d.modules],
-        statusUrl: signStatusUrl(ref_code),
+        statusUrl: signStatusUrl(ref_code, getBaseUrl(req)),
       });
       await sendEmail({
         to:          d.email,

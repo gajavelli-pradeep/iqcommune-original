@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getBaseUrl } from "@/lib/base-url";
 
 // Admin invite ("summon") tokens. The raw token travels only in the shared
 // /join-admin URL; the DB stores its SHA-256 hash, so a DB leak yields nothing
@@ -17,8 +18,8 @@ export function hashToken(token: string): string {
 }
 
 /** Build the shareable invite URL the SA copies and sends manually. */
-export function buildInviteUrl(token: string): string {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+export function buildInviteUrl(token: string, baseUrl?: string): string {
+  const base = baseUrl ?? getBaseUrl();
   return `${base}/join-admin?t=${token}`;
 }
 

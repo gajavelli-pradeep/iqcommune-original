@@ -2,6 +2,7 @@ import { z } from "zod";
 
 /** Admin: generate a confirmation for a session (gross + rates → net). */
 export const DURATION_OPTIONS = ["3 hours", "6 hours"] as const;
+export type DurationOption = (typeof DURATION_OPTIONS)[number];
 
 export const GenerateConsentSchema = z.object({
   sessionId: z.string().uuid(),
@@ -14,6 +15,22 @@ export const GenerateConsentSchema = z.object({
   duration: z.enum(DURATION_OPTIONS),
 });
 export type GenerateConsentInput = z.infer<typeof GenerateConsentSchema>;
+
+/**
+ * Global Admin: replace the practitioner on an Upcoming session. Supersedes the
+ * active confirmation and re-drives consent for the new practitioner, so it carries
+ * the same money/time fields as a fresh generate plus the new practitioner + a reason.
+ */
+export const ReassignConsentSchema = z.object({
+  newPractitionerId: z.string().uuid(),
+  reason: z.string().trim().min(3, "A reason is required").max(500),
+  gross: z.number().int().positive().max(100_000_000),
+  tdsRate: z.number().min(0).max(100),
+  gstRate: z.number().min(0).max(100),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Start time is required"), // 24h HH:MM
+  duration: z.enum(DURATION_OPTIONS),
+});
+export type ReassignConsentInput = z.infer<typeof ReassignConsentSchema>;
 
 /** Public: practitioner submits consent from the signed link. */
 export const ConsentSubmitSchema = z.object({

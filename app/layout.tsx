@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
+import { getBaseUrl } from "@/lib/base-url";
 import "./globals.css";
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -8,7 +9,7 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = getBaseUrl();
 
 export const metadata: Metadata = {
   title: {

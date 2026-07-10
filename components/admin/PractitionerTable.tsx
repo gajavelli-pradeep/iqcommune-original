@@ -6,6 +6,9 @@ import { StatusPill } from "@/components/shared/StatusPill";
 import { PipelineStepper } from "@/components/shared/PipelineStepper";
 import type { Database } from "@/lib/supabase/database.types";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
@@ -24,7 +27,8 @@ const STATUSES = [
   "Rejected",
 ] as const;
 
-const PIPELINE_ORDER = STATUSES.filter((s) => s !== "Rejected");
+// "All" + every pipeline status — the options for the shared Filter bar.
+const FILTER_OPTIONS = ["All", ...STATUSES] as const;
 
 // ── Draft-message templates (plain text, copy/paste — mirrors RequestTable) ──────
 
@@ -108,6 +112,7 @@ export function PractitionerTable({
   filter: filterProp,
   onFilterChange,
   isGlobalAdmin = false,
+  readOnly = false,
   onHardDeleted,
   onEdit,
 }: {
@@ -116,6 +121,7 @@ export function PractitionerTable({
   filter?: string;
   onFilterChange?: (f: string) => void;
   isGlobalAdmin?: boolean;
+  readOnly?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (p: Practitioner) => void;
 }) {
@@ -129,7 +135,7 @@ export function PractitionerTable({
     setData(initialData);
   }, [initialData]);
 
-  const [internalFilter, setInternalFilter] = useState<string>("all");
+  const [internalFilter, setInternalFilter] = useState<string>("All");
   const filter = filterProp ?? internalFilter;
   const setFilter = onFilterChange ?? setInternalFilter;
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -253,39 +259,22 @@ export function PractitionerTable({
     setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
   }
 
-  const counts = STATUSES.reduce(
-    (acc, s) => ({ ...acc, [s]: data.filter((p) => p.status === s).length }),
-    {} as Record<string, number>
-  );
-
-  const visible =
-    filter === "all" ? data : data.filter((p) => p.status === filter);
+  const [search, setSearch] = useState("");
+  const df = useDateFilter(data.map((p) => p.created_at));
+  const visible = (filter === "All" ? data : data.filter((p) => p.status === filter))
+    .filter((p) => df.matchesDate(p.created_at))
+    .filter((p) => matchesSearch(search, p.name, p.role, p.org, p.city, p.state, (p.modules ?? []).join(" "), p.experience, p.status, p.ref_code, p.email, p.phone));
 
   return (
     <div>
-      {/* Pipeline chips */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-        <button onClick={() => setFilter("all")} style={chipStyle(filter === "all")}>
-          All ({data.length})
-        </button>
-        {PIPELINE_ORDER.map((s) => (
-          <button key={s} onClick={() => setFilter(s)} style={chipStyle(filter === s)}>
-            {s} ({counts[s] ?? 0})
-          </button>
-        ))}
-        <button
-          onClick={() => setFilter("Rejected")}
-          style={chipStyle(filter === "Rejected", true)}
-        >
-          Rejected ({counts.Rejected ?? 0})
-        </button>
-      </div>
+      <TableFilterBar options={FILTER_OPTIONS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search practitioners…" />
 
       {/* Table */}
       <AdminTable
         headers={["Practitioner", "Module", "City", "Applied on", "Rating", "Status", ""]}
         isEmpty={visible.length === 0}
         emptyText="No practitioners in this stage"
+        connected
       >
         {visible.map((p) => {
               const isExpanded = expandedRow === p.id;
@@ -435,10 +424,11 @@ export function PractitionerTable({
                               </div>
                             </div>
 
-                            {/* Col 3: Actions */}
+                            {/* Col 3: Actions (read-only tier sees payment details only) */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Update Status</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>{readOnly ? "Details" : "Update Status"}</div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                                {!readOnly && (
                                 <select
                                   value={p.status}
                                   onChange={(e) => { e.stopPropagation(); updateStatus(p.id, e.target.value); }}
@@ -451,8 +441,10 @@ export function PractitionerTable({
                                     <option key={s} value={s}>{s}</option>
                                   ))}
                                 </select>
+                                )}
 
                                 {/* Message + Notes */}
+                                {!readOnly && (
                                 <div style={{ display: "flex", gap: 8 }}>
                                   <button
                                     onClick={(e) => {
@@ -474,8 +466,9 @@ export function PractitionerTable({
                                     Notes
                                   </button>
                                 </div>
+                                )}
 
-                                {p.status === "Screening Done" && (
+                                {!readOnly && p.status === "Screening Done" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
                                     style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
@@ -486,7 +479,7 @@ export function PractitionerTable({
 
                                 {/* V4 terminal gates: green Empanel (only at Agreement Sent) + red Reject (any non-terminal).
                                     Each sets the status and opens the matching welcome / reject draft. */}
-                                {p.status === "Agreement Sent" && (
+                                {!readOnly && p.status === "Agreement Sent" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Empanelled"); openDraft(p, "Empanelled"); }}
                                     style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
@@ -494,7 +487,7 @@ export function PractitionerTable({
                                     Empanel practitioner
                                   </button>
                                 )}
-                                {p.status !== "Empanelled" && p.status !== "Rejected" && (
+                                {!readOnly && p.status !== "Empanelled" && p.status !== "Rejected" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Rejected"); openDraft(p, "Rejected"); }}
                                     style={{ background: "#fff", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
@@ -702,23 +695,7 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
   );
 }
 
-const CHEVRON_GOLD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
-const selectStyle: React.CSSProperties = { fontSize: 12, padding: "5px 22px 5px 8px", borderRadius: 6, border: "1px solid rgba(20,18,12,.18)", background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`, appearance: "none", WebkitAppearance: "none", color: "#14161d", cursor: "pointer", fontFamily: "inherit" };
-
 function btnStyle(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 };
 }
 
-function chipStyle(active: boolean, red = false): React.CSSProperties {
-  return {
-    padding: "5px 14px",
-    borderRadius: 100,
-    border: active ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.12)",
-    background: active ? "var(--ink)" : "#fff",
-    color: active ? "#fff" : red ? "#a32d2d" : "var(--ink-soft)",
-    fontSize: 12,
-    fontWeight: active ? 600 : 400,
-    cursor: "pointer",
-    fontFamily: "inherit",
-  };
-}

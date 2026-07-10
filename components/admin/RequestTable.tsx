@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useCallback, Fragment } from "react";
+import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+
+const REQUEST_FILTERS = ["All", "New", "Confirmed", "Cancelled"] as const;
 
 interface SessionRequest {
   id: string;
@@ -92,24 +97,29 @@ export function RequestTable({
   initialData,
   practitioners = [],
   onRowChange,
-  statusFilter = "all",
   isGlobalAdmin = false,
+  readOnly = false,
   onHardDeleted,
   onEdit,
 }: {
   initialData: SessionRequest[];
   practitioners?: Practitioner[];
   onRowChange?: (id: string, patch: { status?: string; assigned_to?: string | null }) => void;
-  statusFilter?: string;
   isGlobalAdmin?: boolean;
+  readOnly?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
   // Reflect parent-driven updates (e.g. a global-admin edit) without an effect.
   const [prevInitial, setPrevInitial] = useState(initialData);
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
-  const visible = statusFilter === "all" ? data : data.filter((r) => r.status === statusFilter);
+  const df = useDateFilter(data.map((r) => r.created_at));
+  const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
+    .filter((r) => df.matchesDate(r.created_at))
+    .filter((r) => matchesSearch(search, r.name, r.org, r.email, r.phone, r.city, r.state, r.topic, r.audience_type, r.group_size, r.preferred_dates, r.status, r.assigned_practitioner?.name));
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
@@ -119,29 +129,26 @@ export function RequestTable({
 
   const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
-  const showToast = useCallback((msg: string) => {
+  function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
-  }, []);
+  }
 
-  const updateStatus = useCallback(
-    async (id: string, status: string) => {
-      const res = await fetch(`/api/admin/session-requests?id=${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) {
-        setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-        onRowChange?.(id, { status });
-        showToast("Status updated");
-      } else {
-        const { error } = await res.json().catch(() => ({ error: res.statusText }));
-        showToast(`Update failed: ${error ?? res.status}`);
-      }
-    },
-    [onRowChange, showToast]
-  );
+  async function updateStatus(id: string, status: string) {
+    const res = await fetch(`/api/admin/session-requests?id=${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+      onRowChange?.(id, { status });
+      showToast("Status updated");
+    } else {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Update failed: ${error ?? res.status}`);
+    }
+  }
 
   // V4 §4.2 one-click Assign: open a small dialog for payout + date, then create
   // the session + confirm the request via /assign. sessionRefById holds the ref
@@ -187,7 +194,7 @@ export function RequestTable({
     }
   };
 
-  const openDraft = useCallback((r: SessionRequest) => {
+  function openDraft(r: SessionRequest) {
     setDraft({
       open: true,
       title: `Follow-up: ${r.name}`,
@@ -197,16 +204,18 @@ export function RequestTable({
       recipientName: r.name,
       recipientEmail: r.email,
     });
-  }, []);
+  }
 
   return (
     <div>
+      <TableFilterBar options={REQUEST_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search requests…" />
       <AdminTable
         headers={HEADERS}
         isEmpty={visible.length === 0}
         emptyText={
           data.length === 0 ? "No session requests yet" : "No requests match the current filter"
         }
+        connected
       >
         {visible.map((r) => {
           const isExpanded = expandedRow === r.id;
@@ -363,6 +372,7 @@ export function RequestTable({
                                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0", borderBottom: "1px solid rgba(20,18,12,.07)" }}
                               >
                                 <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{p.name}</span>
+                                {!readOnly && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -373,12 +383,14 @@ export function RequestTable({
                                 >
                                   Assign
                                 </button>
+                                )}
                               </div>
                             ));
                           })()}
                         </div>
 
-                        {/* Col 3: Actions */}
+                        {/* Col 3: Actions — hidden for the read-only tier */}
+                        {!readOnly && (
                         <div>
                           <SectionLabel>Actions</SectionLabel>
                           <div
@@ -475,6 +487,7 @@ export function RequestTable({
                             )}
                           </div>
                         </div>
+                        )}
                       </div>
                     </div>
                   </td>

@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { downloadPhotoSet } from "@/lib/download-photos";
@@ -83,6 +86,7 @@ export function PhotosTable({
   statusFilter: statusFilterProp,
   onStatusFilterChange,
   onStatusChange,
+  readOnly = false,
 }: {
   initialData: PhotoSubmission[];
   pendingSessions?: PendingUploadSession[];
@@ -90,6 +94,7 @@ export function PhotosTable({
   onStatusFilterChange?: (f: string) => void;
   onStatusChange?: (id: string, status: string) => void;
   isGlobalAdmin?: boolean;
+  readOnly?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
@@ -105,12 +110,26 @@ export function PhotosTable({
   const setStatusFilter = (f: StatusFilter) =>
     onStatusFilterChange ? onStatusFilterChange(f) : setInternalFilter(f);
 
+  const [search, setSearch] = useState("");
+
+  // Year/month filter spans both row kinds — submissions by submitted_at,
+  // pending (completed-session) rows by session_date.
+  const df = useDateFilter([
+    ...data.map((p) => p.submitted_at),
+    ...pendingSessions.map((s) => s.session_date),
+  ]);
+
   // Every existing submission counts as "Uploaded" (V4). "Pending" = sessions
   // with no upload yet, so submissions are hidden under the Pending filter.
-  const visible = statusFilter === "Pending" ? [] : data;
+  const visible = (statusFilter === "Pending" ? [] : data)
+    .filter((p) => df.matchesDate(p.submitted_at))
+    .filter((p) => matchesSearch(search, p.practitioner_name, p.practitioner_ref, p.session_ref, p.module, p.city, p.state, p.status));
   // "Pending" rows (completed sessions, no upload) show under All + Pending.
-  const pendingRows =
-    statusFilter === "All" || statusFilter === "Pending" ? pendingSessions : [];
+  const pendingRows = (
+    statusFilter === "All" || statusFilter === "Pending" ? pendingSessions : []
+  )
+    .filter((s) => df.matchesDate(s.session_date))
+    .filter((s) => matchesSearch(search, s.practitioner_name, s.session_ref, s.module, s.venue));
 
   async function sendReminder(sessionId: string, name: string) {
     const res = await fetch(`/api/admin/sessions/${sessionId}/photo-link`);
@@ -176,46 +195,15 @@ export function PhotosTable({
         <strong>Sessions → Completed → Photo link</strong>, or use <strong>Send reminder</strong> on a Pending row.
       </div>
 
-      {/* Filter chips */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid rgba(20,18,12,.10)",
-          borderRadius: "10px 10px 0 0",
-          borderBottom: "none",
-          padding: ".75rem 1.25rem",
-          display: "flex",
-          alignItems: "center",
-          gap: ".75rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
-          Filter:
-        </span>
-        {STATUS_FILTERS.map((f) => {
-          const isActive = statusFilter === f;
-          return (
-            <div
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              style={{
-                padding: "5px 14px",
-                borderRadius: 100,
-                fontSize: 12,
-                fontWeight: 500,
-                border: isActive ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.18)",
-                cursor: "pointer",
-                background: isActive ? "var(--ink)" : "#fff",
-                color: isActive ? "#fff" : "var(--ink-soft)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {f}
-            </div>
-          );
-        })}
-      </div>
+      <TableFilterBar
+        options={STATUS_FILTERS}
+        value={statusFilter}
+        onChange={(f) => setStatusFilter(f as StatusFilter)}
+        dateFilter={df.control}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search photos…"
+      />
 
       <AdminTable
         headers={HEADERS}
@@ -250,12 +238,16 @@ export function PhotosTable({
               </span>
             </td>
             <td style={{ ...TD, whiteSpace: "nowrap" }}>
+              {readOnly ? (
+                <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>—</span>
+              ) : (
               <button onClick={() => sendReminder(s.id, s.practitioner_name)} style={ghostBtn} title="Copy a fresh photo-upload link to send to this practitioner">
                 <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 Send reminder
               </button>
+              )}
             </td>
           </tr>
         ))}
@@ -374,7 +366,7 @@ export function PhotosTable({
                       Download
                     </button>
                   )}
-                  {canView && p.status !== "Rejected" && (
+                  {canView && !readOnly && p.status !== "Rejected" && (
                     <button onClick={() => remove(p.id)} style={ghostBtn}>
                       Delete
                     </button>

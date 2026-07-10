@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 import { isGlobalAdminRole } from "@/lib/supabase/roles";
+import { AdminTable, TD } from "@/components/admin/AdminTable";
 
 interface ActivityRow {
   id: string;
@@ -42,6 +43,19 @@ const ACTION_LABEL: Record<string, string> = {
   view_admin_password:       "viewed an account password",
   grant_gallery_access:      "granted gallery access",
   revoke_gallery_access:     "revoked gallery access",
+  // Global-admin edit/delete actions + session-consent actions
+  edit_practitioner:         "edited a practitioner",
+  delete_practitioner:       "deleted a practitioner",
+  edit_session:              "edited a session",
+  delete_session:            "deleted a session",
+  edit_session_request:      "edited a session request",
+  delete_session_request:    "deleted a session request",
+  edit_payout:               "edited a payout",
+  delete_payout:             "deleted a payout",
+  edit_agreement:            "edited an agreement",
+  delete_agreement:          "deleted an agreement",
+  generate_consent:          "generated a session consent",
+  mark_consent_received:     "marked consent received",
 };
 
 function label(action: string): string {
@@ -54,6 +68,33 @@ function timeAgo(iso: string): string {
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Absolute timestamp for the table's Timestamp column, e.g. "03 Jul 2026, 11:42 AM".
+function formatTs(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  }).replace(",", "");
+}
+
+function RolePill({ isSA }: { isSA: boolean }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "2px 9px",
+        borderRadius: 100,
+        whiteSpace: "nowrap",
+        background: isSA ? "var(--gold-light)" : "var(--blue-light)",
+        color: isSA ? "var(--gold-dark)" : "var(--blue)",
+      }}
+    >
+      {isSA ? "Global Admin" : "Admin"}
+    </span>
+  );
 }
 
 // Render a compact "before → after" fragment when the snapshot carries one.
@@ -180,41 +221,52 @@ export function ActivityLogView() {
         </div>
       )}
 
-      {!loading && rows.length === 0 && !error ? (
+      {loading && rows.length === 0 ? (
         <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center", fontSize: 13, color: "var(--ink-faint)" }}>
-          No activity recorded yet.
+          Loading…
         </div>
       ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, overflow: "hidden" }}>
-          {rows.map((r, i) => {
+        <AdminTable
+          headers={["Timestamp", "User", "Role", "Action"]}
+          isEmpty={rows.length === 0}
+          emptyText="No activity recorded yet."
+        >
+          {rows.map((r) => {
             const trans = transition(r.snapshot);
             const det = detail(r.snapshot);
             const isSA = isGlobalAdminRole(r.actor_role);
             return (
-              <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", borderTop: i === 0 ? "none" : "1px solid rgba(20,18,12,.07)" }}>
-                <span
-                  title={isSA ? "Global Admin" : "Admin"}
-                  style={{ flexShrink: 0, marginTop: 3, width: 8, height: 8, borderRadius: "50%", background: isSA ? "var(--gold)" : "var(--blue)" }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <tr key={r.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                {/* Timestamp — absolute (V4) with a relative sub-line */}
+                <td style={{ ...TD, whiteSpace: "nowrap", verticalAlign: "top" }}>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{formatTs(r.created_at)}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{timeAgo(r.created_at)}</div>
+                </td>
+                {/* User */}
+                <td style={{ ...TD, verticalAlign: "top" }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", wordBreak: "break-all" }}>{r.actor_email}</span>
+                </td>
+                {/* Role */}
+                <td style={{ ...TD, verticalAlign: "top" }}>
+                  <RolePill isSA={isSA} />
+                </td>
+                {/* Action — humanized label + record detail + before→after diff + record table */}
+                <td style={{ ...TD, verticalAlign: "top" }}>
                   <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5 }}>
-                    <strong style={{ fontWeight: 600 }}>{r.actor_email}</strong>
-                    {" "}{label(r.action)}
+                    {label(r.action)}
                     {det && <span style={{ color: "var(--ink-soft)" }}> · {det}</span>}
                     {trans && (
-                      <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: "var(--gold-dark)", background: "var(--gold-light)", borderRadius: 100, padding: "1px 8px" }}>
+                      <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: "var(--gold-dark)", background: "var(--gold-light)", borderRadius: 100, padding: "1px 8px", whiteSpace: "nowrap" }}>
                         {trans}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                    {isSA ? "Global Admin" : "Admin"} · {r.record_table} · {timeAgo(r.created_at)}
-                  </div>
-                </div>
-              </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{r.record_table}</div>
+                </td>
+              </tr>
             );
           })}
-        </div>
+        </AdminTable>
       )}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>

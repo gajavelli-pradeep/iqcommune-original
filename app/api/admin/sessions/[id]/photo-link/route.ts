@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signPhotoUrl } from "@/lib/hmac";
+import { getBaseUrl } from "@/lib/base-url";
 
 export async function GET(
   req: NextRequest,
@@ -11,9 +12,8 @@ export async function GET(
   if (denied) return denied;
 
   const { id } = await params;
-  // Derive base URL from the incoming request — works in dev, staging, and production
-  // without needing NEXT_PUBLIC_BASE_URL to be set.
-  const origin = new URL(req.url).origin;
+  // Shared resolver: NEXT_PUBLIC_BASE_URL when set, else the request origin.
+  const baseUrl = getBaseUrl(req);
   const supabase = createAdminClient();
 
   const { data: session, error } = await supabase
@@ -52,7 +52,7 @@ export async function GET(
     state:   (practitioner as unknown as Record<string, string>).state ?? "",
     name:    practitioner.name ?? "",
     role:    practitioner.role ?? "",
-  }, "/submit-photos", origin);
+  }, "/submit-photos", baseUrl);
 
   return NextResponse.json({ url });
 }

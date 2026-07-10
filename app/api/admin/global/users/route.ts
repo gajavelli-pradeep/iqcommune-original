@@ -4,8 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { storeAdminPassword } from "@/lib/admin-password-vault";
 import { log } from "@/lib/logger";
-import { GLOBAL_ADMIN_ROLE, isGlobalAdminRole } from "@/lib/supabase/roles";
+import { GLOBAL_ADMIN_ROLE, USER_ROLE, isGlobalAdminRole, isUserRole } from "@/lib/supabase/roles";
 import { z } from "zod";
+
+// Collapse legacy/variant role strings to the three canonical values the UI uses.
+function normalizeRole(role: unknown): "admin" | "global_admin" | "user" {
+  if (isGlobalAdminRole(role)) return GLOBAL_ADMIN_ROLE;
+  if (isUserRole(role)) return USER_ROLE;
+  return "admin";
+}
 
 export async function GET() {
   const denied = await requireGlobalAdmin();
@@ -18,17 +25,17 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to list users" }, { status: 500 });
   }
 
-  // Return only admin/global-admin users — strip sensitive fields. Legacy
-  // "super_admin" accounts are normalised to "global_admin" for the UI.
+  // Return only console users (admin / global-admin / read-only user) — strip
+  // sensitive fields. Legacy "super_admin" accounts normalise to "global_admin".
   const adminUsers = (data.users ?? [])
     .filter((u) => {
       const role = u.app_metadata?.role;
-      return role === "admin" || isGlobalAdminRole(role);
+      return role === "admin" || isGlobalAdminRole(role) || isUserRole(role);
     })
     .map((u) => ({
       id: u.id,
       email: u.email,
-      role: isGlobalAdminRole(u.app_metadata?.role) ? GLOBAL_ADMIN_ROLE : "admin",
+      role: normalizeRole(u.app_metadata?.role),
       gallery_access: u.app_metadata?.gallery_access === true,
       last_sign_in_at: u.last_sign_in_at,
       created_at: u.created_at,
@@ -40,7 +47,7 @@ export async function GET() {
 const CreateSchema = z.object({
   email:    z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role:     z.enum(["admin", "global_admin"]).default("admin"),
+  role:     z.enum(["admin", "global_admin", "user"]).default("admin"),
 });
 
 export async function POST(req: NextRequest) {

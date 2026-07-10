@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isGlobalAdminRole } from "@/lib/supabase/roles";
+import { isGlobalAdminRole, isUserRole } from "@/lib/supabase/roles";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
@@ -12,8 +12,12 @@ export async function proxy(request: NextRequest) {
   if (rawPath === "/console/global-login" || rawPath === "/console/super-login") {
     return NextResponse.redirect(new URL("/global-login", request.url));
   }
+  // The global console moved from /console/global (and legacy /console/super) to /globaladmin.
+  if (rawPath === "/console/global" || rawPath.startsWith("/console/global/")) {
+    return NextResponse.redirect(new URL(rawPath.replace("/console/global", "/globaladmin"), request.url));
+  }
   if (rawPath === "/console/super" || rawPath.startsWith("/console/super/")) {
-    return NextResponse.redirect(new URL(rawPath.replace("/console/super", "/console/global"), request.url));
+    return NextResponse.redirect(new URL(rawPath.replace("/console/super", "/globaladmin"), request.url));
   }
 
   // Refresh Supabase session cookies on every request (required by @supabase/ssr)
@@ -39,32 +43,40 @@ export async function proxy(request: NextRequest) {
 
   const role = user?.app_metadata?.role;
   const isGlobalAdmin = !!user && isGlobalAdminRole(role);
+  const isUser = !!user && isUserRole(role);
   const isAdmin =
     !!user &&
     (role === "admin" ||
       isGlobalAdminRole(role) ||
       (!!process.env.ADMIN_EMAIL &&
         user.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()));
+  // Anyone allowed into a console shell (admin, global admin, or read-only user).
+  const canConsole = isAdmin || isUser;
+
+  // The console home for each tier — used by the login-redirect logic below.
+  // Finer cross-tier gating (e.g. a user hitting /console) is enforced per page.
+  const consoleHome = isGlobalAdmin ? "/globaladmin" : isUser ? "/user" : "/console";
 
   const { pathname } = request.nextUrl;
-  const isConsolePath = pathname.startsWith("/console");
+  const isConsoleArea =
+    pathname.startsWith("/console") ||
+    pathname.startsWith("/globaladmin") ||
+    pathname.startsWith("/user");
   const isLoginPath = pathname === "/login";
   const isGlobalLoginPath = pathname === "/global-login";
 
-  // Protect /console — unauthenticated users → /login
-  if (isConsolePath && !isAdmin) {
+  // Protect every console area — anyone without console access → /login
+  if (isConsoleArea && !canConsole) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect already-logged-in users away from login pages
-  if (isLoginPath && isAdmin) {
-    return NextResponse.redirect(
-      new URL(isGlobalAdmin ? "/console/global" : "/console", request.url)
-    );
+  // Redirect already-logged-in users away from the login page to their console home
+  if (isLoginPath && canConsole) {
+    return NextResponse.redirect(new URL(consoleHome, request.url));
   }
   // Only auto-redirect away from global-login if already authenticated as global_admin
   if (isGlobalLoginPath && isGlobalAdmin) {
-    return NextResponse.redirect(new URL("/console/global", request.url));
+    return NextResponse.redirect(new URL("/globaladmin", request.url));
   }
 
   return response;
@@ -72,5 +84,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // "/super-login" is kept so the legacy-path redirect (→ /global-login) fires.
-  matcher: ["/console/:path*", "/login", "/global-login", "/super-login"],
+  matcher: [
+    "/console/:path*",
+    "/globaladmin/:path*",
+    "/user/:path*",
+    "/login",
+    "/global-login",
+    "/super-login",
+  ],
 };

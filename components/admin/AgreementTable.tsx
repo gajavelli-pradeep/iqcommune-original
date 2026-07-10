@@ -4,6 +4,13 @@ import { useState } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
+
+// DB stores agreements awaiting signature as "Pending signature" and signed
+// empanelment agreements as "Active" (schema CHECK constraint).
+const AGREEMENT_FILTERS = ["All", "Pending signature", "Active"] as const;
 
 // Agreements row joined with practitioner name + role
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
@@ -30,12 +37,12 @@ export function AgreementTable({
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
 
-  const total     = initialData.length;
-  // DB stores agreements awaiting signature as "Pending signature" and signed
-  // empanelment agreements as "Active" (schema CHECK constraint). Surface a
-  // dedicated Pending tile so pending rows aren't silently folded into Total.
-  const pending   = initialData.filter((a) => a.status === "Pending signature").length;
-  const signed    = initialData.filter((a) => a.status === "Active").length;
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const df = useDateFilter(initialData.map((a) => a.signed_at));
+  const visible = (filter === "All" ? initialData : initialData.filter((a) => a.status === filter))
+    .filter((a) => df.matchesDate(a.signed_at))
+    .filter((a) => matchesSearch(search, a.practitioner_name, a.ref_code, a.module, a.signature_method, a.status));
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -51,29 +58,7 @@ export function AgreementTable({
 
   return (
     <div>
-      {/* Stats row */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 1,
-          background: "rgba(20,18,12,.10)",
-          borderRadius: "10px 10px 0 0",
-          overflow: "hidden",
-          marginBottom: 0,
-        }}
-      >
-        {[
-          { label: "Total agreements", value: total },
-          { label: "Pending signature", value: pending },
-          { label: "Active",           value: signed },
-        ].map((s) => (
-          <div key={s.label} style={{ background: "#fff", padding: "1rem 1.5rem" }}>
-            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 3 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <TableFilterBar options={AGREEMENT_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search agreements…" />
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>
@@ -108,7 +93,7 @@ export function AgreementTable({
             </tr>
           </thead>
           <tbody>
-            {initialData.map((row) => (
+            {visible.map((row) => (
               <tr
                 key={row.id}
                 style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}
@@ -296,7 +281,7 @@ export function AgreementTable({
               </tr>
             ))}
 
-            {initialData.length === 0 && (
+            {visible.length === 0 && (
               <tr>
                 <td
                   colSpan={8}
@@ -307,7 +292,7 @@ export function AgreementTable({
                     fontSize: 13,
                   }}
                 >
-                  No agreements found
+                  {initialData.length === 0 ? "No agreements found" : "No agreements match the current filter"}
                 </td>
               </tr>
             )}

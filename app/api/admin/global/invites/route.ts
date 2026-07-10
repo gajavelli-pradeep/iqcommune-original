@@ -3,6 +3,7 @@ import { requireGlobalAdmin, getGlobalAdminUser } from "@/lib/supabase/require-g
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { generateInviteToken, hashToken, buildInviteUrl, INVITE_TTL_DAYS, isExpired } from "@/lib/admin-invite";
+import { getBaseUrl } from "@/lib/base-url";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(
-    { data: data as InviteView, url: buildInviteUrl(token) },
+    { data: data as InviteView, url: buildInviteUrl(token, getBaseUrl(req)) },
     { status: 201 }
   );
 }

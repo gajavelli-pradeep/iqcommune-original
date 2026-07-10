@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { isGlobalAdminRole } from "@/lib/supabase/roles";
+import { isGlobalAdminRole, isUserRole } from "@/lib/supabase/roles";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,7 +24,8 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    const dest = isGlobalAdminRole(data.user.app_metadata?.role) ? "/console/global" : "/console";
+    const role = data.user.app_metadata?.role;
+    const dest = isGlobalAdminRole(role) ? "/globaladmin" : isUserRole(role) ? "/user" : "/console";
     router.push(dest);
   }
 

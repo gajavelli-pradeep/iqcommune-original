@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 import { signOnboardingUrl } from "@/lib/hmac";
+import { getBaseUrl } from "@/lib/base-url";
 import { sendEmail } from "@/lib/email/brevo";
 import { agreementLinkEmail } from "@/lib/email/templates";
 import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     state:  p.state ?? "",
     ref:    p.ref_code ?? "",
     email:  p.email,
-  });
+  }, getBaseUrl(req));
 
   const refCode = `IQC-EMP-${p.ref_code}`;
 

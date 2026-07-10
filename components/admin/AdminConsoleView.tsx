@@ -118,6 +118,12 @@ interface Props {
   isGlobalAdmin?: boolean;
   /** SA-controlled flag — whether regular admins may manage the gallery. */
   galleryAdminAccess?: boolean;
+  /**
+   * Read-only User tier: view all data + download/export only. Strips every
+   * mutation affordance and limits the console to the six data tabs. The
+   * data-mutating APIs stay admin-gated (403 for a user) as defense in depth.
+   */
+  readOnly?: boolean;
 }
 
 // Gap 13 & 14: no trailing periods, correct titles
@@ -133,61 +139,6 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   activity:       { title: "Activity (90 days)",    subtitle: "Every admin & global-admin action in the last 90 days — who did what, when, and before → after" },
   settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
 };
-
-// Gap 9, 10, 17, 44, 45, 46, 47: stat definitions with delta sub-labels, correct casing, ink-colored numbers
-type StatDef = {
-  label: string;
-  value: number | string;
-  delta?: string;
-  deltaRed?: boolean;
-  /** When set, clicking the stat filters the tab's table to this value. */
-  filter?: string;
-};
-
-function buildTabStats(counts: Counts): Record<string, StatDef[]> {
-  const fmt = (n: number) =>
-    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${n % 1000 !== 0 ? (n / 1000).toFixed(1) : (n / 1000).toFixed(0)}K` : `₹${n}`;
-
-  return {
-    requests: [
-      { label: "Total requests",           value: counts.totalRequests ?? 0, filter: "all" },
-      { label: "New — unassigned",         value: counts.pendingRequests, delta: counts.pendingRequests > 0 ? "↑ needs action" : "All reviewed", deltaRed: counts.pendingRequests > 0, filter: "New" },
-      { label: "Confirmed — session created", value: counts.confirmedRequests ?? 0, filter: "Confirmed" },
-    ],
-    practitioners: [
-      { label: "Total",            value: counts.totalPractitioners ?? 0, filter: "all" },
-      { label: "Applied",          value: counts.applied, filter: "Applied" },
-      { label: "Screening done",   value: counts.screeningDone ?? 0, delta: (counts.screeningDone ?? 0) > 0 ? "↑ action needed" : undefined, filter: "Screening Done" },
-      { label: "Agreement sent",   value: counts.agreementSent ?? 0, filter: "Agreement Sent" },
-      { label: "Empanelled",       value: counts.empanelled, delta: counts.empanelled > 0 ? "Active" : undefined, filter: "Empanelled" },
-    ],
-    sessions: [
-      { label: "Total sessions",  value: counts.totalSessions ?? 0, filter: "All" },
-      { label: "Upcoming",        value: counts.pendingSessions, delta: counts.nextSessionDate ? `Next: ${counts.nextSessionDate}` : undefined, filter: "Upcoming" },
-      { label: "Consent pending", value: counts.consentPending ?? 0, delta: (counts.consentPending ?? 0) > 0 ? "↑ action needed" : undefined, deltaRed: (counts.consentPending ?? 0) > 0 },
-      { label: "Completed",       value: counts.completedSessions ?? 0, filter: "Completed" },
-    ],
-    agreements: [],
-    consent: [
-      { label: "Awaiting consent", value: counts.awaitingConsent ?? 0, delta: (counts.awaitingConsent ?? 0) > 0 ? "↑ action needed" : "All consented", deltaRed: (counts.awaitingConsent ?? 0) > 0 },
-      { label: "Consent received", value: counts.consentReceived ?? 0 },
-      { label: "Total generated",  value: counts.totalConfirmations ?? 0, filter: "all" },
-    ],
-    payouts: [
-      { label: "Total paid out",    value: counts.paidPayoutGross ? fmt(counts.paidPayoutGross) : "—", filter: "Paid" },
-      { label: "Pending payment",   value: counts.pendingPayoutGross ? fmt(counts.pendingPayoutGross) : (counts.pendingPayouts > 0 ? `${counts.pendingPayouts}` : "—"), delta: counts.pendingPayouts > 0 ? "↑ action needed" : undefined, deltaRed: counts.pendingPayouts > 0, filter: "Pending" },
-      { label: "Sessions invoiced", value: counts.totalPayouts ?? 0, filter: "all" },
-      { label: "Paid this month",   value: counts.paidPayouts ?? 0, filter: "Paid" },
-    ],
-    photos: [
-      { label: "Total",            value: counts.totalPhotos ?? 0, filter: "All" },
-      { label: "Pending",          value: counts.pendingPhotos ?? 0, delta: (counts.pendingPhotos ?? 0) > 0 ? "↑ awaiting upload" : "All uploaded", deltaRed: (counts.pendingPhotos ?? 0) > 0, filter: "Pending" },
-      { label: "Uploaded",         value: counts.uploadedPhotos ?? 0, filter: "Uploaded" },
-      { label: "Expiring ≤ 7 days", value: counts.urgentPhotos ?? 0, delta: (counts.urgentPhotos ?? 0) > 0 ? "↑ download soon" : undefined, deltaRed: (counts.urgentPhotos ?? 0) > 0 },
-    ],
-    settings: [],
-  };
-}
 
 // Gap 15: corrected button labels, removed 'Draft message', correct variants, sessions only 'Create session'
 type ActionButton = {
@@ -289,27 +240,34 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
 type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: string };
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
-function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean): SidebarSection[] {
+function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean, readOnly: boolean): SidebarSection[] {
+  const pipeline: SidebarSection = {
+    heading: "Pipeline",
+    // Order matches V4: Practitioners → Agreements → Session Requests → Sessions → Photos.
+    items: [
+      { label: "Practitioners",    tab: "practitioners", badge: counts.applied,                badgeBg: "#c9982a" },
+      // Gap 18: Agreements badge green
+      { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
+      { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,        badgeBg: "#a32d2d" },
+      { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,        badgeBg: "#2a6b2a" },
+      { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,          badgeBg: "#a32d2d" },
+    ],
+  };
+  const finance: SidebarSection = {
+    heading: "Finance",
+    items: [
+      // Consent is a mutation surface (generate / mark-received) not in the User's
+      // "view all data" list — hidden for the read-only tier.
+      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" }]),
+      { label: "Payouts",         tab: "payouts", badge: counts.pendingPayouts,        badgeBg: "#a32d2d" },
+    ],
+  };
+  // The read-only User console shows only the six data tabs — no System section
+  // (Gallery/Activity/Settings are all admin-only surfaces).
+  if (readOnly) return [pipeline, finance];
   return [
-    {
-      heading: "Pipeline",
-      // Order matches V4: Practitioners → Agreements → Session Requests → Sessions → Photos.
-      items: [
-        { label: "Practitioners",    tab: "practitioners", badge: counts.applied,                badgeBg: "#c9982a" },
-        // Gap 18: Agreements badge green
-        { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
-        { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,        badgeBg: "#a32d2d" },
-        { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,        badgeBg: "#2a6b2a" },
-        { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,          badgeBg: "#a32d2d" },
-      ],
-    },
-    {
-      heading: "Finance",
-      items: [
-        { label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" },
-        { label: "Payouts",         tab: "payouts", badge: counts.pendingPayouts,        badgeBg: "#a32d2d" },
-      ],
-    },
+    pipeline,
+    finance,
     {
       heading: "System",
       items: [
@@ -376,9 +334,13 @@ const goldBtnStyle: React.CSSProperties = {
 
 // ─── Tab panel header component — Gap 6, 33 ───────────────────────────────────
 // Renders the white .page-hdr bar (full-width, border-bottom) without duplicate title
-function TabHeader({ tab, onAction, extraActions = [] }: { tab: string; onAction?: (label: string) => void; extraActions?: ActionButton[] }) {
+function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab: string; onAction?: (label: string) => void; extraActions?: ActionButton[]; readOnly?: boolean }) {
   const meta = TAB_META[tab] ?? { title: tab, subtitle: "" };
-  const actions = [...(TAB_ACTIONS[tab] ?? []), ...extraActions];
+  // Read-only tier keeps only the Export (download) action; every create/mutation
+  // header button is stripped.
+  const actions = readOnly
+    ? (TAB_ACTIONS[tab] ?? []).filter((a) => a.label === "Export")
+    : [...(TAB_ACTIONS[tab] ?? []), ...extraActions];
 
   return (
     <div
@@ -428,56 +390,9 @@ function TabHeader({ tab, onAction, extraActions = [] }: { tab: string; onAction
   );
 }
 
-// ─── Per-tab stats row — Gap 9, 10, 11, 12, 17, 44, 45, 46, 47 ──────────────
-// Full-width, no outer border/radius, background acts as gap colour
-function TabStatsRow({ tab, counts, activeFilter, onStatClick }: { tab: string; counts: Counts; activeFilter?: string; onStatClick?: (filter: string) => void }) {
-  const allStats = buildTabStats(counts);
-  const stats = allStats[tab];
-  if (!stats || stats.length === 0) return null;
-
-  return (
-    // Gap 12: no border, no borderRadius; background = border gap colour; borderBottom only
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${stats.length},1fr)`,
-        gap: 1,
-        background: "rgba(20,18,12,.10)",
-        borderBottom: "1px solid rgba(20,18,12,.10)",
-      }}
-    >
-      {stats.map((s) => {
-        const clickable = !!s.filter && !!onStatClick;
-        const isActive = !!s.filter && activeFilter === s.filter;
-        return (
-        // Clickable stat cells filter the table to s.filter
-        <div
-          key={s.label}
-          onClick={clickable ? () => onStatClick!(s.filter!) : undefined}
-          style={{ background: isActive ? "#f5e9c8" : "#fff", padding: "1rem 1.5rem", cursor: clickable ? "pointer" : "default", boxShadow: isActive ? "inset 0 -2px 0 #c9982a" : undefined }}
-        >
-          {/* Gap 9: fontSize 24, fontWeight 600, color ink (not accent) */}
-          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1 }}>
-            {String(s.value)}
-          </div>
-          {/* Gap 10: fontSize 11, marginTop 3 */}
-          <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 3 }}>{s.label}</div>
-          {/* Gap 17, 44: delta sub-label */}
-          {s.delta && (
-            <div style={{ fontSize: 11, color: s.deltaRed ? "#a32d2d" : "#2a6b2a", marginTop: 2 }}>
-              {s.delta}
-            </div>
-          )}
-        </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin = false, galleryAdminAccess = true }: Props) {
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin = false, galleryAdminAccess = true, readOnly = false }: Props) {
   const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab } = useAdminUI();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -485,8 +400,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const navigateToTab = (tab: string) => { setGlobalSearch(""); setActiveTab(tab); };
 
   // Per-tab table filters driven by clickable stat cards / table chips
-  const [tabFilters, setTabFilters] = useState<Record<string, string>>({});
-  const setTabFilter = (tab: string, filter: string) => setTabFilters((m) => ({ ...m, [tab]: filter }));
 
   // Header-action modals
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
@@ -505,11 +418,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   // The URL can carry any ?tab= value (deep link / refresh). Fall back to the
   // default if it names a tab this user can't see (Activity = SA-only, Gallery
   // gated) so a hand-crafted link never renders a blank panel.
-  const availableTabs = new Set<string>([
-    "requests", "practitioners", "sessions", "agreements", "consent", "payouts", "photos", "settings",
-    ...(galleryVisible ? ["gallery"] : []),
-    ...(isGlobalAdmin ? ["activity"] : []),
-  ]);
+  const availableTabs = new Set<string>(
+    readOnly
+      ? ["requests", "practitioners", "sessions", "agreements", "payouts", "photos"]
+      : [
+          "requests", "practitioners", "sessions", "agreements", "consent", "payouts", "photos", "settings",
+          ...(galleryVisible ? ["gallery"] : []),
+          ...(isGlobalAdmin ? ["activity"] : []),
+        ]
+  );
   const activeTab = availableTabs.has(rawActiveTab) ? rawActiveTab : "practitioners";
 
   // Global-admin edit modals (null = closed)
@@ -742,7 +659,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label === "Export") exportActiveTab();
   }
 
-  const sections = buildSections(counts, galleryVisible, isGlobalAdmin);
+  const sections = buildSections(counts, galleryVisible, isGlobalAdmin, readOnly);
 
 
   return (
@@ -858,40 +775,38 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         {activeTab === "requests" && (
           <div>
             {/* Gap 6: white page-hdr with border-bottom */}
-            <TabHeader tab="requests" onAction={handleHeaderAction} />
-            {/* Gap 7: stats row is full-width, no horizontal padding */}
-            <TabStatsRow tab="requests" counts={counts} activeFilter={tabFilters.requests ?? "all"} onStatClick={(f) => setTabFilter("requests", f)} />
+            <TabHeader tab="requests" onAction={handleHeaderAction} readOnly={readOnly} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} statusFilter={tabFilters.requests ?? "all"} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
             </div>
           </div>
         )}
 
         {activeTab === "practitioners" && (
           <div>
-            <TabHeader tab="practitioners" onAction={handleHeaderAction} />
-            <TabStatsRow tab="practitioners" counts={counts} activeFilter={tabFilters.practitioners ?? "all"} onStatClick={(f) => setTabFilter("practitioners", f)} />
+            <TabHeader tab="practitioners" onAction={handleHeaderAction} readOnly={readOnly} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} filter={tabFilters.practitioners ?? "all"} onFilterChange={(f) => setTabFilter("practitioners", f)} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (p) => setEditingPractitioner(p) : undefined} />
+              <PractitionerTable initialData={practitionersData} onStatusChange={handlePractitionerStatusChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setPractitionersData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (p) => setEditingPractitioner(p) : undefined} />
             </div>
           </div>
         )}
 
         {activeTab === "sessions" && (
           <div>
-            <TabHeader tab="sessions" onAction={handleHeaderAction} />
-            <TabStatsRow tab="sessions" counts={counts} activeFilter={tabFilters.sessions ?? "All"} onStatClick={(f) => setTabFilter("sessions", f)} />
+            <TabHeader tab="sessions" onAction={handleHeaderAction} readOnly={readOnly} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} statusFilter={tabFilters.sessions ?? "All"} onStatusFilterChange={(f) => setTabFilter("sessions", f)} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
             </div>
           </div>
         )}
 
         {activeTab === "agreements" && (
           <div>
-            <TabHeader tab="agreements" onAction={handleHeaderAction} />
-            {/* Gap 27 & 28: AgreementTable no longer has stats or filter — pass through */}
+            <TabHeader tab="agreements" onAction={handleHeaderAction} readOnly={readOnly} />
+            {/* AgreementTable owns its own Filter bar. Its only non-SA control is
+                Download (kept); Edit/Delete are SA-gated, so a read-only user sees
+                just the download button. */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <AgreementTable initialData={agreementsData} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} />
             </div>
@@ -903,11 +818,11 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader
               tab="payouts"
               onAction={handleHeaderAction}
+              readOnly={readOnly}
               extraActions={isGlobalAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
             />
-            <TabStatsRow tab="payouts" counts={counts} activeFilter={tabFilters.payouts ?? "all"} onStatClick={(f) => setTabFilter("payouts", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} statusFilter={tabFilters.payouts ?? "all"} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
             </div>
           </div>
         )}
@@ -915,7 +830,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         {activeTab === "consent" && (
           <div>
             <TabHeader tab="consent" onAction={handleHeaderAction} />
-            <TabStatsRow tab="consent" counts={counts} activeFilter={tabFilters.consent ?? "all"} onStatClick={(f) => setTabFilter("consent", f)} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <ConsentTable initialData={confirmationsData} onRowChange={handleConfirmationRowChange} isGlobalAdmin={isGlobalAdmin} />
             </div>
@@ -924,8 +838,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
 
         {activeTab === "photos" && (
           <div>
-            <TabHeader tab="photos" onAction={handleHeaderAction} />
-            <TabStatsRow tab="photos" counts={counts} activeFilter={tabFilters.photos ?? "all"} onStatClick={(f) => setTabFilter("photos", f)} />
+            <TabHeader tab="photos" onAction={handleHeaderAction} readOnly={readOnly} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <PhotosTable
                 initialData={photosData}
@@ -942,9 +855,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                     venue: s.venue,
                     session_date: s.session_date,
                   }))}
-                statusFilter={tabFilters.photos ?? "All"}
-                onStatusFilterChange={(f) => setTabFilter("photos", f)}
                 isGlobalAdmin={isGlobalAdmin}
+                readOnly={readOnly}
                 onStatusChange={(id, status) =>
                   setPhotosData((prev) =>
                     status === "Deleted"
@@ -987,6 +899,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               <MasterDataTable
                 practitioners={practitionersData.map((p) => ({
                   id: p.id, name: p.name, phone: p.phone, email: p.email, city: p.city, state: p.state,
+                  communication_address: p.communication_address, tshirt_size: p.tshirt_size,
                 }))}
               />
               {/* Team & Access (V4) — inline management via the admins modal */}
@@ -1008,12 +921,12 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                       Manage team
                     </button>
                   </div>
-                  <TeamAccessTable reloadKey={teamReloadKey} />
+                  <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
                 </div>
               )}
 
-              {/* Roles & Permissions (V4) — reference table, visible to all admins */}
-              <RolesPermissions />
+              {/* Roles & Permissions (V4) — reference table, global settings only. */}
+              {isGlobalAdmin && <RolesPermissions />}
             </div>
           </div>
         )}

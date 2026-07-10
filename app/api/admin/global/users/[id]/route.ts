@@ -17,7 +17,7 @@ async function actor(): Promise<{ id: string; email: string } | null> {
 }
 
 const RoleSchema = z.object({
-  role: z.enum(["admin", "global_admin"]),
+  role: z.enum(["admin", "global_admin", "user"]),
 });
 
 export async function PATCH(

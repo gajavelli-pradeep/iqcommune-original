@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import type { Database } from "@/lib/supabase/database.types";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
 
 export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
   practitioner: { name: string; email: string } | null;
 };
+
+const CONSENT_FILTERS = ["All", "Awaiting consent", "Consent received", "Superseded"] as const;
 
 const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -45,6 +50,12 @@ export function ConsentTable({
   const [busy, setBusy] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const df = useDateFilter(data.map((r) => r.issued_on));
+  const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
+    .filter((r) => df.matchesDate(r.issued_on))
+    .filter((r) => matchesSearch(search, r.ref_code, r.session_ref, r.practitioner?.name, r.status, r.gross_amount, r.net_amount));
 
   async function copyLink(row: ConfirmationRow) {
     if (!row.consent_link) return;
@@ -97,7 +108,9 @@ export function ConsentTable({
   }
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, overflow: "hidden" }}>
+    <div>
+      <TableFilterBar options={CONSENT_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search consent…" />
+      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderTop: "none", borderRadius: "0 0 10px 10px", overflow: "hidden" }}>
       {error && <div role="alert" style={{ fontSize: 12, color: "#a32d2d", padding: "8px 12px" }}>{error}</div>}
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
@@ -114,7 +127,14 @@ export function ConsentTable({
             </tr>
           </thead>
           <tbody>
-            {data.map((row) => {
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
+                  No confirmations match the current filter
+                </td>
+              </tr>
+            )}
+            {visible.map((row) => {
               const awaiting = row.status === "Awaiting consent";
               return (
                 <tr key={row.id}>
@@ -158,6 +178,7 @@ export function ConsentTable({
             })}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );

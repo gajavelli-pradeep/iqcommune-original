@@ -23,6 +23,8 @@ export const TEACH_FREQ_OPTIONS = [
   "Flexible — depends on my schedule",
 ] as const;
 
+export const TSHIRT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
+
 export const ApplicationSchema = z
   .object({
     firstName: z.string().min(1, "Required"),
@@ -37,6 +39,9 @@ export const ApplicationSchema = z
     experience: z.enum(EXPERIENCE_OPTIONS, { message: "Select experience range" }),
     city:    z.string().min(1, "Required"),
     state:   z.string().min(1, "Required"),
+    // Logistics — communication address (incl. PIN code) and merch size. Optional.
+    communicationAddress: z.string().optional(),
+    tshirtSize: z.enum(TSHIRT_SIZES).optional(),
     modules: z.array(z.enum(MODULES)).min(1, "Select at least one module"),
     teachFreq: z.enum(TEACH_FREQ_OPTIONS, { message: "Select availability" }),
     why: z.string().min(10, "Please write at least a sentence"),
@@ -44,6 +49,8 @@ export const ApplicationSchema = z
     consentNosell: z.literal(true, { message: "Required" }),
     consentEmployer: z.literal(true, { message: "Required" }),
     // payment — require either UPI or full bank details (Gap 44)
+    // Tax identity for payouts/invoicing: PAN, or GST number if registered.
+    panGst: z.string().optional(),
     upiId: z.string().optional(),
     bankAccountName: z.string().optional(),
     bankAccount: z.string().optional(),

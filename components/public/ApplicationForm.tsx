@@ -10,6 +10,7 @@ import {
   MODULES,
   EXPERIENCE_OPTIONS,
   TEACH_FREQ_OPTIONS,
+  TSHIRT_SIZES,
 } from "@/lib/schemas/application";
 
 const FAMILY_RELATIONS = ["Spouse", "Parent", "Sibling", "Other"] as const;
@@ -134,6 +135,27 @@ export function ApplicationForm() {
         {/* Gap 56: label 'Phone number' */}
         <Field label="Phone number" error={errors.phone?.message}>
           <input {...register("phone")} type="tel" inputMode="tel" style={inputStyle} placeholder="+91 98765 43210" />
+        </Field>
+
+        {/* Communication address (incl. PIN code) + preferred t-shirt size (logistics / merch) */}
+        <Field
+          label="Communication address (with PIN code)"
+          hint="Where we can reach you by post — include your PIN code."
+          error={errors.communicationAddress?.message}
+        >
+          <textarea
+            {...register("communicationAddress")}
+            rows={2}
+            style={{ ...inputStyle, resize: "none" }}
+            placeholder="Flat / building, street, area, city — 400001"
+          />
+        </Field>
+        <Field label="Preferred T-shirt size" error={errors.tshirtSize?.message}>
+          <SelectField
+            options={TSHIRT_SIZES}
+            value={watch("tshirtSize") ?? ""}
+            onChange={(v) => setValue("tshirtSize", v as Application["tshirtSize"], { shouldValidate: true })}
+          />
         </Field>
 
         {/* Gap 19: no Organisation field */}
@@ -381,6 +403,15 @@ export function ApplicationForm() {
       <span style={sectionLabelStyle}>Payment preferences</span>
 
       <div style={sectionStyle}>
+        {/* PAN / GST — tax identity for payouts & invoicing (encrypted at rest) */}
+        <Field
+          label="PAN / GST (if applicable)"
+          hint="Your PAN, or GST number if you're GST-registered. Kept strictly confidential."
+          error={errors.panGst?.message}
+        >
+          <input {...register("panGst")} style={inputStyle} placeholder="ABCDE1234F" />
+        </Field>
+
         {/* Gap 40: no introductory paragraph */}
         {/* Gap 32: 'Your UPI ID' with faint qualifier, placeholder 'yourname@upi', hint */}
         <div>

@@ -6,6 +6,10 @@ import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
+import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
+import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { matchesSearch } from "@/lib/admin/search";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface Session {
@@ -53,7 +57,7 @@ const HEADERS = [
   "Payout",
   "Consent",
   "Status",
-  "",
+  "Actions",
 ];
 
 export function SessionTable({
@@ -62,6 +66,7 @@ export function SessionTable({
   statusFilter: statusFilterProp,
   onStatusFilterChange,
   isGlobalAdmin = false,
+  readOnly = false,
   onHardDeleted,
   onEdit,
 }: {
@@ -70,6 +75,7 @@ export function SessionTable({
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
   isGlobalAdmin?: boolean;
+  readOnly?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
@@ -100,7 +106,6 @@ export function SessionTable({
   } | null>(null);
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [copiedPhotoId, setCopiedPhotoId] = useState<string | null>(null);
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
@@ -112,78 +117,27 @@ export function SessionTable({
     waBody?: string;
   }>({ open: false });
 
-  const query = search.toLowerCase();
+  const df = useDateFilter(data.map((s) => s.session_date));
   const visible = data.filter((s) => {
     const matchesStatus = statusFilter === "All" || s.status === statusFilter;
-    const matchesSearch =
-      !query ||
-      s.ref_code?.toLowerCase().includes(query) ||
-      s.module?.toLowerCase().includes(query) ||
-      s.practitioner?.name?.toLowerCase().includes(query) ||
-      s.venue?.toLowerCase().includes(query);
-    return matchesStatus && matchesSearch;
+    return (
+      matchesStatus &&
+      df.matchesDate(s.session_date) &&
+      matchesSearch(search, s.ref_code, s.module, s.practitioner?.name, s.practitioner?.email, s.venue, s.audience_type, s.status, s.consent_status, s.session_date, s.participants)
+    );
   });
 
   return (
     <div>
-      {/* Filter + Search bar */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid rgba(20,18,12,.10)",
-          borderRadius: "10px 10px 0 0",
-          borderBottom: "none",
-          padding: ".75rem 1.25rem",
-          display: "flex",
-          alignItems: "center",
-          gap: ".75rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
-          Filter:
-        </span>
-        {STATUS_FILTERS.map((f) => {
-          const isActive = statusFilter === f;
-          return (
-            <div
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              style={{
-                padding: "5px 14px",
-                borderRadius: 100,
-                fontSize: 12,
-                fontWeight: 500,
-                border: isActive ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.18)",
-                cursor: "pointer",
-                background: isActive ? "var(--ink)" : "#fff",
-                color: isActive ? "#fff" : "var(--ink-soft)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {f}
-            </div>
-          );
-        })}
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <input
-            type="search"
-            placeholder="Search by ref, module, practitioner…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              fontSize: 12,
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid rgba(20,18,12,.15)",
-              background: "#f8f7f4",
-              fontFamily: "inherit",
-              outline: "none",
-            }}
-          />
-        </div>
-      </div>
+      <TableFilterBar
+        options={STATUS_FILTERS}
+        value={statusFilter}
+        onChange={(f) => setStatusFilter(f as StatusFilter)}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search sessions…"
+        dateFilter={df.control}
+      />
 
       <AdminTable
         headers={HEADERS}
@@ -273,141 +227,83 @@ export function SessionTable({
                 <td style={TD}>
                   <StatusPill status={s.status} />
                 </td>
-                <td style={{ ...TD, whiteSpace: "nowrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    {s.payout_id && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onNavigate?.("payouts");
-                        }}
-                        style={actionBtn("#c9982a", "#14161d")}
-                      >
-                        Payout →
-                      </button>
-                    )}
-                    {s.status === "Upcoming" && s.consent_status === "Pending consent" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDraft({
-                            open: true,
-                            title: `Send confirmation — ${s.ref_code}`,
-                            subject: `Your iqcommune session is confirmed — ${s.session_date}`,
-                            emailBody: `Dear ${s.practitioner?.name ?? "Practitioner"},\n\nYour session has been confirmed.\n\nRef: ${s.ref_code}\nModule: ${s.module}\nDate: ${s.session_date} · ${s.start_time}–${s.end_time}\nVenue: ${s.venue}\nParticipants: ${s.participants}\n\nPlease sign the consent form when you receive the link.\n\nWarm regards,\nThe iqcommune Team`,
-                            waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
-                          });
-                        }}
-                        style={actionBtn("#c9982a", "#14161d")}
-                      >
-                        Send confirmation
-                      </button>
-                    )}
-                    {s.status === "Completed" && (
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
-                            if (!res.ok) return;
-                            const { url } = (await res.json()) as { url: string };
-                            window.open(url, "_blank", "noopener,noreferrer");
-                            navigator.clipboard.writeText(url).catch(() => undefined);
-                            setCopiedPhotoId(s.id);
-                            setTimeout(() => setCopiedPhotoId((c) => (c === s.id ? null : c)), 2500);
-                          } catch {
-                            // silently ignore — user can retry
-                          }
-                        }}
-                        style={{ ...actionBtn("#fff", "#14161d", true), display: "inline-flex", alignItems: "center", gap: 4 }}
-                      >
-                        <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                        {copiedPhotoId === s.id ? "Link copied!" : "Photo link"}
-                      </button>
-                    )}
-                    {s.status === "Completed" && s.photos_submitted && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate?.("photos"); }}
-                        style={{ ...actionBtn("var(--green-light)", "var(--green)", true), display: "inline-flex", alignItems: "center", gap: 4 }}
-                        title="Photos received — open the Session Photos tab"
-                      >
-                        <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Photos received
-                      </button>
-                    )}
-                    {s.status === "Completed" && (() => {
-                      const fb = feedbackBySession[s.id];
-                      return (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFeedbackModal({
+                <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
+                  {/* All row actions live under one ⋯ dropdown. */}
+                  <RowActionsMenu
+                    ariaLabel={`Actions for session ${s.ref_code}`}
+                    actions={[
+                      ...(s.payout_id
+                        ? [{ label: "View payout", onClick: () => onNavigate?.("payouts") }]
+                        : []),
+                      ...(!readOnly && s.status === "Upcoming" && s.consent_status === "Pending consent"
+                        ? [{
+                            label: "Send confirmation",
+                            onClick: () => setDraft({
+                              open: true,
+                              title: `Send confirmation — ${s.ref_code}`,
+                              subject: `Your iqcommune session is confirmed — ${s.session_date}`,
+                              emailBody: `Dear ${s.practitioner?.name ?? "Practitioner"},\n\nYour session has been confirmed.\n\nRef: ${s.ref_code}\nModule: ${s.module}\nDate: ${s.session_date} · ${s.start_time}–${s.end_time}\nVenue: ${s.venue}\nParticipants: ${s.participants}\n\nPlease sign the consent form when you receive the link.\n\nWarm regards,\nThe iqcommune Team`,
+                              waBody: `Hi ${s.practitioner?.name ?? ""}! 👋\n\nYour *${s.module}* session is confirmed.\n\n📅 *${s.session_date}* · ${s.start_time}–${s.end_time}\n📍 ${s.venue}\n\nPlease sign the consent form via the link we'll send shortly. See you there!`,
+                            }),
+                          }]
+                        : []),
+                      ...(!readOnly && s.status === "Completed"
+                        ? [{
+                            label: "Copy photo link",
+                            onClick: async () => {
+                              try {
+                                const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
+                                if (!res.ok) return;
+                                const { url } = (await res.json()) as { url: string };
+                                window.open(url, "_blank", "noopener,noreferrer");
+                                navigator.clipboard.writeText(url).catch(() => undefined);
+                              } catch {
+                                // silently ignore — user can retry
+                              }
+                            },
+                          }]
+                        : []),
+                      ...(s.status === "Completed" && s.photos_submitted
+                        ? [{ label: "View photos", onClick: () => onNavigate?.("photos") }]
+                        : []),
+                      ...(!readOnly && s.status === "Completed"
+                        ? [{
+                            label: (() => {
+                              const fb = feedbackBySession[s.id];
+                              if (!fb) return "Add feedback";
+                              return `Feedback · ${fb.overall_rating !== null ? fb.overall_rating.toFixed(1) : "—"}`;
+                            })(),
+                            onClick: () => setFeedbackModal({
                               sessionId:        s.id,
                               sessionRef:       s.ref_code,
                               practitionerName: s.practitioner?.name ?? "—",
-                              existing:         fb ?? null,
-                            });
-                          }}
-                          style={{ ...actionBtn("#fff", "#14161d", true), display: "inline-flex", alignItems: "center", gap: 3 }}
-                        >
-                          {fb ? (
-                            <>
-                              <svg width={11} height={11} viewBox="0 0 11 11" fill="currentColor" aria-hidden="true">
-                                <path d="M5.5 0L6.9 4.1H11L7.6 6.6 8.9 10.7 5.5 8.2 2.1 10.7 3.4 6.6 0 4.1H4.1Z" />
-                              </svg>
-                              {fb.overall_rating !== null ? fb.overall_rating.toFixed(1) : "—"}
-                            </>
-                          ) : (
-                            "Feedback"
-                          )}
-                        </button>
-                      );
-                    })()}
-                    {isGlobalAdmin && onEdit && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(s.id); }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid rgba(20,18,12,.18)", background: "none", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
-                        title={`Edit session ${s.ref_code}`}
-                      >
-                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Edit
-                      </button>
-                    )}
-                    {isGlobalAdmin && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDialog({
-                            open: true,
-                            title: `Delete session ${s.ref_code}`,
-                            description: "This removes the session from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                            onConfirm: async () => {
-                              closeConfirm();
-                              const res = await fetch(`/api/admin/global/sessions/${s.id}`, { method: "DELETE" });
-                              if (res.ok) onHardDeleted?.(s.id);
-                              else {
-                                setDeleteFailedId(s.id);
-                                setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
-                              }
-                            },
-                          });
-                        }}
-                        style={{ fontSize: 11, padding: "3px 8px", borderRadius: 100, border: "1px solid #fca5a5", background: "none", color: "#991b1b", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                        title={`Delete session ${s.ref_code}`}
-                      >
-                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-                        {deleteFailedId === s.id ? "Delete failed!" : "Delete"}
-                      </button>
-                    )}
-                  </div>
+                              existing:         feedbackBySession[s.id] ?? null,
+                            }),
+                          }]
+                        : []),
+                      ...(isGlobalAdmin && onEdit ? [{ label: "Edit", onClick: () => onEdit(s.id) }] : []),
+                      ...(isGlobalAdmin
+                        ? [{
+                            label: deleteFailedId === s.id ? "Delete failed!" : "Delete",
+                            danger: true,
+                            onClick: () => setConfirmDialog({
+                              open: true,
+                              title: `Delete session ${s.ref_code}`,
+                              description: "This removes the session from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                              onConfirm: async () => {
+                                closeConfirm();
+                                const res = await fetch(`/api/admin/global/sessions/${s.id}`, { method: "DELETE" });
+                                if (res.ok) onHardDeleted?.(s.id);
+                                else {
+                                  setDeleteFailedId(s.id);
+                                  setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
+                                }
+                              },
+                            }),
+                          }]
+                        : []),
+                    ]}
+                  />
                 </td>
               </tr>
 
@@ -517,20 +413,3 @@ function SField({ label, value, mono }: { label: string; value: string; mono?: b
   );
 }
 
-function actionBtn(
-  bg: string,
-  color: string,
-  bordered = false
-): React.CSSProperties {
-  return {
-    fontSize: 11,
-    padding: "3px 9px",
-    borderRadius: 100,
-    border: bordered ? "1px solid rgba(20,18,12,.18)" : "none",
-    background: bg,
-    color,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontWeight: 600,
-  };
-}

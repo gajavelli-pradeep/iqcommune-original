@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/public/SiteFooter";
 import { CountUp } from "@/components/public/CountUp";
 import { ToolsSection } from "@/components/public/ToolsSection";
 import { GallerySection } from "@/components/public/GallerySection";
+import { getBaseUrl } from "@/lib/base-url";
 
 export const metadata: Metadata = {
   title: { absolute: "iqcommune — Where financial intelligence connects" },
@@ -448,7 +449,7 @@ const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "iqcommune",
-  url: process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
+  url: getBaseUrl(),
   description:
     "In-person finance sessions led by active practitioners. No products. No pitch.",
   contactPoint: {

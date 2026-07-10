@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getBaseUrl } from "@/lib/base-url";
 
 // ── Shared secret ──────────────────────────────────────────────────────────────
 
@@ -32,9 +33,9 @@ function canonicalOnboarding(params: OnboardingParams): string {
   return ONBOARDING_KEYS.map((k) => `${k}=${params[k]}`).join("&");
 }
 
-export function signOnboardingUrl(params: OnboardingParams): string {
+export function signOnboardingUrl(params: OnboardingParams, baseUrl?: string): string {
   const sig  = sign(canonicalOnboarding(params));
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const base = baseUrl ?? getBaseUrl();
   const qs   = new URLSearchParams({ ...params, sig }).toString();
   return `${base}/onboarding?${qs}`;
 }
@@ -77,7 +78,7 @@ export function signPhotoUrl(
   baseUrl?: string
 ): string {
   const sig  = sign(canonicalPhoto(params));
-  const base = baseUrl ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const base = baseUrl ?? getBaseUrl();
   const qs   = new URLSearchParams({
     ...params,
     ...(params.org ? { org: params.org } : {}),
@@ -101,9 +102,9 @@ export function verifyPhotoLinkParams(
 // ── Application status links ───────────────────────────────────────────────
 // Sent in the confirmation email so practitioners can check their pipeline.
 
-export function signStatusUrl(refCode: string): string {
+export function signStatusUrl(refCode: string, baseUrl?: string): string {
   const sig  = sign(`status:${refCode}`);
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const base = baseUrl ?? getBaseUrl();
   return `${base}/status?ref=${encodeURIComponent(refCode)}&token=${sig}`;
 }
 
@@ -120,9 +121,9 @@ export function verifyStatusToken(refCode: string, token: string): boolean {
 // The confirmation row is the single source of truth, so the link only needs to
 // securely identify it: /consent?ref=<confirmation ref_code>&token=<sig>.
 
-export function signConsentUrl(refCode: string): string {
+export function signConsentUrl(refCode: string, baseUrl?: string): string {
   const sig  = sign(`consent:${refCode}`);
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const base = baseUrl ?? getBaseUrl();
   return `${base}/consent?ref=${encodeURIComponent(refCode)}&token=${sig}`;
 }
 

@@ -30,7 +30,7 @@ export default function GlobalLoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/console/global");
+    router.push("/globaladmin");
   }
 
   return (

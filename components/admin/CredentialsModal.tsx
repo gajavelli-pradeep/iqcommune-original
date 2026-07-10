@@ -6,11 +6,17 @@ import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 interface AdminUser {
   id: string;
   email: string;
-  role: "admin" | "global_admin";
+  role: "admin" | "global_admin" | "user";
   gallery_access: boolean;
   last_sign_in_at: string | null;
   created_at: string;
 }
+
+const ROLE_LABEL: Record<AdminUser["role"], string> = {
+  admin: "Admin",
+  global_admin: "Global Admin",
+  user: "User (read-only)",
+};
 
 interface AdminInvite {
   id: string;
@@ -58,7 +64,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   const [adding, setAdding] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newAdminPw, setNewAdminPw] = useState("");
-  const [newRole, setNewRole] = useState<"admin" | "global_admin">("admin");
+  const [newRole, setNewRole] = useState<AdminUser["role"]>("admin");
 
   // Invite ("summon") flow
   const [invites, setInvites] = useState<AdminInvite[]>([]);
@@ -214,9 +220,9 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
         body: JSON.stringify({ email: newEmail, password: newAdminPw, role: newRole }),
       });
       const j = await res.json();
-      if (!res.ok) setError(j.error ?? "Failed to create admin.");
+      if (!res.ok) setError(j.error ?? "Failed to create account.");
       else {
-        flash(`Admin ${newEmail} created.`, true);
+        flash(`${ROLE_LABEL[newRole]} ${newEmail} created.`, true);
         setAdding(false);
         setNewEmail("");
         setNewAdminPw("");
@@ -230,8 +236,8 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
     }
   }
 
-  async function handleToggleRole(u: AdminUser) {
-    const nextRole = u.role === "global_admin" ? "admin" : "global_admin";
+  async function handleChangeRole(u: AdminUser, nextRole: AdminUser["role"]) {
+    if (nextRole === u.role) return;
     setBusyId(u.id);
     setError("");
     try {
@@ -243,7 +249,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
       const j = await res.json();
       if (!res.ok) setError(j.error ?? "Failed to update role.");
       else {
-        flash(`${u.email} is now ${nextRole === "global_admin" ? "Global Admin" : "Admin"}.`, true);
+        flash(`${u.email} is now ${ROLE_LABEL[nextRole]}.`, true);
         setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
       }
     } catch {
@@ -537,11 +543,11 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                   color: "var(--ink)",
                 }}
               >
-                + New admin
+                + New account
               </button>
             ) : (
               <div style={{ border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, padding: "14px", background: "var(--surface-soft)", display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Create a new admin</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Create a new account</div>
                 <input
                   type="email"
                   value={newEmail}
@@ -559,11 +565,12 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                 />
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as "admin" | "global_admin")}
+                  onChange={(e) => setNewRole(e.target.value as AdminUser["role"])}
                   style={inputStyle}
                 >
                   <option value="admin">Admin</option>
                   <option value="global_admin">Global Admin</option>
+                  <option value="user">User (read-only)</option>
                 </select>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -571,7 +578,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                     disabled={saving}
                     style={{ flex: 1, padding: "8px", background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontFamily: "inherit" }}
                   >
-                    {saving ? "Creating…" : "Create admin"}
+                    {saving ? "Creating…" : "Create account"}
                   </button>
                   <button
                     onClick={() => { setAdding(false); setError(""); }}
@@ -614,7 +621,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                         {isSelf && <span style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}> · you</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                        {u.role === "global_admin" ? "Global Admin" : "Admin"}
+                        {ROLE_LABEL[u.role]}
                         {u.last_sign_in_at
                           ? ` · last sign-in ${new Date(u.last_sign_in_at).toLocaleDateString("en-IN")}`
                           : ""}
@@ -636,9 +643,17 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                           {revealBusyId === u.id ? "…" : u.id in revealed ? "Hide password" : "Reveal password"}
                         </button>
                         {!isSelf && (
-                          <button onClick={() => handleToggleRole(u)} disabled={busy} style={{ ...smallBtn, opacity: busy ? 0.6 : 1 }}>
-                            {u.role === "global_admin" ? "Make Admin" : "Make Global Admin"}
-                          </button>
+                          <select
+                            value={u.role}
+                            disabled={busy}
+                            onChange={(e) => handleChangeRole(u, e.target.value as AdminUser["role"])}
+                            aria-label={`Role for ${u.email}`}
+                            style={{ ...smallBtn, opacity: busy ? 0.6 : 1, cursor: busy ? "not-allowed" : "pointer" }}
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="global_admin">Global Admin</option>
+                            <option value="user">User (read-only)</option>
+                          </select>
                         )}
                         {!isSelf && (
                           confirmRemoveId === u.id ? (

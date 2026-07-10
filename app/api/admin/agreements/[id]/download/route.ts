@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/supabase/require-admin";
+import { requireViewer } from "@/lib/supabase/require-viewer";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin();
+  // Download/export is a User-tier capability — allow any console viewer.
+  const denied = await requireViewer();
   if (denied) return denied;
 
   const { id } = await params;
