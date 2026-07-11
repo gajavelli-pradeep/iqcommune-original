@@ -41,7 +41,7 @@ type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const HEADERS = [
   "Practitioner",
-  "Session",
+  "Session ref.",
   "Module",
   "City",
   "Submitted",
