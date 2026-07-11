@@ -53,7 +53,7 @@ export function GlobalSearchResults({
           ))}
         </Section>
 
-        <Section title="Sessions" count={se.length} onSeeAll={() => onNavigate("sessions")}>
+        <Section title="Session Details" count={se.length} onSeeAll={() => onNavigate("sessions")}>
           {se.slice(0, 8).map((s) => (
             <Row key={s.id} onClick={() => onNavigate("sessions")}
               primary={`${s.ref_code} · ${s.module}`} secondary={`${s.practitioner?.name ?? "—"} · ${s.venue}`} status={s.status} />

@@ -132,7 +132,7 @@ interface Props {
 const TAB_META: Record<string, { title: string; subtitle: string }> = {
   requests:       { title: "Session Requests",      subtitle: "Incoming requests from iqcommune.com — review, match, and confirm" },
   practitioners:  { title: "Practitioner pipeline", subtitle: "Manage applications, onboarding, and empanelment" },
-  sessions:       { title: "Sessions",              subtitle: "Create sessions, send confirmations, and track delivery" },
+  sessions:       { title: "Session Details",       subtitle: "Create sessions, send confirmations, and track delivery" },
   agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
   consent:        { title: "Session Consent",        subtitle: "Generate the per-session revenue confirmation and practitioner consent link" },
   payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
@@ -243,39 +243,49 @@ type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: strin
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
 function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean, readOnly: boolean): SidebarSection[] {
-  const pipeline: SidebarSection = {
-    heading: "Pipeline",
-    // Order matches V4: Practitioners → Agreements → Session Requests → Sessions → Photos.
+  // V5 sidebar grouping (technical-handoff §1): four sections reflecting how the
+  // business thinks about these tabs — Practitioner Management / Session Pipeline /
+  // Finance / System.
+  const practitionerMgmt: SidebarSection = {
+    heading: "Practitioner Management",
     items: [
-      { label: "Practitioners",    tab: "practitioners", badge: counts.applied,                badgeBg: "#c9982a" },
+      { label: "Practitioners", tab: "practitioners", badge: counts.applied,                badgeBg: "#c9982a" },
       // Gap 18: Agreements badge green
-      { label: "Agreements",       tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
-      { label: "Session Requests", tab: "requests",      badge: counts.pendingRequests,        badgeBg: "#a32d2d" },
-      { label: "Sessions",         tab: "sessions",      badge: counts.pendingSessions,        badgeBg: "#2a6b2a" },
-      { label: "Photos",           tab: "photos",        badge: counts.pendingPhotos,          badgeBg: "#a32d2d" },
+      { label: "Agreements",    tab: "agreements",    badge: counts.pendingAgreements ?? 0, badgeBg: "#2a6b2a" },
+    ],
+  };
+  const sessionPipeline: SidebarSection = {
+    heading: "Session Pipeline",
+    // Spec order: Session Requests → Session Consent → Session Details → Photos.
+    items: [
+      { label: "Session Requests", tab: "requests", badge: counts.pendingRequests, badgeBg: "#a32d2d" },
+      // Consent is a mutation surface (generate / mark-received) not in the User's
+      // "view all data" list — hidden for the read-only tier.
+      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" }]),
+      // "Session Details" is the V5 user-facing label; the internal tab id stays "sessions".
+      { label: "Session Details", tab: "sessions", badge: counts.pendingSessions, badgeBg: "#2a6b2a" },
+      { label: "Photos",          tab: "photos",   badge: counts.pendingPhotos,   badgeBg: "#a32d2d" },
     ],
   };
   const finance: SidebarSection = {
     heading: "Finance",
     items: [
-      // Consent is a mutation surface (generate / mark-received) not in the User's
-      // "view all data" list — hidden for the read-only tier.
-      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" }]),
-      { label: "Payouts",         tab: "payouts", badge: counts.pendingPayouts,        badgeBg: "#a32d2d" },
+      { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
     ],
   };
-  // The read-only User console shows only the six data tabs — no System section
+  // The read-only User console shows only the data tabs — no System section
   // (Gallery/Activity/Settings are all admin-only surfaces).
-  if (readOnly) return [pipeline, finance];
+  if (readOnly) return [practitionerMgmt, sessionPipeline, finance];
   return [
-    pipeline,
+    practitionerMgmt,
+    sessionPipeline,
     finance,
     {
       heading: "System",
       items: [
-        ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
         ...(isGlobalAdmin ? [{ label: "Activity", tab: "activity" }] : []),
         { label: "Settings", tab: "settings" },
+        ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
       ],
     },
   ];
