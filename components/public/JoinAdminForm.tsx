@@ -28,6 +28,7 @@ export function JoinAdminForm({ email, token }: { email: string; token: string }
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [activatedAt, setActivatedAt] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +49,9 @@ export function JoinAdminForm({ email, token }: { email: string; token: string }
         setError(j.error ?? "Could not create your account.");
         return;
       }
+      setActivatedAt(
+        new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      );
       setDone(true);
     } catch {
       setError("Network error. Please try again.");
@@ -63,16 +67,38 @@ export function JoinAdminForm({ email, token }: { email: string; token: string }
           background: "var(--green-light)",
           border: "1px solid var(--green-border)",
           borderRadius: 10,
-          padding: "1.25rem",
+          padding: "1.5rem 1.25rem",
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)", marginBottom: 6 }}>
-          Account created
+        {/* V5 success: green circle + checkmark */}
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "50%",
+            background: "var(--green)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 12px",
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--green)", marginBottom: 6 }}>
+          Account activated
         </div>
         <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 14px" }}>
           Your admin account for <strong style={{ color: "var(--ink)" }}>{email}</strong> is ready.
         </p>
+        {activatedAt && (
+          <p style={{ fontSize: 11.5, color: "var(--ink-faint)", margin: "0 0 16px" }}>
+            Activated: {activatedAt}
+          </p>
+        )}
         <a
           href="/login"
           style={{
@@ -94,9 +120,31 @@ export function JoinAdminForm({ email, token }: { email: string; token: string }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "grid", gap: 14 }}>
-      <div>
-        <label style={label} htmlFor="ja-email">Email</label>
-        <input id="ja-email" type="email" value={email} disabled style={{ ...inputStyle, color: "var(--ink-faint)", cursor: "not-allowed" }} />
+      {/* V5 read-only invite summary (Email + Role) */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 1,
+          background: "rgba(20,18,12,.10)",
+          border: "1px solid rgba(20,18,12,.12)",
+          borderRadius: 8,
+          overflow: "hidden",
+        }}
+      >
+        {[
+          { k: "Email", v: email },
+          { k: "Role", v: "Admin" },
+        ].map(({ k, v }) => (
+          <div key={k} style={{ background: "var(--surface-soft)", padding: "10px 12px" }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 3 }}>
+              {k}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", wordBreak: "break-word" }}>
+              {v}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div>

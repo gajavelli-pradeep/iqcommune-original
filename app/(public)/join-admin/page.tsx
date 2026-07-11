@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken, isExpired } from "@/lib/admin-invite";
 import { JoinAdminForm } from "@/components/public/JoinAdminForm";
+import { SiteHeader } from "@/components/public/SiteHeader";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -31,23 +32,33 @@ async function resolveInvite(token: string | undefined): Promise<InviteState> {
   return { ok: true, email: invite.email, token };
 }
 
-const shell: React.CSSProperties = {
-  minHeight: "100vh",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "var(--surface-soft)",
-  padding: "1.5rem",
-};
 const card: React.CSSProperties = {
   width: "100%",
-  maxWidth: 440,
+  maxWidth: 460,
   background: "var(--surface)",
   border: "1px solid rgba(20,18,12,.12)",
   borderRadius: 14,
   padding: "2rem",
   boxShadow: "0 8px 40px rgba(0,0,0,.06)",
 };
+
+/** V5 chrome: shared sticky header (badge) + centered card + confidential footer note. */
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--surface-soft)" }}>
+      <SiteHeader badge={["Account", "Setup"]} right={<span aria-hidden="true" />} />
+      <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+        {children}
+      </main>
+      <footer style={{ textAlign: "center", padding: "1.5rem", fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.6 }}>
+        Confidential · This invite is meant only for you.{" "}
+        <a href="mailto:hello@iqcommune.com" style={{ color: "var(--ink-soft)", textDecoration: "none" }}>
+          hello@iqcommune.com
+        </a>
+      </footer>
+    </div>
+  );
+}
 
 export default async function JoinAdminPage({
   searchParams,
@@ -59,8 +70,8 @@ export default async function JoinAdminPage({
 
   if (!state.ok) {
     return (
-      <div style={shell}>
-        <div style={{ ...card, textAlign: "center" }}>
+      <Frame>
+        <div style={{ ...card, maxWidth: 440, textAlign: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
             Invite unavailable
           </div>
@@ -68,12 +79,12 @@ export default async function JoinAdminPage({
             {state.reason} Please ask your global admin for a new invite link.
           </p>
         </div>
-      </div>
+      </Frame>
     );
   }
 
   return (
-    <div style={shell}>
+    <Frame>
       <div style={card}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gold-dark)", marginBottom: 6 }}>
           IQCommune · Admin
@@ -87,6 +98,6 @@ export default async function JoinAdminPage({
         </p>
         <JoinAdminForm email={state.email} token={state.token} />
       </div>
-    </div>
+    </Frame>
   );
 }
