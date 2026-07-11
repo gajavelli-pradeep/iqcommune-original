@@ -166,6 +166,30 @@ export function RequestTable({
     }
   }
 
+  // V5: Global-Admin per-field correction on the request record. editingKey is
+  // `${requestId}:${label}` so only one field across all expanded rows edits at once.
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [fieldDraft, setFieldDraft] = useState("");
+  const [fieldSaving, setFieldSaving] = useState(false);
+
+  async function correctRequestField(id: string, body: Record<string, unknown>, patch: Partial<SessionRequest>) {
+    setFieldSaving(true);
+    const res = await fetch(`/api/admin/global/requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setFieldSaving(false);
+    if (res.ok) {
+      setData((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+      setEditingKey(null);
+      showToast("Correction saved to the request record");
+    } else {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Save failed: ${error ?? res.status}`);
+    }
+  }
+
   // V4 §4.2 one-click Assign: open a small dialog for payout + date, then create
   // the session + confirm the request via /assign. sessionRefById holds the ref
   // returned by the API for the "→ Session" read-only line.
@@ -332,46 +356,48 @@ export function RequestTable({
                         {/* Col 1: Request details */}
                         <div>
                           <SectionLabel>Request details</SectionLabel>
-                          {[
-                            ["From", r.name],
-                            ["Organisation", r.org ?? "—"],
-                            ["Email", r.email],
-                            ["City", r.city ?? "—"],
-                            ["State", r.state ?? "—"],
-                            ["Topic", r.topic],
-                            ["Audience", r.audience_type],
-                            ["Group size", r.group_size ?? "—"],
-                            [
-                              "Min. commitment",
-                              r.min_commit != null ? `${r.min_commit} participants` : "—",
-                            ],
-                            ["Venue", r.venue || "Not specified — we will arrange"],
-                            ["Preferred dates", r.preferred_dates ?? "—"],
-                          ].map(([label, value]) => (
-                            <div
-                              key={label}
-                              style={{
-                                display: "flex",
-                                gap: 8,
-                                alignItems: "flex-start",
-                                marginBottom: "0.45rem",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  color: "var(--ink-faint)",
-                                  width: 110,
-                                  flexShrink: 0,
-                                  fontSize: 12,
-                                }}
-                              >
-                                {label}
-                              </span>
-                              <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>
-                                {value}
-                              </span>
-                            </div>
-                          ))}
+                          {(() => {
+                            // V5: Global-Admin pencil corrects the request record in place.
+                            type Row = { label: string; value: React.ReactNode; edit?: { seed: string; type?: "text" | "number"; body: (v: string) => Record<string, unknown>; patch: (v: string) => Partial<SessionRequest> } };
+                            const rows: Row[] = [
+                              { label: "From", value: r.name, edit: { seed: r.name, body: (v) => ({ name: v }), patch: (v) => ({ name: v }) } },
+                              { label: "Organisation", value: r.org ?? "—", edit: { seed: r.org ?? "", body: (v) => ({ org: v || null }), patch: (v) => ({ org: v || null }) } },
+                              { label: "Email", value: r.email },
+                              { label: "City", value: r.city ?? "—", edit: { seed: r.city ?? "", body: (v) => ({ city: v || null }), patch: (v) => ({ city: v || null }) } },
+                              { label: "State", value: r.state ?? "—", edit: { seed: r.state ?? "", body: (v) => ({ state: v || null }), patch: (v) => ({ state: v || null }) } },
+                              { label: "Topic", value: r.topic, edit: { seed: r.topic, body: (v) => ({ topic: v }), patch: (v) => ({ topic: v }) } },
+                              { label: "Audience", value: r.audience_type, edit: { seed: r.audience_type, body: (v) => ({ audience_type: v }), patch: (v) => ({ audience_type: v }) } },
+                              { label: "Group size", value: r.group_size ?? "—", edit: { seed: r.group_size ?? "", body: (v) => ({ group_size: v || null }), patch: (v) => ({ group_size: v || null }) } },
+                              { label: "Min. commitment", value: r.min_commit != null ? `${r.min_commit} participants` : "—", edit: { seed: r.min_commit != null ? String(r.min_commit) : "", type: "number", body: (v) => ({ min_commit: v ? Number(v) : null }), patch: (v) => ({ min_commit: v ? Number(v) : null }) } },
+                              { label: "Venue", value: r.venue || "Not specified — we will arrange", edit: { seed: r.venue ?? "", body: (v) => ({ venue: v || null }), patch: (v) => ({ venue: v || null }) } },
+                              { label: "Preferred dates", value: r.preferred_dates ?? "—" },
+                            ];
+                            return rows.map(({ label, value, edit }) => {
+                              const key = `${r.id}:${label}`;
+                              const editing = editingKey === key;
+                              return (
+                                <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
+                                  <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                    {label}
+                                    {isGlobalAdmin && edit && !editing && (
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); setEditingKey(key); setFieldDraft(edit.seed); }} title="Global Admin: correct the request record" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold-dark)", display: "inline-flex", lineHeight: 0 }}>
+                                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                                      </button>
+                                    )}
+                                  </span>
+                                  {isGlobalAdmin && edit && editing ? (
+                                    <span style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                                      <input type={edit.type ?? "text"} value={fieldDraft} autoFocus onChange={(e) => setFieldDraft(e.target.value)} style={{ padding: "4px 7px", fontSize: 12, border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, fontFamily: "inherit", background: "var(--input-paper)", outline: "none", minWidth: 120 }} />
+                                      <button type="button" disabled={fieldSaving} onClick={() => correctRequestField(r.id, edit.body(fieldDraft), edit.patch(fieldDraft))} style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, cursor: fieldSaving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{fieldSaving ? "…" : "Save"}</button>
+                                      <button type="button" onClick={() => setEditingKey(null)} style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 7px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
+                                  )}
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
 
                         {/* Col 2: Available practitioners (read-only once Confirmed — V4) */}
