@@ -137,28 +137,6 @@ export function ApplicationForm() {
           <input {...register("phone")} type="tel" inputMode="tel" style={inputStyle} placeholder="+91 98765 43210" />
         </Field>
 
-        {/* Communication address (incl. PIN code) + preferred t-shirt size (logistics / merch) */}
-        <Field
-          label="Communication address (with PIN code)"
-          hint="Where we can reach you by post — include your PIN code."
-          error={errors.communicationAddress?.message}
-        >
-          <textarea
-            {...register("communicationAddress")}
-            rows={2}
-            style={{ ...inputStyle, resize: "none" }}
-            placeholder="Flat / building, street, area, city — 400001"
-          />
-        </Field>
-        <Field label="Preferred T-shirt size" error={errors.tshirtSize?.message}>
-          <SelectField
-            options={TSHIRT_SIZES}
-            value={watch("tshirtSize") ?? ""}
-            onChange={(v) => setValue("tshirtSize", v as Application["tshirtSize"], { shouldValidate: true })}
-          />
-        </Field>
-
-        {/* Gap 19: no Organisation field */}
         {/* Gap 20: label 'Current job title', placeholder 'Equity Analyst' */}
         {/* Gap 21: role + experience in one row, city full-width below */}
         <div style={rowTwo}>
@@ -187,7 +165,7 @@ export function ApplicationForm() {
         {/* Gap 22: city + state side-by-side with hint */}
         <div style={rowTwo}>
           <Field
-            label="City"
+            label="City you're based in"
             hint="Sessions are in-person — city and state help us match you to local requests."
             error={errors.city?.message}
           >
@@ -197,6 +175,27 @@ export function ApplicationForm() {
             <input {...register("state")} style={inputStyle} placeholder="Maharashtra" />
           </Field>
         </div>
+
+        {/* V5 order: communication address + T-shirt close out "About you" (logistics / merch) */}
+        <Field
+          label={<>Communication address <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(include PIN code)</span></>}
+          hint="This is where we'll send your welcome kit and any session merchandise — PIN code is essential since we ship across India."
+          error={errors.communicationAddress?.message}
+        >
+          <textarea
+            {...register("communicationAddress")}
+            rows={2}
+            style={{ ...inputStyle, resize: "none" }}
+            placeholder="Flat / building, street, area, city, state — PIN code"
+          />
+        </Field>
+        <Field label="T-shirt size" error={errors.tshirtSize?.message}>
+          <SelectField
+            options={TSHIRT_SIZES}
+            value={watch("tshirtSize") ?? ""}
+            onChange={(v) => setValue("tshirtSize", v as Application["tshirtSize"], { shouldValidate: true })}
+          />
+        </Field>
       </div>
 
       {/* ── Your teaching preference ── */}
@@ -660,7 +659,7 @@ function Field({
   error,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   hint?: string;
   error?: string;
   children: React.ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>;

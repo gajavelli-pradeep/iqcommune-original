@@ -240,16 +240,13 @@ export function GalleryManager() {
               <div style={{ position: "relative", aspectRatio: "4/3", background: "#0a0a0a" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                {/* V5 caption banner (full sentence) + city — mirrors the landing render */}
-                {(p.caption_top_left || p.caption_bottom_right) && (
-                  <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "24px 10px 8px", background: "linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0))", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
-                    {p.caption_top_left && (
-                      <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.95)", lineHeight: 1.4, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_top_left}</span>
-                    )}
-                    {p.caption_bottom_right && (
-                      <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.72)", whiteSpace: "nowrap", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_bottom_right}</span>
-                    )}
-                  </div>
+                {/* V5 caption: top-left translucent badge + faint bottom-right city
+                    — mirrors the landing render. */}
+                {p.caption_top_left && (
+                  <div style={{ position: "absolute", top: 8, left: 8, maxWidth: "70%", background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "4px 8px", fontSize: 10.5, fontWeight: 500, color: "rgba(255,255,255,0.85)", lineHeight: 1.35 }}>{p.caption_top_left}</div>
+                )}
+                {p.caption_bottom_right && (
+                  <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 9.5, color: "rgba(255,255,255,0.75)", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_bottom_right}</span>
                 )}
                 {!p.published && (
                   <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9.5, fontWeight: 600, color: "var(--ink)", background: "var(--amber-light)", border: "0.5px solid var(--amber)", borderRadius: 100, padding: "2px 8px" }}>Draft</span>

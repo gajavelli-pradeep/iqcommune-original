@@ -5,15 +5,15 @@ import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 // Fallback placeholders — shown until an admin publishes real photos (managed in
 // the console Gallery tab → GET /api/gallery). Real photos carry the two overlay
-// captions: topLeft (full-sentence caption banner) + bottomRight (e.g. city).
+// captions: topLeft (full-sentence caption, shown as a top badge) + bottomRight (city).
 const PLACEHOLDERS = [
-  { label: "From the back of the room", sub: "Trainer in focus, audience visible", topLeft: "Foundations", bottomRight: null as string | null },
-  { label: "Audience in focus", sub: "Trainer's perspective, room engaged", topLeft: "Equity Investing", bottomRight: "Mumbai" },
-  { label: "Group photo", sub: "End of session", topLeft: "Portfolio Strategy", bottomRight: null },
-  { label: "Candid — mid session", sub: "Numbers being worked through", topLeft: "Retirement Planning", bottomRight: "Bengaluru" },
-  { label: "Front-left corner view", sub: "Full room, wide angle", topLeft: "Asset Allocation", bottomRight: null },
-  { label: "Candid — Q&A moment", sub: "Participant raising a question", topLeft: "Debt Investing", bottomRight: "Pune" },
-  { label: "Front-right corner view", sub: "Trainer and board visible", topLeft: "Foundations", bottomRight: "Delhi" },
+  { label: "From the back of the room", sub: "Trainer in focus, audience visible", topLeft: "Deep in a foundations session", bottomRight: null as string | null },
+  { label: "Audience in focus", sub: "Trainer's perspective, room engaged", topLeft: "Full house for equity investing", bottomRight: "Mumbai" },
+  { label: "Group photo", sub: "End of session", topLeft: "Wrapping up a portfolio strategy session", bottomRight: null },
+  { label: "Candid — mid session", sub: "Numbers being worked through", topLeft: "Working through the retirement numbers", bottomRight: "Bengaluru" },
+  { label: "Front-left corner view", sub: "Full room, wide angle", topLeft: "A packed asset-allocation workshop", bottomRight: null },
+  { label: "Candid — Q&A moment", sub: "Participant raising a question", topLeft: "Great question from the back row", bottomRight: "Pune" },
+  { label: "Front-right corner view", sub: "Trainer and board visible", topLeft: "Every seat taken for the basics", bottomRight: "Delhi" },
 ];
 
 interface Slide {
@@ -151,20 +151,17 @@ export function GallerySection() {
                 </div>
               )}
 
-              {/* V5 (P2-5/P3-2): free-text caption banner (full sentence) replacing the
-                  legacy gold topic-pill; city sits alongside on the right. */}
-              {(slide.topLeft || slide.bottomRight) && slide.url && (
-                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "30px 16px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0))", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-                  {slide.topLeft && (
-                    <span style={{ fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.95)", lineHeight: 1.45, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                      {slide.topLeft}
-                    </span>
-                  )}
-                  {slide.bottomRight && (
-                    <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.72)", whiteSpace: "nowrap", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                      {slide.bottomRight}
-                    </span>
-                  )}
+              {/* V5 caption design: a full-sentence caption as a top-left translucent
+                  badge, plus a faint city label bottom-right — shown over photos and
+                  placeholders alike (matches the mockup's gallery-slide-caption/city). */}
+              {slide.topLeft && (
+                <div style={{ position: "absolute", top: 10, left: 10, right: 10, background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.85)", lineHeight: 1.4 }}>
+                  {slide.topLeft}
+                </div>
+              )}
+              {slide.bottomRight && (
+                <div style={{ position: "absolute", bottom: 10, right: 10, fontSize: 10, color: slide.url ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)", textShadow: slide.url ? "0 1px 3px rgba(0,0,0,0.6)" : undefined }}>
+                  {slide.bottomRight}
                 </div>
               )}
             </div>
