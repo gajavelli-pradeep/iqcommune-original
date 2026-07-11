@@ -5,7 +5,7 @@ import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 
 // Fallback placeholders — shown until an admin publishes real photos (managed in
 // the console Gallery tab → GET /api/gallery). Real photos carry the two overlay
-// captions: topLeft (gold pill) + bottomRight (e.g. city).
+// captions: topLeft (full-sentence caption banner) + bottomRight (e.g. city).
 const PLACEHOLDERS = [
   { label: "From the back of the room", sub: "Trainer in focus, audience visible", topLeft: "Foundations", bottomRight: null as string | null },
   { label: "Audience in focus", sub: "Trainer's perspective, room engaged", topLeft: "Equity Investing", bottomRight: "Mumbai" },
@@ -151,17 +151,20 @@ export function GallerySection() {
                 </div>
               )}
 
-              {/* Top-left caption (gold pill) */}
-              {slide.topLeft && (
-                <div style={{ position: "absolute", top: 10, left: 10, fontSize: 9.5, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--gold)", background: "rgba(201,152,42,0.12)", border: "0.5px solid rgba(201,152,42,0.3)", borderRadius: 100, padding: "3px 8px" }}>
-                  {slide.topLeft}
-                </div>
-              )}
-
-              {/* Bottom-right caption (e.g. city) */}
-              {slide.bottomRight && (
-                <div style={{ position: "absolute", bottom: 10, right: 10, fontSize: 10, color: slide.url ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)", textShadow: slide.url ? "0 1px 3px rgba(0,0,0,0.6)" : undefined }}>
-                  {slide.bottomRight}
+              {/* V5 (P2-5/P3-2): free-text caption banner (full sentence) replacing the
+                  legacy gold topic-pill; city sits alongside on the right. */}
+              {(slide.topLeft || slide.bottomRight) && slide.url && (
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "30px 16px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0))", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+                  {slide.topLeft && (
+                    <span style={{ fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.95)", lineHeight: 1.45, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                      {slide.topLeft}
+                    </span>
+                  )}
+                  {slide.bottomRight && (
+                    <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.72)", whiteSpace: "nowrap", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                      {slide.bottomRight}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

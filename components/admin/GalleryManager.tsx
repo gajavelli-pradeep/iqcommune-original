@@ -210,11 +210,11 @@ export function GalleryManager() {
             )}
           </div>
           <div>
-            <label style={labelStyle}>Top-left caption (gold pill — e.g. topic)</label>
-            <input style={inputStyle} value={topLeft} onChange={(e) => setTopLeft(e.target.value)} placeholder="Foundations" />
+            <label style={labelStyle}>Caption (a full sentence describing the session)</label>
+            <input style={inputStyle} value={topLeft} onChange={(e) => setTopLeft(e.target.value)} placeholder="e.g. A full room learning retirement planning" />
           </div>
           <div>
-            <label style={labelStyle}>Bottom-right caption (e.g. city)</label>
+            <label style={labelStyle}>City (optional)</label>
             <input style={inputStyle} value={bottomRight} onChange={(e) => setBottomRight(e.target.value)} placeholder="Mumbai" />
           </div>
         </div>
@@ -240,11 +240,16 @@ export function GalleryManager() {
               <div style={{ position: "relative", aspectRatio: "4/3", background: "#0a0a0a" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                {p.caption_top_left && (
-                  <span style={{ position: "absolute", top: 8, left: 8, fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gold)", background: "rgba(201,152,42,0.16)", border: "0.5px solid var(--gold-border)", borderRadius: 100, padding: "3px 8px" }}>{p.caption_top_left}</span>
-                )}
-                {p.caption_bottom_right && (
-                  <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 10, color: "rgba(255,255,255,0.75)" }}>{p.caption_bottom_right}</span>
+                {/* V5 caption banner (full sentence) + city — mirrors the landing render */}
+                {(p.caption_top_left || p.caption_bottom_right) && (
+                  <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "24px 10px 8px", background: "linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0))", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+                    {p.caption_top_left && (
+                      <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.95)", lineHeight: 1.4, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_top_left}</span>
+                    )}
+                    {p.caption_bottom_right && (
+                      <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.72)", whiteSpace: "nowrap", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_bottom_right}</span>
+                    )}
+                  </div>
                 )}
                 {!p.published && (
                   <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9.5, fontWeight: 600, color: "var(--ink)", background: "var(--amber-light)", border: "0.5px solid var(--amber)", borderRadius: 100, padding: "2px 8px" }}>Draft</span>
@@ -253,8 +258,8 @@ export function GalleryManager() {
 
               {/* Edit */}
               <div style={{ padding: "10px 12px", display: "grid", gap: 8 }}>
-                <input style={inputStyle} defaultValue={p.caption_top_left ?? ""} placeholder="Top-left caption" onBlur={(e) => saveCaption(p, "caption_top_left", e.target.value)} />
-                <input style={inputStyle} defaultValue={p.caption_bottom_right ?? ""} placeholder="Bottom-right caption" onBlur={(e) => saveCaption(p, "caption_bottom_right", e.target.value)} />
+                <input style={inputStyle} defaultValue={p.caption_top_left ?? ""} placeholder="Caption (full sentence)" onBlur={(e) => saveCaption(p, "caption_top_left", e.target.value)} />
+                <input style={inputStyle} defaultValue={p.caption_bottom_right ?? ""} placeholder="City (optional)" onBlur={(e) => saveCaption(p, "caption_bottom_right", e.target.value)} />
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button onClick={() => togglePublish(p)} disabled={busyId === p.id} style={smallBtn}>{p.published ? "Unpublish" : "Publish"}</button>
                   <button onClick={() => move(i, -1)} disabled={busyId === p.id || i === 0} style={{ ...smallBtn, opacity: i === 0 ? 0.4 : 1 }} aria-label="Move up">↑</button>
