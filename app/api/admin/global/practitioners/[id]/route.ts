@@ -2,6 +2,7 @@ import { requireGlobalAdmin } from "@/lib/supabase/require-global-admin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { encryptOptional } from "@/lib/encrypt";
 import { TSHIRT_SIZES } from "@/lib/schemas/application";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -30,10 +31,17 @@ const EditPractitionerSchema = z
     org:        z.string().nullable(),
     modules:    z.array(z.string()),
     status:     z.enum(STATUSES),
-    // V5 correctable intake fields (not payment/bank columns — those stay blocked).
+    // V5 correctable intake fields.
     state:                 z.string().nullable(),
     communication_address: z.string().nullable(),
     tshirt_size:           z.enum(TSHIRT_SIZES).nullable(),
+    // P2-2: payment correction. No payment_method/invoice_name columns exist —
+    // method is implicit (UPI vs bank) and bank_name is the invoice/payee name.
+    // Encrypted at rest below before the update is applied.
+    upi_id:                z.string().nullable(),
+    bank_name:             z.string().nullable(),
+    bank_account:          z.string().nullable(),
+    ifsc:                  z.string().nullable(),
   })
   .partial()
   .strict();
@@ -87,9 +95,18 @@ export async function PATCH(
     snapshot: record as Record<string, unknown>,
   });
 
+  // Payment fields are stored encrypted (see app/api/applications/route.ts) and the
+  // console decrypts on read — so any edited payment field must be re-encrypted here,
+  // otherwise the correction would be persisted as plaintext at rest.
+  const updatePayload = { ...parsed.data };
+  if (updatePayload.upi_id !== undefined) updatePayload.upi_id = encryptOptional(updatePayload.upi_id);
+  if (updatePayload.bank_name !== undefined) updatePayload.bank_name = encryptOptional(updatePayload.bank_name);
+  if (updatePayload.bank_account !== undefined) updatePayload.bank_account = encryptOptional(updatePayload.bank_account);
+  if (updatePayload.ifsc !== undefined) updatePayload.ifsc = encryptOptional(updatePayload.ifsc);
+
   const { data: updated, error } = await db
     .from("practitioners")
-    .update(parsed.data)
+    .update(updatePayload)
     .eq("id", id)
     .select("*")
     .single();

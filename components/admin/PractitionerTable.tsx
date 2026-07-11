@@ -128,12 +128,11 @@ export function PractitionerTable({
   const [data, setData] = useState(initialData);
   const router = useRouter();
 
-  // Sync when parent adds a new practitioner (e.g. via PractitionerFormModal).
-  // useState(initialData) only consumes the initializer once on mount; subsequent
-  // prop changes are ignored without this effect.
-  useEffect(() => {
-    setData(initialData);
-  }, [initialData]);
+  // Sync when parent adds/edits a practitioner (e.g. via PractitionerFormModal).
+  // Render-phase prop-adjust (React-recommended) instead of an effect — mirrors
+  // RequestTable and avoids the extra render a setState-in-effect would cause.
+  const [prevInitial, setPrevInitial] = useState(initialData);
+  if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
 
   const [internalFilter, setInternalFilter] = useState<string>("All");
   const filter = filterProp ?? internalFilter;
@@ -369,7 +368,8 @@ export function PractitionerTable({
                                 ["Phone", p.phone ?? "—"],
                                 ["Role", p.role],
                                 ["Org", p.org ?? "Independent"],
-                                ["City", `${p.city}${p.state ? `, ${p.state}` : ""}`],
+                                ["City", p.city],
+                                ["State", p.state || "Not provided"],
                                 ["Experience", p.experience ?? "—"],
                                 ["Modules", (p.modules ?? []).join(", ") || "—"],
                                 ["Availability", p.teach_freq ?? "—"],
@@ -500,17 +500,23 @@ export function PractitionerTable({
                                   </button>
                                 )}
 
-                                {(p.upi_id || p.bank_account) && (
-                                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
-                                    <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
-                                    {[["UPI", p.upi_id], ["Bank", p.bank_name], ["Account", p.bank_account], ["IFSC", p.ifsc]].filter(([, v]) => v).map(([label, value]) => (
-                                      <div key={String(label)} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 12 }}>
-                                        <span style={{ color: "var(--ink-faint)", minWidth: 60, flexShrink: 0 }}>{label}</span>
-                                        <span style={{ fontFamily: "monospace", fontWeight: 500, minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-all" }}>{value}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                                  <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
+                                  {/* No payment_method column — method is derived from which fields are filled.
+                                      "Invoice name" is the bank_name (name as per bank account) column. */}
+                                  {[
+                                    ["Method", p.upi_id ? "UPI" : p.bank_account ? "Bank transfer" : "Not provided"],
+                                    ["UPI", p.upi_id || "Not provided"],
+                                    ["Invoice name", p.bank_name || "Not provided"],
+                                    ["Account", p.bank_account || "Not provided"],
+                                    ["IFSC", p.ifsc || "Not provided"],
+                                  ].map(([label, value]) => (
+                                    <div key={String(label)} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 12 }}>
+                                      <span style={{ color: "var(--ink-faint)", minWidth: 60, flexShrink: 0 }}>{label}</span>
+                                      <span style={{ fontFamily: "monospace", fontWeight: 500, minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-all" }}>{value}</span>
+                                    </div>
+                                  ))}
+                                </div>
 
                                 {isGlobalAdmin && onEdit && (
                                   <button

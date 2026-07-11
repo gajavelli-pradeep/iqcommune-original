@@ -13,6 +13,8 @@ const EMPTY = {
   name: "", email: "", role: "", city: "", experience: "", phone: "", org: "", modules: "", status: "Applied",
   // V5 Global-Admin correction fields — edited on existing records only.
   state: "", communicationAddress: "", tshirtSize: "",
+  // Payment correction (encrypted at rest; seeded/edited as plaintext).
+  upiId: "", bankName: "", bankAccount: "", ifsc: "",
 };
 
 function fromRecord(p: Practitioner): typeof EMPTY {
@@ -29,6 +31,10 @@ function fromRecord(p: Practitioner): typeof EMPTY {
     state:                p.state ?? "",
     communicationAddress: p.communication_address ?? "",
     tshirtSize:           p.tshirt_size ?? "",
+    upiId:                p.upi_id ?? "",
+    bankName:             p.bank_name ?? "",
+    bankAccount:          p.bank_account ?? "",
+    ifsc:                 p.ifsc ?? "",
   };
 }
 
@@ -85,6 +91,10 @@ export function PractitionerFormModal({
               state: form.state || null,
               communication_address: form.communicationAddress || null,
               tshirt_size: form.tshirtSize || null,
+              upi_id: form.upiId || null,
+              bank_name: form.bankName || null,
+              bank_account: form.bankAccount || null,
+              ifsc: form.ifsc || null,
             }),
           })
         : await fetch("/api/admin/practitioners", {
@@ -160,6 +170,12 @@ export function PractitionerFormModal({
                 <input id="pf-address" name="pf-address" style={fieldInputStyle} value={form.communicationAddress} onChange={set("communicationAddress")} />
               </Field>
             </div>
+            {/* Payment correction — UPI is one method; the three bank fields the other.
+                "Invoice name" is the name as per bank account (bank_name column). */}
+            <Field label="UPI ID"><input id="pf-upi" name="pf-upi" style={fieldInputStyle} value={form.upiId} onChange={set("upiId")} /></Field>
+            <Field label="Invoice name (as per bank account)"><input id="pf-bank-name" name="pf-bank-name" style={fieldInputStyle} value={form.bankName} onChange={set("bankName")} /></Field>
+            <Field label="Bank account number"><input id="pf-bank-account" name="pf-bank-account" style={fieldInputStyle} value={form.bankAccount} onChange={set("bankAccount")} /></Field>
+            <Field label="IFSC"><input id="pf-ifsc" name="pf-ifsc" style={fieldInputStyle} value={form.ifsc} onChange={set("ifsc")} /></Field>
           </>
         )}
         <div style={{ gridColumn: "1 / -1" }}>
