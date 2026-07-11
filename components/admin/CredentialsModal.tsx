@@ -69,6 +69,8 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   // Invite ("summon") flow
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
+  // V5 P3-3: invites can provision Admin or read-only User (never Global Admin via link).
+  const [inviteRole, setInviteRole] = useState<"admin" | "user">("admin");
   const [invModeOn, setInvModeOn] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -128,12 +130,13 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
       const res = await fetch("/api/admin/global/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, role: inviteRole }),
       });
       const j = await res.json();
       if (!res.ok) { setError(j.error ?? "Failed to create invite."); return; }
       setInviteLink(j.url as string);
       setInviteEmail("");
+      setInviteRole("admin");
       setCopied(false);
       if (j.data) setInvites((prev) => [j.data as AdminInvite, ...prev]);
     } catch {
@@ -472,6 +475,16 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                     autoFocus
                     style={{ ...inputStyle, flex: 1, minWidth: 200 }}
                   />
+                  {/* V5 P3-3: choose the role this invite provisions (Admin or read-only User). */}
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value as "admin" | "user")}
+                    aria-label="Role for this invite"
+                    style={{ ...inputStyle, width: "auto", cursor: "pointer" }}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="user">User (read-only)</option>
+                  </select>
                   <button
                     onClick={handleCreateInvite}
                     disabled={inviting}

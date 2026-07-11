@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const { data: invite, error: fetchErr } = await supabase
     .from("admin_invites")
-    .select("id, email, status, expires_at")
+    .select("id, email, role, status, expires_at")
     .eq("token_hash", hashToken(token))
     .maybeSingle();
 
@@ -59,12 +59,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This invite link has expired" }, { status: 410 });
   }
 
-  // Create the admin account. Role hard-locked to 'admin'.
+  // Provision the role the invite was created with (V5 P3-3). Defensively clamp to
+  // the link-invitable set — global_admin can never be granted via an invite link,
+  // regardless of what the stored row says, to prevent privilege escalation.
+  const inviteRole = invite.role === "user" ? "user" : "admin";
   const { data: created, error: createErr } = await supabase.auth.admin.createUser({
     email: invite.email,
     password,
     email_confirm: true,
-    app_metadata: { role: "admin" },
+    app_metadata: { role: inviteRole },
     user_metadata: { name },
   });
 

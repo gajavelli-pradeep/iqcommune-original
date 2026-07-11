@@ -45,8 +45,13 @@ export async function GET() {
   return NextResponse.json({ data: (data as InviteView[]).map(withDerivedStatus) });
 }
 
+// V5 P3-3: invites may provision an Admin or read-only User. global_admin is
+// deliberately NOT invitable via a link (privilege-escalation guard) — it is only
+// grantable by an existing global admin through the authenticated role dropdown.
+const INVITE_ROLES = ["admin", "user"] as const;
 const CreateSchema = z.object({
   email: z.string().email(),
+  role: z.enum(INVITE_ROLES).default("admin"),
 });
 
 export async function POST(req: NextRequest) {
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest) {
     .from("admin_invites")
     .insert({
       email,
-      role: "admin",
+      role: parsed.data.role,
       token_hash: hashToken(token),
       invited_by: actor?.email ?? "unknown",
       expires_at: expiresAt,
@@ -109,7 +114,7 @@ export async function POST(req: NextRequest) {
     action: "create_admin_invite",
     recordTable: "admin_invites",
     recordId: data.id,
-    snapshot: { email, role: "admin", expires_at: expiresAt },
+    snapshot: { email, role: parsed.data.role, expires_at: expiresAt },
   });
 
   return NextResponse.json(
