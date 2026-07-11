@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { decryptPaymentFields } from "@/lib/practitioner-payment";
 import { log } from "@/lib/logger";
 import { computeNet, generateConfirmationRef } from "@/lib/consent";
 import { signConsentUrl } from "@/lib/hmac";
@@ -47,6 +48,98 @@ export interface GenerateConfirmationInput {
 export type GenerateConfirmationResult =
   | { ok: true; id: string; ref_code: string; consent_link: string; net: number }
   | { ok: false; status: number; error: string };
+
+// The read-only fields the consent form auto-populates from the request + practitioner
+// onboarding record. Shown for review before generating.
+export interface ConsentAutofill {
+  firstName: string;
+  practitionerName: string;
+  module: string;
+  date: string;
+  venue: string;
+  city: string;
+  state: string;
+  audience: string;
+  participants: number;
+  spoc: string;
+  agreementRef: string;
+  invoiceBy: string;
+  paymentMethod: string; // actual UPI id / bank account on file, for the review screen
+  payoutAmount: number;  // agreed payout — prefills the Gross field
+}
+
+/**
+ * Gather the auto-populated confirmation fields for a session, for the "Generate a
+ * new confirmation" review screen. Read-only — no writes, no email, no PDF.
+ *
+ * The enrichment here (SPOC + city/state from the request, active agreement ref,
+ * invoice-by, payment method) MIRRORS the snapshot logic in
+ * generateConfirmationForSession below — keep the two in sync so the review screen
+ * shows exactly what the generated document will carry.
+ */
+export async function getConsentAutofill(
+  sessionId: string
+): Promise<{ ok: true; data: ConsentAutofill } | { ok: false; status: number; error: string }> {
+  const supabase = createAdminClient();
+
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .select("ref_code, module, practitioner_id, request_id, audience_type, session_date, venue, participants, payout_amount, consent_status, status, practitioner:practitioners(name, pay_to_family, family_name, upi_id, bank_account)")
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .single();
+
+  if (error || !session) return { ok: false, status: 404, error: "Session not found" };
+  if (session.status !== "Upcoming" || session.consent_status !== "Pending consent") {
+    return { ok: false, status: 409, error: "This session is not awaiting consent" };
+  }
+
+  const practitioner = Array.isArray(session.practitioner) ? session.practitioner[0] : session.practitioner;
+  const practitionerName = practitioner?.name ?? "Practitioner";
+  // upi_id / bank_account are encrypted at rest — decrypt for the review screen
+  // (server-side, admin-only) so the admin sees the real payment detail, not ciphertext.
+  const pay = practitioner ? decryptPaymentFields(practitioner as Record<string, unknown>) : null;
+  const upiId = (typeof pay?.upi_id === "string" ? pay.upi_id : "") || "";
+  const bankAccount = (typeof pay?.bank_account === "string" ? pay.bank_account : "") || "";
+
+  let reqRow: { name: string | null; city: string | null; state: string | null } | null = null;
+  if (session.request_id) {
+    const { data } = await supabase
+      .from("session_requests")
+      .select("name, city, state")
+      .eq("id", session.request_id)
+      .maybeSingle();
+    reqRow = data;
+  }
+  const { data: agr } = await supabase
+    .from("agreements")
+    .select("ref_code")
+    .eq("practitioner_id", session.practitioner_id)
+    .eq("status", "Active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    ok: true,
+    data: {
+      firstName: practitionerName.split(" ")[0] || practitionerName,
+      practitionerName,
+      module: session.module,
+      date: displayDate(session.session_date),
+      venue: session.venue,
+      city: reqRow?.city ?? "",
+      state: reqRow?.state ?? "",
+      audience: session.audience_type,
+      participants: session.participants,
+      spoc: reqRow?.name ?? "—",
+      agreementRef: agr?.ref_code ?? "—",
+      invoiceBy: practitioner?.pay_to_family && practitioner?.family_name ? practitioner.family_name : practitionerName,
+      paymentMethod: upiId || bankAccount || "—",
+      payoutAmount: session.payout_amount,
+    },
+  };
+}
 
 /**
  * Create a per-session revenue confirmation for whoever the session is currently

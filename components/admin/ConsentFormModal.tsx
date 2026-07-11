@@ -29,6 +29,25 @@ interface SessionOption {
   practitioner: { name: string; email: string } | null;
 }
 
+// Mirror of the /api/admin/consent/preview payload — the fields the confirmation
+// auto-populates from the request + practitioner record.
+interface ConsentAutofill {
+  firstName: string;
+  practitionerName: string;
+  module: string;
+  date: string;
+  venue: string;
+  city: string;
+  state: string;
+  audience: string;
+  participants: number;
+  spoc: string;
+  agreementRef: string;
+  invoiceBy: string;
+  paymentMethod: string;
+  payoutAmount: number;
+}
+
 export function ConsentFormModal({
   open,
   onClose,
@@ -50,6 +69,9 @@ export function ConsentFormModal({
   const [saving, setSaving] = useState(false);
   const [generatedLink, setGeneratedLink] = useState("");
   const [copied, setCopied] = useState(false);
+  // Keyed by session id so a stale fetch (from a previously-picked session) is never
+  // shown against the current one — the render derives from this + form.sessionId.
+  const [autofill, setAutofill] = useState<{ sessionId: string; data: ConsentAutofill } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -62,10 +84,26 @@ export function ConsentFormModal({
     return () => { cancelled = true; };
   }, [open]);
 
+  // Pull the auto-populated fields for the picked session, so the admin reviews
+  // exactly what the confirmation will carry before generating it. Only ever writes
+  // state from async callbacks (never synchronously in the effect body).
+  useEffect(() => {
+    const sid = form.sessionId;
+    if (!sid) return;
+    let cancelled = false;
+    fetch(`/api/admin/consent/preview?sessionId=${encodeURIComponent(sid)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(({ data }) => { if (!cancelled) setAutofill({ sessionId: sid, data: data as ConsentAutofill }); })
+      .catch(() => { if (!cancelled) setAutofill((prev) => (prev?.sessionId === sid ? null : prev)); });
+    return () => { cancelled = true; };
+  }, [form.sessionId]);
+
   const eligible = sessions.filter(
     (s) => s.status === "Upcoming" && s.consent_status === "Pending consent" && !confirmedSessionIds.includes(s.id)
   );
   const selected = eligible.find((s) => s.id === form.sessionId) ?? null;
+  // Auto-populated fields, but only when they belong to the currently-picked session.
+  const af = autofill && autofill.sessionId === form.sessionId ? autofill.data : null;
 
   const gross = Number(form.gross) || 0;
   const tdsRate = Number(form.tdsRate) || 0;
@@ -156,8 +194,8 @@ export function ConsentFormModal({
     <FormModal
       open={open}
       onClose={onClose}
-      title="Generate session consent"
-      subtitle="Create the revenue confirmation and practitioner consent link"
+      title="Generate a new confirmation"
+      subtitle="All fields below flow from the original Session Request and Practitioner onboarding record."
       footer={
         generatedLink ? (
           <button type="button" style={primaryBtn} onClick={onClose}>Done</button>
@@ -217,17 +255,44 @@ export function ConsentFormModal({
           </div>
 
           {selected && (
-            <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--ink-soft)", background: "var(--surface-soft)", borderRadius: 6, padding: "6px 10px" }}>
-              Practitioner: <strong>{selected.practitioner?.name ?? "Unknown"}</strong> · {selected.participants} pax · {selected.venue}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--ink-faint)", margin: "2px 0 8px" }}>
+                Auto-populated — from the request and practitioner record
+              </div>
+              {!af ? (
+                <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>Loading details…</div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 1rem", background: "var(--surface-soft)", borderRadius: 8, padding: "10px 12px" }}>
+                  {([
+                    ["First name", af.firstName],
+                    ["Module confirmed for", af.module],
+                    ["Date", af.date],
+                    ["Venue", af.venue],
+                    ["City", af.city || "—"],
+                    ["State", af.state || "—"],
+                    ["Audience type", af.audience],
+                    ["Participant count", String(af.participants)],
+                    ["SPOC name", af.spoc],
+                    ["Empanelment agreement ref.", af.agreementRef],
+                    ["Invoice should be raised by", af.invoiceBy],
+                    ["Payment method on file", af.paymentMethod],
+                  ] as const).map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 10, color: "var(--ink-faint)", marginBottom: 1 }}>{label}</div>
+                      <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500, overflowWrap: "anywhere" }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           <label>
-            <span style={fieldLabelStyle}>Start time *</span>
+            <span style={fieldLabelStyle}>Start time * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
             <input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} />
           </label>
           <label>
-            <span style={fieldLabelStyle}>Duration *</span>
+            <span style={fieldLabelStyle}>Duration * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
             <select style={fieldSelectStyle} value={form.duration} onChange={set("duration")}>
               {DURATION_OPTIONS.map((d) => (
                 <option key={d} value={d}>{d}</option>
