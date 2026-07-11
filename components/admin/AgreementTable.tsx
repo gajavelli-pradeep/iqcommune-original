@@ -4,9 +4,8 @@ import { useState } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 
 // DB stores agreements awaiting signature as "Pending signature" and signed
 // empanelment agreements as "Active" (schema CHECK constraint).
@@ -38,11 +37,10 @@ export function AgreementTable({
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
 
   const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
   const df = useDateFilter(initialData.map((a) => a.signed_at));
   const visible = (filter === "All" ? initialData : initialData.filter((a) => a.status === filter))
-    .filter((a) => df.matchesDate(a.signed_at))
-    .filter((a) => matchesSearch(search, a.practitioner_name, a.ref_code, a.module, a.signature_method, a.status));
+    .filter((a) => df.matchesDate(a.signed_at));
+  const pendingCount = initialData.filter((a) => a.status === "Pending signature" && df.matchesDate(a.signed_at)).length;
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -58,7 +56,19 @@ export function AgreementTable({
 
   return (
     <div>
-      <TableFilterBar options={AGREEMENT_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search agreements…" />
+      <PendingBar
+        pendingCards={[{
+          count: pendingCount,
+          label: "Awaiting signature",
+          active: filter === "Pending signature",
+          onToggle: () => setFilter(filter === "Pending signature" ? "All" : "Pending signature"),
+        }]}
+        statusOptions={AGREEMENT_FILTERS}
+        statusValue={filter}
+        onStatusChange={setFilter}
+        statusAriaLabel="Filter agreements by status"
+        dateFilter={df.control}
+      />
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>

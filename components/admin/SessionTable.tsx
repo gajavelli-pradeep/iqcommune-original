@@ -6,10 +6,9 @@ import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface Session {
@@ -100,7 +99,6 @@ export function SessionTable({
   const setStatusFilter = (f: StatusFilter) =>
     onStatusFilterChange ? onStatusFilterChange(f) : setInternalStatus(f);
 
-  const [search, setSearch] = useState("");
   const [feedbackBySession, setFeedbackBySession] = useState<Record<string, FeedbackState>>(() => {
     const map: Record<string, FeedbackState> = {};
     for (const s of initialData) {
@@ -159,12 +157,9 @@ export function SessionTable({
   const df = useDateFilter(data.map((s) => s.session_date));
   const visible = data.filter((s) => {
     const matchesStatus = statusFilter === "All" || s.status === statusFilter;
-    return (
-      matchesStatus &&
-      df.matchesDate(s.session_date) &&
-      matchesSearch(search, s.ref_code, s.module, s.practitioner?.name, s.practitioner?.email, s.venue, s.audience_type, s.status, s.consent_status, s.session_date, s.participants)
-    );
+    return matchesStatus && df.matchesDate(s.session_date);
   });
+  const pendingCount = data.filter((s) => s.status === "Upcoming" && df.matchesDate(s.session_date)).length;
 
   // The read-only User tier has no row actions — drop the Actions column entirely
   // (header + cell) rather than showing an empty column.
@@ -172,13 +167,17 @@ export function SessionTable({
 
   return (
     <div>
-      <TableFilterBar
-        options={STATUS_FILTERS}
-        value={statusFilter}
-        onChange={(f) => setStatusFilter(f as StatusFilter)}
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search sessions…"
+      <PendingBar
+        pendingCards={[{
+          count: pendingCount,
+          label: "Upcoming",
+          active: statusFilter === "Upcoming",
+          onToggle: () => setStatusFilter(statusFilter === "Upcoming" ? "All" : "Upcoming"),
+        }]}
+        statusOptions={STATUS_FILTERS}
+        statusValue={statusFilter}
+        onStatusChange={(f) => setStatusFilter(f as StatusFilter)}
+        statusAriaLabel="Filter sessions by status"
         dateFilter={df.control}
       />
 

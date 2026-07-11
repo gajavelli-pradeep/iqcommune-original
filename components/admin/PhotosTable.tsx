@@ -3,10 +3,9 @@
 import { useState, useCallback } from "react";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { RowActionsMenu, type RowAction } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { downloadPhotoSet } from "@/lib/download-photos";
@@ -57,6 +56,13 @@ function daysLeft(expiryDate: string): number {
   return Math.ceil(
     (new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
+}
+
+// "Expiring ≤7d": uploaded photos whose 30-day retention runs out within a week.
+// daysLeft() reads Date.now(), which is fine in this client component.
+function isExpiringSoon(expiryDate: string): boolean {
+  const d = daysLeft(expiryDate);
+  return d > 0 && d <= 7;
 }
 
 function ExpiryBar({ days }: { days: number }) {
@@ -116,7 +122,8 @@ export function PhotosTable({
   const setStatusFilter = (f: StatusFilter) =>
     onStatusFilterChange ? onStatusFilterChange(f) : setInternalFilter(f);
 
-  const [search, setSearch] = useState("");
+  // Client-side toggle for the "Expiring ≤7d" pending card (no matching status value).
+  const [expiringOnly, setExpiringOnly] = useState(false);
 
   // Year/month filter spans both row kinds — submissions by submitted_at,
   // pending (completed-session) rows by session_date.
@@ -127,15 +134,22 @@ export function PhotosTable({
 
   // Every existing submission counts as "Uploaded" (V4). "Pending" = sessions
   // with no upload yet, so submissions are hidden under the Pending filter.
+  // `expiringOnly` further narrows uploaded rows to those expiring within 7 days.
   const visible = (statusFilter === "Pending" ? [] : data)
     .filter((p) => df.matchesDate(p.submitted_at))
-    .filter((p) => matchesSearch(search, p.practitioner_name, p.practitioner_ref, p.session_ref, p.module, p.city, p.state, p.status));
-  // "Pending" rows (completed sessions, no upload) show under All + Pending.
+    .filter((p) => !expiringOnly || isExpiringSoon(p.expiry_date));
+  // "Pending" rows (completed sessions, no upload) show under All + Pending —
+  // never while the Expiring card is active (those rows have no expiry).
   const pendingRows = (
-    statusFilter === "All" || statusFilter === "Pending" ? pendingSessions : []
+    (statusFilter === "All" || statusFilter === "Pending") && !expiringOnly ? pendingSessions : []
   )
-    .filter((s) => df.matchesDate(s.session_date))
-    .filter((s) => matchesSearch(search, s.practitioner_name, s.session_ref, s.module, s.venue));
+    .filter((s) => df.matchesDate(s.session_date));
+
+  // Pending-card counts: date-filtered, status-independent (like RequestTable).
+  const pendingUploadCount = pendingSessions.filter((s) => df.matchesDate(s.session_date)).length;
+  const expiringCount = data.filter(
+    (p) => df.matchesDate(p.submitted_at) && isExpiringSoon(p.expiry_date)
+  ).length;
 
   async function sendReminder(sessionId: string, name: string) {
     const res = await fetch(`/api/admin/sessions/${sessionId}/photo-link`);
@@ -224,14 +238,36 @@ export function PhotosTable({
         <strong>Sessions → Completed → Photo link</strong>, or use <strong>Send reminder</strong> on a Pending row.
       </div>
 
-      <TableFilterBar
-        options={STATUS_FILTERS}
-        value={statusFilter}
-        onChange={(f) => setStatusFilter(f as StatusFilter)}
+      <PendingBar
+        pendingCards={[
+          {
+            count: pendingUploadCount,
+            label: "Pending",
+            active: statusFilter === "Pending",
+            onToggle: () => {
+              setExpiringOnly(false);
+              setStatusFilter(statusFilter === "Pending" ? "All" : "Pending");
+            },
+          },
+          {
+            count: expiringCount,
+            label: "Expiring ≤7d",
+            active: expiringOnly,
+            onToggle: () => {
+              const next = !expiringOnly;
+              setExpiringOnly(next);
+              if (next && statusFilter === "Pending") setStatusFilter("All");
+            },
+          },
+        ]}
+        statusOptions={STATUS_FILTERS}
+        statusValue={statusFilter}
+        onStatusChange={(f) => {
+          setExpiringOnly(false);
+          setStatusFilter(f as StatusFilter);
+        }}
+        statusAriaLabel="Filter photos by status"
         dateFilter={df.control}
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search photos…"
       />
 
       <AdminTable

@@ -6,9 +6,8 @@ import { StatusPill } from "@/components/shared/StatusPill";
 import { PipelineStepper } from "@/components/shared/PipelineStepper";
 import type { Database } from "@/lib/supabase/database.types";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
@@ -298,15 +297,26 @@ export function PractitionerTable({
     setTimeout(() => (lastFocusRef.current as HTMLElement | null)?.focus(), 0);
   }
 
-  const [search, setSearch] = useState("");
   const df = useDateFilter(data.map((p) => p.created_at));
   const visible = (filter === "All" ? data : data.filter((p) => p.status === filter))
-    .filter((p) => df.matchesDate(p.created_at))
-    .filter((p) => matchesSearch(search, p.name, p.role, p.org, p.city, p.state, (p.modules ?? []).join(" "), p.experience, p.status, p.ref_code, p.email, p.phone));
+    .filter((p) => df.matchesDate(p.created_at));
+  const pendingCount = data.filter((p) => p.status === "Applied" && df.matchesDate(p.created_at)).length;
 
   return (
     <div>
-      <TableFilterBar options={FILTER_OPTIONS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search practitioners…" />
+      <PendingBar
+        pendingCards={[{
+          count: pendingCount,
+          label: "New applications",
+          active: filter === "Applied",
+          onToggle: () => setFilter(filter === "Applied" ? "All" : "Applied"),
+        }]}
+        statusOptions={FILTER_OPTIONS}
+        statusValue={filter}
+        onStatusChange={setFilter}
+        statusAriaLabel="Filter practitioners by status"
+        dateFilter={df.control}
+      />
 
       {/* Table */}
       <AdminTable

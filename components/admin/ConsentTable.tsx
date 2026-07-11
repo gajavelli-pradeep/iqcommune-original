@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import type { Database } from "@/lib/supabase/database.types";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 
 export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
   practitioner: { name: string; email: string } | null;
@@ -71,11 +70,10 @@ export function ConsentTable({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
   const df = useDateFilter(data.map((r) => r.issued_on));
   const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
-    .filter((r) => df.matchesDate(r.issued_on))
-    .filter((r) => matchesSearch(search, r.ref_code, r.session_ref, r.practitioner?.name, r.status, r.gross_amount, r.net_amount));
+    .filter((r) => df.matchesDate(r.issued_on));
+  const pendingCount = data.filter((r) => r.status === "Awaiting consent" && df.matchesDate(r.issued_on)).length;
 
   async function copyLink(row: ConfirmationRow) {
     if (!row.consent_link) return;
@@ -152,7 +150,14 @@ export function ConsentTable({
 
   return (
     <div>
-      <TableFilterBar options={CONSENT_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search consent…" />
+      <PendingBar
+        pendingCards={[{ count: pendingCount, label: "Awaiting consent", active: filter === "Awaiting consent", onToggle: () => setFilter(filter === "Awaiting consent" ? "All" : "Awaiting consent") }]}
+        statusOptions={CONSENT_FILTERS}
+        statusValue={filter}
+        onStatusChange={setFilter}
+        statusAriaLabel="Filter confirmations by status"
+        dateFilter={df.control}
+      />
       <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderTop: "none", borderRadius: "0 0 10px 10px", overflow: "hidden" }}>
       {error && <div role="alert" style={{ fontSize: 12, color: "#a32d2d", padding: "8px 12px" }}>{error}</div>}
       <div style={{ overflowX: "auto" }}>
