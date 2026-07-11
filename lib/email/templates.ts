@@ -106,6 +106,22 @@ export function clientFollowUpEmail(
   };
 }
 
+export function sessionCancelledEmail(
+  clientName: string,
+  session: { topic: string; sessionRef?: string },
+): { subject: string; htmlContent: string } {
+  const first = esc(clientName.split(" ")[0] || "there");
+  return {
+    subject: "iqcommune — Your training session has been cancelled",
+    htmlContent: `<div style="${BASE}">
+<p>Hi ${first},</p>
+<p>We're writing to let you know that your confirmed session on <strong>${esc(session.topic)}</strong>${session.sessionRef ? ` (${esc(session.sessionRef)})` : ""} has been cancelled.</p>
+<p>We're sorry for any inconvenience. If you'd like to reschedule or arrange a session on another topic, simply reply to this email and we'll set it up for you.</p>
+<p>Warm regards,<br/>iqcommune team<br/><a href="mailto:hello@iqcommune.com">hello@iqcommune.com</a></p>
+</div>`,
+  };
+}
+
 export function applicationConfirmation({
   name,
   ref,

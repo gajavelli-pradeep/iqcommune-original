@@ -150,6 +150,24 @@ export function RequestTable({
     }
   }
 
+  const [cancelBusyId, setCancelBusyId] = useState<string | null>(null);
+
+  // V5 P1-2: cancel a Confirmed booking. The route cascades request + linked
+  // session to Cancelled and emails the client — so it needs a confirm step.
+  async function cancelRequest(r: SessionRequest) {
+    setCancelBusyId(r.id);
+    const res = await fetch(`/api/admin/session-requests/${r.id}/cancel`, { method: "PATCH" });
+    setCancelBusyId(null);
+    if (res.ok) {
+      setData((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: "Cancelled" } : x)));
+      onRowChange?.(r.id, { status: "Cancelled" });
+      showToast("Session cancelled — client notified");
+    } else {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Cancel failed: ${error ?? res.status}`);
+    }
+  }
+
   // V4 §4.2 one-click Assign: open a small dialog for payout + date, then create
   // the session + confirm the request via /assign. sessionRefById holds the ref
   // returned by the API for the "→ Session" read-only line.
@@ -399,9 +417,29 @@ export function RequestTable({
                             {/* V4: Confirmed is reached only via Assign and is read-only.
                                 Otherwise the request can be left New or Cancelled. */}
                             {r.status === "Confirmed" ? (
-                              <span style={{ display: "inline-block", fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8, background: "var(--green-light)", color: "var(--green)", textAlign: "center" }}>
-                                Confirmed — read-only
-                              </span>
+                              <>
+                                <span style={{ display: "inline-block", fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8, background: "var(--green-light)", color: "var(--green)", textAlign: "center" }}>
+                                  Confirmed — read-only
+                                </span>
+                                {/* V5 P1-2: cancel cascades request + session to Cancelled and notifies the client */}
+                                <button
+                                  disabled={cancelBusyId === r.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDialog({
+                                      open: true,
+                                      title: `Cancel session for ${r.name}?`,
+                                      description: "This cancels the confirmed request and its linked session, and emails the client to let them know. The session drops out of the consent, photos and payout pipeline.",
+                                      onConfirm: () => { closeConfirm(); cancelRequest(r); },
+                                    });
+                                  }}
+                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--red-border)", background: "#fff", color: "var(--red)", cursor: cancelBusyId === r.id ? "not-allowed" : "pointer", opacity: cancelBusyId === r.id ? 0.6 : 1, fontFamily: "inherit", fontSize: 13 }}
+                                  title={`Cancel session for ${r.name}`}
+                                >
+                                  <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
+                                  {cancelBusyId === r.id ? "Cancelling…" : "Cancel session"}
+                                </button>
+                              </>
                             ) : (
                               <select
                                 value={r.status}
@@ -457,7 +495,9 @@ export function RequestTable({
                                 Edit request
                               </button>
                             )}
-                            {isGlobalAdmin && (
+                            {/* V5 P2-3: hard-delete is only offered while New. Once Confirmed, the
+                                exit is Cancel (above); Cancelled requests are terminal. */}
+                            {isGlobalAdmin && r.status === "New" && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
