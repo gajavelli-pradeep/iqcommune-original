@@ -10,6 +10,7 @@ import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 
 type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
@@ -142,6 +143,28 @@ export function PractitionerTable({
   const [toast, setToast] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
+  const undo = useUndoToast();
+
+  // V5 act-then-undo: delete immediately (soft), offer ~9s to Undo (restore via trash).
+  async function deletePractitionerWithUndo(p: Practitioner) {
+    setData((prev) => prev.filter((pr) => pr.id !== p.id));
+    onHardDeleted?.(p.id);
+    setExpandedRow(null);
+    const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setData((prev) => [p, ...prev]);
+      showToast("Delete failed — please try again.");
+      return;
+    }
+    undo.show(`${p.name} deleted`, async () => {
+      await fetch("/api/admin/global/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table: "practitioners", id: p.id }),
+      });
+      setData((prev) => [p, ...prev]);
+    });
+  }
   const [draft, setDraft] = useState<DraftState>({ open: false });
   // Track which row triggered a modal so focus can be restored on close
   const lastFocusRef = useRef<HTMLElement | null>(null);
@@ -620,25 +643,7 @@ export function PractitionerTable({
                                     </button>
                                     {isGlobalAdmin && p.status !== "Empanelled" && (
                                       <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setConfirmDialog({
-                                            open: true,
-                                            title: `Delete ${p.name}`,
-                                            description: "This removes the practitioner from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                                            onConfirm: async () => {
-                                              closeConfirm();
-                                              const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
-                                              if (res.ok) {
-                                                setData((prev) => prev.filter((pr) => pr.id !== p.id));
-                                                onHardDeleted?.(p.id);
-                                                setExpandedRow(null);
-                                              } else {
-                                                showToast("Delete failed — please try again.");
-                                              }
-                                            },
-                                          });
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); deletePractitionerWithUndo(p); }}
                                         style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background .12s" }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = "#fecaca")}
                                         onMouseLeave={(e) => (e.currentTarget.style.background = "#fee2e2")}
@@ -714,6 +719,7 @@ export function PractitionerTable({
       >
         {toast}
       </div>
+      {undo.node}
       <ConfirmDialog
         open={confirmDialog.open}
         title={confirmDialog.title}

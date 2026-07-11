@@ -9,7 +9,7 @@ import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 
 interface Session {
   id: string;
@@ -144,8 +144,25 @@ export function SessionTable({
       setStatusBusyId(null);
     }
   }
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
-  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
+  const undo = useUndoToast();
+
+  // V5 act-then-undo: delete (soft) then offer ~9s to Undo (restore via trash).
+  async function deleteSessionWithUndo(id: string, label: string) {
+    const res = await fetch(`/api/admin/global/sessions/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setDeleteFailedId(id);
+      setTimeout(() => setDeleteFailedId((c) => (c === id ? null : c)), 3000);
+      return;
+    }
+    onHardDeleted?.(id);
+    undo.show(`Session ${label} deleted`, async () => {
+      await fetch("/api/admin/global/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table: "sessions", id }),
+      });
+    });
+  }
   const [draft, setDraft] = useState<{
     open: boolean;
     title?: string;
@@ -339,20 +356,7 @@ export function SessionTable({
                         ? [{
                             label: deleteFailedId === s.id ? "Delete failed!" : "Delete",
                             danger: true,
-                            onClick: () => setConfirmDialog({
-                              open: true,
-                              title: `Delete session ${s.ref_code}`,
-                              description: "This removes the session from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                              onConfirm: async () => {
-                                closeConfirm();
-                                const res = await fetch(`/api/admin/global/sessions/${s.id}`, { method: "DELETE" });
-                                if (res.ok) onHardDeleted?.(s.id);
-                                else {
-                                  setDeleteFailedId(s.id);
-                                  setTimeout(() => setDeleteFailedId((c) => (c === s.id ? null : c)), 3000);
-                                }
-                              },
-                            }),
+                            onClick: () => deleteSessionWithUndo(s.id, s.ref_code ?? "session"),
                           }]
                         : []),
                     ]}
@@ -432,13 +436,7 @@ export function SessionTable({
           }}
         />
       )}
-      <ConfirmDialog
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={closeConfirm}
-      />
+      {undo.node}
 
       {toast && (
         <div

@@ -7,6 +7,7 @@ import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 
 const REQUEST_FILTERS = ["All", "New", "Confirmed", "Cancelled"] as const;
 
@@ -124,6 +125,28 @@ export function RequestTable({
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
+  const undo = useUndoToast();
+
+  // V5 act-then-undo: delete immediately (soft), offer ~9s to Undo (restore via trash).
+  async function deleteRequestWithUndo(r: SessionRequest) {
+    setData((prev) => prev.filter((x) => x.id !== r.id));
+    onHardDeleted?.(r.id);
+    const res = await fetch(`/api/admin/global/requests/${r.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setData((prev) => [r, ...prev]); // revert on failure
+      setDeleteFailedId(r.id);
+      setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
+      return;
+    }
+    undo.show(`Request from ${r.name} deleted`, async () => {
+      await fetch("/api/admin/global/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table: "session_requests", id: r.id }),
+      });
+      setData((prev) => [r, ...prev]);
+    });
+  }
 
   const empanelled = practitioners.filter((p) => p.status === "Empanelled");
 
@@ -535,25 +558,7 @@ export function RequestTable({
                                 exit is Cancel (above); Cancelled requests are terminal. */}
                             {isGlobalAdmin && r.status === "New" && (
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmDialog({
-                                    open: true,
-                                    title: `Delete request from ${r.name}`,
-                                    description: "This removes the request from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                                    onConfirm: async () => {
-                                      closeConfirm();
-                                      const res = await fetch(`/api/admin/global/requests/${r.id}`, { method: "DELETE" });
-                                      if (res.ok) {
-                                        setData((prev) => prev.filter((x) => x.id !== r.id));
-                                        onHardDeleted?.(r.id);
-                                      } else {
-                                        setDeleteFailedId(r.id);
-                                        setTimeout(() => setDeleteFailedId((c) => (c === r.id ? null : c)), 3000);
-                                      }
-                                    },
-                                  });
-                                }}
+                                onClick={(e) => { e.stopPropagation(); deleteRequestWithUndo(r); }}
                                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--red-border)", background: "#fff", color: "var(--red)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
                                 title={`Delete request from ${r.name}`}
                               >
@@ -591,6 +596,7 @@ export function RequestTable({
           {toast}
         </div>
       )}
+      {undo.node}
 
       <ContactDraftModal
         open={draft.open}

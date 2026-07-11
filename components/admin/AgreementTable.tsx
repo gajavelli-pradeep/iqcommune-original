@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 
@@ -33,8 +33,21 @@ export function AgreementTable({
   onEdit?: (id: string) => void;
 }) {
   const [toast, setToast] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
-  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
+  const undo = useUndoToast();
+
+  // V5 act-then-undo: delete (soft) then offer ~9s to Undo (restore via trash).
+  async function deleteAgreementWithUndo(id: string, label: string) {
+    const res = await fetch(`/api/admin/global/agreements/${id}`, { method: "DELETE" });
+    if (!res.ok) { showToast("Delete failed — please try again."); return; }
+    onHardDeleted?.(id);
+    undo.show(`Agreement for ${label} deleted`, async () => {
+      await fetch("/api/admin/global/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table: "agreements", id }),
+      });
+    });
+  }
 
   const [filter, setFilter] = useState("All");
   const df = useDateFilter(initialData.map((a) => a.signed_at));
@@ -264,20 +277,7 @@ export function AgreementTable({
                   )}
                   {isGlobalAdmin && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDialog({
-                          open: true,
-                          title: `Delete agreement for ${row.practitioner_name}`,
-                          description: "This removes the agreement from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                          onConfirm: async () => {
-                            closeConfirm();
-                            const res = await fetch(`/api/admin/global/agreements/${row.id}`, { method: "DELETE" });
-                            if (res.ok) onHardDeleted?.(row.id);
-                            else showToast("Delete failed — please try again.");
-                          },
-                        });
-                      }}
+                      onClick={(e) => { e.stopPropagation(); deleteAgreementWithUndo(row.id, row.practitioner_name); }}
                       style={{ marginLeft: 6, background: "none", border: "1px solid #fca5a5", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
@@ -315,13 +315,7 @@ export function AgreementTable({
           {toast}
         </div>
       )}
-      <ConfirmDialog
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={closeConfirm}
-      />
+      {undo.node}
     </div>
   );
 }
