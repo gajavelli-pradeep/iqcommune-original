@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment } from "react";
-import { StatusPill } from "@/components/shared/StatusPill";
+import { StatusPill, StatusSelect } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
@@ -53,6 +53,10 @@ function fmt12h(t: string): string {
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
+// Operator-settable delivery states (Phase 4 step 21). Completed unlocks Photos +
+// Payouts; Cancelled drops the session from the consent-eligible list.
+const SESSION_STATUSES = ["Upcoming", "Completed", "Cancelled"] as const;
+
 const HEADERS = [
   "Session", // V4: module (bold) + ref (sub) in one column
   "Practitioner",
@@ -74,6 +78,7 @@ export function SessionTable({
   readOnly = false,
   onHardDeleted,
   onEdit,
+  onStatusChange,
 }: {
   initialData: Session[];
   onNavigate?: (tab: string) => void;
@@ -83,6 +88,7 @@ export function SessionTable({
   readOnly?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onStatusChange?: (id: string, status: string) => void;
 }) {
   const data = initialData;
   const [internalStatus, setInternalStatus] = useState<StatusFilter>("All");
@@ -112,6 +118,34 @@ export function SessionTable({
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Persist a delivery-status change. Optimistic (parent updates immediately via
+  // onStatusChange); revert + toast on failure so the cell never lies about the DB.
+  async function handleStatusChange(s: Session, next: string) {
+    const previous = s.status;
+    setStatusBusyId(s.id);
+    onStatusChange?.(s.id, next);
+    try {
+      const res = await fetch(`/api/admin/sessions/${s.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!res.ok) {
+        onStatusChange?.(s.id, previous);
+        setToast("Couldn't update status — please retry.");
+        setTimeout(() => setToast((t) => (t ? null : t)), 3000);
+      }
+    } catch {
+      onStatusChange?.(s.id, previous);
+      setToast("Couldn't update status — please retry.");
+      setTimeout(() => setToast((t) => (t ? null : t)), 3000);
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [draft, setDraft] = useState<{
@@ -234,7 +268,17 @@ export function SessionTable({
                   <StatusPill status={s.consent_status} />
                 </td>
                 <td style={TD}>
-                  <StatusPill status={s.status} />
+                  {readOnly ? (
+                    <StatusPill status={s.status} />
+                  ) : (
+                    <StatusSelect
+                      value={s.status}
+                      options={SESSION_STATUSES}
+                      disabled={statusBusyId === s.id}
+                      ariaLabel={`Set status for session ${s.ref_code}`}
+                      onChange={(next) => handleStatusChange(s, next)}
+                    />
+                  )}
                 </td>
                 {!readOnly && (
                 <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
@@ -396,6 +440,28 @@ export function SessionTable({
         onConfirm={confirmDialog.onConfirm}
         onCancel={closeConfirm}
       />
+
+      {toast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "var(--ink)",
+            color: "var(--surface)",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "10px 16px",
+            borderRadius: 8,
+            boxShadow: "0 6px 20px rgba(20,18,12,.20)",
+            zIndex: 60,
+          }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

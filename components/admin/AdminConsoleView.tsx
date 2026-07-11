@@ -830,7 +830,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           <div>
             <TabHeader tab="sessions" onAction={handleHeaderAction} readOnly={readOnly} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} />
+              <SessionTable initialData={sessionsData} onNavigate={(tab) => setActiveTab(tab)} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setSessionsData((prev) => prev.filter((s) => s.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = sessionsData.find((s) => s.id === id); if (row) setEditingSession(toNewSession(row)); } : undefined} onStatusChange={(id, status) => setSessionsData((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))} />
             </div>
           </div>
         )}
