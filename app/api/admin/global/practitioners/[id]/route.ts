@@ -2,6 +2,7 @@ import { requireGlobalAdmin } from "@/lib/supabase/require-global-admin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { TSHIRT_SIZES } from "@/lib/schemas/application";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -29,6 +30,10 @@ const EditPractitionerSchema = z
     org:        z.string().nullable(),
     modules:    z.array(z.string()),
     status:     z.enum(STATUSES),
+    // V5 correctable intake fields (not payment/bank columns — those stay blocked).
+    state:                 z.string().nullable(),
+    communication_address: z.string().nullable(),
+    tshirt_size:           z.enum(TSHIRT_SIZES).nullable(),
   })
   .partial()
   .strict();

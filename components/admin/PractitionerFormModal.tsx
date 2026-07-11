@@ -2,25 +2,33 @@
 
 import { useState } from "react";
 import { FormModal, fieldLabelStyle, fieldInputStyle, fieldSelectStyle, primaryBtn, ghostBtn } from "@/components/admin/FormModal";
+import { TSHIRT_SIZES } from "@/lib/schemas/application";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"];
 
 const STATUSES = ["Applied", "Under Review", "Screening Done", "Agreement Sent", "Empanelled", "Rejected"] as const;
 
-const EMPTY = { name: "", email: "", role: "", city: "", experience: "", phone: "", org: "", modules: "", status: "Applied" };
+const EMPTY = {
+  name: "", email: "", role: "", city: "", experience: "", phone: "", org: "", modules: "", status: "Applied",
+  // V5 Global-Admin correction fields — edited on existing records only.
+  state: "", communicationAddress: "", tshirtSize: "",
+};
 
 function fromRecord(p: Practitioner): typeof EMPTY {
   return {
-    name:       p.name ?? "",
-    email:      p.email ?? "",
-    role:       p.role ?? "",
-    city:       p.city ?? "",
-    experience: p.experience ?? "",
-    phone:      p.phone ?? "",
-    org:        p.org ?? "",
-    modules:    (p.modules ?? []).join(", "),
-    status:     p.status ?? "Applied",
+    name:                 p.name ?? "",
+    email:                p.email ?? "",
+    role:                 p.role ?? "",
+    city:                 p.city ?? "",
+    experience:           p.experience ?? "",
+    phone:                p.phone ?? "",
+    org:                  p.org ?? "",
+    modules:              (p.modules ?? []).join(", "),
+    status:               p.status ?? "Applied",
+    state:                p.state ?? "",
+    communicationAddress: p.communication_address ?? "",
+    tshirtSize:           p.tshirt_size ?? "",
   };
 }
 
@@ -74,6 +82,9 @@ export function PractitionerFormModal({
               org: form.org || null,
               modules,
               status: form.status,
+              state: form.state || null,
+              communication_address: form.communicationAddress || null,
+              tshirt_size: form.tshirtSize || null,
             }),
           })
         : await fetch("/api/admin/practitioners", {
@@ -134,6 +145,23 @@ export function PractitionerFormModal({
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
+        {/* V5 Global-Admin correction fields — only when editing an existing record. */}
+        {isEdit && (
+          <>
+            <Field label="State"><input id="pf-state" name="pf-state" style={fieldInputStyle} value={form.state} onChange={set("state")} /></Field>
+            <Field label="T-shirt size">
+              <select id="pf-tshirt" name="pf-tshirt" style={fieldSelectStyle} value={form.tshirtSize} onChange={set("tshirtSize")}>
+                <option value="">Not provided</option>
+                {TSHIRT_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <Field label="Communication address (with PIN code)">
+                <input id="pf-address" name="pf-address" style={fieldInputStyle} value={form.communicationAddress} onChange={set("communicationAddress")} />
+              </Field>
+            </div>
+          </>
+        )}
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Modules (comma-separated)">
             <input id="pf-modules" name="pf-modules" style={fieldInputStyle} placeholder="Personal Finance, Tax Planning" value={form.modules} onChange={set("modules")} />

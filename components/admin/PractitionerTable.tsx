@@ -373,6 +373,10 @@ export function PractitionerTable({
                                 ["Experience", p.experience ?? "—"],
                                 ["Modules", (p.modules ?? []).join(", ") || "—"],
                                 ["Availability", p.teach_freq ?? "—"],
+                                // V5: welcome-kit intake fields. Legacy records (applied before
+                                // these existed) read "Not provided" — real data state, not a bug.
+                                ["Address", p.communication_address || "Not provided"],
+                                ["T-shirt size", p.tshirt_size || "Not provided"],
                               ].map(([label, value]) => (
                                 <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
                                   <span style={{ color: "var(--ink-faint)", width: 90, flexShrink: 0, fontSize: 12 }}>{label}</span>
