@@ -493,12 +493,12 @@ export function ApplicationForm() {
               {/* Gap 38: family member fields with correct labels */}
               <div style={rowTwo}>
                 {/* Gap 38: 'Family member's full name', hint, placeholder 'Anita Kulkarni' */}
-                <Field label="Family member's full name" hint="As it should appear on the tax invoice.">
+                <Field label="Family member's full name" hint="As it should appear on the tax invoice." error={errors.familyName?.message}>
                   <input {...register("familyName")} style={inputStyle} placeholder="Anita Kulkarni" />
                 </Field>
                 {/* Gap 38: 'Relationship to you', placeholder 'Select…' */}
                 {/* Gap 37: no 'Child' option */}
-                <Field label="Relationship to you">
+                <Field label="Relationship to you" error={errors.familyRelation?.message}>
                   <SelectField
                     options={FAMILY_RELATIONS}
                     value={watch("familyRelation") ?? ""}
@@ -519,6 +519,9 @@ export function ApplicationForm() {
                   style={inputStyle}
                   placeholder="familymember@upi"
                 />
+                {errors.familyUpi && (
+                  <p style={errStyle} role="alert">{errors.familyUpi.message}</p>
+                )}
               </div>
 
               {/* Gap 51: family OR divider */}
@@ -598,6 +601,9 @@ export function ApplicationForm() {
                     I declare that I authorise iqcommune to credit my revenue share to the above family member&apos;s account and to generate tax invoices in their name. I understand that I remain responsible for any tax obligations arising from this income, regardless of the invoice name.
                   </span>
                 </label>
+                {errors.consentBilling && (
+                  <p style={errStyle} role="alert">{errors.consentBilling.message}</p>
+                )}
               </div>
             </div>
           )}

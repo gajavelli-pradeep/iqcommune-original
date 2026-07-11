@@ -23,7 +23,8 @@ export const TEACH_FREQ_OPTIONS = [
   "Flexible — depends on my schedule",
 ] as const;
 
-export const TSHIRT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
+// V5 mockup merch list (iqcommune-empanelment.html): XS → 3XL, 7 sizes (P3-5).
+export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "3XL"] as const;
 
 export const ApplicationSchema = z
   .object({
@@ -85,6 +86,48 @@ export const ApplicationSchema = z
           "Please provide either your UPI ID or full bank account details for payment.",
         path: ["upiId"],
       });
+    }
+
+    // When paying a family member on the practitioner's behalf, the mockup
+    // (checkConsents/billing-fields) requires the full family payee block:
+    // name + relationship + (family UPI OR full family bank) + billing consent.
+    if (data.payToFamily) {
+      const req = (v: unknown) =>
+        typeof v === "string" && v.trim().length > 0;
+      if (!req(data.familyName)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["familyName"],
+        });
+      }
+      if (!req(data.familyRelation)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["familyRelation"],
+        });
+      }
+      const hasFamilyUpi = req(data.familyUpi);
+      const hasFamilyBank =
+        req(data.familyAccountName) &&
+        req(data.familyBankAccount) &&
+        req(data.familyIfsc);
+      if (!hasFamilyUpi && !hasFamilyBank) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Provide the family member's UPI ID or full bank account details.",
+          path: ["familyUpi"],
+        });
+      }
+      if (data.consentBilling !== true) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please confirm the billing declaration.",
+          path: ["consentBilling"],
+        });
+      }
     }
   });
 
