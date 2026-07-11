@@ -885,6 +885,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 beforeTable={!readOnly && (
                   <ConsentFormModal
                     inline
+                    isGlobalAdmin={isGlobalAdmin}
                     confirmedSessionIds={confirmedSessionIds}
                     onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
                   />

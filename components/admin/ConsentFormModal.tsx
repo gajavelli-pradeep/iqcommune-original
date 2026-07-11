@@ -46,6 +46,10 @@ interface ConsentAutofill {
   invoiceBy: string;
   paymentMethod: string;
   payoutAmount: number;
+  sessionId: string;
+  requestId: string | null;
+  practitionerId: string;
+  dateRaw: string | null;
 }
 
 export function ConsentFormModal({
@@ -54,6 +58,7 @@ export function ConsentFormModal({
   onCreated,
   confirmedSessionIds,
   inline = false,
+  isGlobalAdmin = false,
 }: {
   open?: boolean;
   onClose?: () => void;
@@ -61,6 +66,8 @@ export function ConsentFormModal({
   confirmedSessionIds: string[];
   /** Render the form directly on the page (V5 Session Consent tab) instead of in a modal. */
   inline?: boolean;
+  /** V5: Global Admin may correct auto-populated fields on the underlying source record. */
+  isGlobalAdmin?: boolean;
 }) {
   const empty = { sessionId: "", gross: "", tdsRate: "", gstRate: "", startTime: "", duration: "3 hours" };
   const [form, setForm] = useState(empty);
@@ -75,6 +82,40 @@ export function ConsentFormModal({
   // Keyed by session id so a stale fetch (from a previously-picked session) is never
   // shown against the current one — the render derives from this + form.sessionId.
   const [autofill, setAutofill] = useState<{ sessionId: string; data: ConsentAutofill } | null>(null);
+
+  // V5: Global-Admin per-field correction. Editing one auto-populated field PATCHes the
+  // underlying source record (session / request / practitioner) so the fix is permanent,
+  // then optimistically updates the on-screen autofill.
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [fieldDraft, setFieldDraft] = useState("");
+  const [fieldSaving, setFieldSaving] = useState(false);
+
+  async function saveField(
+    route: string,
+    body: Record<string, unknown>,
+    applied: Partial<ConsentAutofill>,
+  ) {
+    setFieldSaving(true);
+    setError("");
+    try {
+      const res = await fetch(route, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(j.error ?? "Could not save the correction.");
+        return;
+      }
+      setAutofill((prev) => (prev ? { ...prev, data: { ...prev.data, ...applied } } : prev));
+      setEditingField(null);
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setFieldSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -275,25 +316,63 @@ export function ConsentFormModal({
                 <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>Loading details…</div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 1rem", background: "var(--surface-soft)", borderRadius: 8, padding: "10px 12px" }}>
-                  {([
-                    ["First name", af.firstName],
-                    ["Module confirmed for", af.module],
-                    ["Date", af.date],
-                    ["Venue", af.venue],
-                    ["City", af.city || "—"],
-                    ["State", af.state || "—"],
-                    ["Audience type", af.audience],
-                    ["Participant count", String(af.participants)],
-                    ["SPOC name", af.spoc],
-                    ["Empanelment agreement ref.", af.agreementRef],
-                    ["Invoice should be raised by", af.invoiceBy],
-                    ["Payment method on file", af.paymentMethod],
-                  ] as const).map(([label, value]) => (
-                    <div key={label}>
-                      <div style={{ fontSize: 10, color: "var(--ink-faint)", marginBottom: 1 }}>{label}</div>
-                      <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500, overflowWrap: "anywhere" }}>{value}</div>
-                    </div>
-                  ))}
+                  {(() => {
+                    // V5: each auto-populated field maps to its underlying source record; the
+                    // Global-Admin pencil PATCHes that record (permanent), then updates `af`.
+                    const sess = `/api/admin/global/sessions/${af.sessionId}`;
+                    const req = af.requestId ? `/api/admin/global/requests/${af.requestId}` : null;
+                    const pract = `/api/admin/global/practitioners/${af.practitionerId}`;
+                    const fmtDate = (v: string) =>
+                      v ? new Date(v + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
+                    type Edit = { route: string; type: "text" | "date" | "number"; seed: string; body: (v: string) => Record<string, unknown>; apply: (v: string) => Partial<ConsentAutofill> };
+                    const rows: { label: string; value: string; edit: Edit | null }[] = [
+                      { label: "First name", value: af.firstName, edit: { route: pract, type: "text", seed: af.practitionerName, body: (v) => ({ name: v }), apply: (v) => ({ practitionerName: v, firstName: v.split(" ")[0] || v }) } },
+                      { label: "Module confirmed for", value: af.module, edit: { route: sess, type: "text", seed: af.module, body: (v) => ({ module: v }), apply: (v) => ({ module: v }) } },
+                      { label: "Date", value: af.date, edit: { route: sess, type: "date", seed: af.dateRaw ?? "", body: (v) => ({ session_date: v }), apply: (v) => ({ date: fmtDate(v), dateRaw: v }) } },
+                      { label: "Venue", value: af.venue, edit: { route: sess, type: "text", seed: af.venue, body: (v) => ({ venue: v }), apply: (v) => ({ venue: v }) } },
+                      { label: "City", value: af.city || "—", edit: req ? { route: req, type: "text", seed: af.city, body: (v) => ({ city: v }), apply: (v) => ({ city: v }) } : null },
+                      { label: "State", value: af.state || "—", edit: req ? { route: req, type: "text", seed: af.state, body: (v) => ({ state: v }), apply: (v) => ({ state: v }) } : null },
+                      { label: "Audience type", value: af.audience, edit: { route: sess, type: "text", seed: af.audience, body: (v) => ({ audience_type: v }), apply: (v) => ({ audience: v }) } },
+                      { label: "Participant count", value: String(af.participants), edit: { route: sess, type: "number", seed: String(af.participants), body: (v) => ({ participants: Number(v) || 0 }), apply: (v) => ({ participants: Number(v) || 0 }) } },
+                      { label: "SPOC name", value: af.spoc, edit: req ? { route: req, type: "text", seed: af.spoc, body: (v) => ({ name: v }), apply: (v) => ({ spoc: v }) } : null },
+                      // Derived fields — corrected via the Practitioners / Agreements tabs, not here.
+                      { label: "Empanelment agreement ref.", value: af.agreementRef, edit: null },
+                      { label: "Invoice should be raised by", value: af.invoiceBy, edit: null },
+                      { label: "Payment method on file", value: af.paymentMethod, edit: { route: pract, type: "text", seed: af.paymentMethod === "—" ? "" : af.paymentMethod, body: (v) => ({ upi_id: v }), apply: (v) => ({ paymentMethod: v || "—" }) } },
+                    ];
+                    return rows.map(({ label, value, edit }) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10, color: "var(--ink-faint)", marginBottom: 1, display: "flex", alignItems: "center", gap: 5 }}>
+                          {label}
+                          {isGlobalAdmin && edit && editingField !== label && (
+                            <button
+                              type="button"
+                              onClick={() => { setEditingField(label); setFieldDraft(edit.seed); setError(""); }}
+                              title="Global Admin: correct the source record"
+                              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold-dark)", display: "inline-flex", lineHeight: 0 }}
+                            >
+                              <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                            </button>
+                          )}
+                        </div>
+                        {isGlobalAdmin && edit && editingField === label ? (
+                          <div style={{ display: "flex", gap: 5, alignItems: "center", marginTop: 2 }}>
+                            <input
+                              type={edit.type}
+                              value={fieldDraft}
+                              autoFocus
+                              onChange={(e) => setFieldDraft(e.target.value)}
+                              style={{ ...fieldInputStyle, padding: "5px 7px", fontSize: 12 }}
+                            />
+                            <button type="button" disabled={fieldSaving} onClick={() => saveField(edit.route, edit.body(fieldDraft), edit.apply(fieldDraft))} title="Save" style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 11, fontWeight: 600, cursor: fieldSaving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{fieldSaving ? "…" : "Save"}</button>
+                            <button type="button" onClick={() => setEditingField(null)} title="Cancel" style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "5px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500, overflowWrap: "anywhere" }}>{value}</div>
+                        )}
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
             </div>

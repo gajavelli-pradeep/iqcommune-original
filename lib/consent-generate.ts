@@ -66,6 +66,12 @@ export interface ConsentAutofill {
   invoiceBy: string;
   paymentMethod: string; // actual UPI id / bank account on file, for the review screen
   payoutAmount: number;  // agreed payout — prefills the Gross field
+  // V5: underlying source-record IDs so the Global-Admin per-field pencil knows
+  // which record to PATCH (session / request / practitioner).
+  sessionId: string;
+  requestId: string | null;
+  practitionerId: string;
+  dateRaw: string | null; // raw session_date (YYYY-MM-DD) for the date-correction input
 }
 
 /**
@@ -137,6 +143,10 @@ export async function getConsentAutofill(
       invoiceBy: practitioner?.pay_to_family && practitioner?.family_name ? practitioner.family_name : practitionerName,
       paymentMethod: upiId || bankAccount || "—",
       payoutAmount: session.payout_amount,
+      sessionId,
+      requestId: session.request_id ?? null,
+      practitionerId: session.practitioner_id,
+      dateRaw: session.session_date ?? null,
     },
   };
 }
