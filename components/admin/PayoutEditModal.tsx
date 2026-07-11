@@ -115,6 +115,12 @@ export function PayoutEditModal({
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
+        {/* V5 P2-7: reverting a Paid payout is a ledger correction, not a refund. */}
+        {initialData.status === "Paid" && form.status === "Pending" && (
+          <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--amber)", background: "var(--amber-light)", border: "1px solid var(--amber)", borderRadius: 8, padding: "8px 12px", lineHeight: 1.5 }}>
+            Reverting to Pending is a <strong>record correction only</strong> — it does not reverse any bank transfer already made to the practitioner.
+          </div>
+        )}
         <Field label="Payment method">
           <select id="pe-method" name="pe-method" style={fieldSelectStyle} value={form.paymentMethod} onChange={set("paymentMethod")}>
             <option value="">— none —</option>

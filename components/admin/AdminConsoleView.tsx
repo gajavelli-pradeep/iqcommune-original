@@ -866,7 +866,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               extraActions={isGlobalAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setPayoutsData((prev) => prev.filter((p) => p.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
             </div>
           </div>
         )}

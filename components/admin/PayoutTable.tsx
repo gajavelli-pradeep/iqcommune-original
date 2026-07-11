@@ -9,7 +9,6 @@ import { TableFilterBar } from "@/components/admin/TableFilterBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 const PAYOUT_FILTERS = ["All", "Pending", "Paid"] as const;
 
@@ -85,14 +84,12 @@ export function PayoutTable({
   onRowChange,
   isGlobalAdmin = false,
   readOnly = false,
-  onHardDeleted,
   onEdit,
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
   isGlobalAdmin?: boolean;
   readOnly?: boolean;
-  onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
 }) {
   const [data, setData] = useState(initialData);
@@ -103,8 +100,6 @@ export function PayoutTable({
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
-  const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [draft, setDraft] = useState<{
     open: boolean;
     name?: string;
@@ -119,27 +114,6 @@ export function PayoutTable({
     .filter((p) => df.matchesDate(payoutDate(p)))
     .filter((p) => matchesSearch(search, p.practitioner?.name, p.session?.ref_code, p.session?.module, p.invoice_ref, p.status, p.payment_method, p.gross_amount, p.net_amount));
 
-  const handleHardDelete = useCallback(
-    (id: string, invoiceRef: string) => {
-      setConfirmDialog({
-        open: true,
-        title: `Delete payout ${invoiceRef}`,
-        description: "This removes the payout from all lists. It stays recoverable for 30 days, then is permanently purged.",
-        onConfirm: async () => {
-          setConfirmDialog((d) => ({ ...d, open: false }));
-          const res = await fetch(`/api/admin/global/payouts/${id}`, { method: "DELETE" });
-          if (res.ok) {
-            setData((prev) => prev.filter((p) => p.id !== id));
-            onHardDeleted?.(id);
-          } else {
-            setToast("Delete failed — please try again.");
-            setTimeout(() => setToast(""), 3000);
-          }
-        },
-      });
-    },
-    [onHardDeleted]
-  );
 
   const markPaid = useCallback(
     async (id: string) => {
@@ -388,18 +362,8 @@ export function PayoutTable({
                         Edit
                       </button>
                     )}
-                    {isGlobalAdmin && (
-                      <button
-                        onClick={() => handleHardDelete(p.id, p.invoice_ref)}
-                        style={{ background: "none", border: "1px solid #fca5a5", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                        title={`Delete payout ${p.invoice_ref}`}
-                      >
-                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-                        Delete
-                      </button>
-                    )}
+                    {/* V5 P2-7: payouts have no delete, ever, by design — they are permanent
+                        financial records. Corrections go through Revert (in the edit modal). */}
                   </div>
                 </td>
               </tr>
@@ -456,13 +420,6 @@ export function PayoutTable({
         emailBody={`Dear ${draft.name},\n\nThis is a reminder regarding your payout for the ${draft.module} session.\n\nInvoice ref: ${draft.invoice}\nNet payout: ${draft.net}\n\nPlease confirm receipt of this payout or let us know if you have any questions.\n\nWarm regards,\nThe iqcommune Team`}
         waBody={`Hi ${draft.name}! 👋\n\nJust a quick note from the iqcommune team — your payout for the *${draft.module}* session is ready.\n\nInvoice: *${draft.invoice}*\nNet: *${draft.net}*\n\nLet us know if you have any questions!`}
         recipientName={draft.name}
-      />
-      <ConfirmDialog
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={closeConfirm}
       />
     </div>
   );

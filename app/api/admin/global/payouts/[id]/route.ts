@@ -95,43 +95,12 @@ export async function PATCH(
   return NextResponse.json({ data: updated });
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const deny = await requireGlobalAdmin();
-  if (deny) return deny;
-
-  const { id } = await params;
-
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const actorEmail = user?.email ?? "unknown";
-
-  const db = createAdminClient();
-
-  const { data: record } = await db
-    .from("payouts")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  await logAdminAction({
-    actorEmail,
-    action: "delete_payout",
-    recordTable: "payouts",
-    recordId: id,
-    snapshot: record as Record<string, unknown>,
-  });
-
-  // Soft-delete: hide the row now, purge after the grace window (see 0016).
-  const { error } = await db
-    .from("payouts")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
-    .is("deleted_at", null);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ success: true });
+// V5 P2-7: payouts are permanent financial records — deletion is disabled by
+// design (spec: "no delete button anywhere, ever"). Corrections go through Revert
+// (setting a Paid payout back to Pending via the edit modal), never deletion.
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Payouts cannot be deleted — revert the payout instead." },
+    { status: 405 },
+  );
 }
