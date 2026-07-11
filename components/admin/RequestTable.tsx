@@ -4,9 +4,8 @@ import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 const REQUEST_FILTERS = ["All", "New", "Confirmed", "Cancelled"] as const;
@@ -112,14 +111,13 @@ export function RequestTable({
 }) {
   const [data, setData] = useState(initialData);
   const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
   // Reflect parent-driven updates (e.g. a global-admin edit) without an effect.
   const [prevInitial, setPrevInitial] = useState(initialData);
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const df = useDateFilter(data.map((r) => r.created_at));
   const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
-    .filter((r) => df.matchesDate(r.created_at))
-    .filter((r) => matchesSearch(search, r.name, r.org, r.email, r.phone, r.city, r.state, r.topic, r.audience_type, r.group_size, r.preferred_dates, r.status, r.assigned_practitioner?.name));
+    .filter((r) => df.matchesDate(r.created_at));
+  const pendingCount = data.filter((r) => r.status === "New" && df.matchesDate(r.created_at)).length;
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
@@ -226,7 +224,19 @@ export function RequestTable({
 
   return (
     <div>
-      <TableFilterBar options={REQUEST_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search requests…" />
+      <PendingBar
+        pendingCards={[{
+          count: pendingCount,
+          label: "New — unassigned",
+          active: filter === "New",
+          onToggle: () => setFilter(filter === "New" ? "All" : "New"),
+        }]}
+        statusOptions={REQUEST_FILTERS}
+        statusValue={filter}
+        onStatusChange={setFilter}
+        statusAriaLabel="Filter requests by status"
+        dateFilter={df.control}
+      />
       <AdminTable
         headers={HEADERS}
         isEmpty={visible.length === 0}
