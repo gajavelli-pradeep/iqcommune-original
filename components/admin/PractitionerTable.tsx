@@ -322,7 +322,7 @@ export function PractitionerTable({
       <AdminTable
         headers={["Practitioner", "Module", "City", "Applied on", "Rating", "Status", ""]}
         isEmpty={visible.length === 0}
-        emptyText="No practitioners in this stage"
+        emptyText="No practitioners match this filter."
         connected
       >
         {visible.map((p) => {
@@ -419,13 +419,13 @@ export function PractitionerTable({
                                 ["Role", p.role],
                                 ["Org", p.org ?? "Independent"],
                                 ["City", p.city],
-                                ["State", p.state || "Not provided"],
+                                ["State", p.state || "—"],
                                 ["Experience", p.experience ?? "—"],
                                 ["Modules", (p.modules ?? []).join(", ") || "—"],
                                 ["Availability", p.teach_freq ?? "—"],
                                 // V5: welcome-kit intake fields. Legacy records (applied before
                                 // these existed) read "Not provided" — real data state, not a bug.
-                                ["Address", p.communication_address || "Not provided"],
+                                ["Address", p.communication_address || "Not provided — collected on newer applications"],
                                 ["T-shirt size", p.tshirt_size || "Not provided"],
                               ].map(([label, value]) => (
                                 <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>

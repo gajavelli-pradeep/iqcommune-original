@@ -369,7 +369,7 @@ export function RequestTable({
                               { label: "Audience", value: r.audience_type, edit: { seed: r.audience_type, body: (v) => ({ audience_type: v }), patch: (v) => ({ audience_type: v }) } },
                               { label: "Group size", value: r.group_size ?? "—", edit: { seed: r.group_size ?? "", body: (v) => ({ group_size: v || null }), patch: (v) => ({ group_size: v || null }) } },
                               { label: "Min. commitment", value: r.min_commit != null ? `${r.min_commit} participants` : "—", edit: { seed: r.min_commit != null ? String(r.min_commit) : "", type: "number", body: (v) => ({ min_commit: v ? Number(v) : null }), patch: (v) => ({ min_commit: v ? Number(v) : null }) } },
-                              { label: "Venue", value: r.venue || "Not specified — we will arrange", edit: { seed: r.venue ?? "", body: (v) => ({ venue: v || null }), patch: (v) => ({ venue: v || null }) } },
+                              { label: "Venue", value: r.venue || "Not specified — pending from SPOC", edit: { seed: r.venue ?? "", body: (v) => ({ venue: v || null }), patch: (v) => ({ venue: v || null }) } },
                               { label: "Preferred dates", value: r.preferred_dates ?? "—" },
                             ];
                             return rows.map(({ label, value, edit }) => {

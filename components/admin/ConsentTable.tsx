@@ -12,7 +12,6 @@ export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row
 };
 
 const CONSENT_FILTERS = ["All", "Awaiting consent", "Consent received", "Superseded"] as const;
-const CONSENT_STATUSES = ["Awaiting consent", "Consent received", "Superseded"] as const;
 
 const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -32,15 +31,6 @@ function StatusPill({ status }: { status: string }) {
 }
 
 // A pill-shaped, status-tinted <select> — the Global-Admin override control.
-function statusSelectStyle(status: string): React.CSSProperties {
-  const c = STATUS_COLORS[status] ?? STATUS_COLORS.Superseded;
-  return {
-    padding: "4px 8px", borderRadius: 100, border: `1px solid ${c.fg}33`,
-    background: c.bg, color: c.fg, fontFamily: "inherit", fontSize: 12, fontWeight: 600,
-    cursor: "pointer", outline: "none",
-  };
-}
-
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
   color: "var(--ink-faint)", padding: "10px 12px", borderBottom: "1px solid rgba(20,18,12,.10)", whiteSpace: "nowrap",
@@ -146,8 +136,11 @@ export function ConsentTable({
 
   if (data.length === 0) {
     return (
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center", fontSize: 13, color: "var(--ink-faint)" }}>
-        No confirmations yet. Use <strong>Generate consent</strong> to create one for an upcoming session.
+      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center" }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>No confirmations generated yet</div>
+        <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
+          Select a session above once it&apos;s Confirmed and awaiting the practitioner&apos;s digital consent.
+        </div>
       </div>
     );
   }
@@ -201,26 +194,7 @@ export function ConsentTable({
                   <td style={{ ...td, textAlign: "right", color: "var(--ink-muted)" }}>{money(row.gross_amount)}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
                   <td style={td}>
-                    {editable ? (
-                      <select
-                        value={row.status}
-                        disabled={busy === row.id}
-                        aria-label={`Override status for ${row.ref_code}`}
-                        style={statusSelectStyle(row.status)}
-                        onChange={(e) => {
-                          const next = e.target.value;
-                          if (next === row.status) return;
-                          if (next === "Superseded") setSupersedeTarget(row);
-                          else overrideStatus(row, next);
-                        }}
-                      >
-                        {CONSENT_STATUSES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <StatusPill status={row.status} />
-                    )}
+                    <StatusPill status={row.status} />
                   </td>
                   <td style={{ ...td, color: "var(--ink-faint)", fontSize: 12, whiteSpace: "nowrap" }}>
                     {new Date(row.issued_on).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
@@ -231,8 +205,15 @@ export function ConsentTable({
                       actions={[
                         ...(row.consent_link ? [{ label: "Copy consent link", onClick: () => copyLink(row) }] : []),
                         ...(row.storage_path ? [{ label: "Download PDF", onClick: () => downloadPdf(row) }] : []),
-                        // Regular admins get Mark received here; Global Admins use the status dropdown.
-                        ...(!isGlobalAdmin && awaiting ? [{ label: "Mark received", onClick: () => markReceived(row) }] : []),
+                        // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
+                        // received → Awaiting, Global) · Void (→ Superseded, Global).
+                        ...(awaiting && busy !== row.id ? [{ label: "Mark received", onClick: () => markReceived(row) }] : []),
+                        ...(editable && row.status === "Consent received" && busy !== row.id
+                          ? [{ label: "Revert to awaiting", onClick: () => overrideStatus(row, "Awaiting consent") }]
+                          : []),
+                        ...(editable && row.status !== "Superseded" && busy !== row.id
+                          ? [{ label: "Void confirmation", onClick: () => setSupersedeTarget(row) }]
+                          : []),
                         ...(isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
                           ? [{ label: "Replace practitioner", onClick: () => onReassign(row) }]
                           : []),

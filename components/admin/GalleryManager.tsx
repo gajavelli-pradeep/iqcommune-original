@@ -231,7 +231,12 @@ export function GalleryManager() {
       {loading ? (
         <div style={{ color: "var(--ink-faint)", fontSize: 13 }}>Loading…</div>
       ) : photos.length === 0 ? (
-        <div style={{ color: "var(--ink-faint)", fontSize: 13 }}>No photos yet — the public gallery shows placeholder cards until you add some.</div>
+        <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>Nothing published yet</div>
+          <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
+            Curate a few photos above and click Publish to populate the landing page gallery.
+          </div>
+        </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
           {photos.map((p, i) => (

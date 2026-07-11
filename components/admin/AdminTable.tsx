@@ -5,7 +5,7 @@ import React from "react";
 interface Props {
   headers: string[];
   isEmpty: boolean;
-  emptyText: string;
+  emptyText: React.ReactNode;
   /** Constrains table height and enables vertical scroll. Default: 65vh */
   maxHeight?: string;
   /**

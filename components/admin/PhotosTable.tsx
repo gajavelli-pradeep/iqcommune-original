@@ -274,9 +274,16 @@ export function PhotosTable({
         headers={HEADERS}
         isEmpty={visible.length === 0 && pendingRows.length === 0}
         emptyText={
-          data.length === 0 && pendingSessions.length === 0
-            ? "No photo submissions yet"
-            : "No submissions match the current filter"
+          data.length === 0 && pendingSessions.length === 0 ? (
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>No completed sessions yet</div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 420, margin: "0 auto", lineHeight: 1.6 }}>
+                Once a session is marked Completed, it&apos;ll appear here — either with photos uploaded, or pending from the practitioner.
+              </div>
+            </div>
+          ) : (
+            "No submissions match the current filter"
+          )
         }
         connected
       >
