@@ -1647,26 +1647,29 @@ export default function PractitionersPage() {
         email="practitioners@iqcommune.com"
         tagline="practitioner network"
         top={
-          <Link
-            href="/"
-            className="footer-pill"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              minHeight: 44,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.75)",
-              textDecoration: "none",
-              background: "transparent",
-              border: "1px solid rgba(255,255,255,0.25)",
-              borderRadius: 100,
-              padding: "9px 20px",
-              marginBottom: "0.75rem",
-            }}
-          >
-            See iqcommune for Learners
-          </Link>
+          // Wrap in a block so the pill sits on its own line above the brand lockup;
+          // a bare inline-flex Link would flow beside it (see home footer's top slot).
+          <div style={{ marginBottom: "1.25rem" }}>
+            <Link
+              href="/"
+              className="footer-pill"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 44,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.75)",
+                textDecoration: "none",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.25)",
+                borderRadius: 100,
+                padding: "9px 20px",
+              }}
+            >
+              See iqcommune for Learners
+            </Link>
+          </div>
         }
       />
 
