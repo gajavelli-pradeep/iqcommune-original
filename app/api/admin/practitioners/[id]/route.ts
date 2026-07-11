@@ -48,9 +48,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const { data: updated, error } = await createAdminClient()
+  const supabase = createAdminClient();
+
+  // V5 P1-3: Empanel/Reject are one-way gates. Record the status they came from in
+  // prev_status so the Danger Zone can offer a Revert. Any other transition clears
+  // prev_status (nothing to revert once the practitioner moves on).
+  const { data: current } = await supabase
     .from("practitioners")
-    .update({ status: body.data.status })
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  const isOneWayGate = body.data.status === "Empanelled" || body.data.status === "Rejected";
+
+  const { data: updated, error } = await supabase
+    .from("practitioners")
+    .update({
+      status: body.data.status,
+      prev_status: isOneWayGate ? (current?.status ?? null) : null,
+    })
     .eq("id", id)
     .select("id")
     .maybeSingle();

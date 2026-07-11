@@ -143,6 +143,15 @@ export async function DELETE(
     .single();
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // V5 P1-3: an Empanelled practitioner has agreement/session history — it must not
+  // be hard-deleted. Deactivate (reversible) is the supported path instead.
+  if (record.status === "Empanelled") {
+    return NextResponse.json(
+      { error: "An empanelled practitioner can't be deleted — deactivate them instead." },
+      { status: 409 },
+    );
+  }
+
   await logAdminAction({
     actorEmail,
     action: "delete_practitioner",

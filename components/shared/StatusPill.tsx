@@ -17,6 +17,7 @@ export const STATUS_STYLES: Record<string, { bg: string; color: string; border: 
   Cancelled:           { bg: "var(--red-light, #fdf0f0)", color: "var(--red)", border: "var(--red-border)", dot: "var(--red)" },
   "Pending signature": { bg: "var(--amber-light)",   color: "var(--amber)",   border: "var(--amber)",   dot: "var(--amber)"   },
   Active:              { bg: "var(--green-light)",   color: "var(--green)",   border: "var(--green-border)", dot: "var(--green)"  },
+  Deactivated:         { bg: "var(--surface-sunken)", color: "var(--ink-soft)", border: "var(--border-strong)", dot: "var(--ink-faint)" },
 };
 
 const FALLBACK = { bg: "var(--surface-sunken)", color: "var(--ink-faint)", border: "rgba(20,18,12,.10)", dot: "var(--ink-faint)" };

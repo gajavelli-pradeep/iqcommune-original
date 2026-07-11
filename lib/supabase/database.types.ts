@@ -149,6 +149,8 @@ export interface Database {
           communication_address: string | null;
           tshirt_size: string | null;
           status: string;
+          prev_status: string | null;
+          prev_active_status: string | null;
           ref_code: string | null;
           avg_rating: number;
           feedback_count: number;
@@ -186,6 +188,8 @@ export interface Database {
           pan_gst?: string | null;
           communication_address?: string | null;
           tshirt_size?: string | null;
+          prev_status?: string | null;
+          prev_active_status?: string | null;
           status?: string;
           ref_code?: string | null;
           avg_rating?: number;
@@ -223,6 +227,8 @@ export interface Database {
           pan_gst?: string | null;
           communication_address?: string | null;
           tshirt_size?: string | null;
+          prev_status?: string | null;
+          prev_active_status?: string | null;
           status?: string;
           ref_code?: string | null;
           avg_rating?: number;

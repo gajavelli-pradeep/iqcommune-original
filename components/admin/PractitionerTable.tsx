@@ -27,8 +27,9 @@ const STATUSES = [
   "Rejected",
 ] as const;
 
-// "All" + every pipeline status — the options for the shared Filter bar.
-const FILTER_OPTIONS = ["All", ...STATUSES] as const;
+// "All" + every pipeline status, plus Deactivated (set via the Danger Zone, not the
+// forward dropdown) so admins can filter to parked practitioners — the shared Filter bar.
+const FILTER_OPTIONS = ["All", ...STATUSES, "Deactivated"] as const;
 
 // ── Draft-message templates (plain text, copy/paste — mirrors RequestTable) ──────
 
@@ -195,13 +196,52 @@ export function PractitionerTable({
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
+        // Mirror the server's prev_status bookkeeping (P1-3) so a Revert affordance
+        // appears immediately after a one-way Empanel/Reject, without a refetch.
+        const isOneWayGate = status === "Empanelled" || status === "Rejected";
         setData((prev) =>
-          prev.map((p) => (p.id === id ? { ...p, status } : p))
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, status, prev_status: isOneWayGate ? p.status : null }
+              : p,
+          )
         );
         onStatusChange?.(id, status);
         showToast(`Status updated to "${status}"`);
       } else {
         showToast("Failed to update status");
+      }
+    },
+    [showToast, onStatusChange]
+  );
+
+  // V5 P1-3: reversible Danger Zone actions (deactivate / reactivate / revert).
+  const lifecycle = useCallback(
+    async (id: string, action: "deactivate" | "reactivate" | "revert") => {
+      const res = await fetch(`/api/admin/practitioners/${id}/lifecycle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        const { status } = (await res.json()) as { status: string };
+        setData((prev) =>
+          prev.map((p) => {
+            if (p.id !== id) return p;
+            if (action === "deactivate") return { ...p, status, prev_active_status: p.status };
+            if (action === "reactivate") return { ...p, status, prev_active_status: null };
+            return { ...p, status, prev_status: null }; // revert
+          })
+        );
+        onStatusChange?.(id, status);
+        showToast(
+          action === "deactivate" ? "Practitioner deactivated"
+          : action === "reactivate" ? "Practitioner reactivated"
+          : "Status reverted",
+        );
+      } else {
+        const { error } = await res.json().catch(() => ({ error: "" }));
+        showToast(error || "Action failed");
       }
     },
     [showToast, onStatusChange]
@@ -432,7 +472,7 @@ export function PractitionerTable({
                             <div>
                               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>{readOnly ? "Details" : "Update Status"}</div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                                {!readOnly && (
+                                {!readOnly && p.status !== "Deactivated" && (
                                 <select
                                   value={p.status}
                                   onChange={(e) => { e.stopPropagation(); updateStatus(p.id, e.target.value); }}
@@ -491,12 +531,31 @@ export function PractitionerTable({
                                     Empanel practitioner
                                   </button>
                                 )}
-                                {!readOnly && p.status !== "Empanelled" && p.status !== "Rejected" && (
+                                {!readOnly && p.status !== "Empanelled" && p.status !== "Rejected" && p.status !== "Deactivated" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Rejected"); openDraft(p, "Rejected"); }}
                                     style={{ background: "#fff", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Reject
+                                  </button>
+                                )}
+
+                                {/* V5 P1-3 reversible lifecycle: Reactivate a deactivated practitioner,
+                                    or Revert a one-way Empanel/Reject to its prior status. */}
+                                {!readOnly && p.status === "Deactivated" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lifecycle(p.id, "reactivate"); }}
+                                    style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    Reactivate practitioner
+                                  </button>
+                                )}
+                                {!readOnly && p.status !== "Deactivated" && p.prev_status && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lifecycle(p.id, "revert"); }}
+                                    style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    Revert to {p.prev_status}
                                   </button>
                                 )}
 
@@ -528,34 +587,55 @@ export function PractitionerTable({
                                   </button>
                                 )}
 
-                                {isGlobalAdmin && (
-                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #fca5a5" }}>
+                                {/* V5 P1-3 Danger Zone.
+                                    Deactivate (reversible) is the supported way to retire an active —
+                                    especially Empanelled — practitioner, keeping their history.
+                                    Hard delete stays Global-Admin only and is offered only for
+                                    records without empanelment history (never Empanelled/Deactivated). */}
+                                {!readOnly && p.status !== "Deactivated" && (
+                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--amber)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setConfirmDialog({
                                           open: true,
-                                          title: `Delete ${p.name}`,
-                                          description: "This removes the practitioner from all lists. It stays recoverable for 30 days, then is permanently purged.",
-                                          onConfirm: async () => {
-                                            closeConfirm();
-                                            const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
-                                            if (res.ok) {
-                                              setData((prev) => prev.filter((pr) => pr.id !== p.id));
-                                              onHardDeleted?.(p.id);
-                                              setExpandedRow(null);
-                                            } else {
-                                              showToast("Delete failed — please try again.");
-                                            }
-                                          },
+                                          title: `Deactivate ${p.name}`,
+                                          description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
+                                          onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
                                         });
                                       }}
-                                      style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background .12s" }}
-                                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fecaca")}
-                                      onMouseLeave={(e) => (e.currentTarget.style.background = "#fee2e2")}
+                                      style={{ width: "100%", background: "var(--amber-light)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                     >
-                                      Delete practitioner
+                                      Deactivate practitioner
                                     </button>
+                                    {isGlobalAdmin && p.status !== "Empanelled" && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setConfirmDialog({
+                                            open: true,
+                                            title: `Delete ${p.name}`,
+                                            description: "This removes the practitioner from all lists. It stays recoverable for 30 days, then is permanently purged.",
+                                            onConfirm: async () => {
+                                              closeConfirm();
+                                              const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
+                                              if (res.ok) {
+                                                setData((prev) => prev.filter((pr) => pr.id !== p.id));
+                                                onHardDeleted?.(p.id);
+                                                setExpandedRow(null);
+                                              } else {
+                                                showToast("Delete failed — please try again.");
+                                              }
+                                            },
+                                          });
+                                        }}
+                                        style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background .12s" }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fecaca")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = "#fee2e2")}
+                                      >
+                                        Delete practitioner
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
