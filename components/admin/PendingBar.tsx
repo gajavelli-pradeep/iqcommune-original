@@ -25,6 +25,7 @@ export function PendingBar({
   onStatusChange,
   statusAriaLabel = "Filter by status",
   dateFilter,
+  standalone = false,
 }: {
   pendingCards: PendingCardData[];
   statusOptions?: readonly string[];
@@ -32,9 +33,13 @@ export function PendingBar({
   onStatusChange?: (v: string) => void;
   statusAriaLabel?: string;
   dateFilter?: DateFilterControl;
+  /** Render as a self-contained rounded bar (fully rounded + bottom border)
+   *  instead of the default top-of-table style — used when content sits between
+   *  the filter bar and the table (e.g. the consent tab's generate card). */
+  standalone?: boolean;
 }) {
   return (
-    <div style={barStyle}>
+    <div style={standalone ? standaloneBarStyle : barStyle}>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {pendingCards.map((c) => (
           <button
@@ -107,6 +112,15 @@ const barStyle: React.CSSProperties = {
   justifyContent: "space-between",
   gap: "1rem",
   flexWrap: "wrap",
+};
+
+// Standalone variant: fully rounded with a bottom border, for when the filter bar
+// is not directly glued to the table (content sits between them).
+const standaloneBarStyle: React.CSSProperties = {
+  ...barStyle,
+  borderRadius: 10,
+  borderBottom: "1px solid rgba(20,18,12,.10)",
+  marginBottom: "1.5rem",
 };
 
 function cardStyle(active: boolean): React.CSSProperties {

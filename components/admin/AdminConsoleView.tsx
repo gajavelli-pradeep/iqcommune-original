@@ -168,9 +168,8 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
   agreements:    [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export agreements" },
   ],
-  consent:       [
-    { label: "+ Generate consent", variant: "gold", ariaLabel: "Generate a session revenue confirmation", icon: "plus" },
-  ],
+  // V5: the "Generate a new confirmation" form is inline on the tab, not a header button.
+  consent:       [],
   // Gap 15: payouts only 'Export' (no 'Mark paid')
   payouts:       [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export payouts" },
@@ -417,7 +416,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
-  const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [teamReloadKey, setTeamReloadKey] = useState(0);
@@ -697,7 +695,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
     else if (label.includes("Add request")) setRequestModalOpen(true);
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
-    else if (label.includes("Generate consent")) setConsentModalOpen(true);
     else if (label === "Trash") setTrashOpen(true);
     else if (label.includes("Credentials") || label.includes("Invite admin")) setCredentialsOpen(true);
     else if (label === "Export") exportActiveTab();
@@ -875,6 +872,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           <div>
             <TabHeader tab="consent" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
+              {/* V5 order: filter bar (PendingBar) → generate card → confirmations
+                  table. The generate card is passed as ConsentTable's beforeTable so
+                  the filters render above it. */}
               <ConsentTable
                 initialData={confirmationsData}
                 onRowChange={handleConfirmationRowChange}
@@ -882,6 +882,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 reassignableSessionIds={upcomingSessions.map((s) => s.id)}
                 onReassign={isGlobalAdmin ? (row) => setReassigning(row) : undefined}
                 onStatusOverridden={isGlobalAdmin ? handleStatusOverridden : undefined}
+                beforeTable={!readOnly && (
+                  <ConsentFormModal
+                    inline
+                    confirmedSessionIds={confirmedSessionIds}
+                    onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
+                  />
+                )}
               />
             </div>
           </div>
@@ -1002,13 +1009,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         open={payoutModalOpen}
         onClose={() => setPayoutModalOpen(false)}
         onCreated={(p) => { setPayoutsData((prev) => [p, ...prev]); }}
-      />
-      <ConsentFormModal
-        key={consentModalOpen ? "consent-open" : "consent-closed"}
-        open={consentModalOpen}
-        onClose={() => setConsentModalOpen(false)}
-        confirmedSessionIds={confirmedSessionIds}
-        onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
       />
       {reassigning && (
         <ReassignConsentModal

@@ -49,15 +49,18 @@ interface ConsentAutofill {
 }
 
 export function ConsentFormModal({
-  open,
+  open = true,
   onClose,
   onCreated,
   confirmedSessionIds,
+  inline = false,
 }: {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
   onCreated: (c: ConfirmationRow) => void;
   confirmedSessionIds: string[];
+  /** Render the form directly on the page (V5 Session Consent tab) instead of in a modal. */
+  inline?: boolean;
 }) {
   const empty = { sessionId: "", gross: "", tdsRate: "", gstRate: "", startTime: "", duration: "3 hours" };
   const [form, setForm] = useState(empty);
@@ -190,30 +193,39 @@ export function ConsentFormModal({
     }
   }
 
-  return (
-    <FormModal
-      open={open}
-      onClose={onClose}
-      title="Generate a new confirmation"
-      subtitle="All fields below flow from the original Session Request and Practitioner onboarding record."
-      footer={
-        generatedLink ? (
-          <button type="button" style={primaryBtn} onClick={onClose}>Done</button>
-        ) : (
-          <>
-            <button type="button" style={ghostBtn} onClick={onClose}>Cancel</button>
-            <button
-              type="button"
-              style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}
-              disabled={saving}
-              onClick={submit}
-            >
-              {saving ? "Generating…" : "Generate & get link"}
-            </button>
-          </>
-        )
-      }
-    >
+  // Inline mode has no modal to close — reset the form so the admin can generate another.
+  function reset() {
+    setForm(empty);
+    setAutofill(null);
+    setGeneratedLink("");
+    setCopied(false);
+  }
+
+  const title = "Generate a new confirmation";
+  const subtitle = "All fields below flow from the original Session Request and Practitioner onboarding record. Global Admin can correct any field on the underlying record.";
+  const footer = generatedLink ? (
+    inline
+      ? <button type="button" style={primaryBtn} onClick={reset}>Generate another</button>
+      : <button type="button" style={primaryBtn} onClick={onClose}>Done</button>
+  ) : (
+    <>
+      {!inline && <button type="button" style={ghostBtn} onClick={onClose}>Cancel</button>}
+      {/* V5: the submit only appears once a session is selected. */}
+      {selected && (
+        <button
+          type="button"
+          style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}
+          disabled={saving}
+          onClick={submit}
+        >
+          {saving ? "Generating…" : "Generate & send for consent"}
+        </button>
+      )}
+    </>
+  );
+
+  const body = (
+    <>
       {generatedLink ? (
         <div>
           <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
@@ -287,33 +299,39 @@ export function ConsentFormModal({
             </div>
           )}
 
-          <label>
-            <span style={fieldLabelStyle}>Start time * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
-            <input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} />
-          </label>
-          <label>
-            <span style={fieldLabelStyle}>Duration * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
-            <select style={fieldSelectStyle} value={form.duration} onChange={set("duration")}>
-              {DURATION_OPTIONS.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </label>
+          {/* V5: the admin-entry + financial fields only appear once a session is
+              picked (the mockup's conf-auto-wrap is hidden until then). */}
+          {selected && (
+            <>
+              <label>
+                <span style={fieldLabelStyle}>Start time * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
+                <input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} />
+              </label>
+              <label>
+                <span style={fieldLabelStyle}>Duration * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
+                <select style={fieldSelectStyle} value={form.duration} onChange={set("duration")}>
+                  {DURATION_OPTIONS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </label>
 
-          <label>
-            <span style={fieldLabelStyle}>Gross amount (₹) *</span>
-            <input type="number" min={1} style={fieldInputStyle} value={form.gross} onChange={set("gross")} />
-          </label>
-          <label>
-            <span style={fieldLabelStyle}>TDS rate (%)</span>
-            <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.tdsRate} onChange={set("tdsRate")} />
-          </label>
-          <label>
-            <span style={fieldLabelStyle}>GST rate (%)</span>
-            <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.gstRate} onChange={set("gstRate")} />
-          </label>
+              <label>
+                <span style={fieldLabelStyle}>Gross amount (₹) *</span>
+                <input type="number" min={1} style={fieldInputStyle} value={form.gross} onChange={set("gross")} />
+              </label>
+              <label>
+                <span style={fieldLabelStyle}>TDS rate (%)</span>
+                <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.tdsRate} onChange={set("tdsRate")} />
+              </label>
+              <label>
+                <span style={fieldLabelStyle}>GST rate (%)</span>
+                <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.gstRate} onChange={set("gstRate")} />
+              </label>
+            </>
+          )}
 
-          {gross > 0 && (
+          {selected && gross > 0 && (
             <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--ink-soft)", background: "var(--surface-soft)", borderRadius: 6, padding: "8px 10px", lineHeight: 1.7 }}>
               Net payout: <strong>₹{net.toLocaleString("en-IN")}</strong>
               <br />
@@ -323,9 +341,26 @@ export function ConsentFormModal({
             </div>
           )}
 
-          {error && <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "#a32d2d" }}>{error}</div>}
+          {error && <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--red)" }}>{error}</div>}
         </div>
       )}
+    </>
+  );
+
+  if (inline) {
+    return (
+      <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, background: "var(--surface)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>{title}</div>
+        <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 16, lineHeight: 1.5 }}>{subtitle}</div>
+        {body}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>{footer}</div>
+      </div>
+    );
+  }
+
+  return (
+    <FormModal open={open} onClose={onClose ?? (() => {})} title={title} subtitle={subtitle} footer={footer}>
+      {body}
     </FormModal>
   );
 }

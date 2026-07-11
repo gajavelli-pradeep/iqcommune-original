@@ -54,6 +54,7 @@ export function ConsentTable({
   reassignableSessionIds = [],
   onReassign,
   onStatusOverridden,
+  beforeTable,
 }: {
   initialData: ConfirmationRow[];
   onRowChange: (id: string, patch: Partial<ConfirmationRow>) => void;
@@ -63,6 +64,9 @@ export function ConsentTable({
   onReassign?: (row: ConfirmationRow) => void;
   // Global-Admin status override applied; parent reconciles the confirmation + session.
   onStatusOverridden?: (row: ConfirmationRow, status: string) => void;
+  // V5: content rendered between the filter bar and the table (the generate card),
+  // so the PendingBar/filters sit above it as in the mockup.
+  beforeTable?: React.ReactNode;
 }) {
   const data = initialData;
   const reassignable = new Set(reassignableSessionIds);
@@ -157,8 +161,10 @@ export function ConsentTable({
         onStatusChange={setFilter}
         statusAriaLabel="Filter confirmations by status"
         dateFilter={df.control}
+        standalone={!!beforeTable}
       />
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderTop: "none", borderRadius: "0 0 10px 10px", overflow: "hidden" }}>
+      {beforeTable}
+      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderTop: beforeTable ? undefined : "none", borderRadius: beforeTable ? 10 : "0 0 10px 10px", overflow: "hidden" }}>
       {error && <div role="alert" style={{ fontSize: 12, color: "#a32d2d", padding: "8px 12px" }}>{error}</div>}
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
