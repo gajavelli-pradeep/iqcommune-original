@@ -59,7 +59,7 @@ const HEADERS = [
   "Date & venue",
   "Audience",
   "Participants",
-  "Payout",
+  "Payout (₹)",
   "Consent",
   "Status",
   "Actions",
@@ -132,6 +132,10 @@ export function SessionTable({
     );
   });
 
+  // The read-only User tier has no row actions — drop the Actions column entirely
+  // (header + cell) rather than showing an empty column.
+  const headers = readOnly ? HEADERS.filter((h) => h !== "Actions") : HEADERS;
+
   return (
     <div>
       <TableFilterBar
@@ -145,7 +149,7 @@ export function SessionTable({
       />
 
       <AdminTable
-        headers={HEADERS}
+        headers={headers}
         isEmpty={visible.length === 0}
         emptyText={data.length === 0 ? "No sessions yet" : "No sessions match the current filter"}
         connected
@@ -232,6 +236,7 @@ export function SessionTable({
                 <td style={TD}>
                   <StatusPill status={s.status} />
                 </td>
+                {!readOnly && (
                 <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
                   {/* All row actions live under one ⋯ dropdown. */}
                   <RowActionsMenu
@@ -310,11 +315,12 @@ export function SessionTable({
                     ]}
                   />
                 </td>
+                )}
               </tr>
 
               {isExpanded && (
                 <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                  <td colSpan={9} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                  <td colSpan={headers.length} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                     <div
                       style={{
                         border: "1px solid rgba(20,18,12,.10)",

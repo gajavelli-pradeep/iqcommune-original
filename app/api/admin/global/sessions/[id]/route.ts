@@ -71,6 +71,25 @@ export async function PATCH(
     .single();
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Changing the practitioner while an active confirmation exists would orphan that
+  // confirmation (its name/link/PDF still point at the old practitioner). Force the
+  // reassignment cascade (/reassign) instead, which supersedes + regenerates.
+  if (patch.practitioner_id && patch.practitioner_id !== record.practitioner_id) {
+    const { data: activeConf } = await db
+      .from("confirmations")
+      .select("id")
+      .eq("session_id", id)
+      .neq("status", "Superseded")
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (activeConf) {
+      return NextResponse.json(
+        { error: "This session has an active consent confirmation — use \"Replace practitioner\" on the Session Consent row to change the practitioner." },
+        { status: 409 }
+      );
+    }
+  }
+
   await logAdminAction({
     actorEmail,
     action: "edit_session",

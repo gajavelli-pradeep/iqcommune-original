@@ -31,6 +31,9 @@ type AgreementFetchRow = Database["public"]["Tables"]["agreements"]["Row"] & {
 };
 export type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
   practitioner_name: string;
+  // Whether this submission's photos are currently featured in the public gallery
+  // (any gallery_photos row tagged with source_submission_id === this id).
+  featured: boolean;
 };
 export type ConfirmationFetchRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
   practitioner: { name: string; email: string } | null;
@@ -83,10 +86,23 @@ export async function getConsoleData(): Promise<ConsoleData> {
   for (const p of practitioners.data ?? []) {
     if (p.ref_code) nameByRef[p.ref_code] = p.name;
   }
+  // Which submissions are featured in the public gallery. Non-fatal — the
+  // source_submission_id column only exists after migration 0031, so an error
+  // (pre-migration) simply means "nothing featured yet".
+  const featuredIds = new Set<string>();
+  const galleryFeatured = await db.from("gallery_photos").select("source_submission_id");
+  if (!galleryFeatured.error) {
+    for (const g of galleryFeatured.data ?? []) {
+      const sid = (g as { source_submission_id?: string | null }).source_submission_id;
+      if (sid) featuredIds.add(sid);
+    }
+  }
+
   // Photos query failure is non-fatal — show empty state rather than crashing the admin
   const photos: PhotoRow[] = (photosRes.data ?? []).map((p) => ({
     ...p,
     practitioner_name: nameByRef[p.practitioner_ref] ?? p.practitioner_ref,
+    featured: featuredIds.has(p.id),
   }));
 
   const agreements: Agreement[] = ((agreementsRes.data ?? []) as AgreementFetchRow[]).map((a) => ({

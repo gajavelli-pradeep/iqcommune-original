@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { Database } from "@/lib/supabase/database.types";
 import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { matchesSearch } from "@/lib/admin/search";
 
@@ -11,16 +13,18 @@ export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row
 };
 
 const CONSENT_FILTERS = ["All", "Awaiting consent", "Consent received", "Superseded"] as const;
+const CONSENT_STATUSES = ["Awaiting consent", "Consent received", "Superseded"] as const;
 
 const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
+const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  "Awaiting consent": { bg: "#fbf1d9", fg: "#8a6510" },
+  "Consent received": { bg: "#eef7ee", fg: "#2a6b2a" },
+  Superseded: { bg: "#f1f0ec", fg: "#71717f" },
+};
+
 function StatusPill({ status }: { status: string }) {
-  const map: Record<string, { bg: string; fg: string }> = {
-    "Awaiting consent": { bg: "#fbf1d9", fg: "#8a6510" },
-    "Consent received": { bg: "#eef7ee", fg: "#2a6b2a" },
-    Superseded: { bg: "#f1f0ec", fg: "#71717f" },
-  };
-  const c = map[status] ?? map.Superseded;
+  const c = STATUS_COLORS[status] ?? STATUS_COLORS.Superseded;
   return (
     <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 100, background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>
       {status}
@@ -28,27 +32,43 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+// A pill-shaped, status-tinted <select> — the Global-Admin override control.
+function statusSelectStyle(status: string): React.CSSProperties {
+  const c = STATUS_COLORS[status] ?? STATUS_COLORS.Superseded;
+  return {
+    padding: "4px 8px", borderRadius: 100, border: `1px solid ${c.fg}33`,
+    background: c.bg, color: c.fg, fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+    cursor: "pointer", outline: "none",
+  };
+}
+
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
   color: "var(--ink-faint)", padding: "10px 12px", borderBottom: "1px solid rgba(20,18,12,.10)", whiteSpace: "nowrap",
 };
 const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "11px 12px", borderBottom: "1px solid rgba(20,18,12,.06)", verticalAlign: "middle" };
-const actionBtn: React.CSSProperties = {
-  background: "#fff", border: "1px solid rgba(20,18,12,0.18)", borderRadius: 100,
-  padding: "5px 11px", fontSize: 12, fontWeight: 500, cursor: "pointer", color: "var(--ink)", fontFamily: "inherit", whiteSpace: "nowrap",
-};
 
 export function ConsentTable({
   initialData,
   onRowChange,
+  isGlobalAdmin = false,
+  reassignableSessionIds = [],
+  onReassign,
+  onStatusOverridden,
 }: {
   initialData: ConfirmationRow[];
   onRowChange: (id: string, patch: Partial<ConfirmationRow>) => void;
   isGlobalAdmin?: boolean;
+  // Sessions still Upcoming — only these have an editable status + Replace action.
+  reassignableSessionIds?: string[];
+  onReassign?: (row: ConfirmationRow) => void;
+  // Global-Admin status override applied; parent reconciles the confirmation + session.
+  onStatusOverridden?: (row: ConfirmationRow, status: string) => void;
 }) {
   const data = initialData;
+  const reassignable = new Set(reassignableSessionIds);
+  const [supersedeTarget, setSupersedeTarget] = useState<ConfirmationRow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -61,8 +81,6 @@ export function ConsentTable({
     if (!row.consent_link) return;
     try {
       await navigator.clipboard.writeText(row.consent_link);
-      setCopiedId(row.id);
-      setTimeout(() => setCopiedId((c) => (c === row.id ? null : c)), 2000);
     } catch {
       /* clipboard blocked */
     }
@@ -96,6 +114,31 @@ export function ConsentTable({
       setError("Network error — please try again.");
     } finally {
       setBusy(null);
+    }
+  }
+
+  // Global-Admin direct status override. Superseding is confirmed first (destructive);
+  // Awaiting ↔ Consent received flip freely (reversible via the same control).
+  async function overrideStatus(row: ConfirmationRow, status: string) {
+    setError("");
+    setBusy(row.id);
+    try {
+      const res = await fetch(`/api/admin/global/consent/${row.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? "Could not update the status.");
+      } else {
+        onStatusOverridden?.(row, status);
+      }
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setBusy(null);
+      setSupersedeTarget(null);
     }
   }
 
@@ -136,6 +179,9 @@ export function ConsentTable({
             )}
             {visible.map((row) => {
               const awaiting = row.status === "Awaiting consent";
+              // Editable only while the session is still Upcoming — a Completed/Cancelled
+              // session's confirmation is a historical record, shown read-only.
+              const editable = isGlobalAdmin && reassignable.has(row.session_id);
               return (
                 <tr key={row.id}>
                   <td style={{ ...td, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}>{row.ref_code}</td>
@@ -143,35 +189,44 @@ export function ConsentTable({
                   <td style={td}>{row.practitioner?.name ?? "—"}</td>
                   <td style={{ ...td, textAlign: "right", color: "var(--ink-muted)" }}>{money(row.gross_amount)}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
-                  <td style={td}><StatusPill status={row.status} /></td>
+                  <td style={td}>
+                    {editable ? (
+                      <select
+                        value={row.status}
+                        disabled={busy === row.id}
+                        aria-label={`Override status for ${row.ref_code}`}
+                        style={statusSelectStyle(row.status)}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          if (next === row.status) return;
+                          if (next === "Superseded") setSupersedeTarget(row);
+                          else overrideStatus(row, next);
+                        }}
+                      >
+                        {CONSENT_STATUSES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <StatusPill status={row.status} />
+                    )}
+                  </td>
                   <td style={{ ...td, color: "var(--ink-faint)", fontSize: 12, whiteSpace: "nowrap" }}>
                     {new Date(row.issued_on).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
-                    <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                      {row.consent_link && (
-                        <button style={actionBtn} onClick={() => copyLink(row)}>
-                          {copiedId === row.id ? "Copied" : "Copy link"}
-                        </button>
-                      )}
-                      <button
-                        style={{ ...actionBtn, opacity: row.storage_path ? 1 : 0.5, cursor: row.storage_path ? "pointer" : "not-allowed" }}
-                        disabled={!row.storage_path}
-                        title={row.storage_path ? "Download consent PDF" : "No PDF available yet"}
-                        onClick={() => downloadPdf(row)}
-                      >
-                        PDF
-                      </button>
-                      {awaiting && (
-                        <button
-                          style={{ ...actionBtn, borderColor: "var(--green-border, #bcdcbc)", color: "#2a6b2a" }}
-                          disabled={busy === row.id}
-                          onClick={() => markReceived(row)}
-                        >
-                          {busy === row.id ? "…" : "Mark received"}
-                        </button>
-                      )}
-                    </div>
+                    <RowActionsMenu
+                      ariaLabel={`Actions for ${row.ref_code}`}
+                      actions={[
+                        ...(row.consent_link ? [{ label: "Copy consent link", onClick: () => copyLink(row) }] : []),
+                        ...(row.storage_path ? [{ label: "Download PDF", onClick: () => downloadPdf(row) }] : []),
+                        // Regular admins get Mark received here; Global Admins use the status dropdown.
+                        ...(!isGlobalAdmin && awaiting ? [{ label: "Mark received", onClick: () => markReceived(row) }] : []),
+                        ...(isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
+                          ? [{ label: "Replace practitioner", onClick: () => onReassign(row) }]
+                          : []),
+                      ]}
+                    />
                   </td>
                 </tr>
               );
@@ -180,6 +235,14 @@ export function ConsentTable({
         </table>
       </div>
       </div>
+      <ConfirmDialog
+        open={!!supersedeTarget}
+        title="Supersede this confirmation?"
+        description={`This voids ${supersedeTarget?.ref_code ?? "this confirmation"} and resets the session to Pending consent, so a corrected confirmation can be re-issued. The practitioner's current consent no longer applies.`}
+        confirmLabel="Supersede"
+        onCancel={() => setSupersedeTarget(null)}
+        onConfirm={() => supersedeTarget && overrideStatus(supersedeTarget, "Superseded")}
+      />
     </div>
   );
 }

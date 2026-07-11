@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { RowActionsMenu, type RowAction } from "@/components/admin/RowActionsMenu";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
@@ -22,6 +23,7 @@ interface PhotoSubmission {
   status: string;
   submitted_at: string;
   expiry_date: string;
+  featured: boolean;
 }
 
 // Completed sessions with no photo upload yet (V4: "Send reminder" rows).
@@ -87,6 +89,7 @@ export function PhotosTable({
   onStatusFilterChange,
   onStatusChange,
   readOnly = false,
+  canGallery = false,
 }: {
   initialData: PhotoSubmission[];
   pendingSessions?: PendingUploadSession[];
@@ -95,10 +98,13 @@ export function PhotosTable({
   onStatusChange?: (id: string, status: string) => void;
   isGlobalAdmin?: boolean;
   readOnly?: boolean;
+  // Whether this admin may feature photos in the public gallery (gallery access + not read-only).
+  canGallery?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
+  const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [internalFilter, setInternalFilter] = useState<StatusFilter>("All");
@@ -146,6 +152,29 @@ export function PhotosTable({
     }
     setToast(`Reminder link copied — send to ${name}`);
     setTimeout(() => setToast(""), 3500);
+  }
+
+  // Feature / un-feature this photo set in the public "Sessions in the room" gallery.
+  async function toggleGallery(p: PhotoSubmission) {
+    const next = !p.featured;
+    setGalleryBusyId(p.id);
+    setData((prev) => prev.map((x) => (x.id === p.id ? { ...x, featured: next } : x)));
+    try {
+      const res = await fetch(`/api/admin/photos/${p.id}/gallery`, { method: next ? "POST" : "DELETE" });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setData((prev) => prev.map((x) => (x.id === p.id ? { ...x, featured: !next } : x)));
+        setToast(body.error ?? "Could not update the gallery");
+      } else {
+        setToast(next ? "Added to the public gallery" : "Removed from the public gallery");
+      }
+    } catch {
+      setData((prev) => prev.map((x) => (x.id === p.id ? { ...x, featured: !next } : x)));
+      setToast("Network error — please try again.");
+    } finally {
+      setGalleryBusyId(null);
+      setTimeout(() => setToast(""), 3500);
+    }
   }
 
   const remove = useCallback(
@@ -237,17 +266,11 @@ export function PhotosTable({
                 Pending
               </span>
             </td>
-            <td style={{ ...TD, whiteSpace: "nowrap" }}>
-              {readOnly ? (
-                <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>—</span>
-              ) : (
-              <button onClick={() => sendReminder(s.id, s.practitioner_name)} style={ghostBtn} title="Copy a fresh photo-upload link to send to this practitioner">
-                <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                Send reminder
-              </button>
-              )}
+            <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
+              <RowActionsMenu
+                ariaLabel={`Actions for ${s.session_ref}`}
+                actions={readOnly ? [] : [{ label: "Send reminder", onClick: () => sendReminder(s.id, s.practitioner_name) }]}
+              />
             </td>
           </tr>
         ))}
@@ -255,7 +278,6 @@ export function PhotosTable({
           const days = daysLeft(p.expiry_date);
           const isUrgent = days > 0 && days <= 7;
           const ini = initials(p.practitioner_name);
-          const canView = true; // any existing submission is viewable/downloadable/deletable
           return (
             <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
               {/* Practitioner */}
@@ -334,47 +356,24 @@ export function PhotosTable({
                   Uploaded
                 </span>
               </td>
-              {/* Actions */}
-              <td style={TD}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  {canView && (
-                    <button onClick={() => setViewId(p.id)} style={ghostBtn}>
-                      <svg
-                        width={12}
-                        height={12}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                      View
-                    </button>
-                  )}
-                  {canView && (
-                    <button onClick={() => downloadPhotoSet(p.id)} style={ghostBtn} title="Download all photos in this set">
-                      <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      Download
-                    </button>
-                  )}
-                  {canView && !readOnly && p.status !== "Rejected" && (
-                    <button onClick={() => remove(p.id)} style={ghostBtn}>
-                      Delete
-                    </button>
-                  )}
-                  {!canView && (
-                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>—</span>
-                  )}
-                </div>
+              {/* Actions — all under one ⋯ dropdown */}
+              <td style={{ ...TD, textAlign: "right" }}>
+                <RowActionsMenu
+                  ariaLabel={`Actions for ${p.session_ref}`}
+                  actions={[
+                    { label: "View", onClick: () => setViewId(p.id) },
+                    { label: "Download", onClick: () => downloadPhotoSet(p.id) },
+                    ...(canGallery
+                      ? [{
+                          label: galleryBusyId === p.id ? "Working…" : p.featured ? "Remove from gallery" : "Feature in gallery",
+                          onClick: () => toggleGallery(p),
+                        }]
+                      : []),
+                    ...(!readOnly && p.status !== "Rejected"
+                      ? [{ label: "Delete", danger: true, onClick: () => remove(p.id) } as RowAction]
+                      : []),
+                  ]}
+                />
               </td>
             </tr>
           );
@@ -416,18 +415,3 @@ export function PhotosTable({
     </div>
   );
 }
-
-
-const ghostBtn: React.CSSProperties = {
-  background: "rgba(20,18,12,.07)",
-  color: "var(--ink)",
-  border: "none",
-  borderRadius: 6,
-  padding: "5px 10px",
-  fontSize: 11,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};

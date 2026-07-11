@@ -9,6 +9,7 @@ import { AgreementTable, type Agreement } from "@/components/admin/AgreementTabl
 import { PhotosTable } from "@/components/admin/PhotosTable";
 import { ConsentTable, type ConfirmationRow } from "@/components/admin/ConsentTable";
 import { ConsentFormModal } from "@/components/admin/ConsentFormModal";
+import { ReassignConsentModal } from "@/components/admin/ReassignConsentModal";
 import { MasterDataTable } from "@/components/admin/MasterDataTable";
 import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { TeamAccessTable } from "@/components/admin/TeamAccessTable";
@@ -46,6 +47,7 @@ type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
 };
 type PhotoRow = Database["public"]["Tables"]["photo_submissions"]["Row"] & {
   practitioner_name: string;
+  featured: boolean;
 };
 
 // Map a joined session row into the NewSession shape the edit modal expects.
@@ -503,7 +505,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     transform: (raw) => {
       const r = raw as unknown as PhotoRow;
       const name = practitionersData.find((p) => p.ref_code === r.practitioner_ref)?.name;
-      return { ...r, practitioner_name: name ?? r.practitioner_ref };
+      // A brand-new upload is never featured yet; UPDATEs merge raw columns and
+      // leave the derived `featured` flag on the existing row intact.
+      return { ...r, practitioner_name: name ?? r.practitioner_ref, featured: false };
     },
   });
 
@@ -524,6 +528,36 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     setConfirmationsData((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   };
   const confirmedSessionIds = confirmationsData.filter((c) => c.status !== "Superseded").map((c) => c.session_id);
+
+  // Global-Admin practitioner replacement on an upcoming session: supersede the old
+  // confirmation locally, prepend the fresh one, and move the session to the new
+  // practitioner (back to Pending consent). Realtime reconciles by id.
+  const [reassigning, setReassigning] = useState<ConfirmationRow | null>(null);
+  const handleReassigned = (newRow: ConfirmationRow, supersededIds: string[], newPractitionerId: string) => {
+    setConfirmationsData((prev) => [
+      newRow,
+      ...prev.map((c) => (supersededIds.includes(c.id) ? { ...c, status: "Superseded" } : c)),
+    ]);
+    setSessionsData((prev) =>
+      prev.map((s) =>
+        s.id === newRow.session_id
+          ? { ...s, practitioner_id: newPractitionerId, consent_status: "Pending consent" }
+          : s
+      )
+    );
+    setReassigning(null);
+  };
+
+  // Global-Admin status override on a confirmation: reflect the new status and keep
+  // the linked session's consent_status in sync (Consent received → Consent given;
+  // Awaiting/Superseded → Pending consent, which re-opens the session for a fresh consent).
+  const handleStatusOverridden = (row: ConfirmationRow, status: string) => {
+    setConfirmationsData((prev) => prev.map((c) => (c.id === row.id ? { ...c, status } : c)));
+    const consentStatus = status === "Consent received" ? "Consent given" : "Pending consent";
+    setSessionsData((prev) =>
+      prev.map((s) => (s.id === row.session_id ? { ...s, consent_status: consentStatus } : s))
+    );
+  };
 
   // Feedback lives inside a session row (rating shown inline), not its own tab —
   // so patch the matching session live when feedback is recorded/updated/removed.
@@ -831,7 +865,14 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           <div>
             <TabHeader tab="consent" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <ConsentTable initialData={confirmationsData} onRowChange={handleConfirmationRowChange} isGlobalAdmin={isGlobalAdmin} />
+              <ConsentTable
+                initialData={confirmationsData}
+                onRowChange={handleConfirmationRowChange}
+                isGlobalAdmin={isGlobalAdmin}
+                reassignableSessionIds={upcomingSessions.map((s) => s.id)}
+                onReassign={isGlobalAdmin ? (row) => setReassigning(row) : undefined}
+                onStatusOverridden={isGlobalAdmin ? handleStatusOverridden : undefined}
+              />
             </div>
           </div>
         )}
@@ -857,6 +898,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   }))}
                 isGlobalAdmin={isGlobalAdmin}
                 readOnly={readOnly}
+                canGallery={galleryVisible && !readOnly}
                 onStatusChange={(id, status) =>
                   setPhotosData((prev) =>
                     status === "Deleted"
@@ -958,6 +1000,16 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         confirmedSessionIds={confirmedSessionIds}
         onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
       />
+      {reassigning && (
+        <ReassignConsentModal
+          key={reassigning.id}
+          open
+          onClose={() => setReassigning(null)}
+          confirmation={reassigning}
+          practitioners={practitionersData.map((p) => ({ id: p.id, name: p.name, email: p.email, status: p.status }))}
+          onReassigned={handleReassigned}
+        />
+      )}
       <RequestFormModal
         open={requestModalOpen}
         onClose={() => setRequestModalOpen(false)}

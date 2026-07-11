@@ -97,6 +97,7 @@ export interface Database {
           published: boolean;
           created_at: string;
           updated_at: string;
+          source_submission_id: string | null;
         };
         Insert: {
           id?: string;
@@ -107,6 +108,7 @@ export interface Database {
           published?: boolean;
           created_at?: string;
           updated_at?: string;
+          source_submission_id?: string | null;
         };
         Update: {
           storage_path?: string;
@@ -115,6 +117,7 @@ export interface Database {
           sort_order?: number;
           published?: boolean;
           updated_at?: string;
+          source_submission_id?: string | null;
         };
         Relationships: [];
       };
