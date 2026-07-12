@@ -7,7 +7,7 @@ import { FeedbackModal } from "@/components/admin/FeedbackModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
-import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
+import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 
@@ -297,9 +297,9 @@ export function SessionTable({
                   )}
                 </td>
                 {!readOnly && (
-                <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
-                  {/* All row actions live under one ⋯ dropdown. */}
-                  <RowActionsMenu
+                <td style={{ ...TD, textAlign: "right" }}>
+                  {/* V5: inline action buttons (not a ⋯ menu). */}
+                  <RowActionsInline
                     ariaLabel={`Actions for session ${s.ref_code}`}
                     actions={[
                       ...(s.payout_id
@@ -319,7 +319,7 @@ export function SessionTable({
                         : []),
                       ...(!readOnly && s.status === "Completed"
                         ? [{
-                            label: "Copy photo link",
+                            label: "Generate photo link",
                             onClick: async () => {
                               try {
                                 const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);

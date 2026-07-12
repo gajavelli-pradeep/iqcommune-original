@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Database } from "@/lib/supabase/database.types";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
+import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 
@@ -207,19 +207,20 @@ export function ConsentTable({
                     <StatusPill status={row.status} />
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
-                    <RowActionsMenu
+                    {/* V5: inline action buttons (Copy link · PDF · Mark received · Revert · Void). */}
+                    <RowActionsInline
                       ariaLabel={`Actions for ${row.ref_code}`}
                       actions={[
-                        ...(row.consent_link ? [{ label: "Copy consent link", onClick: () => copyLink(row) }] : []),
-                        ...(row.storage_path ? [{ label: "Download PDF", onClick: () => downloadPdf(row) }] : []),
+                        ...(row.consent_link ? [{ label: "Copy link", onClick: () => copyLink(row) }] : []),
+                        ...(row.storage_path ? [{ label: "PDF", onClick: () => downloadPdf(row) }] : []),
                         // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
                         // received → Awaiting, Global) · Void (→ Superseded, Global).
-                        ...(awaiting && busy !== row.id ? [{ label: "Mark received", onClick: () => markReceived(row) }] : []),
+                        ...(awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
                         ...(editable && row.status === "Consent received" && busy !== row.id
-                          ? [{ label: "Revert to awaiting", onClick: () => overrideStatus(row, "Awaiting consent") }]
+                          ? [{ label: "Revert", onClick: () => overrideStatus(row, "Awaiting consent") }]
                           : []),
                         ...(editable && row.status !== "Superseded" && busy !== row.id
-                          ? [{ label: "Void confirmation", onClick: () => setSupersedeTarget(row) }]
+                          ? [{ label: "Void", danger: true, onClick: () => setSupersedeTarget(row) }]
                           : []),
                         ...(isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
                           ? [{ label: "Replace practitioner", onClick: () => onReassign(row) }]

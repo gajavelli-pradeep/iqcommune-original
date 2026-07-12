@@ -7,6 +7,8 @@ export interface RowAction {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  /** Gold primary emphasis — used by RowActionsInline (the ⋯ menu ignores it). */
+  primary?: boolean;
 }
 
 const MENU_WIDTH = 190;
