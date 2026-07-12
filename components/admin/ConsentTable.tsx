@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 
 export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
@@ -64,6 +65,7 @@ export function ConsentTable({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
+  const undo = useUndoToast();
   const df = useDateFilter(data.map((r) => r.issued_on));
   const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
     .filter((r) => df.matchesDate(r.issued_on));
@@ -101,6 +103,15 @@ export function ConsentTable({
         setError(body.error ?? "Could not mark received.");
       } else {
         onRowChange(row.id, { status: "Consent received" });
+        // V5 instant-undo. Reverting consent is a Global-Admin-only override
+        // (§3.2 / the /global/consent endpoint), so only offer Undo to global
+        // admins — a plain admin's undo would 403. The row updates in place for
+        // everyone regardless.
+        if (isGlobalAdmin) {
+          undo.show(`${row.ref_code} marked as consent received`, () =>
+            overrideStatus(row, "Awaiting consent"),
+          );
+        }
       }
     } catch {
       setError("Network error — please try again.");
@@ -169,14 +180,13 @@ export function ConsentTable({
               <th style={{ ...th, textAlign: "right" }}>Gross</th>
               <th style={{ ...th, textAlign: "right" }}>Net payout</th>
               <th style={th}>Status</th>
-              <th style={th}>Issued</th>
               <th style={{ ...th, textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
                   No confirmations match the current filter
                 </td>
               </tr>
@@ -195,9 +205,6 @@ export function ConsentTable({
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
                   <td style={td}>
                     <StatusPill status={row.status} />
-                  </td>
-                  <td style={{ ...td, color: "var(--ink-faint)", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {new Date(row.issued_on).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
                     <RowActionsMenu
@@ -235,6 +242,7 @@ export function ConsentTable({
         onCancel={() => setSupersedeTarget(null)}
         onConfirm={() => supersedeTarget && overrideStatus(supersedeTarget, "Superseded")}
       />
+      {undo.node}
     </div>
   );
 }

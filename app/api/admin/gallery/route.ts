@@ -7,6 +7,9 @@ export const dynamic = "force-dynamic";
 
 const GALLERY_BUCKET  = "gallery";
 const MAX_FILE_BYTES  = 5 * 1024 * 1024; // 5 MB
+// Live (published) gallery is capped at 20 with plain FIFO — publishing past the
+// cap unpublishes the oldest published photos (never deletes them).
+const GAL_MAX = 20;
 
 function detectMime(header: Uint8Array): string | null {
   if (header[0] === 0xff && header[1] === 0xd8) return "image/jpeg";
@@ -108,6 +111,27 @@ export async function POST(req: NextRequest) {
     log.error("Gallery insert failed — cleaning up storage", { error: dbErr?.message });
     await supabase.storage.from(GALLERY_BUCKET).remove([key]);
     return NextResponse.json({ error: "Failed to save gallery photo" }, { status: 500 });
+  }
+
+  // Enforce the FIFO cap: if this publish pushed the live gallery past GAL_MAX,
+  // unpublish the oldest published rows (by created_at) until exactly GAL_MAX
+  // remain. The just-inserted row is excluded so it always survives.
+  if (row.published) {
+    const { data: olderPublished } = await supabase
+      .from("gallery_photos")
+      .select("id")
+      .eq("published", true)
+      .neq("id", row.id)
+      .order("created_at", { ascending: true });
+    const overflow = (olderPublished?.length ?? 0) + 1 - GAL_MAX;
+    if (olderPublished && overflow > 0) {
+      const evictIds = olderPublished.slice(0, overflow).map((r) => r.id);
+      const { error: capErr } = await supabase
+        .from("gallery_photos")
+        .update({ published: false })
+        .in("id", evictIds);
+      if (capErr) log.error("Gallery FIFO cap eviction failed (POST)", { error: capErr.message });
+    }
   }
 
   return NextResponse.json({ data: { ...row, url: withUrl(supabase, row) } }, { status: 201 });

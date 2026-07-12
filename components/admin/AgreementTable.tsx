@@ -107,7 +107,7 @@ export function AgreementTable({
                 "Timestamp",
                 "Method",
                 "Status",
-                "",
+                "Actions",
               ].map((h) => (
                 <th key={h} scope="col" style={thStyle}>
                   {h}

@@ -20,7 +20,6 @@ type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"] & {
 
 const STATUSES = [
   "Applied",
-  "Under Review",
   "Screening Done",
   "Agreement Sent",
   "Empanelled",
@@ -30,6 +29,13 @@ const STATUSES = [
 // "All" + every pipeline status, plus Deactivated (set via the Danger Zone, not the
 // forward dropdown) so admins can filter to parked practitioners — the shared Filter bar.
 const FILTER_OPTIONS = ["All", ...STATUSES, "Deactivated"] as const;
+
+// V5 §3.3/§5 stage-gated Danger Zone: exactly one of Delete/Deactivate per stage.
+// Hard delete only before there's empanelment history; Deactivate (reversible) once
+// an agreement/empanelment exists. A status in neither set (e.g. Deactivated) shows no
+// destructive control. `readonly string[]` so `.includes(p.status)` accepts a plain string.
+const DELETABLE_STATUSES: readonly string[] = ["Applied", "Screening Done", "Rejected"];
+const DEACTIVATABLE_STATUSES: readonly string[] = ["Agreement Sent", "Empanelled"];
 
 // ── Draft-message templates (plain text, copy/paste — mirrors RequestTable) ──────
 
@@ -211,7 +217,7 @@ export function PractitionerTable({
   }, []);
 
   const updateStatus = useCallback(
-    async (id: string, status: string) => {
+    async (id: string, status: string): Promise<boolean> => {
       const res = await fetch(`/api/admin/practitioners/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -230,9 +236,10 @@ export function PractitionerTable({
         );
         onStatusChange?.(id, status);
         showToast(`Status updated to "${status}"`);
-      } else {
-        showToast("Failed to update status");
+        return true;
       }
+      showToast("Failed to update status");
+      return false;
     },
     [showToast, onStatusChange]
   );
@@ -343,7 +350,7 @@ export function PractitionerTable({
 
       {/* Table */}
       <AdminTable
-        headers={["Practitioner", "Module", "City", "Applied on", "Rating", "Status", ""]}
+        headers={["Practitioner", "Module", "City", "Applied on", "Status"]}
         isEmpty={visible.length === 0}
         emptyText="No practitioners match this filter."
         connected
@@ -386,50 +393,14 @@ export function PractitionerTable({
                     <td style={{ ...TD, fontSize: 12, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>
                       {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                     </td>
-                    {/* Rating */}
-                    <td style={{ ...TD, whiteSpace: "nowrap" }}>
-                      {p.feedback_count > 0 ? (
-                        <div>
-                          <span style={{ color: "var(--gold-dark)", fontWeight: 600, fontSize: 13 }}>★</span>
-                          <span style={{ fontWeight: 600, fontSize: 13, marginLeft: 3 }}>
-                            {Number(p.avg_rating).toFixed(1)}
-                          </span>
-                          <div style={{ fontSize: 10, color: "var(--ink-faint)", marginTop: 1 }}>
-                            {p.feedback_count} session{p.feedback_count !== 1 ? "s" : ""}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
-                      )}
-                    </td>
                     <td style={TD}>
                       <StatusPill status={p.status} />
-                    </td>
-                    {/* Expand chevron */}
-                    <td style={{ ...TD, width: 32, textAlign: "center", color: "var(--ink-faint)" }}>
-                      <svg
-                        width={14}
-                        height={14}
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.8}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                        style={{
-                          transition: "transform .2s",
-                          transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                        }}
-                      >
-                        <path d="M2 4.5L7 9.5L12 4.5" />
-                      </svg>
                     </td>
                   </tr>
 
                   {isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                      <td colSpan={7} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
+                      <td colSpan={5} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                         <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "2rem", alignItems: "start" }}>
                             {/* Col 1: Profile details */}
@@ -512,11 +483,15 @@ export function PractitionerTable({
                                   onClick={(e) => e.stopPropagation()}
                                   style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
                                 >
-                                  {/* V4: Empanelled/Rejected are button-only gates — not forward dropdown choices.
-                                      Show the current value if the practitioner is already in a terminal state. */}
-                                  {STATUSES.filter((s) => (s !== "Empanelled" && s !== "Rejected") || s === p.status).map((s) => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
+                                  {/* Empanelled/Rejected are button-only gates — not forward dropdown choices;
+                                      show them only when they're the current value. A legacy off-pipeline
+                                      status (e.g. "Under Review", removed from STATUSES) is prepended so the
+                                      select displays the real value instead of falling back to the first option. */}
+                                  {((STATUSES as readonly string[]).includes(p.status) ? STATUSES : [p.status, ...STATUSES])
+                                    .filter((s) => (s !== "Empanelled" && s !== "Rejected") || s === p.status)
+                                    .map((s) => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
                                 </select>
                                 )}
 
@@ -558,7 +533,16 @@ export function PractitionerTable({
                                     Each sets the status and opens the matching welcome / reject draft. */}
                                 {!readOnly && p.status === "Agreement Sent" && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Empanelled"); openDraft(p, "Empanelled"); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      lastFocusRef.current = e.currentTarget;
+                                      // Keep the pre-written welcome draft instant; offer 9s to Undo
+                                      // (reverses only the status via the lifecycle revert path).
+                                      openDraft(p, "Empanelled");
+                                      void updateStatus(p.id, "Empanelled").then((ok) => {
+                                        if (ok) undo.show(`${p.name} empanelled`, () => lifecycle(p.id, "revert"));
+                                      });
+                                    }}
                                     style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Empanel practitioner
@@ -566,7 +550,16 @@ export function PractitionerTable({
                                 )}
                                 {!readOnly && p.status !== "Empanelled" && p.status !== "Rejected" && p.status !== "Deactivated" && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; updateStatus(p.id, "Rejected"); openDraft(p, "Rejected"); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      lastFocusRef.current = e.currentTarget;
+                                      // Keep the pre-written reject draft instant; offer 9s to Undo
+                                      // (reverses only the status via the lifecycle revert path).
+                                      openDraft(p, "Rejected");
+                                      void updateStatus(p.id, "Rejected").then((ok) => {
+                                        if (ok) undo.show(`${p.name} rejected`, () => lifecycle(p.id, "revert"));
+                                      });
+                                    }}
                                     style={{ background: "#fff", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Reject
@@ -585,7 +578,15 @@ export function PractitionerTable({
                                 )}
                                 {!readOnly && p.status !== "Deactivated" && p.prev_status && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); lifecycle(p.id, "revert"); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmDialog({
+                                        open: true,
+                                        title: `Revert to ${p.prev_status}`,
+                                        description: `Revert this practitioner to ${p.prev_status}?`,
+                                        onConfirm: () => { closeConfirm(); lifecycle(p.id, "revert"); },
+                                      });
+                                    }}
                                     style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     Revert to {p.prev_status}
@@ -620,33 +621,33 @@ export function PractitionerTable({
                                   </button>
                                 )}
 
-                                {/* V5 P1-3 Danger Zone.
-                                    Deactivate (reversible) is the supported way to retire an active —
-                                    especially Empanelled — practitioner, keeping their history.
-                                    Hard delete stays Global-Admin only and is offered only for
-                                    records without empanelment history (never Empanelled/Deactivated). */}
-                                {!readOnly && p.status !== "Deactivated" && (
-                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--amber)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setConfirmDialog({
-                                          open: true,
-                                          title: `Deactivate ${p.name}`,
-                                          description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
-                                          onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
-                                        });
-                                      }}
-                                      style={{ width: "100%", background: "var(--amber-light)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                    >
-                                      Deactivate practitioner
-                                    </button>
-                                    {isGlobalAdmin && p.status !== "Empanelled" && (
+                                {/* V5 §3.3/§5 stage-gated Danger Zone — EXACTLY ONE control per stage:
+                                    Deactivate (reversible, keeps history) for Agreement Sent / Empanelled;
+                                    hard Delete (Global-Admin only) for records without history
+                                    (Applied / Screening Done / Rejected). Never both at once. */}
+                                {!readOnly && (DEACTIVATABLE_STATUSES.includes(p.status) || (isGlobalAdmin && DELETABLE_STATUSES.includes(p.status))) && (
+                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--amber)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)" }}>Danger zone</div>
+                                    {DEACTIVATABLE_STATUSES.includes(p.status) && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setConfirmDialog({
+                                            open: true,
+                                            title: `Deactivate ${p.name}`,
+                                            description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
+                                            onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
+                                          });
+                                        }}
+                                        style={{ width: "100%", background: "var(--amber-light)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                      >
+                                        Deactivate practitioner
+                                      </button>
+                                    )}
+                                    {isGlobalAdmin && DELETABLE_STATUSES.includes(p.status) && (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); deletePractitionerWithUndo(p); }}
-                                        style={{ width: "100%", background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background .12s" }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.background = "#fecaca")}
-                                        onMouseLeave={(e) => (e.currentTarget.style.background = "#fee2e2")}
+                                        style={{ width: "100%", background: "var(--red-light)", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
                                       >
                                         Delete practitioner
                                       </button>

@@ -5,6 +5,44 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-12] Fresh V5 audit + remediation of remaining gaps — SHIPPED
+
+Re-audited the whole app against the V5 docs (5-lane parallel, findings in
+`V5-FRESH-AUDIT.md`). All three original P1 blockers confirmed resolved. Fixed the
+remaining actionable gaps:
+
+**Tables → exact V5 column parity** (prior turn): Payouts/Agreements Actions header;
+removed Rating/chevron (Practitioners), Issued (Confirmations), address/T-shirt
+(Master Data) — matches handoff §141 scope.
+
+**Practitioner Danger Zone** (`PractitionerTable.tsx`, `global/practitioners/[id]/route.ts`):
+stage-gated Delete vs Deactivate (Delete only for Applied/Screening Done/Rejected;
+Deactivate only for Agreement Sent/Empanelled) on client **and** server (409 otherwise);
+Agreement Sent no longer hard-deletable. Dashed "Danger zone" border + heading. Revert
+now confirms. Removed legacy `Under Review` from the client dropdown.
+
+**Instant-undo (§3.1)** extended from soft-deletes to pipeline actions: Empanel, Reject
+(→ lifecycle revert), Mark received (→ Awaiting), Mark paid (GA-only → Pending), and
+**Assign** — backed by a new atomic, audited `POST session-requests/[id]/unassign`
+(soft-deletes the fresh session + resets request to New, guarded to pre-consent state,
+no client email). Undo link now underlined.
+
+**Gallery** (`api/admin/gallery/route.ts`, `[id]/route.ts`): enforced `GAL_MAX=20` FIFO —
+publishing past 20 unpublishes (never deletes) the oldest published photo.
+
+**Payouts** header states the no-delete/revert policy. **Master Data** blurb + CSV export
+aligned to the 5-field scope.
+
+**Deliberately NOT changed:** invite `<select>` still excludes Global Admin (self-escalation
+guard); per-field pencils deferred (bulk modal is functional-equivalent); photo-delete undo
+deferred (hard delete + storage removal — needs a soft-delete/retention decision).
+
+**Verification caveat:** `tsc` 0 + `eslint` clean on all changed files + console route
+compiles + unassign route registered/gated. Authenticated console mutations not driven live
+(no admin credentials) — spot-check once logged in. Migration `0032` required.
+
+---
+
 ## [2026-07-11] V5 clone — full docs-driven sweep (console + public) — SHIPPED
 
 Second, exhaustive pass driven by the V5 mockups **and** the handoff docs

@@ -8,6 +8,9 @@ import type { Database } from "@/lib/supabase/database.types";
 export const dynamic = "force-dynamic";
 
 const GALLERY_BUCKET = "gallery";
+// Live (published) gallery is capped at 20 with plain FIFO — toggling a photo
+// published past the cap unpublishes the oldest published photos (never deletes).
+const GAL_MAX = 20;
 
 const EditSchema = z
   .object({
@@ -43,7 +46,8 @@ export async function PATCH(
   }
 
   const patch = parsed.data as Database["public"]["Tables"]["gallery_photos"]["Update"];
-  const { data, error } = await createAdminClient()
+  const db = createAdminClient();
+  const { data, error } = await db
     .from("gallery_photos")
     .update(patch)
     .eq("id", id)
@@ -52,6 +56,28 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data)  return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Enforce the FIFO cap when this PATCH published the photo: if the live gallery
+  // now exceeds GAL_MAX, unpublish the oldest published rows (by created_at) until
+  // exactly GAL_MAX remain. The just-published row is excluded so it survives.
+  if (parsed.data.published === true && data.published) {
+    const { data: olderPublished } = await db
+      .from("gallery_photos")
+      .select("id")
+      .eq("published", true)
+      .neq("id", id)
+      .order("created_at", { ascending: true });
+    const overflow = (olderPublished?.length ?? 0) + 1 - GAL_MAX;
+    if (olderPublished && overflow > 0) {
+      const evictIds = olderPublished.slice(0, overflow).map((r) => r.id);
+      const { error: capErr } = await db
+        .from("gallery_photos")
+        .update({ published: false })
+        .in("id", evictIds);
+      if (capErr) log.error("Gallery FIFO cap eviction failed (PATCH)", { error: capErr.message });
+    }
+  }
+
   return NextResponse.json({ data });
 }
 

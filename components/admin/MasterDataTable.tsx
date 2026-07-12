@@ -90,8 +90,6 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
       { key: "email", label: "Email" },
       { key: (r) => r.city ?? "", label: "City" },
       { key: (r) => r.state ?? "", label: "State" },
-      { key: (r) => r.communication_address ?? "", label: "Communication address" },
-      { key: (r) => r.tshirt_size ?? "", label: "T-shirt size" },
     ]));
   }
 
@@ -99,8 +97,8 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
     <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>Practitioner Master Data</div>
       <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginBottom: "1rem", lineHeight: 1.6, maxWidth: 620 }}>
-        Quick reference for offline contact — name, phone, email, city, state, communication address,
-        and T-shirt size. Full profiles (modules, experience, payment details) live under Practitioners.
+        Quick reference for offline contact — name, phone, email, city, and state.
+        Full profiles (modules, experience, payment details) live under Practitioners.
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: "0.85rem" }}>
@@ -146,13 +144,11 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
               <th style={th} onClick={() => setSort("email")}>Email{arrow("email")}</th>
               <th style={th} onClick={() => setSort("city")}>City{arrow("city")}</th>
               <th style={th} onClick={() => setSort("state")}>State{arrow("state")}</th>
-              <th style={{ ...th, cursor: "default" }}>Communication address</th>
-              <th style={{ ...th, cursor: "default" }}>T-shirt size</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: "var(--ink-faint)", padding: "1.75rem" }}>No practitioners match your search or filters.</td></tr>
+              <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--ink-faint)", padding: "1.75rem" }}>No practitioners match your search or filters.</td></tr>
             ) : rows.map((p) => (
               <tr key={p.id}>
                 <td style={{ ...td, width: 28 }}>
@@ -163,8 +159,6 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
                 <td style={{ ...td, color: "var(--ink-muted)" }}>{p.email}</td>
                 <td style={td}>{p.city ?? "—"}</td>
                 <td style={td}>{p.state ?? "—"}</td>
-                <td style={{ ...td, maxWidth: 280, whiteSpace: "normal" }}>{p.communication_address ?? "—"}</td>
-                <td style={{ ...td, textAlign: "center" }}>{p.tshirt_size ?? "—"}</td>
               </tr>
             ))}
           </tbody>

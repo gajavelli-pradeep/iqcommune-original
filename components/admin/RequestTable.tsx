@@ -249,8 +249,18 @@ export function RequestTable({
         : r));
       if (sessionRef) setSessionRefById((m) => ({ ...m, [requestId]: sessionRef }));
       onRowChange?.(requestId, { status: "Confirmed", assigned_to: practitionerId });
-      showToast(`Confirmed — session ${sessionRef ?? ""} created`);
       setAssignFor(null); setAssignPayout(""); setAssignDate("");
+      // V5 instant-undo: ~9s to reverse a fresh assignment — soft-deletes the
+      // just-created session and resets the request to New, with no client email.
+      undo.show(`Confirmed — session ${sessionRef ?? ""} created`, async () => {
+        const rev = await fetch(`/api/admin/session-requests/${requestId}/unassign`, { method: "POST" });
+        if (!rev.ok) { showToast("Could not undo — cancel the session instead."); return; }
+        setData((prev) => prev.map((r) => r.id === requestId
+          ? { ...r, status: "New", assigned_to: null, assigned_practitioner: null }
+          : r));
+        setSessionRefById((m) => { const n = { ...m }; delete n[requestId]; return n; });
+        onRowChange?.(requestId, { status: "New", assigned_to: null });
+      });
     } else {
       const { error } = await res.json().catch(() => ({ error: res.statusText }));
       showToast(`Assign failed: ${error ?? res.status}`);

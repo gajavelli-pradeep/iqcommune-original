@@ -135,7 +135,7 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   sessions:       { title: "Session Details",       subtitle: "Create sessions, send confirmations, and track delivery" },
   agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
   consent:        { title: "Session Consent",        subtitle: "Generate the per-session revenue confirmation and practitioner consent link" },
-  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer" },
+  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer. Payouts are never deleted; a paid record can only be reverted (record correction, not a bank reversal)" },
   photos:         { title: "Session Photos",          subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete" },
   gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
   activity:       { title: "Activity (90 days)",    subtitle: "Every admin & global-admin action in the last 90 days — who did what, when, and before → after" },

@@ -143,11 +143,14 @@ export async function DELETE(
     .single();
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // V5 P1-3: an Empanelled practitioner has agreement/session history — it must not
-  // be hard-deleted. Deactivate (reversible) is the supported path instead.
-  if (record.status === "Empanelled") {
+  // V5 §3.3/§5 stage gate: hard delete is allowed ONLY before there's empanelment
+  // history — {Applied, Screening Done, Rejected}. Agreement Sent / Empanelled carry
+  // agreement/session history and Deactivated is already parked, so they must be
+  // deactivated (reversible), never hard-deleted.
+  const DELETABLE_STATUSES = ["Applied", "Screening Done", "Rejected"];
+  if (!DELETABLE_STATUSES.includes(record.status)) {
     return NextResponse.json(
-      { error: "An empanelled practitioner can't be deleted — deactivate them instead." },
+      { error: "Deactivate instead of deleting a practitioner with history." },
       { status: 409 },
     );
   }

@@ -5,10 +5,10 @@ import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
-import { TableFilterBar } from "@/components/admin/TableFilterBar";
+import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
-import { matchesSearch } from "@/lib/admin/search";
 import { initials } from "@/lib/format";
+import { useUndoToast } from "@/components/admin/useUndoToast";
 
 const PAYOUT_FILTERS = ["All", "Pending", "Paid"] as const;
 
@@ -41,7 +41,7 @@ const HEADERS = [
   "Method",
   "Invoice ref.",
   "Payment status",
-  "Action",
+  "Actions",
 ];
 
 function fmtSessionDate(d: string | null): string {
@@ -94,11 +94,11 @@ export function PayoutTable({
 }) {
   const [data, setData] = useState(initialData);
   const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
   // Reflect parent-driven updates (e.g. a global-admin edit) without an effect.
   const [prevInitial, setPrevInitial] = useState(initialData);
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
+  const undo = useUndoToast();
   const [methodMap, setMethodMap] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<{
     open: boolean;
@@ -111,8 +111,8 @@ export function PayoutTable({
   const payoutDate = (p: Payout) => p.session?.session_date ?? p.paid_at;
   const df = useDateFilter(data.map(payoutDate));
   const visible = (filter === "All" ? data : data.filter((p) => p.status === filter))
-    .filter((p) => df.matchesDate(payoutDate(p)))
-    .filter((p) => matchesSearch(search, p.practitioner?.name, p.session?.ref_code, p.session?.module, p.invoice_ref, p.status, p.payment_method, p.gross_amount, p.net_amount));
+    .filter((p) => df.matchesDate(payoutDate(p)));
+  const pendingCount = data.filter((p) => p.status === "Pending" && df.matchesDate(payoutDate(p))).length;
 
 
   const markPaid = useCallback(
@@ -129,15 +129,39 @@ export function PayoutTable({
           prev.map((p) => (p.id === id ? { ...p, status: "Paid", paid_at, payment_method } : p))
         );
         onRowChange?.(id, { status: "Paid", paid_at, payment_method });
-        setToast("Payout marked as paid");
-        setTimeout(() => setToast(""), 3000);
+        // Reverting a Paid payout is a Global-Admin-only ledger correction (the
+        // revert endpoint is requireGlobalAdmin-gated), so only offer Undo to
+        // global admins — a plain admin's undo would 403. Others get a plain toast.
+        if (isGlobalAdmin) {
+          undo.show("Payout marked as paid", async () => {
+            const revert = await fetch(`/api/admin/global/payouts/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
+            });
+            if (!revert.ok) {
+              setToast("Could not undo — the payout is still marked paid.");
+              setTimeout(() => setToast(""), 4000);
+              return;
+            }
+            setData((prev) =>
+              prev.map((p) =>
+                p.id === id ? { ...p, status: "Pending", paid_at: null, payment_method: null } : p
+              )
+            );
+            onRowChange?.(id, { status: "Pending", paid_at: "", payment_method: null });
+          });
+        } else {
+          setToast("Payout marked as paid");
+          setTimeout(() => setToast(""), 3000);
+        }
       } else {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         setToast(body.error ?? "Failed to mark payout as paid — please try again.");
         setTimeout(() => setToast(""), 5000);
       }
     },
-    [methodMap, onRowChange]
+    [methodMap, onRowChange, isGlobalAdmin, undo]
   );
 
   const pending = data.filter((p) => p.status === "Pending");
@@ -171,7 +195,19 @@ export function PayoutTable({
         </div>
       )}
 
-      <TableFilterBar options={PAYOUT_FILTERS} value={filter} onChange={setFilter} dateFilter={df.control} search={search} onSearchChange={setSearch} searchPlaceholder="Search payouts…" />
+      <PendingBar
+        pendingCards={[{
+          count: pendingCount,
+          label: "Pending payout",
+          active: filter === "Pending",
+          onToggle: () => setFilter(filter === "Pending" ? "All" : "Pending"),
+        }]}
+        statusOptions={PAYOUT_FILTERS}
+        statusValue={filter}
+        onStatusChange={setFilter}
+        statusAriaLabel="Filter payouts by status"
+        dateFilter={df.control}
+      />
       <AdminTable
         headers={HEADERS}
         isEmpty={visible.length === 0}
@@ -411,6 +447,7 @@ export function PayoutTable({
           {toast}
         </div>
       )}
+      {undo.node}
 
       <ContactDraftModal
         open={draft.open}

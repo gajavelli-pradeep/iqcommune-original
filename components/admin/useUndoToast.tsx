@@ -60,6 +60,7 @@ export function useUndoToast() {
         style={{
           background: "none", border: "none", padding: "2px 4px", cursor: "pointer",
           color: "var(--gold-on-ink)", fontWeight: 700, fontSize: 13, fontFamily: "inherit",
+          textDecoration: "underline",
         }}
       >
         Undo
