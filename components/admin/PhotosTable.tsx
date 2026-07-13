@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
-import { RowActionsMenu, type RowAction } from "@/components/admin/RowActionsMenu";
+import { type RowAction } from "@/components/admin/RowActionsMenu";
+import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -37,6 +38,17 @@ export interface PendingUploadSession {
 
 // V4 photo statuses: Pending (completed session, no upload yet) → Uploaded.
 const STATUS_FILTERS = ["All", "Pending", "Uploaded"] as const;
+
+// V5-MATCH: the mockup's Photos row actions (inline icon buttons) are
+// Send reminder (pending) and View / Download / Delete (uploaded, Delete admin-gated).
+// Only "Feature in gallery" is off-spec — gated off (re-enablable improvement).
+const SHOW_OFFSPEC_ACTIONS = false;
+
+// V5 inline action-button icons (11×11, stroke 2) — match the mockup exactly.
+const iconProps = { width: 11, height: 11, fill: "none", stroke: "currentColor", strokeWidth: 2, viewBox: "0 0 24 24", "aria-hidden": true } as const;
+const ImageIcon = () => (<svg {...iconProps}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>);
+const DownloadIcon = () => (<svg {...iconProps}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>);
+const BellIcon = () => (<svg {...iconProps}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>);
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const HEADERS = [
@@ -235,14 +247,14 @@ export function PhotosTable({
       >
         Photos auto-expire 30 days after submission — anything not downloaded before expiry is
         automatically deleted. To generate a practitioner photo-upload link, go to
-        <strong>Sessions → Completed → Photo link</strong>, or use <strong>Send reminder</strong> on a Pending row.
+        <strong>Session Details → Completed → Photo link</strong>, or use <strong>Send reminder</strong> on a Pending row.
       </div>
 
       <PendingBar
         pendingCards={[
           {
             count: pendingUploadCount,
-            label: "Pending",
+            label: "Pending from practitioner",
             active: statusFilter === "Pending",
             onToggle: () => {
               setExpiringOnly(false);
@@ -251,7 +263,7 @@ export function PhotosTable({
           },
           {
             count: expiringCount,
-            label: "Expiring ≤7d",
+            label: "Expiring within 7 days",
             active: expiringOnly,
             onToggle: () => {
               const next = !expiringOnly;
@@ -268,6 +280,7 @@ export function PhotosTable({
         }}
         statusAriaLabel="Filter photos by status"
         dateFilter={df.control}
+        dateLabel="Session date:"
       />
 
       <AdminTable
@@ -310,9 +323,9 @@ export function PhotosTable({
               </span>
             </td>
             <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
-              <RowActionsMenu
+              <RowActionsInline
                 ariaLabel={`Actions for ${s.session_ref}`}
-                actions={readOnly ? [] : [{ label: "Send reminder", onClick: () => sendReminder(s.id, s.practitioner_name) }]}
+                actions={readOnly ? [] : [{ label: "Send reminder", icon: <BellIcon />, onClick: () => sendReminder(s.id, s.practitioner_name) }]}
               />
             </td>
           </tr>
@@ -401,18 +414,21 @@ export function PhotosTable({
               </td>
               {/* Actions — all under one ⋯ dropdown */}
               <td style={{ ...TD, textAlign: "right" }}>
-                <RowActionsMenu
+                <RowActionsInline
                   ariaLabel={`Actions for ${p.session_ref}`}
                   actions={[
-                    { label: "View", onClick: () => setViewId(p.id) },
-                    { label: "Download", onClick: () => downloadPhotoSet(p.id) },
-                    ...(canGallery
+                    { label: "View", icon: <ImageIcon />, onClick: () => setViewId(p.id) },
+                    { label: "Download", icon: <DownloadIcon />, onClick: () => downloadPhotoSet(p.id) },
+                    ...(SHOW_OFFSPEC_ACTIONS && canGallery
                       ? [{
                           label: galleryBusyId === p.id ? "Working…" : p.featured ? "Remove from gallery" : "Feature in gallery",
                           onClick: () => toggleGallery(p),
                         }]
                       : []),
-                    ...(!readOnly && p.status !== "Rejected"
+                    // V5: Delete on every uploaded row (admin-gated, role-edit) — the
+                    // mockup applies no status guard, and this tab shows all submissions
+                    // as "Uploaded", so gate on admin (!readOnly) only.
+                    ...(!readOnly
                       ? [{ label: "Delete", danger: true, onClick: () => remove(p.id) } as RowAction]
                       : []),
                   ]}

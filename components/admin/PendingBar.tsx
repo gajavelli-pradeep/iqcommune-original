@@ -4,18 +4,27 @@ import { MONTHS } from "@/lib/admin/use-date-filter";
 import type { DateFilterControl } from "@/components/admin/TableFilterBar";
 
 // V5 prototype table toolbar (`.pending-bar`): clickable pending stat-card(s) on the
-// left, Month + Year dropdowns on the right, with an optional minimal status <select>.
+// left, Month + Year dropdowns on the right.
 // Replaces the chip + search + calendar-popover TableFilterBar per client design.
 //
 // Colour note: the prototype tints pending cards red. This app's colour system
 // (globals.css / CLAUDE.md) reserves red for failures and uses AMBER for routine
 // "needs action" counts — so the cards are amber here.
+//
+// V5-MATCH: the per-table status <select> is NOT in the V5 mockup (V5 has status
+// filtering via chips on the Practitioners tab only). It is gated off here rather
+// than deleted so it can be re-enabled as a post-sign-off improvement — flip
+// SHOW_STATUS_SELECT to true to restore it. See ADMIN-V5-SPECDIFF.md.
+const SHOW_STATUS_SELECT = false;
 
 export interface PendingCardData {
   count: number;
   label: string;
   active: boolean;
   onToggle: () => void;
+  /** Optional display override for the big number — e.g. a formatted ₹ amount
+   *  ("Amount pending" card). Falls back to `count` when absent. */
+  display?: string;
 }
 
 export function PendingBar({
@@ -25,6 +34,7 @@ export function PendingBar({
   onStatusChange,
   statusAriaLabel = "Filter by status",
   dateFilter,
+  dateLabel,
   standalone = false,
 }: {
   pendingCards: PendingCardData[];
@@ -33,6 +43,9 @@ export function PendingBar({
   onStatusChange?: (v: string) => void;
   statusAriaLabel?: string;
   dateFilter?: DateFilterControl;
+  /** V5 context label shown before the month/year selects, e.g. "Applied in:",
+   *  "Received in:", "Session date:". Matches the mockup's labelled period filter. */
+  dateLabel?: string;
   /** Render as a self-contained rounded bar (fully rounded + bottom border)
    *  instead of the default top-of-table style — used when content sits between
    *  the filter bar and the table (e.g. the consent tab's generate card). */
@@ -49,7 +62,7 @@ export function PendingBar({
             aria-pressed={c.active}
             style={cardStyle(c.active)}
           >
-            <span style={numStyle}>{c.count}</span>
+            <span style={numStyle}>{c.display ?? c.count}</span>
             <span style={cardLabelStyle}>{c.label}</span>
             {c.active && <span style={showingStyle}>✓ showing only this</span>}
           </button>
@@ -57,7 +70,7 @@ export function PendingBar({
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
-        {statusOptions && onStatusChange && (
+        {SHOW_STATUS_SELECT && statusOptions && onStatusChange && (
           <select
             value={statusValue}
             onChange={(e) => onStatusChange(e.target.value)}
@@ -69,6 +82,7 @@ export function PendingBar({
             ))}
           </select>
         )}
+        {dateFilter && dateLabel && <span style={dateLabelStyle}>{dateLabel}</span>}
         {dateFilter && (
           <>
             <select
@@ -160,6 +174,12 @@ const showingStyle: React.CSSProperties = {
   fontWeight: 600,
   color: "var(--amber)",
   marginTop: 3,
+};
+
+const dateLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--ink-faint)",
+  whiteSpace: "nowrap",
 };
 
 const selectStyle: React.CSSProperties = {

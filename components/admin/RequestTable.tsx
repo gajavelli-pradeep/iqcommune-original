@@ -11,6 +11,10 @@ import { useUndoToast } from "@/components/admin/useUndoToast";
 
 const REQUEST_FILTERS = ["All", "New", "Confirmed", "Cancelled"] as const;
 
+// V5-MATCH: the mockup's request actions are the status select, Assign, Draft
+// follow-up and Cancel. Edit request / Delete request are gated off (re-enablable).
+const SHOW_OFFSPEC_ACTIONS = false;
+
 interface SessionRequest {
   id: string;
   name: string;
@@ -293,6 +297,7 @@ export function RequestTable({
         onStatusChange={setFilter}
         statusAriaLabel="Filter requests by status"
         dateFilter={df.control}
+        dateLabel="Received in:"
       />
       <AdminTable
         headers={HEADERS}
@@ -324,6 +329,10 @@ export function RequestTable({
                   {r.phone && (
                     <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>
                   )}
+                  {/* V5: venue-status line under the requester. */}
+                  <div style={{ fontSize: 11, marginTop: 2, color: r.venue ? "var(--green)" : "var(--amber)" }}>
+                    {r.venue ? "📍 Venue provided" : "⚠ Venue pending"}
+                  </div>
                 </td>
                 {/* Topic */}
                 <td style={TD}>{r.topic}</td>
@@ -554,7 +563,7 @@ export function RequestTable({
                             >
                               Draft follow-up to client
                             </button>
-                            {isGlobalAdmin && onEdit && (
+                            {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
                                 style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
@@ -566,6 +575,8 @@ export function RequestTable({
                             )}
                             {/* V5 P2-3: hard-delete is only offered while New. Once Confirmed, the
                                 exit is Cancel (above); Cancelled requests are terminal. */}
+                            {/* V5: "Delete permanently" on New requests (mockup role-edit;
+                                kept global-admin here for destructive-action safety). */}
                             {isGlobalAdmin && r.status === "New" && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteRequestWithUndo(r); }}

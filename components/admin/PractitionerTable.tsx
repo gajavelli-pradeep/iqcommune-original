@@ -30,6 +30,32 @@ const STATUSES = [
 // forward dropdown) so admins can filter to parked practitioners — the shared Filter bar.
 const FILTER_OPTIONS = ["All", ...STATUSES, "Deactivated"] as const;
 
+// V5-MATCH: the mockup's practitioner profile has no Payment-details block,
+// Feedback-breakdown, or "Edit details" button — gated off (re-enablable).
+const SHOW_OFFSPEC_ACTIONS = false;
+
+// V5 status-chip row styles (Practitioners tab). Mirrors the mockup's pill chips.
+const chipRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+  padding: "0 0 1rem",
+};
+function chipStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "5px 14px",
+    borderRadius: 100,
+    fontSize: 12,
+    fontWeight: 500,
+    border: active ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.18)",
+    cursor: "pointer",
+    background: active ? "var(--ink)" : "#fff",
+    color: active ? "#fff" : "var(--ink-soft)",
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
+  };
+}
+
 // V5 §3.3/§5 stage-gated Danger Zone: exactly one of Delete/Deactivate per stage.
 // Hard delete only before there's empanelment history; Deactivate (reversible) once
 // an agreement/empanelment exists. A status in neither set (e.g. Deactivated) shows no
@@ -328,25 +354,50 @@ export function PractitionerTable({
   }
 
   const df = useDateFilter(data.map((p) => p.created_at));
-  const visible = (filter === "All" ? data : data.filter((p) => p.status === filter))
-    .filter((p) => df.matchesDate(p.created_at));
-  const pendingCount = data.filter((p) => p.status === "Applied" && df.matchesDate(p.created_at)).length;
+  // V5 pending = anyone not yet Empanelled or Rejected (a predicate, not one status).
+  // "__pending" is a sentinel filter value the card toggles; chips set a single status.
+  const isPending = (status: string) => status !== "Empanelled" && status !== "Rejected";
+  const visible = (
+    filter === "All" ? data
+    : filter === "__pending" ? data.filter((p) => isPending(p.status))
+    : data.filter((p) => p.status === filter)
+  ).filter((p) => df.matchesDate(p.created_at));
+  const pendingCount = data.filter((p) => isPending(p.status) && df.matchesDate(p.created_at)).length;
 
   return (
     <div>
       <PendingBar
         pendingCards={[{
           count: pendingCount,
-          label: "New applications",
-          active: filter === "Applied",
-          onToggle: () => setFilter(filter === "Applied" ? "All" : "Applied"),
+          label: "Pending action (not yet Empanelled/Rejected)",
+          active: filter === "__pending",
+          onToggle: () => setFilter(filter === "__pending" ? "All" : "__pending"),
         }]}
         statusOptions={FILTER_OPTIONS}
         statusValue={filter}
         onStatusChange={setFilter}
         statusAriaLabel="Filter practitioners by status"
         dateFilter={df.control}
+        dateLabel="Applied in:"
       />
+
+      {/* V5 status chip row — the mockup's only status filter (Practitioners tab). */}
+      <div style={chipRowStyle}>
+        {(["All", ...STATUSES] as const).map((s) => {
+          const active = filter === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilter(s)}
+              aria-pressed={active}
+              style={chipStyle(active)}
+            >
+              {s === "All" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Table */}
       <AdminTable
@@ -433,7 +484,7 @@ export function PractitionerTable({
                                   <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink)" }}>{p.why}</div>
                                 </div>
                               )}
-                              {p.subsection_averages && (p.subsection_averages.rated_sessions ?? 0) > 0 && (
+                              {SHOW_OFFSPEC_ACTIONS && p.subsection_averages && (p.subsection_averages.rated_sessions ?? 0) > 0 && (
                                 <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(20,18,12,.07)" }}>
                                   <div style={{ fontSize: 11, color: "var(--ink-faint)", marginBottom: 6 }}>
                                     Feedback breakdown · {p.subsection_averages.rated_sessions} rated
@@ -593,6 +644,7 @@ export function PractitionerTable({
                                   </button>
                                 )}
 
+                                {SHOW_OFFSPEC_ACTIONS && (
                                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
                                   <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
                                   {/* No payment_method column — method is derived from which fields are filled.
@@ -610,8 +662,9 @@ export function PractitionerTable({
                                     </div>
                                   ))}
                                 </div>
+                                )}
 
-                                {isGlobalAdmin && onEdit && (
+                                {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); onEdit(p); }}
                                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}

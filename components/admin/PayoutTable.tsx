@@ -12,6 +12,11 @@ import { useUndoToast } from "@/components/admin/useUndoToast";
 
 const PAYOUT_FILTERS = ["All", "Pending", "Paid"] as const;
 
+// V5-MATCH: the mockup shows two pending cards (count + amount) and no summary
+// banner, no totals row, and inline Revert instead of Edit. The banner/totals/Edit
+// are gated off (re-enablable improvements) — see ADMIN-V5-SPECDIFF.md.
+const SHOW_OFFSPEC_ACTIONS = false;
+
 interface Payout {
   id: string;
   invoice_ref: string;
@@ -164,6 +169,30 @@ export function PayoutTable({
     [methodMap, onRowChange, isGlobalAdmin, undo]
   );
 
+  // V5: persistent Revert on Paid rows (Global-Admin ledger correction). Same
+  // endpoint the post-mark-paid Undo uses, exposed as a standing button too.
+  const revertPayout = useCallback(
+    async (id: string) => {
+      const revert = await fetch(`/api/admin/global/payouts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
+      });
+      if (!revert.ok) {
+        setToast("Could not revert — the payout is still marked paid.");
+        setTimeout(() => setToast(""), 4000);
+        return;
+      }
+      setData((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: "Pending", paid_at: null, payment_method: null } : p))
+      );
+      onRowChange?.(id, { status: "Pending", paid_at: "", payment_method: null });
+      setToast("Payout reverted to Pending");
+      setTimeout(() => setToast(""), 3000);
+    },
+    [onRowChange]
+  );
+
   const pending = data.filter((p) => p.status === "Pending");
   const totalPendingGross = pending.reduce((sum, p) => sum + p.gross_amount, 0);
   const totalPendingNet = pending.reduce((sum, p) => sum + p.net_amount, 0);
@@ -173,7 +202,7 @@ export function PayoutTable({
 
   return (
     <div>
-      {pending.length > 0 && (
+      {SHOW_OFFSPEC_ACTIONS && pending.length > 0 && (
         <div
           style={{
             background: "#faeeda",
@@ -196,17 +225,28 @@ export function PayoutTable({
       )}
 
       <PendingBar
-        pendingCards={[{
-          count: pendingCount,
-          label: "Pending payout",
-          active: filter === "Pending",
-          onToggle: () => setFilter(filter === "Pending" ? "All" : "Pending"),
-        }]}
+        pendingCards={[
+          {
+            count: pendingCount,
+            label: "Sessions pending payment",
+            active: filter === "Pending",
+            onToggle: () => setFilter(filter === "Pending" ? "All" : "Pending"),
+          },
+          {
+            // V5: second card shows the summed pending ₹ amount.
+            count: 0,
+            display: formatInr(totalPendingNet),
+            label: "Amount pending",
+            active: filter === "Pending",
+            onToggle: () => setFilter(filter === "Pending" ? "All" : "Pending"),
+          },
+        ]}
         statusOptions={PAYOUT_FILTERS}
         statusValue={filter}
         onStatusChange={setFilter}
         statusAriaLabel="Filter payouts by status"
         dateFilter={df.control}
+        dateLabel="Session date:"
       />
       <AdminTable
         headers={HEADERS}
@@ -386,9 +426,21 @@ export function PayoutTable({
                       </>
                       )
                     ) : (
-                      <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
+                      <>
+                        <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
+                        {isGlobalAdmin && (
+                          <button
+                            onClick={() => revertPayout(p.id)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}
+                            title="Revert this payout to Pending (record correction)"
+                          >
+                            <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
+                            Revert
+                          </button>
+                        )}
+                      </>
                     )}
-                    {isGlobalAdmin && onEdit && (
+                    {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                       <button
                         onClick={() => onEdit(p.id)}
                         style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
@@ -406,7 +458,8 @@ export function PayoutTable({
             );
           })}
 
-          {/* Summary row — always rendered when isEmpty=false */}
+          {/* V5-MATCH: totals summary row not in the mockup — gated off. */}
+          {SHOW_OFFSPEC_ACTIONS && (
           <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
             <td
               colSpan={3}
@@ -427,6 +480,7 @@ export function PayoutTable({
             </td>
             <td colSpan={5} style={TD} />
           </tr>
+          )}
         </>
       </AdminTable>
 

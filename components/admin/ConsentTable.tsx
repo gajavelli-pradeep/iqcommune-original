@@ -14,6 +14,10 @@ export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row
 
 const CONSENT_FILTERS = ["All", "Awaiting consent", "Consent received", "Superseded"] as const;
 
+// V5-MATCH: the mockup's consent row actions are Mark received · Revert · Void only.
+// Copy link, PDF and Replace practitioner are gated off (re-enablable improvements).
+const SHOW_OFFSPEC_ACTIONS = false;
+
 const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -165,6 +169,7 @@ export function ConsentTable({
         onStatusChange={setFilter}
         statusAriaLabel="Filter confirmations by status"
         dateFilter={df.control}
+        dateLabel="Issued in:"
         standalone={!!beforeTable}
       />
       {beforeTable}
@@ -222,7 +227,7 @@ export function ConsentTable({
                         ...(editable && row.status !== "Superseded" && busy !== row.id
                           ? [{ label: "Void", danger: true, onClick: () => setSupersedeTarget(row) }]
                           : []),
-                        ...(isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
+                        ...(SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
                           ? [{ label: "Replace practitioner", onClick: () => onReassign(row) }]
                           : []),
                       ]}

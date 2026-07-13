@@ -11,6 +11,11 @@ import { useDateFilter } from "@/lib/admin/use-date-filter";
 // empanelment agreements as "Active" (schema CHECK constraint).
 const AGREEMENT_FILTERS = ["All", "Pending signature", "Active"] as const;
 
+// V5-MATCH: the mockup's only Agreements row action is Download. Edit/Delete are
+// global-admin improvements, gated off (not deleted) so the handlers stay wired
+// and re-enabling is one flag flip. See ADMIN-V5-SPECDIFF.md.
+const SHOW_OFFSPEC_ACTIONS = false;
+
 // Agreements row joined with practitioner name + role
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
 
@@ -81,6 +86,7 @@ export function AgreementTable({
         onStatusChange={setFilter}
         statusAriaLabel="Filter agreements by status"
         dateFilter={df.control}
+        dateLabel="Signed in:"
       />
 
       {/* Table */}
@@ -265,7 +271,7 @@ export function AgreementTable({
                     </svg>
                     Download
                   </button>
-                  {isGlobalAdmin && onEdit && (
+                  {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}
                       style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
@@ -275,7 +281,7 @@ export function AgreementTable({
                       Edit
                     </button>
                   )}
-                  {isGlobalAdmin && (
+                  {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && (
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteAgreementWithUndo(row.id, row.practitioner_name); }}
                       style={{ marginLeft: 6, background: "none", border: "1px solid #fca5a5", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "#991b1b", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, transition: "background .12s" }}

@@ -22,6 +22,15 @@ export const STATUS_STYLES: Record<string, { bg: string; color: string; border: 
 
 const FALLBACK = { bg: "var(--surface-sunken)", color: "var(--ink-faint)", border: "rgba(20,18,12,.10)", dot: "var(--ink-faint)" };
 
+// V5-MATCH: display wording from the mockup. The underlying status VALUES are
+// unchanged (logic/DB still use "Screening Done" etc.) — only the label shown to
+// the user is remapped to the mockup's sentence-case / wording.
+const STATUS_DISPLAY: Record<string, string> = {
+  "Screening Done": "Screening done",
+  "Agreement Sent": "Agreement sent",
+  "Consent given": "Consent done",
+};
+
 export function StatusPill({ status }: { status: string }) {
   const s = STATUS_STYLES[status] ?? FALLBACK;
   return (
@@ -49,7 +58,7 @@ export function StatusPill({ status }: { status: string }) {
           flexShrink: 0,
         }}
       />
-      {status}
+      {STATUS_DISPLAY[status] ?? status}
     </span>
   );
 }
@@ -98,7 +107,7 @@ export function StatusSelect({
     >
       {options.map((o) => (
         <option key={o} value={o}>
-          {o}
+          {STATUS_DISPLAY[o] ?? o}
         </option>
       ))}
     </select>

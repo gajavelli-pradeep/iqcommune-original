@@ -9,6 +9,10 @@ export interface RowAction {
   danger?: boolean;
   /** Gold primary emphasis — used by RowActionsInline (the ⋯ menu ignores it). */
   primary?: boolean;
+  /** Optional leading icon — rendered before the label by RowActionsInline to
+   *  match the V5 mockup's icon buttons (View / Download / Send reminder). The
+   *  ⋯ menu ignores it. */
+  icon?: React.ReactNode;
 }
 
 const MENU_WIDTH = 190;

@@ -50,6 +50,11 @@ function fmt12h(t: string): string {
 }
 
 const STATUS_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"] as const;
+
+// V5-MATCH: the mockup's only Session row action is "Generate photo link". Send
+// confirmation, View payout, View photos, Feedback, Edit and Delete are gated off
+// (re-enablable improvements) — see ADMIN-V5-SPECDIFF.md.
+const SHOW_OFFSPEC_ACTIONS = false;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 // Operator-settable delivery states (Phase 4 step 21). Completed unlocks Photos +
@@ -187,7 +192,7 @@ export function SessionTable({
       <PendingBar
         pendingCards={[{
           count: pendingCount,
-          label: "Upcoming",
+          label: "Not yet Completed (Upcoming)",
           active: statusFilter === "Upcoming",
           onToggle: () => setStatusFilter(statusFilter === "Upcoming" ? "All" : "Upcoming"),
         }]}
@@ -196,6 +201,7 @@ export function SessionTable({
         onStatusChange={(f) => setStatusFilter(f as StatusFilter)}
         statusAriaLabel="Filter sessions by status"
         dateFilter={df.control}
+        dateLabel="Session date:"
       />
 
       <AdminTable
@@ -298,14 +304,21 @@ export function SessionTable({
                 </td>
                 {!readOnly && (
                 <td style={{ ...TD, textAlign: "right" }}>
-                  {/* V5: inline action buttons (not a ⋯ menu). */}
+                  {/* V5 3-state: pending-consent → helper text; not-Completed → —;
+                      Completed + consent done → Generate photo link button below. */}
+                  {s.consent_status === "Pending consent" ? (
+                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>Awaiting consent — see Session Consent tab</span>
+                  ) : s.status !== "Completed" ? (
+                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>—</span>
+                  ) : null}
+                  {/* V5: inline action button (Generate photo link) + gated off-spec actions. */}
                   <RowActionsInline
                     ariaLabel={`Actions for session ${s.ref_code}`}
                     actions={[
-                      ...(s.payout_id
+                      ...(SHOW_OFFSPEC_ACTIONS && s.payout_id
                         ? [{ label: "View payout", onClick: () => onNavigate?.("payouts") }]
                         : []),
-                      ...(!readOnly && s.status === "Upcoming" && s.consent_status === "Pending consent"
+                      ...(SHOW_OFFSPEC_ACTIONS && !readOnly && s.status === "Upcoming" && s.consent_status === "Pending consent"
                         ? [{
                             label: "Send confirmation",
                             onClick: () => setDraft({
@@ -317,9 +330,12 @@ export function SessionTable({
                             }),
                           }]
                         : []),
-                      ...(!readOnly && s.status === "Completed"
+                      ...(!readOnly && s.status === "Completed" && s.consent_status !== "Pending consent"
                         ? [{
                             label: "Generate photo link",
+                            icon: (
+                              <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            ),
                             onClick: async () => {
                               try {
                                 const res = await fetch(`/api/admin/sessions/${s.id}/photo-link`);
@@ -333,10 +349,10 @@ export function SessionTable({
                             },
                           }]
                         : []),
-                      ...(s.status === "Completed" && s.photos_submitted
+                      ...(SHOW_OFFSPEC_ACTIONS && s.status === "Completed" && s.photos_submitted
                         ? [{ label: "View photos", onClick: () => onNavigate?.("photos") }]
                         : []),
-                      ...(!readOnly && s.status === "Completed"
+                      ...(SHOW_OFFSPEC_ACTIONS && !readOnly && s.status === "Completed"
                         ? [{
                             label: (() => {
                               const fb = feedbackBySession[s.id];
@@ -351,8 +367,8 @@ export function SessionTable({
                             }),
                           }]
                         : []),
-                      ...(isGlobalAdmin && onEdit ? [{ label: "Edit", onClick: () => onEdit(s.id) }] : []),
-                      ...(isGlobalAdmin
+                      ...(SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit ? [{ label: "Edit", onClick: () => onEdit(s.id) }] : []),
+                      ...(SHOW_OFFSPEC_ACTIONS && isGlobalAdmin
                         ? [{
                             label: deleteFailedId === s.id ? "Delete failed!" : "Delete",
                             danger: true,

@@ -27,6 +27,7 @@ export function RowActionsInline({ actions, ariaLabel = "Row actions" }: { actio
           onMouseLeave={(e) => { if (!a.primary) e.currentTarget.style.background = "var(--surface)"; }}
           style={a.primary ? primaryStyle : a.danger ? dangerStyle : ghostStyle}
         >
+          {a.icon}
           {a.label}
         </button>
       ))}
@@ -43,6 +44,9 @@ const wrapStyle: React.CSSProperties = {
 };
 
 const baseBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
   padding: "6px 11px",
   fontSize: 12,
   borderRadius: 7,

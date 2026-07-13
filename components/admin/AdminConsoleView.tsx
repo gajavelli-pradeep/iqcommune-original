@@ -128,18 +128,19 @@ interface Props {
   readOnly?: boolean;
 }
 
-// Gap 13 & 14: no trailing periods, correct titles
+// Titles + subtitles verbatim from the V5 mockup (iqcommune-admin-console.html
+// panel <h1>/<p> headers) — 100% match mandate. See ADMIN-V5-SPECDIFF.md.
 const TAB_META: Record<string, { title: string; subtitle: string }> = {
-  requests:       { title: "Session Requests",      subtitle: "Incoming requests from iqcommune.com — review, match, and confirm" },
+  requests:       { title: "Session Requests",      subtitle: "Incoming requests from iqcommune.com — assign a practitioner to confirm" },
   practitioners:  { title: "Practitioner pipeline", subtitle: "Manage applications, onboarding, and empanelment" },
-  sessions:       { title: "Session Details",       subtitle: "Create sessions, send confirmations, and track delivery" },
-  agreements:     { title: "Agreements",            subtitle: "All signed empanelment agreements with timestamps" },
-  consent:        { title: "Session Consent",        subtitle: "Generate the per-session revenue confirmation and practitioner consent link" },
-  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer. Payouts are never deleted; a paid record can only be reverted (record correction, not a bank reversal)" },
-  photos:         { title: "Session Photos",          subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete" },
-  gallery:        { title: "Gallery",               subtitle: "Curate the public “Sessions in the room” photos — upload, caption, and order" },
-  activity:       { title: "Activity (90 days)",    subtitle: "Every admin & global-admin action in the last 90 days — who did what, when, and before → after" },
-  settings:       { title: "Settings",              subtitle: "Platform configuration and preferences" },
+  sessions:       { title: "Session Details",       subtitle: "Track delivery status — sessions are created automatically when a practitioner is assigned to a request" },
+  agreements:     { title: "Agreements",            subtitle: "All empanelment agreements — signed and awaiting signature" },
+  consent:        { title: "Session Consent",       subtitle: "Generate the per-session revenue confirmation and track practitioner consent." },
+  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer. These records are permanent and can't be deleted; corrections happen via Revert (Global Admin) instead." },
+  photos:         { title: "Session Photos",        subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete." },
+  gallery:        { title: "Gallery",               subtitle: "Curate photos for “Sessions in the room” on the main landing page. Standalone — not linked to practitioners, sessions, or requests." },
+  activity:       { title: "Activity",              subtitle: "A running log of actions taken across the console — visible to Global Admins only." },
+  settings:       { title: "Settings",              subtitle: "Manage team access and review platform-wide permissions." },
 };
 
 // Gap 15: corrected button labels, removed 'Draft message', correct variants, sessions only 'Create session'
@@ -149,33 +150,36 @@ type ActionButton = {
   ariaLabel?: string;
   icon?: "plus";
 };
+// V5-MATCH: header buttons trimmed to exactly what the mockup shows.
+// The manual add/create buttons are re-enablable improvements — see ADMIN-V5-SPECDIFF.md.
 const TAB_ACTIONS: Record<string, ActionButton[]> = {
-  // Gap 15: only 'Export', no 'Draft message'
+  // V5: Session Requests header has Export only.
   requests:      [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export session requests" },
-    { label: "+ Add request", variant: "primary", ariaLabel: "Log a session request manually" },
+    // { label: "+ Add request", variant: "primary", ariaLabel: "Log a session request manually" },
   ],
-  // Gap 15: 'Export' (not 'Export CSV'), 'Add manually' (dark), no 'Draft message'
+  // V5: Practitioners header has Export only.
   practitioners: [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export practitioners" },
-    { label: "+ Add manually",variant: "primary", ariaLabel: "Add a practitioner manually" },
+    // { label: "+ Add manually",variant: "primary", ariaLabel: "Add a practitioner manually" },
   ],
-  // Gap 15: sessions only 'Create session' with gold style
+  // V5: Session Details header has no action buttons.
   sessions:      [
-    { label: "+ Create session", variant: "gold", ariaLabel: "Create a new session", icon: "plus" },
+    // { label: "+ Create session", variant: "gold", ariaLabel: "Create a new session", icon: "plus" },
   ],
-  // Gap 15: agreements only 'Export'
+  // V5: agreements only 'Export'
   agreements:    [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export agreements" },
   ],
   // V5: the "Generate a new confirmation" form is inline on the tab, not a header button.
   consent:       [],
-  // Gap 15: payouts only 'Export' (no 'Mark paid')
+  // V5: payouts only 'Export' (no 'Mark paid')
   payouts:       [
     { label: "Export",        variant: "ghost",   ariaLabel: "Export payouts" },
   ],
+  // V5: Photos header button reads "Export log".
   photos:        [
-    { label: "Export",        variant: "ghost",   ariaLabel: "Export photo submissions" },
+    { label: "Export log",    variant: "ghost",   ariaLabel: "Export photo submissions" },
   ],
   settings:      [],
 };
@@ -260,10 +264,11 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
       { label: "Session Requests", tab: "requests", badge: counts.pendingRequests, badgeBg: "#a32d2d" },
       // Consent is a mutation surface (generate / mark-received) not in the User's
       // "view all data" list — hidden for the read-only tier.
-      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#c9982a" }]),
+      // V5 badge colours: Session Consent = red, Photos = gold.
+      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#a32d2d" }]),
       // "Session Details" is the V5 user-facing label; the internal tab id stays "sessions".
       { label: "Session Details", tab: "sessions", badge: counts.pendingSessions, badgeBg: "#2a6b2a" },
-      { label: "Photos",          tab: "photos",   badge: counts.pendingPhotos,   badgeBg: "#a32d2d" },
+      { label: "Photos",          tab: "photos",   badge: counts.pendingPhotos,   badgeBg: "#c9982a" },
     ],
   };
   const finance: SidebarSection = {
@@ -588,6 +593,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const paidPayoutList    = payoutsData.filter((p) => p.status === "Paid");
   const upcomingSessions  = sessionsData.filter((s) => s.status === "Upcoming");
   const nextSession       = upcomingSessions.sort((a, b) => a.session_date < b.session_date ? -1 : 1)[0];
+  // Capture "now" once at mount (lazy initializer keeps the impure clock read out
+  // of the render body) — used for the "expiring within 7 days" photo count.
+  const [nowMs] = useState(() => Date.now());
   const counts: Counts = {
     applied:            practitionersData.filter((p) => p.status === "Applied").length,
     empanelled:         practitionersData.filter((p) => p.status === "Empanelled").length,
@@ -617,7 +625,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     uploadedPhotos:     photosData.length,
     totalPhotos:        photosData.length + sessionsData.filter((s) => s.status === "Completed" && !s.photos_submitted && !photosData.some((ph) => ph.session_ref === s.ref_code)).length,
     urgentPhotos:       photosData.filter((p) => {
-      const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const days = Math.ceil((new Date(p.expiry_date).getTime() - nowMs) / (1000 * 60 * 60 * 24));
       return days > 0 && days <= 7;
     }).length,
     awaitingConsent:    confirmationsData.filter((c) => c.status === "Awaiting consent").length,
@@ -860,7 +868,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               tab="payouts"
               onAction={handleHeaderAction}
               readOnly={readOnly}
-              extraActions={isGlobalAdmin ? [{ label: "+ Create payout", variant: "primary" as const, ariaLabel: "Create a payout record directly" }] : []}
+              // V5-MATCH: Payouts header is Export-only in the mockup. "+ Create payout"
+              // is a re-enablable improvement. (was: extraActions={isGlobalAdmin ? [{ label: "+ Create payout", ... }] : []})
+              extraActions={[]}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
@@ -952,7 +962,9 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader
               tab="settings"
               onAction={handleHeaderAction}
-              extraActions={isGlobalAdmin ? [{ label: "Invite admin", variant: "primary" as const, ariaLabel: "Invite a new admin" }, { label: "Trash", variant: "ghost" as const, ariaLabel: "View and restore deleted records" }, { label: "Credentials", variant: "ghost" as const, ariaLabel: "Manage admin accounts and access" }] : []}
+              // V5-MATCH: the Settings header has no action buttons in the mockup.
+              // Invite/Trash/Credentials are re-enablable global-admin improvements.
+              extraActions={[]}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
               {/* Practitioner Master Data — offline-contact quick reference (V4) */}
