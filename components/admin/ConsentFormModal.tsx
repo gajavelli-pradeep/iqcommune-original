@@ -52,6 +52,7 @@ interface ConsentAutofill {
   participants: number;
   spoc: string;
   agreementRef: string;
+  agreementId: string | null;
   invoiceBy: string;
   paymentMethod: string;
   payoutAmount: number;
@@ -355,9 +356,11 @@ export function ConsentFormModal({
                       { label: "Audience type", value: af.audience, edit: { route: sess, type: "text", seed: af.audience, body: (v) => ({ audience_type: v }), apply: (v) => ({ audience: v }) } },
                       { label: "Participant count", value: String(af.participants), edit: { route: sess, type: "number", seed: String(af.participants), body: (v) => ({ participants: Number(v) || 0 }), apply: (v) => ({ participants: Number(v) || 0 }) } },
                       { label: "SPOC name", value: af.spoc, edit: req ? { route: req, type: "text", seed: af.spoc, body: (v) => ({ name: v }), apply: (v) => ({ spoc: v }) } : null },
-                      // Derived fields — corrected via the Practitioners / Agreements tabs, not here.
-                      { label: "Empanelment agreement ref.", value: af.agreementRef, edit: null },
-                      { label: "Invoice should be raised by", value: af.invoiceBy, edit: null },
+                      // V5: every auto-populated field is Global-Admin correctable.
+                      // Agreement ref → the Active agreement's ref_code (only when one
+                      // exists); invoice-by → the practitioner's family/payee name.
+                      { label: "Empanelment agreement ref.", value: af.agreementRef, edit: af.agreementId ? { route: `/api/admin/global/agreements/${af.agreementId}`, type: "text", seed: af.agreementRef === "—" ? "" : af.agreementRef, body: (v) => ({ ref_code: v }), apply: (v) => ({ agreementRef: v }) } : null },
+                      { label: "Invoice should be raised by", value: af.invoiceBy, edit: { route: pract, type: "text", seed: af.invoiceBy, body: (v) => ({ family_name: v, pay_to_family: true }), apply: (v) => ({ invoiceBy: v }) } },
                       { label: "Payment method on file", value: af.paymentMethod, edit: { route: pract, type: "text", seed: af.paymentMethod === "—" ? "" : af.paymentMethod, body: (v) => ({ upi_id: v }), apply: (v) => ({ paymentMethod: v || "—" }) } },
                     ];
                     return rows.map(({ label, value, edit }) => (

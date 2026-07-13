@@ -42,6 +42,10 @@ const EditPractitionerSchema = z
     bank_name:             z.string().nullable(),
     bank_account:          z.string().nullable(),
     ifsc:                  z.string().nullable(),
+    // V5: "Invoice should be raised by" correction — a non-self payee name is a
+    // pay-to-family arrangement, so setting the name implies pay_to_family.
+    family_name:           z.string().nullable(),
+    pay_to_family:         z.boolean(),
   })
   .partial()
   .strict();

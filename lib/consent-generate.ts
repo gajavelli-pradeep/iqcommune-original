@@ -63,6 +63,7 @@ export interface ConsentAutofill {
   participants: number;
   spoc: string;
   agreementRef: string;
+  agreementId: string | null;
   invoiceBy: string;
   paymentMethod: string; // actual UPI id / bank account on file, for the review screen
   payoutAmount: number;  // agreed payout — prefills the Gross field
@@ -119,7 +120,7 @@ export async function getConsentAutofill(
   }
   const { data: agr } = await supabase
     .from("agreements")
-    .select("ref_code")
+    .select("id, ref_code")
     .eq("practitioner_id", session.practitioner_id)
     .eq("status", "Active")
     .order("created_at", { ascending: false })
@@ -140,6 +141,7 @@ export async function getConsentAutofill(
       participants: session.participants,
       spoc: reqRow?.name ?? "—",
       agreementRef: agr?.ref_code ?? "—",
+      agreementId: agr?.id ?? null,
       invoiceBy: practitioner?.pay_to_family && practitioner?.family_name ? practitioner.family_name : practitionerName,
       paymentMethod: upiId || bankAccount || "—",
       payoutAmount: session.payout_amount,
@@ -224,7 +226,7 @@ export async function generateConfirmationForSession(
   }
   const { data: agr } = await supabase
     .from("agreements")
-    .select("ref_code")
+    .select("id, ref_code")
     .eq("practitioner_id", session.practitioner_id)
     .eq("status", "Active")
     .order("created_at", { ascending: false })
