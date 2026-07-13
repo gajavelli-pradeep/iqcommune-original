@@ -13,6 +13,15 @@ import { computeNet } from "@/lib/consent";
 import { DURATION_OPTIONS } from "@/lib/schemas/consent";
 import type { ConfirmationRow } from "@/components/admin/ConsentTable";
 
+// V5 duration labels (values stay the schema enum "3 hours" / "6 hours").
+const DURATION_LABELS: Record<string, string> = {
+  "3 hours": "3 hours — single module",
+  "6 hours": "6 hours — bundled, two modules",
+};
+// V5 "Start time" pickers: hour 1–12, minute 00/15/30/45, AM/PM.
+const HOUR_OPTIONS = ["12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
+const MINUTE_OPTIONS = ["00", "15", "30", "45"];
+
 interface SessionOption {
   id: string;
   ref_code: string;
@@ -69,7 +78,8 @@ export function ConsentFormModal({
   /** V5: Global Admin may correct auto-populated fields on the underlying source record. */
   isGlobalAdmin?: boolean;
 }) {
-  const empty = { sessionId: "", gross: "", tdsRate: "", gstRate: "", startTime: "", duration: "3 hours" };
+  // V5 defaults: TDS 10%, GST 18%. Start time captured via hour/minute/AM-PM.
+  const empty = { sessionId: "", gross: "", tdsRate: "10", gstRate: "18", startHour: "", startMinute: "00", startAmpm: "AM", duration: "3 hours" };
   const [form, setForm] = useState(empty);
   const [sessions, setSessions] = useState<SessionOption[]>([]);
   // Parent remounts this modal on open (via `key`), so state starts fresh each time —
@@ -152,7 +162,17 @@ export function ConsentFormModal({
   const gross = Number(form.gross) || 0;
   const tdsRate = Number(form.tdsRate) || 0;
   const gstRate = Number(form.gstRate) || 0;
-  const { net, tdsAmount, gstAmount } = computeNet({ gross, tdsRate, gstRate });
+  const { net } = computeNet({ gross, tdsRate, gstRate });
+
+  // Compose the three V5 time pickers into the 24h HH:MM the consent API requires.
+  const startTime = form.startHour
+    ? (() => {
+        let h = parseInt(form.startHour, 10);
+        if (form.startAmpm === "PM" && h !== 12) h += 12;
+        if (form.startAmpm === "AM" && h === 12) h = 0;
+        return `${String(h).padStart(2, "0")}:${form.startMinute}`;
+      })()
+    : "";
 
   const set =
     (k: keyof typeof empty) =>
@@ -173,14 +193,14 @@ export function ConsentFormModal({
     setError("");
     if (!selected) return setError("Select an eligible session.");
     if (gross <= 0) return setError("Enter a gross amount.");
-    if (!form.startTime) return setError("Enter the session start time.");
+    if (!form.startHour) return setError("Enter the session start time.");
     setSaving(true);
     let res: Response;
     try {
       res = await fetch("/api/admin/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate, startTime: form.startTime, duration: form.duration }),
+        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate, startTime, duration: form.duration }),
       });
     } catch {
       setSaving(false);
@@ -293,7 +313,7 @@ export function ConsentFormModal({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <label>
-              <span style={fieldLabelStyle}>Session *</span>
+              <span style={fieldLabelStyle}>Select session awaiting consent</span>
               <select style={fieldSelectStyle} value={form.sessionId} onChange={set("sessionId")}>
                 <option value="">
                   {loading ? "Loading sessions…" : eligible.length ? "— select session —" : "No eligible sessions"}
@@ -383,40 +403,56 @@ export function ConsentFormModal({
           {selected && (
             <>
               <label>
-                <span style={fieldLabelStyle}>Start time * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
-                <input type="time" style={fieldInputStyle} value={form.startTime} onChange={set("startTime")} />
+                <span style={fieldLabelStyle}>Start time <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <select style={fieldSelectStyle} value={form.startHour} onChange={set("startHour")} aria-label="Start hour">
+                    <option value="">Hr</option>
+                    {HOUR_OPTIONS.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                  <select style={fieldSelectStyle} value={form.startMinute} onChange={set("startMinute")} aria-label="Start minute">
+                    {MINUTE_OPTIONS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <select style={fieldSelectStyle} value={form.startAmpm} onChange={set("startAmpm")} aria-label="AM or PM">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </label>
               <label>
-                <span style={fieldLabelStyle}>Duration * <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
+                <span style={fieldLabelStyle}>Duration <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(admin enters)</span></span>
                 <select style={fieldSelectStyle} value={form.duration} onChange={set("duration")}>
                   {DURATION_OPTIONS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                    <option key={d} value={d}>{DURATION_LABELS[d] ?? d}</option>
                   ))}
                 </select>
               </label>
 
               <label>
-                <span style={fieldLabelStyle}>Gross amount (₹) *</span>
+                <span style={fieldLabelStyle}>Gross amount (₹)</span>
                 <input type="number" min={1} style={fieldInputStyle} value={form.gross} onChange={set("gross")} />
               </label>
               <label>
-                <span style={fieldLabelStyle}>TDS rate (%)</span>
+                <span style={fieldLabelStyle}>TDS %</span>
                 <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.tdsRate} onChange={set("tdsRate")} />
               </label>
               <label>
-                <span style={fieldLabelStyle}>GST rate (%)</span>
+                <span style={fieldLabelStyle}>GST %</span>
                 <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.gstRate} onChange={set("gstRate")} />
               </label>
             </>
           )}
 
-          {selected && gross > 0 && (
-            <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--ink-soft)", background: "var(--surface-soft)", borderRadius: 6, padding: "8px 10px", lineHeight: 1.7 }}>
-              Net payout: <strong>₹{net.toLocaleString("en-IN")}</strong>
-              <br />
-              <span style={{ color: "var(--ink-faint)" }}>
-                Gross ₹{gross.toLocaleString("en-IN")} − TDS ₹{tdsAmount.toLocaleString("en-IN")} + GST ₹{gstAmount.toLocaleString("en-IN")} · net = gross × (1 − TDS% + GST%)
-              </span>
+          {selected && (
+            <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--green-light)", borderRadius: 8, padding: "12px 14px" }}>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Net payout amount</div>
+                <div style={{ fontSize: 10, color: "var(--ink-muted)", marginTop: 2 }}>Gross × (1 − TDS% + GST%)</div>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: "var(--green)" }}>₹{net.toLocaleString("en-IN")}</div>
             </div>
           )}
 
