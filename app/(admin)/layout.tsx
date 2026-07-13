@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { hasConsoleAccess } from "@/lib/supabase/roles";
+import { hasConsoleAccess, isGlobalAdminRole } from "@/lib/supabase/roles";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient();
@@ -17,9 +17,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!canConsole) redirect("/login");
 
+  // Only a real global admin gets the "Viewing as" preview switcher (downgrade-only).
+  const isGlobalAdmin = isGlobalAdminRole(user!.app_metadata?.role);
+
   return (
     <div style={{ minHeight: "100vh", background: "#f8f7f4" }}>
-      <AdminShell email={user!.email ?? ""}>{children}</AdminShell>
+      <AdminShell email={user!.email ?? ""} isGlobalAdmin={isGlobalAdmin}>{children}</AdminShell>
     </div>
   );
 }

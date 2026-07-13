@@ -2,7 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useAdminUI } from "@/components/admin/AdminUIContext";
+import { useAdminUI, type RoleView } from "@/components/admin/AdminUIContext";
+
+// V5: single "Viewing as" switcher, three scopes. Only a real global admin sees
+// it (layout gates), and it can only ever downgrade what they see — the server
+// still enforces real permissions, so this is a preview, never an escalation.
+const VIEW_OPTIONS: { value: RoleView; label: string }[] = [
+  { value: "global", label: "Viewing as: Global Admin" },
+  { value: "admin", label: "Viewing as: Admin" },
+  { value: "user", label: "Viewing as: User" },
+];
+
+// Inline ink chevron for the custom-styled select (var() can't be used in the
+// data-URI, so the ink hex is inlined here by necessity).
+const VIEW_CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%235b5e6c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
 
 const NOTIF_LINKS: { label: string; tab: string }[] = [
   { label: "Review new session requests", tab: "requests" },
@@ -10,8 +24,8 @@ const NOTIF_LINKS: { label: string; tab: string }[] = [
   { label: "New practitioner applications", tab: "practitioners" },
 ];
 
-export function AdminTopNav({ email }: { email: string }) {
-  const { globalSearch, setGlobalSearch, setActiveTab } = useAdminUI();
+export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; isGlobalAdmin?: boolean }) {
+  const { globalSearch, setGlobalSearch, setActiveTab, viewAs, setViewAs } = useAdminUI();
   const [bellOpen, setBellOpen] = useState(false);
 
   return (
@@ -111,6 +125,32 @@ export function AdminTopNav({ email }: { email: string }) {
 
       {/* Right cluster — Gap 4: 'Admin' label, Gap 5: dot position/border */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
+        {/* V5: "Viewing as" preview switcher — global admins only, downgrade-only. */}
+        {isGlobalAdmin && (
+          <select
+            value={viewAs}
+            onChange={(e) => setViewAs(e.target.value as RoleView)}
+            aria-label="Preview the console as another role"
+            title="Preview what each role sees — your real permissions are unchanged"
+            style={{
+              fontSize: 12,
+              fontFamily: "inherit",
+              color: "var(--ink)",
+              background: `${VIEW_CHEVRON} no-repeat right 10px center, var(--surface-soft)`,
+              border: "1px solid rgba(20,18,12,.18)",
+              borderRadius: 100,
+              padding: "6px 30px 6px 14px",
+              appearance: "none",
+              WebkitAppearance: "none",
+              cursor: "pointer",
+              maxWidth: 180,
+            }}
+          >
+            {VIEW_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        )}
         {/* Gap 4: 'Admin' text label (no email shown) — hidden on small screens */}
         <span className="admin-nav-label hidden sm:block" style={{ fontSize: 12, color: "var(--ink-soft)" }}>Admin</span>
 

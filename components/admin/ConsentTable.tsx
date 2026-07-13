@@ -46,6 +46,7 @@ export function ConsentTable({
   initialData,
   onRowChange,
   isGlobalAdmin = false,
+  readOnly = false,
   reassignableSessionIds = [],
   onReassign,
   onStatusOverridden,
@@ -54,6 +55,8 @@ export function ConsentTable({
   initialData: ConfirmationRow[];
   onRowChange: (id: string, patch: Partial<ConfirmationRow>) => void;
   isGlobalAdmin?: boolean;
+  // Read-only User tier: view + download (PDF) only, no share/mutation actions.
+  readOnly?: boolean;
   // Sessions still Upcoming — only these have an editable status + Replace action.
   reassignableSessionIds?: string[];
   onReassign?: (row: ConfirmationRow) => void;
@@ -216,11 +219,12 @@ export function ConsentTable({
                     <RowActionsInline
                       ariaLabel={`Actions for ${row.ref_code}`}
                       actions={[
-                        ...(row.consent_link ? [{ label: "Copy link", onClick: () => copyLink(row) }] : []),
+                        // Copy link is a share (comms) action — hidden for read-only; PDF is a download, kept.
+                        ...(!readOnly && row.consent_link ? [{ label: "Copy link", onClick: () => copyLink(row) }] : []),
                         ...(row.storage_path ? [{ label: "PDF", onClick: () => downloadPdf(row) }] : []),
                         // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
                         // received → Awaiting, Global) · Void (→ Superseded, Global).
-                        ...(awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
+                        ...(!readOnly && awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
                         ...(editable && row.status === "Consent received" && busy !== row.id
                           ? [{ label: "Revert", onClick: () => overrideStatus(row, "Awaiting consent") }]
                           : []),

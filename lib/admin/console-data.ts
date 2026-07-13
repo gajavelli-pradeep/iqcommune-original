@@ -18,6 +18,9 @@ export type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
   photos_submitted?: boolean;
+  // Derived: the id of this session's payout (payouts.session_id → sessions.id),
+  // if one exists — drives the "View payout" cross-link. Null = no payout yet.
+  payout_id?: string | null;
 };
 export type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
@@ -75,10 +78,17 @@ export async function getConsoleData(): Promise<ConsoleData> {
   );
   // photo_submissions.session_ref === sessions.ref_code — flag sessions that have photos.
   const refsWithPhotos = new Set((photosRes.data ?? []).map((p) => p.session_ref));
+  // session_id → payout id, from the already-fetched payouts (no extra query) —
+  // lets each session row deep-link to its payout via the "View payout" action.
+  const payoutIdBySession: Record<string, string> = {};
+  for (const p of (payouts.data ?? []) as Array<{ id: string; session_id: string | null }>) {
+    if (p.session_id) payoutIdBySession[p.session_id] = p.id;
+  }
   const sessionsWithFeedback: SessionRow[] = (sessions.data ?? []).map((s) => ({
     ...s,
     session_feedback: feedbackBySession[s.id] ? [feedbackBySession[s.id]] : [],
     photos_submitted: s.ref_code ? refsWithPhotos.has(s.ref_code) : false,
+    payout_id: payoutIdBySession[s.id] ?? null,
   })) as SessionRow[];
 
   // Build ref→name map from already-fetched practitioners — zero extra queries

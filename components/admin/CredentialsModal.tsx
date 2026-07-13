@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
+import { InviteTeamMember } from "@/components/admin/InviteTeamMember";
 
 interface AdminUser {
   id: string;
@@ -16,22 +16,6 @@ const ROLE_LABEL: Record<AdminUser["role"], string> = {
   admin: "Admin",
   global_admin: "Global Admin",
   user: "User (read-only)",
-};
-
-interface AdminInvite {
-  id: string;
-  email: string;
-  status: "Pending" | "Accepted" | "Revoked" | "Expired";
-  invited_by: string;
-  created_at: string;
-  expires_at: string;
-}
-
-const INVITE_STATUS_COLOR: Record<AdminInvite["status"], { fg: string; bg: string; border: string }> = {
-  Pending:  { fg: "var(--gold-dark)", bg: "var(--gold-light)",  border: "var(--gold-border)" },
-  Accepted: { fg: "var(--green)",     bg: "var(--green-light)", border: "var(--green-border)" },
-  Revoked:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(20,18,12,.12)" },
-  Expired:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(20,18,12,.12)" },
 };
 
 interface Props {
@@ -66,16 +50,8 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
   const [newAdminPw, setNewAdminPw] = useState("");
   const [newRole, setNewRole] = useState<AdminUser["role"]>("admin");
 
-  // Invite ("summon") flow
-  const [invites, setInvites] = useState<AdminInvite[]>([]);
-  const [inviteEmail, setInviteEmail] = useState("");
-  // V5 P3-3: invites can provision Admin or read-only User (never Global Admin via link).
-  const [inviteRole, setInviteRole] = useState<"admin" | "user">("admin");
-  const [invModeOn, setInvModeOn] = useState(false);
-  const [inviting, setInviting] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [revokingId, setRevokingId] = useState<string | null>(null);
+  // Invite ("summon") flow lives in the shared <InviteTeamMember/> component now
+  // (also used inline on the Settings panel) — see components/admin/InviteTeamMember.
 
   const flash = (msg: string, ok: boolean) => {
     setToast({ msg, ok });
@@ -95,86 +71,9 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadInvites = useCallback(() => {
-    fetch("/api/admin/global/invites")
-      .then((r) => r.json())
-      .then((j) => { if (j.data) setInvites(j.data as AdminInvite[]); })
-      .catch(() => {});
-  }, []);
-
   // The modal is conditionally mounted (see AdminConsoleView), so every open is a
   // fresh mount — useState defaults handle the reset; the effect only loads data.
-  useEffect(() => { loadUsers(); loadInvites(); }, [loadUsers, loadInvites]);
-
-  // Live: keep the invites list in sync across global-admin sessions.
-  useRealtimeChannel("admin_invites", (payload) => {
-    if (payload.eventType === "INSERT") {
-      const row = payload.new as unknown as AdminInvite;
-      setInvites((prev) => (prev.some((i) => i.id === row.id) ? prev : [row, ...prev]));
-    } else if (payload.eventType === "UPDATE") {
-      const row = payload.new as unknown as AdminInvite;
-      setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, ...row } : i)));
-    } else if (payload.eventType === "DELETE") {
-      const id = (payload.old as { id?: string })?.id;
-      setInvites((prev) => prev.filter((i) => i.id !== id));
-    }
-  });
-
-  async function handleCreateInvite() {
-    const email = inviteEmail.trim();
-    if (!email) { setError("Enter an email to invite."); return; }
-    setInviting(true);
-    setError("");
-    setInviteLink(null);
-    try {
-      const res = await fetch("/api/admin/global/invites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: inviteRole }),
-      });
-      const j = await res.json();
-      if (!res.ok) { setError(j.error ?? "Failed to create invite."); return; }
-      setInviteLink(j.url as string);
-      setInviteEmail("");
-      setInviteRole("admin");
-      setCopied(false);
-      if (j.data) setInvites((prev) => [j.data as AdminInvite, ...prev]);
-    } catch {
-      setError("Network error.");
-    } finally {
-      setInviting(false);
-    }
-  }
-
-  async function copyInviteLink() {
-    if (!inviteLink) return;
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError("Copy failed — select and copy the link manually.");
-    }
-  }
-
-  async function handleRevokeInvite(id: string) {
-    setRevokingId(id);
-    setError("");
-    try {
-      const res = await fetch(`/api/admin/global/invites/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setError(j.error ?? "Failed to revoke invite.");
-        return;
-      }
-      setInvites((prev) => prev.map((i) => (i.id === id ? { ...i, status: "Revoked" } : i)));
-      flash("Invite revoked.", true);
-    } catch {
-      setError("Network error.");
-    } finally {
-      setRevokingId(null);
-    }
-  }
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   async function handleSetPassword(userId: string) {
     if (newPassword.length < 8) {
@@ -448,96 +347,8 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
             </div>
           )}
 
-          {/* Invite a new admin ("summon") — SA generates a shareable link */}
-          <div style={{ marginBottom: 18, border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, padding: 14, background: "var(--surface-soft)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Invite an admin</div>
-                <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>
-                  Generate a single-use link (expires in 7 days). Share it — they set their own password.
-                </div>
-              </div>
-              {!invModeOn && (
-                <button onClick={() => { setInvModeOn(true); setError(""); setInviteLink(null); }} style={smallBtn}>
-                  + Invite admin
-                </button>
-              )}
-            </div>
-
-            {invModeOn && (
-              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => { setInviteEmail(e.target.value); setError(""); }}
-                    placeholder="Email to invite"
-                    autoFocus
-                    style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-                  />
-                  {/* V5 P3-3: choose the role this invite provisions (Admin or read-only User). */}
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "admin" | "user")}
-                    aria-label="Role for this invite"
-                    style={{ ...inputStyle, width: "auto", cursor: "pointer" }}
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="user">User (read-only)</option>
-                  </select>
-                  <button
-                    onClick={handleCreateInvite}
-                    disabled={inviting}
-                    style={{ padding: "8px 14px", background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: inviting ? "not-allowed" : "pointer", opacity: inviting ? 0.6 : 1, fontFamily: "inherit", whiteSpace: "nowrap" }}
-                  >
-                    {inviting ? "Generating…" : "Generate link"}
-                  </button>
-                  <button
-                    onClick={() => { setInvModeOn(false); setInviteLink(null); setError(""); }}
-                    style={{ padding: "8px 14px", background: "transparent", color: "var(--ink-soft)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    Close
-                  </button>
-                </div>
-
-                {inviteLink && (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--surface)", border: "1px solid var(--gold-border)", borderRadius: 8, padding: "8px 10px" }}>
-                    <input readOnly value={inviteLink} onFocus={(e) => e.currentTarget.select()} style={{ ...inputStyle, flex: 1, fontSize: 12, border: "none", background: "transparent", padding: 0 }} />
-                    <button onClick={copyInviteLink} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
-                      {copied ? "Copied ✓" : "Copy link"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {invites.length > 0 && (
-              <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
-                {invites.map((inv) => {
-                  const c = INVITE_STATUS_COLOR[inv.status];
-                  return (
-                    <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 12, padding: "6px 0", borderTop: "1px solid rgba(20,18,12,.08)" }}>
-                      <span style={{ color: "var(--ink)", fontWeight: 500 }}>{inv.email}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: c.fg, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 100, padding: "1px 9px" }}>
-                          {inv.status}
-                        </span>
-                        {inv.status === "Pending" && (
-                          <button
-                            onClick={() => handleRevokeInvite(inv.id)}
-                            disabled={revokingId === inv.id}
-                            style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)", opacity: revokingId === inv.id ? 0.6 : 1 }}
-                          >
-                            {revokingId === inv.id ? "Revoking…" : "Revoke"}
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Invite a team member — shared with the inline Settings block. */}
+          <InviteTeamMember />
 
           {/* Add admin */}
           <div style={{ marginBottom: 16 }}>

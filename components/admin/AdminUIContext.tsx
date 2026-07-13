@@ -3,11 +3,18 @@
 import { createContext, useContext, useMemo, useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
+// The role scope a global admin is previewing the console as. Downgrade-only:
+// only a real global admin ever changes this (AdminConsoleView ignores it for
+// lower tiers), so it can never grant more than the viewer already has.
+export type RoleView = "global" | "admin" | "user";
+
 interface AdminUI {
   globalSearch: string;
   setGlobalSearch: (v: string) => void;
   activeTab: string;
   setActiveTab: (v: string) => void;
+  viewAs: RoleView;
+  setViewAs: (v: RoleView) => void;
 }
 
 const AdminUIContext = createContext<AdminUI | null>(null);
@@ -29,6 +36,11 @@ export function AdminUIProvider({ children }: { children: React.ReactNode }) {
 
   const [globalSearch, setGlobalSearch] = useState("");
 
+  // Global-admin "Viewing as" preview. Defaults to full access; a non-global
+  // viewer's console ignores this entirely (see AdminConsoleView), so it is a
+  // pure display toggle with no privilege implications.
+  const [viewAs, setViewAs] = useState<RoleView>("global");
+
   // Seed from the URL on mount so a refresh restores the same tab.
   const [activeTab, setActiveTabState] = useState(() => {
     const t = searchParams.get("tab");
@@ -47,8 +59,8 @@ export function AdminUIProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ globalSearch, setGlobalSearch, activeTab, setActiveTab }),
-    [globalSearch, activeTab, setActiveTab]
+    () => ({ globalSearch, setGlobalSearch, activeTab, setActiveTab, viewAs, setViewAs }),
+    [globalSearch, activeTab, setActiveTab, viewAs]
   );
 
   return <AdminUIContext.Provider value={value}>{children}</AdminUIContext.Provider>;

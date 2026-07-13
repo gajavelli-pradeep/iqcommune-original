@@ -315,7 +315,9 @@ export function SessionTable({
                   <RowActionsInline
                     ariaLabel={`Actions for session ${s.ref_code}`}
                     actions={[
-                      ...(SHOW_OFFSPEC_ACTIONS && s.payout_id
+                      // Cross-link to this session's payout — pure navigation (no
+                      // mutation), so it stays enabled in read-only too.
+                      ...(s.payout_id
                         ? [{ label: "View payout", onClick: () => onNavigate?.("payouts") }]
                         : []),
                       ...(SHOW_OFFSPEC_ACTIONS && !readOnly && s.status === "Upcoming" && s.consent_status === "Pending consent"
@@ -349,7 +351,7 @@ export function SessionTable({
                             },
                           }]
                         : []),
-                      ...(SHOW_OFFSPEC_ACTIONS && s.status === "Completed" && s.photos_submitted
+                      ...(s.status === "Completed" && s.photos_submitted
                         ? [{ label: "View photos", onClick: () => onNavigate?.("photos") }]
                         : []),
                       ...(SHOW_OFFSPEC_ACTIONS && !readOnly && s.status === "Completed"

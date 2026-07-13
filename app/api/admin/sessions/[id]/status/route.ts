@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logActivity } from "@/lib/admin-audit";
+import { createPayoutForSession } from "@/lib/admin/create-payout";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
@@ -68,6 +69,17 @@ export async function PATCH(
         after: { status: body.data.status },
       },
     });
+  }
+
+  // Auto-create the practitioner's payout the moment a session is delivered.
+  // Best-effort: the status change is the primary action and has already
+  // persisted, so a payout failure is logged but never fails the request. The
+  // helper is idempotent, so a re-completion won't create a duplicate.
+  if (body.data.status === "Completed" && prev.status !== "Completed") {
+    const result = await createPayoutForSession(supabase, id, actor ?? undefined);
+    if (!result.ok) {
+      log.error("Auto-create payout on completion failed", { sessionId: id, code: result.code });
+    }
   }
 
   return new NextResponse(null, { status: 204 });

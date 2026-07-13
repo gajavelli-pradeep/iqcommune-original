@@ -5,6 +5,88 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-14] Auto-create payout on session completion + schema-bug fix — SHIPPED
+
+Made the finance loop live: marking a session **Completed** now auto-creates its Pending payout
+(plan: `../PAYOUT-AUTOCREATE-PLAN.md`). Previously the only creation trigger ("+ Create payout")
+was gated off for V5-match, so the Payouts tab was always empty and mark-paid/revert/the
+Sessions→Payouts link were never exercisable.
+
+- Extracted the creation logic into one idempotent helper `lib/admin/create-payout.ts`
+  (`createPayoutForSession`), used by both the manual route and the new completion hook.
+- `sessions/[id]/status/route.ts`: on the Upcoming→Completed transition, best-effort call to the
+  helper (status change never fails on a payout error; idempotent, so re-completion won't dupe).
+- **Fixed a pre-existing schema bug** the gated route hid: the insert wrote a `tds_rate` column the
+  remote `payouts` schema doesn't expose ("schema cache" error → 500). Dropped it — `net_amount`
+  already carries the TDS-deducted value; the rate is derivable from the session.
+- Verified live: completed IQC-SES-0005 (₹4,500) + 0006 (₹8,000) → both Pending payouts appear
+  with correct invoice refs; Sessions row now shows **View payout** → jumps to Payouts; Mark-as-paid
+  present; pending cards + sidebar badge populate. `tsc` + `eslint` clean; 0 console errors.
+
+---
+
+## [2026-07-14] V5 100% parity — role visibility, Activity export, zero badges — SHIPPED
+
+Closed the last secondary gaps for full V5 mockup parity (plan: `../V5-100-PARITY-PLAN.md`).
+Item "Requests venue-status line" was already implemented (`RequestTable.tsx:332`).
+
+**Role visibility → V5 demo sidebar.** V5's role-switch hides only `.role-edit`/`.role-team`/
+`.role-activity-nav`/`.role-override` for lower tiers, so every role sees all tabs except
+Activity. Matched it: `buildSections`/`availableTabs` now give the read-only **User** the full
+sidebar (Consent, Settings, Gallery included) view-only; `RolesPermissions` is visible to all
+roles (was Global-only); Team & Access invite stays Global-only. Added `readOnly` to
+`ConsentTable` (hides Copy link + Mark received; PDF download kept) and `GalleryManager` (hides
+upload panel + Publish/move/Delete; view-only grid). Verified via "Viewing as: User" preview.
+
+**Activity "Export log"** (V5:849). Added the header button (Global-Admin-only tab) wired to a
+real CSV export that fetches the audit feed (`exportActivityLog`) — verified live (89-row CSV).
+Also fixed a **pre-existing no-op**: Photos' "Export log" label never matched the `=== "Export"`
+handler, and the read-only header filter dropped "Export log" — both now route/keep correctly.
+
+**Zero-value sidebar badges** (V5). Badges render when the count is defined (incl. literal "0"),
+matching the mockup (Photos/Payouts now show "0"). `tsc` + `eslint` clean; 0 console errors on
+clean loads (one transient input-autofill hydration warning, not a regression).
+
+---
+
+## [2026-07-13] V5 role dropdown + Settings invite + payouts cross-link — SHIPPED
+
+Closed three V5-parity gaps the client flagged (plan: `../V5-CLONE-IMPL-PLAN.md`).
+
+**Role "Viewing as" switcher** (V5 nav dropdown). New global-admin-only, **downgrade-only**
+preview control in the top nav (`AdminTopNav.tsx`) driven by `viewAs` in `AdminUIContext`.
+`AdminConsoleView` derives effective `isGlobalAdmin`/`readOnly` from it, so a global admin
+can preview the Admin and User scopes without leaving `/globaladmin`. Server permissions are
+untouched — it can never grant more than the account already has. The 3 routes
+(`/console` · `/globaladmin` · `/user`) still drive the real role at login. Layout passes the
+real role → `AdminShell` → nav. Verified: Global/Admin/User previews each hide the right
+controls (Team&Access, invite, Roles&Perms, Activity for Admin; edit + Settings/Consent for User).
+
+**Settings inline invite block** (V5 §Team&Access). Extracted the invite flow into a shared
+`InviteTeamMember.tsx` (DRY — replaces the duplicate block inside `CredentialsModal`), rendered
+inline on the Settings panel. Role select now offers **User / Admin / Global Admin** per the
+mockup (was Admin/User only). Global-Admin invites required unwinding two deliberate escalation
+clamps (`invites/route.ts` `INVITE_ROLES`, `admin-accept/route.ts` role coercion) — done per
+explicit client sign-off, with all mitigations kept (single-use, 7-day expiry, hashed token,
+rate-limit, audit) plus a prominent amber warning shown when Global Admin is selected. (V5's
+demo "Send email" stub omitted — a no-op button violates the functional-completeness bar.)
+
+**Payouts cross-link fix.** The session→payout (and →photos) navigation actions in
+`SessionTable.tsx` were dead (gated behind `SHOW_OFFSPEC_ACTIONS=false`). Un-gated the two
+pure-navigation cross-links, and populated `payout_id` on session rows in `console-data.ts`
+(session_id→payout map, zero extra query) so "View payout" renders whenever a payout exists.
+Cross-tab navigation verified live (View photos jumps tabs); View payout is identical code,
+data-gated. `tsc` + `eslint` clean; 0 console errors.
+
+**Realtime channel-collision fix** (`lib/hooks/use-realtime-list.ts`). Surfaced by the invite
+refactor: the inline Settings block and the credentials modal both subscribe to `admin_invites`,
+and `useRealtimeChannel` used a per-table topic (`realtime:${table}`) — Supabase throws
+"cannot add postgres_changes callbacks … after subscribe()" on the 2nd same-topic subscriber.
+Made the topic unique per hook instance (`realtime:${table}:${seq}`) — a general fix for any
+two components watching the same table. Verified: modal opens over the inline block, 0 errors.
+
+---
+
 ## [2026-07-12] Fresh V5 audit + remediation of remaining gaps — SHIPPED
 
 Re-audited the whole app against the V5 docs (5-lane parallel, findings in

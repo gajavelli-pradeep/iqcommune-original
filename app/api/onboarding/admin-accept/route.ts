@@ -59,10 +59,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This invite link has expired" }, { status: 410 });
   }
 
-  // Provision the role the invite was created with (V5 P3-3). Defensively clamp to
-  // the link-invitable set — global_admin can never be granted via an invite link,
-  // regardless of what the stored row says, to prevent privilege escalation.
-  const inviteRole = invite.role === "user" ? "user" : "admin";
+  // Provision the role the invite was created with (V5 parity). Clamp to the known
+  // set so a malformed row can't inject an arbitrary role; global_admin is a valid
+  // invite role per the client-mandated Settings invite (see invites/route.ts).
+  const inviteRole =
+    invite.role === "user" || invite.role === "global_admin" ? invite.role : "admin";
   const { data: created, error: createErr } = await supabase.auth.admin.createUser({
     email: invite.email,
     password,
@@ -108,7 +109,9 @@ export async function POST(req: NextRequest) {
 
   await logActivity({
     actorEmail: invite.email,
-    actorRole: "admin",
+    // ActorRole is admin|global_admin; a read-only user acceptance logs as "admin"
+    // (the audit actor tier), while a global-admin invite records "global_admin".
+    actorRole: inviteRole === "global_admin" ? "global_admin" : "admin",
     action: "accept_admin_invite",
     recordTable: "auth.users",
     recordId: created.user.id,

@@ -45,10 +45,13 @@ export async function GET() {
   return NextResponse.json({ data: (data as InviteView[]).map(withDerivedStatus) });
 }
 
-// V5 P3-3: invites may provision an Admin or read-only User. global_admin is
-// deliberately NOT invitable via a link (privilege-escalation guard) — it is only
-// grantable by an existing global admin through the authenticated role dropdown.
-const INVITE_ROLES = ["admin", "user"] as const;
+// V5 parity (client-mandated, informed sign-off): the Settings invite provisions
+// an Admin, a read-only User, or a Global Admin. Only an authenticated global
+// admin can reach this endpoint (requireGlobalAdmin below), and every invite is
+// single-use, 7-day-expiring, SHA-256-hashed, rate-limited on accept, and
+// audit-logged. A Global-Admin invite therefore grants full access to whoever
+// opens the link — the UI warns on that selection; share only over secure channels.
+const INVITE_ROLES = ["admin", "user", "global_admin"] as const;
 const CreateSchema = z.object({
   email: z.string().email(),
   role: z.enum(INVITE_ROLES).default("admin"),

@@ -13,6 +13,7 @@ import { ReassignConsentModal } from "@/components/admin/ReassignConsentModal";
 import { MasterDataTable } from "@/components/admin/MasterDataTable";
 import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { TeamAccessTable } from "@/components/admin/TeamAccessTable";
+import { InviteTeamMember } from "@/components/admin/InviteTeamMember";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
 import { PayoutFormModal } from "@/components/admin/PayoutFormModal";
@@ -37,6 +38,7 @@ type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
   photos_submitted?: boolean;
+  payout_id?: string | null;
 };
 type RequestRow = Database["public"]["Tables"]["session_requests"]["Row"] & {
   assigned_practitioner: { name: string } | null;
@@ -181,6 +183,10 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
   photos:        [
     { label: "Export log",    variant: "ghost",   ariaLabel: "Export photo submissions" },
   ],
+  // V5: Activity header has an "Export log" button (Global-Admin-only tab).
+  activity:      [
+    { label: "Export log",    variant: "ghost",   ariaLabel: "Export activity log" },
+  ],
   settings:      [],
 };
 
@@ -245,7 +251,7 @@ const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
 type SidebarItem = { label: string; tab: string; badge?: number; badgeBg?: string };
 type SidebarSection = { heading: string; items: SidebarItem[] };
 
-function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean, readOnly: boolean): SidebarSection[] {
+function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: boolean): SidebarSection[] {
   // V5 sidebar grouping (technical-handoff §1): four sections reflecting how the
   // business thinks about these tabs — Practitioner Management / Session Pipeline /
   // Finance / System.
@@ -262,10 +268,9 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
     // Spec order: Session Requests → Session Consent → Session Details → Photos.
     items: [
       { label: "Session Requests", tab: "requests", badge: counts.pendingRequests, badgeBg: "#a32d2d" },
-      // Consent is a mutation surface (generate / mark-received) not in the User's
-      // "view all data" list — hidden for the read-only tier.
+      // V5 sidebar: every role sees Session Consent (read-only tier gets it view-only).
       // V5 badge colours: Session Consent = red, Photos = gold.
-      ...(readOnly ? [] : [{ label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#a32d2d" }]),
+      { label: "Session Consent", tab: "consent", badge: counts.awaitingConsent ?? 0, badgeBg: "#a32d2d" },
       // "Session Details" is the V5 user-facing label; the internal tab id stays "sessions".
       { label: "Session Details", tab: "sessions", badge: counts.pendingSessions, badgeBg: "#2a6b2a" },
       { label: "Photos",          tab: "photos",   badge: counts.pendingPhotos,   badgeBg: "#c9982a" },
@@ -277,9 +282,9 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
       { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
     ],
   };
-  // The read-only User console shows only the data tabs — no System section
-  // (Gallery/Activity/Settings are all admin-only surfaces).
-  if (readOnly) return [practitionerMgmt, sessionPipeline, finance];
+  // V5 sidebar: all roles see the System section (Settings + Gallery); only
+  // Activity is Global-Admin-only. The read-only User sees Settings and Gallery
+  // view-only (edit surfaces inside them are stripped by their own readOnly mode).
   return [
     practitionerMgmt,
     sessionPipeline,
@@ -352,10 +357,10 @@ const goldBtnStyle: React.CSSProperties = {
 // Renders the white .page-hdr bar (full-width, border-bottom) without duplicate title
 function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab: string; onAction?: (label: string) => void; extraActions?: ActionButton[]; readOnly?: boolean }) {
   const meta = TAB_META[tab] ?? { title: tab, subtitle: "" };
-  // Read-only tier keeps only the Export (download) action; every create/mutation
-  // header button is stripped.
+  // Read-only tier keeps only the download actions ("Export" / "Export log");
+  // every create/mutation header button is stripped.
   const actions = readOnly
-    ? (TAB_ACTIONS[tab] ?? []).filter((a) => a.label === "Export")
+    ? (TAB_ACTIONS[tab] ?? []).filter((a) => a.label === "Export" || a.label === "Export log")
     : [...(TAB_ACTIONS[tab] ?? []), ...extraActions];
 
   return (
@@ -408,8 +413,15 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin = false, galleryAdminAccess = true, readOnly = false }: Props) {
-  const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab } = useAdminUI();
+export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin: realIsGlobalAdmin = false, galleryAdminAccess = true, readOnly: realReadOnly = false }: Props) {
+  const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab, viewAs } = useAdminUI();
+
+  // V5 "Viewing as" preview — downgrade-only. Only a real global admin can
+  // preview a lower scope; every other tier ignores viewAs, so it can never
+  // grant more access than the account already has. Server perms are unchanged.
+  const preview = realIsGlobalAdmin ? viewAs : "global";
+  const isGlobalAdmin = realIsGlobalAdmin && preview === "global";
+  const readOnly = realReadOnly || preview === "user";
   const [hovered, setHovered] = useState<string | null>(null);
 
   // Jump to a tab and exit the global-search overlay.
@@ -433,15 +445,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   // The URL can carry any ?tab= value (deep link / refresh). Fall back to the
   // default if it names a tab this user can't see (Activity = SA-only, Gallery
   // gated) so a hand-crafted link never renders a blank panel.
-  const availableTabs = new Set<string>(
-    readOnly
-      ? ["requests", "practitioners", "sessions", "agreements", "payouts", "photos"]
-      : [
-          "requests", "practitioners", "sessions", "agreements", "consent", "payouts", "photos", "settings",
-          ...(galleryVisible ? ["gallery"] : []),
-          ...(isGlobalAdmin ? ["activity"] : []),
-        ]
-  );
+  // V5: every role reaches every tab except Activity (Global-Admin-only). The
+  // read-only User sees the same tabs, just view-only.
+  const availableTabs = new Set<string>([
+    "requests", "practitioners", "sessions", "agreements", "consent", "payouts", "photos", "settings",
+    ...(galleryVisible ? ["gallery"] : []),
+    ...(isGlobalAdmin ? ["activity"] : []),
+  ]);
   const activeTab = availableTabs.has(rawActiveTab) ? rawActiveTab : "practitioners";
 
   // Global-admin edit modals (null = closed)
@@ -698,6 +708,25 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     }
   }
 
+  // V5 Activity "Export log" — fetches the (Global-Admin-only) audit feed fresh
+  // (the rows live in ActivityLogView, not here) and downloads it as CSV.
+  async function exportActivityLog() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const qs = new URLSearchParams({ limit: "1000", offset: "0" });
+    qs.set("from", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
+    const res = await fetch(`/api/admin/global/activity?${qs.toString()}`);
+    if (!res.ok) return;
+    const j = (await res.json()) as { data?: Record<string, unknown>[] };
+    downloadCsv(`activity-log-${stamp}.csv`, toCsv(j.data ?? [], [
+      { key: "created_at", label: "Timestamp" },
+      { key: "actor_email", label: "User" },
+      { key: "actor_role", label: "Role" },
+      { key: "action", label: "Action" },
+      { key: "record_table", label: "Record" },
+      { key: "record_id", label: "Record id" },
+    ]));
+  }
+
   function handleHeaderAction(label: string) {
     if (label.includes("Create session")) setSessionModalOpen(true);
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
@@ -705,10 +734,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
     else if (label === "Trash") setTrashOpen(true);
     else if (label.includes("Credentials") || label.includes("Invite admin")) setCredentialsOpen(true);
-    else if (label === "Export") exportActiveTab();
+    // Both "Export" and Photos/Activity's "Export log" export the active tab;
+    // Activity has no parent-held dataset, so it fetches + exports separately.
+    else if (label === "Export" || label === "Export log") {
+      if (activeTab === "activity") exportActivityLog();
+      else exportActiveTab();
+    }
   }
 
-  const sections = buildSections(counts, galleryVisible, isGlobalAdmin, readOnly);
+  const sections = buildSections(counts, galleryVisible, isGlobalAdmin);
 
 
   return (
@@ -777,7 +811,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 >
                   {SIDEBAR_ICONS[item.tab]}
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
+                  {/* V5 shows every data-tab badge, including a literal "0". */}
+                  {item.badge !== undefined && (
                     <span
                       style={{
                         background: item.badgeBg ?? "var(--ink-faint)",
@@ -889,6 +924,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 initialData={confirmationsData}
                 onRowChange={handleConfirmationRowChange}
                 isGlobalAdmin={isGlobalAdmin}
+                readOnly={readOnly}
                 reassignableSessionIds={upcomingSessions.map((s) => s.id)}
                 onReassign={isGlobalAdmin ? (row) => setReassigning(row) : undefined}
                 onStatusOverridden={isGlobalAdmin ? handleStatusOverridden : undefined}
@@ -943,7 +979,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           <div>
             <TabHeader tab="gallery" onAction={handleHeaderAction} />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <GalleryManager />
+              <GalleryManager readOnly={readOnly} />
             </div>
           </div>
         )}
@@ -994,11 +1030,13 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                     </button>
                   </div>
                   <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
+                  {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
+                  <InviteTeamMember />
                 </div>
               )}
 
-              {/* Roles & Permissions (V4) — reference table, global settings only. */}
-              {isGlobalAdmin && <RolesPermissions />}
+              {/* Roles & Permissions (V5) — reference table, visible to every role. */}
+              <RolesPermissions />
             </div>
           </div>
         )}

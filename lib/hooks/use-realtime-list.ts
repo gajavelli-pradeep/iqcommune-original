@@ -15,11 +15,21 @@ type Change = RealtimePostgresChangesPayload<Record<string, unknown>>;
 // patch cross-table state or refetch derived data; use useRealtimeList for a
 // plain list. getSession() is async (session lives in cookies) so we set auth
 // before subscribing.
+// Monotonic per-instance id so two components subscribing to the SAME table each
+// get a distinct channel topic. Supabase rejects a second `.on()` after a shared
+// topic has `subscribe()`d, which would throw when e.g. the inline Settings invite
+// block and the credentials modal both watch `admin_invites` at once.
+let channelSeq = 0;
+
 export function useRealtimeChannel(table: string, onChange: (payload: Change) => void) {
   const handlerRef = useRef(onChange);
   useEffect(() => {
     handlerRef.current = onChange;
   });
+
+  // Lazy state initializer runs once per mount — a stable, unique topic id without
+  // touching a ref during render (react-hooks/refs).
+  const [channelId] = useState(() => ++channelSeq);
 
   useEffect(() => {
     const supabase = createClient();
@@ -32,7 +42,7 @@ export function useRealtimeChannel(table: string, onChange: (payload: Change) =>
       if (session?.access_token) supabase.realtime.setAuth(session.access_token);
 
       channel = supabase
-        .channel(`realtime:${table}`)
+        .channel(`realtime:${table}:${channelId}`)
         .on("postgres_changes", { event: "*", schema: "public", table }, (payload) => handlerRef.current(payload))
         .subscribe();
     })();
@@ -41,7 +51,7 @@ export function useRealtimeChannel(table: string, onChange: (payload: Change) =>
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [table]);
+  }, [table, channelId]);
 }
 
 // ── List hook ────────────────────────────────────────────────────────────────

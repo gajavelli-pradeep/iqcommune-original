@@ -12,7 +12,7 @@ interface GalleryPhoto {
   url: string;
 }
 
-export function GalleryManager() {
+export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -154,7 +154,8 @@ export function GalleryManager() {
         <div style={{ background: "var(--red-light)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "var(--red)", marginBottom: 14 }}>{error}</div>
       )}
 
-      {/* Upload panel */}
+      {/* Upload panel — hidden for the read-only User tier (view-only gallery). */}
+      {!readOnly && (
       <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem", marginBottom: "1.5rem" }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 12 }}>Add a photo</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
@@ -226,6 +227,7 @@ export function GalleryManager() {
           {uploading ? "Uploading…" : "Add to gallery"}
         </button>
       </div>
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -234,7 +236,9 @@ export function GalleryManager() {
         <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
           <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>Nothing published yet</div>
           <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
-            Curate a few photos above and click Publish to populate the landing page gallery.
+            {readOnly
+              ? "No gallery photos have been published yet."
+              : "Curate a few photos above and click Publish to populate the landing page gallery."}
           </div>
         </div>
       ) : (
@@ -258,7 +262,8 @@ export function GalleryManager() {
                 )}
               </div>
 
-              {/* Edit */}
+              {/* Edit controls — hidden for the read-only User tier. */}
+              {!readOnly && (
               <div style={{ padding: "10px 12px", display: "grid", gap: 8 }}>
                 <input style={inputStyle} defaultValue={p.caption_top_left ?? ""} placeholder="Caption (full sentence)" onBlur={(e) => saveCaption(p, "caption_top_left", e.target.value)} />
                 <input style={inputStyle} defaultValue={p.caption_bottom_right ?? ""} placeholder="City (optional)" onBlur={(e) => saveCaption(p, "caption_bottom_right", e.target.value)} />
@@ -273,6 +278,7 @@ export function GalleryManager() {
                   )}
                 </div>
               </div>
+              )}
             </div>
           ))}
         </div>
