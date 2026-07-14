@@ -5,6 +5,27 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-14] Uniform table toolbar — status chips on every table (layer ②) — SHIPPED
+
+Every admin table now shows the same three-layer stack the client asked for: ① pending stat
+card(s) + month/year period filter, ② a status **chip row**, ③ the table. Previously layer ②
+(the status `<select>`) was gated off (`SHOW_STATUS_SELECT=false`) as off-spec for V5, which
+only chips the Practitioners tab. Per client request this is now an intentional improvement
+beyond V5 — chips on all seven tables (Requests, Practitioners, Sessions, Agreements, Payouts,
+Photos, Consent).
+
+- **Single-file change** (`components/admin/PendingBar.tsx`) — the seven tables already passed
+  `statusOptions`/`statusValue`/`onStatusChange`, so rendering a data-driven chip row in the
+  shared toolbar lights up all of them at once (CLAUDE.md "one component, different data" — no
+  per-table copies). Restructured the bar into two rows; removed the dead `<select>` + gate.
+- **V5 chip styling via tokens** — pill chips; inactive = surface + warm border, hover = gold
+  border, **active = ink fill + surface label** (never raw white-on-ink). `aria-pressed` +
+  grouped `role="group"` for a11y.
+- `tsc` clean; `eslint` clean (token guard passed — no raw hex). Runtime visual pending an
+  authed admin session / deploy.
+
+---
+
 ## [2026-07-14] Consent-email delivery status (surface + resend + Brevo webhook) — CODE COMPLETE (migration pending)
 
 Closed the silent-failure gap where the consent (Brevo) email could bounce/fail and neither the

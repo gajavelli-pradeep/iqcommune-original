@@ -32,6 +32,7 @@ export function PendingBar({
   statusOptions,
   statusValue,
   onStatusChange,
+  statusLabels,
   statusAriaLabel = "Filter by status",
   dateFilter,
   dateLabel,
@@ -41,6 +42,9 @@ export function PendingBar({
   statusOptions?: readonly string[];
   statusValue?: string;
   onStatusChange?: (v: string) => void;
+  /** Optional display overrides for chip labels (value → label), e.g. matching V5
+   *  casing without changing the underlying filter value. Falls back to the value. */
+  statusLabels?: Record<string, string>;
   statusAriaLabel?: string;
   dateFilter?: DateFilterControl;
   /** V5 context label shown before the month/year selects, e.g. "Applied in:",
@@ -118,7 +122,7 @@ export function PendingBar({
                 onMouseEnter={(e) => { if (!active) { e.currentTarget.style.borderColor = "var(--gold)"; e.currentTarget.style.color = "var(--ink)"; } }}
                 onMouseLeave={(e) => { if (!active) { e.currentTarget.style.borderColor = "rgba(20,18,12,.18)"; e.currentTarget.style.color = "var(--ink-soft)"; } }}
               >
-                {o}
+                {statusLabels?.[o] ?? o}
               </button>
             );
           })}

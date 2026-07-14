@@ -376,6 +376,8 @@ export function PractitionerTable({
         statusOptions={FILTER_OPTIONS}
         statusValue={filter}
         onStatusChange={setFilter}
+        // V5 chip casing — the filter values stay the DB enum, only the label changes.
+        statusLabels={{ "Screening Done": "Screening done", "Agreement Sent": "Agreement sent" }}
         statusAriaLabel="Filter practitioners by status"
         dateFilter={df.control}
         dateLabel="Applied in:"
