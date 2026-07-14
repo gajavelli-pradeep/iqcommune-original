@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAdminUI, type RoleView } from "@/components/admin/AdminUIContext";
 
@@ -27,6 +28,11 @@ const NOTIF_LINKS: { label: string; tab: string }[] = [
 export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; isGlobalAdmin?: boolean }) {
   const { globalSearch, setGlobalSearch, setActiveTab, viewAs, setViewAs } = useAdminUI();
   const [bellOpen, setBellOpen] = useState(false);
+  const pathname = usePathname();
+  // The "Viewing as" preview belongs to the Global Admin console (/globaladmin) —
+  // the global admin's own home. It's hidden on /console and /user so it doesn't
+  // appear on every console header. (Real global admins only reach /globaladmin.)
+  const showViewAs = isGlobalAdmin && pathname === "/globaladmin";
 
   return (
     <nav
@@ -125,8 +131,8 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
 
       {/* Right cluster — Gap 4: 'Admin' label, Gap 5: dot position/border */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
-        {/* V5: "Viewing as" preview switcher — global admins only, downgrade-only. */}
-        {isGlobalAdmin && (
+        {/* V5: "Viewing as" preview switcher — Global Admin console only, downgrade-only. */}
+        {showViewAs && (
           <select
             value={viewAs}
             onChange={(e) => setViewAs(e.target.value as RoleView)}
