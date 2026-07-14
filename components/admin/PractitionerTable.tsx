@@ -26,6 +26,37 @@ const STATUSES = [
   "Rejected",
 ] as const;
 
+// V5 practitioner status filter (Practitioners tab only, per the mockup): a
+// "Filter:" label + pill chips. Active chip = ink fill + surface label.
+const filterRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+  alignItems: "center",
+  padding: "0 0 1rem",
+};
+const filterLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: "var(--ink-faint)",
+  marginRight: 2,
+  whiteSpace: "nowrap",
+};
+function chipStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "5px 14px",
+    borderRadius: 100,
+    fontSize: 12,
+    fontWeight: 500,
+    border: `1px solid ${active ? "var(--ink)" : "rgba(20,18,12,.18)"}`,
+    background: active ? "var(--ink)" : "var(--surface)",
+    color: active ? "var(--surface)" : "var(--ink-soft)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
+  };
+}
+
 // V5-MATCH: the mockup's practitioner profile has no Payment-details block,
 // Feedback-breakdown, or "Edit details" button — gated off (re-enablable).
 const SHOW_OFFSPEC_ACTIONS = false;
@@ -329,8 +360,8 @@ export function PractitionerTable({
 
   const df = useDateFilter(data.map((p) => p.created_at));
   // V5 pending = anyone not yet Empanelled or Rejected (a predicate, not one status).
-  // "__pending" is a sentinel filter value the card toggles (All ↔ pending action).
-  // The exact-status branch stays reachable if a parent ever drives `filter` via prop.
+  // "__pending" is a sentinel value the pending card toggles; the Filter chips set
+  // a single exact status. Both feed the row filter below.
   const isPending = (status: string) => status !== "Empanelled" && status !== "Rejected";
   const visible = (
     filter === "All" ? data
@@ -351,6 +382,25 @@ export function PractitionerTable({
         dateFilter={df.control}
         dateLabel="Applied in:"
       />
+
+      {/* V5 status filter — Practitioners tab only (per the mockup). */}
+      <div style={filterRowStyle}>
+        <span style={filterLabelStyle}>Filter:</span>
+        {(["All", ...STATUSES] as const).map((s) => {
+          const active = filter === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilter(s)}
+              aria-pressed={active}
+              style={chipStyle(active)}
+            >
+              {s === "All" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Table */}
       <AdminTable
