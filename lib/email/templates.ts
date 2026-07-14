@@ -328,6 +328,30 @@ export function newApplicationAdminEmail({
   };
 }
 
+export function adminInviteEmail({
+  inviteUrl,
+  roleLabel,
+  ttlDays,
+}: {
+  inviteUrl: string;
+  roleLabel: string;
+  ttlDays: number;
+}): { subject: string; htmlContent: string } {
+  // inviteUrl is HMAC-signed by the server — safe to embed as href.
+  return {
+    subject: "iqcommune — You've been invited to the admin console",
+    htmlContent: `<div style="${BASE}">
+<p>Hi there,</p>
+<p>You've been invited to join the iqcommune admin console as <strong>${esc(roleLabel)}</strong>.</p>
+<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(inviteUrl)}" style="${GOLD_BTN}">Accept invite &amp; set up access →</a>
+</div>
+<p style="font-size:12px;color:#9496a1">This invite is single-use and expires in ${ttlDays} days. If you weren't expecting it, you can safely ignore this email.</p>
+<p>Warm regards,<br/>iqcommune team</p>
+</div>`,
+  };
+}
+
 export function newSessionRequestAdminEmail({
   name,
   topic,

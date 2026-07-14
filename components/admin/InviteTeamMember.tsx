@@ -50,6 +50,8 @@ export function InviteTeamMember() {
   const [role, setRole] = useState<InviteRole>("user");
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<"sent" | "failed" | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -84,6 +86,8 @@ export function InviteTeamMember() {
     setInviting(true);
     setError("");
     setInviteLink(null);
+    setInvitedEmail(null);
+    setEmailStatus(null);
     try {
       const res = await fetch("/api/admin/global/invites", {
         method: "POST",
@@ -93,6 +97,8 @@ export function InviteTeamMember() {
       const j = await res.json();
       if (!res.ok) { setError(j.error ?? "Failed to create invite."); return; }
       setInviteLink(j.url as string);
+      setInvitedEmail((j.email as string) ?? trimmed);
+      setEmailStatus((j.emailStatus as "sent" | "failed") ?? null);
       setEmail("");
       setCopied(false);
       if (j.data) setInvites((prev) => [j.data as AdminInvite, ...prev]);
@@ -112,6 +118,18 @@ export function InviteTeamMember() {
     } catch {
       setError("Copy failed — select and copy the link manually.");
     }
+  }
+
+  // Opens the admin's own mail app with a prefilled draft to the invitee — a
+  // fallback that works even if the Brevo auto-send failed or DNS isn't set up yet.
+  function mailtoHref(): string {
+    const subject = encodeURIComponent("You're invited to the iqcommune admin console");
+    const body = encodeURIComponent(
+      `Hi,\n\nYou've been invited to join the iqcommune admin console.\n\n` +
+      `Accept your invite here:\n${inviteLink ?? ""}\n\n` +
+      `This link is single-use and expires in 7 days.`
+    );
+    return `mailto:${invitedEmail ?? ""}?subject=${subject}&body=${body}`;
   }
 
   async function handleRevoke(id: string) {
@@ -183,7 +201,7 @@ export function InviteTeamMember() {
           <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          {inviting ? "Generating…" : "Send invite"}
+          {inviting ? "Sending…" : "Send invite"}
         </button>
       </div>
 
@@ -199,17 +217,29 @@ export function InviteTeamMember() {
       )}
 
       {inviteLink && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, background: "var(--surface)", border: "1px solid var(--gold-border)", borderRadius: 8, padding: "8px 10px" }}>
-          <input
-            readOnly
-            value={inviteLink}
-            onFocus={(e) => e.currentTarget.select()}
-            aria-label="Invite link"
-            style={{ ...inputStyle, flex: 1, fontSize: 12, border: "none", background: "transparent", padding: 0 }}
-          />
-          <button onClick={copyLink} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
-            {copied ? "Copied ✓" : "Copy link"}
-          </button>
+        <div style={{ marginTop: 10 }}>
+          {emailStatus && (
+            <div style={{ fontSize: 12, marginBottom: 6, color: emailStatus === "sent" ? "var(--green)" : "var(--ink-muted)" }}>
+              {emailStatus === "sent"
+                ? `Invite emailed to ${invitedEmail} ✓ — or share the link below.`
+                : "Couldn't email the invite automatically — send it manually below."}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "var(--surface)", border: "1px solid var(--gold-border)", borderRadius: 8, padding: "8px 10px" }}>
+            <input
+              readOnly
+              value={inviteLink}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="Invite link"
+              style={{ ...inputStyle, flex: 1, minWidth: 160, fontSize: 12, border: "none", background: "transparent", padding: 0 }}
+            />
+            <a href={mailtoHref()} style={{ ...smallBtn, whiteSpace: "nowrap", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+              Open in email app
+            </a>
+            <button onClick={copyLink} style={{ ...smallBtn, whiteSpace: "nowrap" }}>
+              {copied ? "Copied ✓" : "Copy link"}
+            </button>
+          </div>
         </div>
       )}
 

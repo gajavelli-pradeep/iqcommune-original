@@ -4,8 +4,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { generateInviteToken, hashToken, buildInviteUrl, INVITE_TTL_DAYS, isExpired } from "@/lib/admin-invite";
 import { getBaseUrl } from "@/lib/base-url";
+import { sendEmail } from "@/lib/email/brevo";
+import { adminInviteEmail } from "@/lib/email/templates";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 import { log } from "@/lib/logger";
 import { z } from "zod";
+
+const ROLE_LABELS: Record<string, string> = {
+  user: "User",
+  admin: "Admin",
+  global_admin: "Global Admin",
+};
 
 type InviteView = {
   id: string;
@@ -120,8 +129,31 @@ export async function POST(req: NextRequest) {
     snapshot: { email, role: parsed.data.role, expires_at: expiresAt },
   });
 
+  const inviteUrl = buildInviteUrl(token, getBaseUrl(req));
+
+  // Email the invite (best-effort, idempotent). The admin can also copy the link
+  // or open it in their own mail app — so a failed send never blocks the invite.
+  let emailStatus: "sent" | "failed" = "failed";
+  const alreadySent = await guardEmailSend("admin_invite", data.id, email);
+  if (alreadySent) {
+    emailStatus = "sent";
+  } else {
+    try {
+      const { subject, htmlContent } = adminInviteEmail({
+        inviteUrl,
+        roleLabel: ROLE_LABELS[parsed.data.role] ?? parsed.data.role,
+        ttlDays: INVITE_TTL_DAYS,
+      });
+      await sendEmail({ to: email, subject, htmlContent });
+      emailStatus = "sent";
+    } catch (emailErr) {
+      log.error("Admin invite email failed — revoking sentinel so it can retry", { error: String(emailErr), inviteId: data.id });
+      await revokeEmailSend("admin_invite", data.id);
+    }
+  }
+
   return NextResponse.json(
-    { data: data as InviteView, url: buildInviteUrl(token, getBaseUrl(req)) },
+    { data: data as InviteView, url: inviteUrl, email, emailStatus },
     { status: 201 }
   );
 }
