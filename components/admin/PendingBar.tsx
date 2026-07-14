@@ -3,19 +3,12 @@
 import { MONTHS } from "@/lib/admin/use-date-filter";
 import type { DateFilterControl } from "@/components/admin/TableFilterBar";
 
-// V5 prototype table toolbar (`.pending-bar`): clickable pending stat-card(s) +
-// Month/Year dropdowns on the first row, and — when a table supplies status
-// options — a V5-style status **chip row** beneath it. This yields the client's
-// three-layer stack on every table: ① cards + period · ② status chips · ③ table.
+// V5 prototype table toolbar (`.pending-bar`): clickable pending stat-card(s) on
+// the left, Month + Year period dropdowns on the right. Sits directly on top of
+// its table (or as a rounded standalone bar when content sits between them).
 //
-// One data-driven component (CLAUDE.md): every *Table passes its own statusOptions
-// + value + onChange, so all tables render an identical chip row from different
-// data — never seven copies.
-//
-// Colour notes (globals.css / CLAUDE.md tokens):
-//  · pending cards tint AMBER — red is reserved for true failures, amber for
-//    routine "needs action" counts (the V5 prototype's red is remapped).
-//  · active chip = ink fill + surface label (never raw white-on-ink).
+// Colour note: pending cards tint AMBER — red is reserved for true failures,
+// amber for routine "needs action" counts (the V5 prototype's red is remapped).
 
 export interface PendingCardData {
   count: number;
@@ -29,23 +22,11 @@ export interface PendingCardData {
 
 export function PendingBar({
   pendingCards,
-  statusOptions,
-  statusValue,
-  onStatusChange,
-  statusLabels,
-  statusAriaLabel = "Filter by status",
   dateFilter,
   dateLabel,
   standalone = false,
 }: {
   pendingCards: PendingCardData[];
-  statusOptions?: readonly string[];
-  statusValue?: string;
-  onStatusChange?: (v: string) => void;
-  /** Optional display overrides for chip labels (value → label), e.g. matching V5
-   *  casing without changing the underlying filter value. Falls back to the value. */
-  statusLabels?: Record<string, string>;
-  statusAriaLabel?: string;
   dateFilter?: DateFilterControl;
   /** V5 context label shown before the month/year selects, e.g. "Applied in:",
    *  "Received in:", "Session date:". Matches the mockup's labelled period filter. */
@@ -55,12 +36,9 @@ export function PendingBar({
    *  the filter bar and the table (e.g. the consent tab's generate card). */
   standalone?: boolean;
 }) {
-  // Layer ② renders only when the table wired up a status filter.
-  const showChips = !!(statusOptions && statusValue !== undefined && onStatusChange);
-
   return (
     <div style={standalone ? standaloneBarStyle : barStyle}>
-      {/* Row ① — pending stat cards (left) + period filter (right) */}
+      {/* Pending stat cards (left) + period filter (right) */}
       <div style={topRowStyle}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {pendingCards.map((c) => (
@@ -106,28 +84,6 @@ export function PendingBar({
           </div>
         )}
       </div>
-
-      {/* Row ② — V5 status chips (only when the table supplies options) */}
-      {showChips && (
-        <div role="group" aria-label={statusAriaLabel} style={chipRowStyle}>
-          {statusOptions!.map((o) => {
-            const active = statusValue === o;
-            return (
-              <button
-                key={o}
-                type="button"
-                onClick={() => onStatusChange!(o)}
-                aria-pressed={active}
-                style={chipStyle(active)}
-                onMouseEnter={(e) => { if (!active) { e.currentTarget.style.borderColor = "var(--gold)"; e.currentTarget.style.color = "var(--ink)"; } }}
-                onMouseLeave={(e) => { if (!active) { e.currentTarget.style.borderColor = "rgba(20,18,12,.18)"; e.currentTarget.style.color = "var(--ink-soft)"; } }}
-              >
-                {statusLabels?.[o] ?? o}
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -144,7 +100,6 @@ const barStyle: React.CSSProperties = {
   gap: "0.85rem",
 };
 
-// Row ① — cards left, period filter right.
 const topRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -152,30 +107,6 @@ const topRowStyle: React.CSSProperties = {
   gap: "1rem",
   flexWrap: "wrap",
 };
-
-// Row ② — status chips.
-const chipRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: "5px 14px",
-    borderRadius: 100,
-    fontSize: 12,
-    fontWeight: active ? 600 : 500,
-    border: `1px solid ${active ? "var(--ink)" : "rgba(20,18,12,.18)"}`,
-    background: active ? "var(--ink)" : "var(--surface)",
-    color: active ? "var(--surface)" : "var(--ink-soft)",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    whiteSpace: "nowrap",
-    transition: "background .15s, border-color .15s, color .15s",
-  };
-}
 
 // Standalone variant: fully rounded with a bottom border, for when the filter bar
 // is not directly glued to the table (content sits between them).
@@ -193,7 +124,7 @@ function cardStyle(active: boolean): React.CSSProperties {
     alignItems: "flex-start",
     textAlign: "left",
     background: "var(--amber-light)",
-    border: `1px solid ${active ? "var(--amber)" : "var(--amber)"}`,
+    border: "1px solid var(--amber)",
     boxShadow: active ? "0 0 0 2px var(--amber-light)" : "none",
     outline: active ? "1px solid var(--amber)" : "none",
     borderRadius: 8,

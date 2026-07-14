@@ -12,8 +12,6 @@ export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row
   practitioner: { name: string; email: string } | null;
 };
 
-const CONSENT_FILTERS = ["All", "Awaiting consent", "Consent received", "Superseded"] as const;
-
 // V5-MATCH: the mockup's consent row actions are Mark received · Revert · Void only.
 // Copy link, PDF and Replace practitioner are gated off (re-enablable improvements).
 const SHOW_OFFSPEC_ACTIONS = false;
@@ -207,10 +205,6 @@ export function ConsentTable({
     <div>
       <PendingBar
         pendingCards={[{ count: pendingCount, label: "Awaiting consent", active: filter === "Awaiting consent", onToggle: () => setFilter(filter === "Awaiting consent" ? "All" : "Awaiting consent") }]}
-        statusOptions={CONSENT_FILTERS}
-        statusValue={filter}
-        onStatusChange={setFilter}
-        statusAriaLabel="Filter confirmations by status"
         dateFilter={df.control}
         dateLabel="Issued in:"
         standalone={!!beforeTable}

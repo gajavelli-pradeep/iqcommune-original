@@ -10,8 +10,6 @@ import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 
-const PAYOUT_FILTERS = ["All", "Pending", "Paid"] as const;
-
 // V5-MATCH: the mockup shows two pending cards (count + amount) and no summary
 // banner, no totals row, and inline Revert instead of Edit. The banner/totals/Edit
 // are gated off (re-enablable improvements) — see ADMIN-V5-SPECDIFF.md.
@@ -319,10 +317,6 @@ export function PayoutTable({
             onToggle: () => setFilter(filter === "Pending" ? "All" : "Pending"),
           },
         ]}
-        statusOptions={PAYOUT_FILTERS}
-        statusValue={filter}
-        onStatusChange={setFilter}
-        statusAriaLabel="Filter payouts by status"
         dateFilter={df.control}
         dateLabel="Session date:"
       />

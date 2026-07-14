@@ -196,10 +196,6 @@ export function SessionTable({
           active: statusFilter === "Upcoming",
           onToggle: () => setStatusFilter(statusFilter === "Upcoming" ? "All" : "Upcoming"),
         }]}
-        statusOptions={STATUS_FILTERS}
-        statusValue={statusFilter}
-        onStatusChange={(f) => setStatusFilter(f as StatusFilter)}
-        statusAriaLabel="Filter sessions by status"
         dateFilter={df.control}
         dateLabel="Session date:"
       />

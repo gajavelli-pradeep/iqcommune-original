@@ -272,13 +272,6 @@ export function PhotosTable({
             },
           },
         ]}
-        statusOptions={STATUS_FILTERS}
-        statusValue={statusFilter}
-        onStatusChange={(f) => {
-          setExpiringOnly(false);
-          setStatusFilter(f as StatusFilter);
-        }}
-        statusAriaLabel="Filter photos by status"
         dateFilter={df.control}
         dateLabel="Session date:"
       />

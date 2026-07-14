@@ -26,35 +26,9 @@ const STATUSES = [
   "Rejected",
 ] as const;
 
-// "All" + every pipeline status, plus Deactivated (set via the Danger Zone, not the
-// forward dropdown) so admins can filter to parked practitioners — the shared Filter bar.
-const FILTER_OPTIONS = ["All", ...STATUSES, "Deactivated"] as const;
-
 // V5-MATCH: the mockup's practitioner profile has no Payment-details block,
 // Feedback-breakdown, or "Edit details" button — gated off (re-enablable).
 const SHOW_OFFSPEC_ACTIONS = false;
-
-// V5 status-chip row styles (Practitioners tab). Mirrors the mockup's pill chips.
-const chipRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-  padding: "0 0 1rem",
-};
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: "5px 14px",
-    borderRadius: 100,
-    fontSize: 12,
-    fontWeight: 500,
-    border: active ? "1px solid var(--ink)" : "1px solid rgba(20,18,12,.18)",
-    cursor: "pointer",
-    background: active ? "var(--ink)" : "#fff",
-    color: active ? "#fff" : "var(--ink-soft)",
-    whiteSpace: "nowrap",
-    fontFamily: "inherit",
-  };
-}
 
 // V5 §3.3/§5 stage-gated Danger Zone: exactly one of Delete/Deactivate per stage.
 // Hard delete only before there's empanelment history; Deactivate (reversible) once
@@ -355,7 +329,8 @@ export function PractitionerTable({
 
   const df = useDateFilter(data.map((p) => p.created_at));
   // V5 pending = anyone not yet Empanelled or Rejected (a predicate, not one status).
-  // "__pending" is a sentinel filter value the card toggles; chips set a single status.
+  // "__pending" is a sentinel filter value the card toggles (All ↔ pending action).
+  // The exact-status branch stays reachable if a parent ever drives `filter` via prop.
   const isPending = (status: string) => status !== "Empanelled" && status !== "Rejected";
   const visible = (
     filter === "All" ? data
@@ -373,33 +348,9 @@ export function PractitionerTable({
           active: filter === "__pending",
           onToggle: () => setFilter(filter === "__pending" ? "All" : "__pending"),
         }]}
-        statusOptions={FILTER_OPTIONS}
-        statusValue={filter}
-        onStatusChange={setFilter}
-        // V5 chip casing — the filter values stay the DB enum, only the label changes.
-        statusLabels={{ "Screening Done": "Screening done", "Agreement Sent": "Agreement sent" }}
-        statusAriaLabel="Filter practitioners by status"
         dateFilter={df.control}
         dateLabel="Applied in:"
       />
-
-      {/* V5 status chip row — the mockup's only status filter (Practitioners tab). */}
-      <div style={chipRowStyle}>
-        {(["All", ...STATUSES] as const).map((s) => {
-          const active = filter === s;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setFilter(s)}
-              aria-pressed={active}
-              style={chipStyle(active)}
-            >
-              {s === "All" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Table */}
       <AdminTable

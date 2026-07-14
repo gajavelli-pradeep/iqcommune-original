@@ -7,10 +7,6 @@ import { useUndoToast } from "@/components/admin/useUndoToast";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 
-// DB stores agreements awaiting signature as "Pending signature" and signed
-// empanelment agreements as "Active" (schema CHECK constraint).
-const AGREEMENT_FILTERS = ["All", "Pending signature", "Active"] as const;
-
 // V5-MATCH: the mockup's only Agreements row action is Download. Edit/Delete are
 // global-admin improvements, gated off (not deleted) so the handlers stay wired
 // and re-enabling is one flag flip. See ADMIN-V5-SPECDIFF.md.
@@ -81,10 +77,6 @@ export function AgreementTable({
           active: filter === "Pending signature",
           onToggle: () => setFilter(filter === "Pending signature" ? "All" : "Pending signature"),
         }]}
-        statusOptions={AGREEMENT_FILTERS}
-        statusValue={filter}
-        onStatusChange={setFilter}
-        statusAriaLabel="Filter agreements by status"
         dateFilter={df.control}
         dateLabel="Signed in:"
       />

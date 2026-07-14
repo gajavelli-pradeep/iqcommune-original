@@ -9,8 +9,6 @@ import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 
-const REQUEST_FILTERS = ["All", "New", "Confirmed", "Cancelled"] as const;
-
 // V5-MATCH: the mockup's request actions are the status select, Assign, Draft
 // follow-up and Cancel. Edit request / Delete request are gated off (re-enablable).
 const SHOW_OFFSPEC_ACTIONS = false;
@@ -292,10 +290,6 @@ export function RequestTable({
           active: filter === "New",
           onToggle: () => setFilter(filter === "New" ? "All" : "New"),
         }]}
-        statusOptions={REQUEST_FILTERS}
-        statusValue={filter}
-        onStatusChange={setFilter}
-        statusAriaLabel="Filter requests by status"
         dateFilter={df.control}
         dateLabel="Received in:"
       />
