@@ -160,7 +160,16 @@ export function GallerySection() {
                 </div>
               )}
               {slide.bottomRight && (
-                <div style={{ position: "absolute", bottom: 10, right: 10, fontSize: 10, color: slide.url ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)", textShadow: slide.url ? "0 1px 3px rgba(0,0,0,0.6)" : undefined }}>
+                <div
+                  style={
+                    slide.url
+                      // Over a real photo: same translucent-dark pill as the top-left
+                      // caption, so the city stays legible over any background.
+                      ? { position: "absolute", bottom: 10, right: 10, background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.92)", lineHeight: 1.3 }
+                      // Over a placeholder (dark surface): keep it ghosted, no pill.
+                      : { position: "absolute", bottom: 10, right: 10, fontSize: 10, color: "rgba(255,255,255,0.2)" }
+                  }
+                >
                   {slide.bottomRight}
                 </div>
               )}

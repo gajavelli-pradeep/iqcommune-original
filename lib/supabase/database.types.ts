@@ -498,6 +498,7 @@ export interface Database {
           net_amount: number;
           tds_rate: number | null;
           payment_method: string | null;
+          pay_to: string | null;
           paid_at: string | null;
           status: string;
           created_at: string;
@@ -513,6 +514,7 @@ export interface Database {
           net_amount: number;
           tds_rate?: number | null;
           payment_method?: string | null;
+          pay_to?: string | null;
           paid_at?: string | null;
           status?: string;
           created_at?: string;
@@ -526,6 +528,7 @@ export interface Database {
           net_amount?: number;
           tds_rate?: number | null;
           payment_method?: string | null;
+          pay_to?: string | null;
           paid_at?: string | null;
           status?: string;
           updated_at?: string | null;
@@ -567,6 +570,8 @@ export interface Database {
           signer_ip: string | null;
           storage_path: string | null;
           status: string;
+          email_status: string;
+          email_last_attempt_at: string | null;
           issued_on: string;
           created_at: string;
           updated_at: string | null;
@@ -590,6 +595,8 @@ export interface Database {
           signer_ip?: string | null;
           storage_path?: string | null;
           status?: string;
+          email_status?: string;
+          email_last_attempt_at?: string | null;
           issued_on?: string;
           created_at?: string;
           updated_at?: string | null;
@@ -611,6 +618,8 @@ export interface Database {
           signer_ip?: string | null;
           storage_path?: string | null;
           status?: string;
+          email_status?: string;
+          email_last_attempt_at?: string | null;
           issued_on?: string;
           updated_at?: string | null;
           deleted_at?: string | null;

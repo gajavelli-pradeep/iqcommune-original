@@ -278,3 +278,99 @@ export function sessionConfirmationEmail(
 </div>`,
   };
 }
+
+// ── Internal admin notifications ─────────────────────────────────────────────
+// Sent to the ops inbox (not the applicant/client) when a new record lands, so
+// admins don't have to poll the console. row() escapes label + value.
+
+export function newApplicationAdminEmail({
+  name,
+  ref,
+  role,
+  experience,
+  city,
+  state,
+  modules,
+  email,
+  phone,
+  consoleUrl,
+}: {
+  name: string;
+  ref: string;
+  role: string;
+  experience: string;
+  city: string;
+  state: string;
+  modules: string[];
+  email: string;
+  phone: string;
+  consoleUrl: string;
+}): { subject: string; htmlContent: string } {
+  return {
+    subject: `iqcommune [admin] — New practitioner application: ${escSubject(name)} (${escSubject(ref)})`,
+    htmlContent: `<div style="${BASE}">
+<p>A new practitioner application was submitted.</p>
+<table style="border-collapse:collapse;width:100%;margin:1rem 0">
+  ${row("Applicant", name)}
+  ${row("Ref.", ref)}
+  ${row("Role", role)}
+  ${row("Experience", experience)}
+  ${row("Location", `${city}, ${state}`)}
+  ${row("Modules", modules.join(", "))}
+  ${row("Email", email)}
+  ${row("Phone", phone)}
+</table>
+<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(consoleUrl)}" style="${GOLD_BTN}">Review in console →</a>
+</div>
+<p style="font-size:12px;color:#9496a1">Automated notification — no reply needed.</p>
+</div>`,
+  };
+}
+
+export function newSessionRequestAdminEmail({
+  name,
+  topic,
+  audienceType,
+  groupSize,
+  orgName,
+  city,
+  state,
+  preferredDates,
+  email,
+  phone,
+  consoleUrl,
+}: {
+  name: string;
+  topic: string;
+  audienceType: string;
+  groupSize: string;
+  orgName?: string;
+  city: string;
+  state: string;
+  preferredDates: string;
+  email: string;
+  phone: string;
+  consoleUrl: string;
+}): { subject: string; htmlContent: string } {
+  return {
+    subject: `iqcommune [admin] — New session request: ${escSubject(topic)}`,
+    htmlContent: `<div style="${BASE}">
+<p>A new session request was submitted.</p>
+<table style="border-collapse:collapse;width:100%;margin:1rem 0">
+  ${row("Requester", name)}
+  ${row("Topic", topic)}
+  ${row("Audience", groupSize ? `${audienceType} · ${groupSize}` : audienceType)}
+  ${orgName ? row("Organisation", orgName) : ""}
+  ${row("Location", `${city}, ${state}`)}
+  ${row("Preferred dates", preferredDates)}
+  ${row("Email", email)}
+  ${row("Phone", phone)}
+</table>
+<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(consoleUrl)}" style="${GOLD_BTN}">Review in console →</a>
+</div>
+<p style="font-size:12px;color:#9496a1">Automated notification — no reply needed.</p>
+</div>`,
+  };
+}

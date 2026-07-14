@@ -255,7 +255,7 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
                   <div style={{ position: "absolute", top: 8, left: 8, maxWidth: "70%", background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "4px 8px", fontSize: 10.5, fontWeight: 500, color: "rgba(255,255,255,0.85)", lineHeight: 1.35 }}>{p.caption_top_left}</div>
                 )}
                 {p.caption_bottom_right && (
-                  <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 9.5, color: "rgba(255,255,255,0.75)", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{p.caption_bottom_right}</span>
+                  <span style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "2px 7px", fontSize: 9.5, fontWeight: 500, color: "rgba(255,255,255,0.92)" }}>{p.caption_bottom_right}</span>
                 )}
                 {!p.published && (
                   <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9.5, fontWeight: 600, color: "var(--ink)", background: "var(--amber-light)", border: "0.5px solid var(--amber)", borderRadius: 100, padding: "2px 8px" }}>Draft</span>

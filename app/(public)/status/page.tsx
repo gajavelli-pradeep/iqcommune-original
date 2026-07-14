@@ -4,6 +4,7 @@ import { PipelineStepper } from "@/components/shared/PipelineStepper";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import { SiteFooter } from "@/components/public/SiteFooter";
+import { getBaseUrl } from "@/lib/base-url";
 import Link from "next/link";
 
 interface Props {
@@ -29,12 +30,16 @@ export default async function StatusPage({ searchParams }: Props) {
         return data ?? null;
       })();
 
+  // Show the configured site host (.in / .com per NEXT_PUBLIC_BASE_URL) instead
+  // of a hardcoded TLD, so the label never contradicts the deployed domain.
+  const siteHost = new URL(getBaseUrl()).host;
+
   const right = (
     <Link
       href="/"
       style={{ fontSize: 13, color: "var(--ink-soft)", textDecoration: "none" }}
     >
-      ← iqcommune.in
+      ← {siteHost}
     </Link>
   );
 

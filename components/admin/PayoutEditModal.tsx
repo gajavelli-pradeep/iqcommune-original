@@ -11,13 +11,19 @@ export type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"] & {
 
 const STATUSES = ["Pending", "Paid"] as const;
 const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
+const METHOD_OPTIONS = [...PAYMENT_METHODS, "Other"] as const;
+const isPresetMethod = (m: string): boolean => (PAYMENT_METHODS as readonly string[]).includes(m);
 
 function fromRecord(p: PayoutRow) {
+  const pm = p.payment_method ?? "";
   return {
     invoiceRef:    p.invoice_ref ?? "",
     grossAmount:   p.gross_amount != null ? String(p.gross_amount) : "",
     tdsRate:       p.tds_rate != null ? String(p.tds_rate) : "",
-    paymentMethod: p.payment_method ?? "",
+    // Split the stored method into a preset choice + free-text "Other".
+    methodPreset:  pm === "" ? "" : isPresetMethod(pm) ? pm : "Other",
+    methodOther:   pm !== "" && !isPresetMethod(pm) ? pm : "",
+    payTo:         p.pay_to ?? "",
     status:        p.status ?? "Pending",
     paidAt:        p.paid_at ? p.paid_at.slice(0, 10) : "",
   };
@@ -55,11 +61,14 @@ export function PayoutEditModal({
     setSaving(true);
 
     const paidAtIso = isPaid && form.paidAt ? new Date(form.paidAt).toISOString() : null;
+    const method =
+      form.methodPreset === "Other" ? form.methodOther.trim() : form.methodPreset;
     const patch = {
-      invoice_ref:    form.invoiceRef,
+      invoice_ref:    form.invoiceRef.trim(),
       gross_amount:   gross,
       tds_rate:       tds > 0 ? tds : null,
-      payment_method: form.paymentMethod ? (form.paymentMethod as (typeof PAYMENT_METHODS)[number]) : null,
+      payment_method: method ? method : null,
+      pay_to:         form.payTo.trim() ? form.payTo.trim() : null,
       status:         form.status,
       paid_at:        paidAtIso,
     };
@@ -122,11 +131,21 @@ export function PayoutEditModal({
           </div>
         )}
         <Field label="Payment method">
-          <select id="pe-method" name="pe-method" style={fieldSelectStyle} value={form.paymentMethod} onChange={set("paymentMethod")}>
+          <select id="pe-method" name="pe-method" style={fieldSelectStyle} value={form.methodPreset} onChange={set("methodPreset")}>
             <option value="">— none —</option>
-            {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+            {METHOD_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </Field>
+        {form.methodPreset === "Other" && (
+          <Field label="Method (specify)">
+            <input id="pe-method-other" name="pe-method-other" style={fieldInputStyle} value={form.methodOther} onChange={set("methodOther")} placeholder="e.g. PayPal, Cash" />
+          </Field>
+        )}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <Field label="Pay to (payment destination)">
+            <input id="pe-pay-to" name="pe-pay-to" style={fieldInputStyle} value={form.payTo} onChange={set("payTo")} placeholder="UPI ID / bank account / payee — leave blank to use the practitioner default" />
+          </Field>
+        </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Paid on">
             <input id="pe-paid-at" name="pe-paid-at" type="date" style={{ ...fieldInputStyle, opacity: isPaid ? 1 : 0.5 }} disabled={!isPaid} value={form.paidAt} onChange={set("paidAt")} />

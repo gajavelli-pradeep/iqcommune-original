@@ -23,6 +23,7 @@ interface Payout {
   gross_amount: number;
   net_amount: number;
   payment_method: string | null;
+  pay_to: string | null;
   paid_at: string | null;
   status: string;
   tds_rate?: number | null;
@@ -35,7 +36,13 @@ interface Payout {
   } | null;
 }
 
+type EditableField = "pay_to" | "invoice_ref";
+type FieldPatch = { pay_to?: string | null; payment_method?: string | null; invoice_ref?: string };
+
 const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
+// Dropdown adds an "Other" escape → free-text method (client wants a manual field).
+const METHOD_OPTIONS = [...PAYMENT_METHODS, "Other"] as const;
+const isPresetMethod = (m: string): boolean => (PAYMENT_METHODS as readonly string[]).includes(m);
 
 const HEADERS = [
   "Practitioner",
@@ -58,6 +65,7 @@ function fmtSessionDate(d: string | null): string {
   });
 }
 
+// Derived payment destination from the practitioner record (the prefill / fallback).
 function payToDetail(p: Payout): string {
   if (p.practitioner?.upi_id) return p.practitioner.upi_id;
   if (p.practitioner?.bank_account && p.practitioner?.bank_name)
@@ -65,14 +73,15 @@ function payToDetail(p: Payout): string {
   return "";
 }
 
+// Effective "Pay to" destination: the manual override if set, else the derived value.
+function payToDisplay(p: Payout): string {
+  return p.pay_to ?? payToDetail(p);
+}
+
 function paidMethodLabel(p: Payout): string {
   const method = p.payment_method ?? "—";
-  const upi = p.practitioner?.upi_id;
-  const bank = p.practitioner?.bank_account;
-  const bankName = p.practitioner?.bank_name;
-  if (upi && (method === "UPI" || method === "IMPS")) return `${method} — ${upi}`;
-  if (bank) return `${method} — ${bankName ? `${bankName} ` : ""}···${bank.slice(-4)}`;
-  return method;
+  const dest = payToDisplay(p);
+  return dest ? `${method} — ${dest}` : method;
 }
 
 function fmtPaidAt(d: string | null): string {
@@ -87,12 +96,14 @@ function fmtPaidAt(d: string | null): string {
 export function PayoutTable({
   initialData,
   onRowChange,
+  onFieldSaved,
   isGlobalAdmin = false,
   readOnly = false,
   onEdit,
 }: {
   initialData: Payout[];
   onRowChange?: (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => void;
+  onFieldSaved?: (id: string, patch: FieldPatch) => void;
   isGlobalAdmin?: boolean;
   readOnly?: boolean;
   onEdit?: (id: string) => void;
@@ -104,7 +115,13 @@ export function PayoutTable({
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
   const undo = useUndoToast();
-  const [methodMap, setMethodMap] = useState<Record<string, string>>({});
+  // Inline-edit state for the manual fields. `methodSel` holds the dropdown choice
+  // (a preset or "Other"); `methodOther` holds the free-text when "Other"; `edits`
+  // buffers in-progress Pay-to / Invoice-ref text (keyed `${id}:${field}`). All are
+  // lazily sourced from the row's persisted value until the admin touches them.
+  const [methodSel, setMethodSel] = useState<Record<string, string>>({});
+  const [methodOther, setMethodOther] = useState<Record<string, string>>({});
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<{
     open: boolean;
     name?: string;
@@ -119,10 +136,71 @@ export function PayoutTable({
     .filter((p) => df.matchesDate(payoutDate(p)));
   const pendingCount = data.filter((p) => p.status === "Pending" && df.matchesDate(payoutDate(p))).length;
 
+  // ── Manual-field resolvers (source: local edit buffer → persisted value → default)
+  const editKey = (id: string, field: EditableField) => `${id}:${field}`;
+  const fieldValue = (p: Payout, field: EditableField): string => {
+    const k = editKey(p.id, field);
+    if (k in edits) return edits[k];
+    return field === "pay_to" ? payToDisplay(p) : p.invoice_ref;
+  };
+  const methodSelValue = (p: Payout): string => {
+    if (p.id in methodSel) return methodSel[p.id];
+    const pm = p.payment_method;
+    if (!pm) return "UPI";
+    return isPresetMethod(pm) ? pm : "Other";
+  };
+  const methodOtherValue = (p: Payout): string => {
+    if (p.id in methodOther) return methodOther[p.id];
+    const pm = p.payment_method;
+    return pm && !isPresetMethod(pm) ? pm : "";
+  };
+  const effectiveMethod = (p: Payout): string => {
+    const sel = methodSelValue(p);
+    return sel === "Other" ? methodOtherValue(p).trim() || "UPI" : sel;
+  };
+
+  // Persist a manual field on a Pending row. Optimistic: updates local state + parent
+  // on success; on failure the row re-sources from its unchanged persisted value.
+  const saveField = useCallback(
+    async (id: string, patch: FieldPatch): Promise<boolean> => {
+      const res = await fetch(`/api/admin/payouts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setToast(body.error ?? "Couldn't save — please try again.");
+        setTimeout(() => setToast(""), 4000);
+        return false;
+      }
+      setData((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+      onFieldSaved?.(id, patch);
+      return true;
+    },
+    [onFieldSaved]
+  );
+
+  // Commit a buffered Pay-to / Invoice-ref edit on blur; no-op if unchanged.
+  const commitText = async (p: Payout, field: EditableField) => {
+    const k = editKey(p.id, field);
+    if (!(k in edits)) return;
+    const next = edits[k].trim();
+    const base = field === "pay_to" ? payToDisplay(p) : p.invoice_ref;
+    const clearBuffer = () => setEdits((m) => { const rest = { ...m }; delete rest[k]; return rest; });
+    if (next === base) return clearBuffer();
+    if (field === "invoice_ref" && !next) {
+      setToast("Invoice reference can't be empty.");
+      setTimeout(() => setToast(""), 3000);
+      return clearBuffer(); // revert to the persisted ref
+    }
+    const patch: FieldPatch = field === "pay_to" ? { pay_to: next || null } : { invoice_ref: next };
+    await saveField(p.id, patch);
+    clearBuffer(); // success → data holds new value; failure → revert (toast already shown)
+  };
 
   const markPaid = useCallback(
-    async (id: string) => {
-      const payment_method = methodMap[id] || "UPI";
+    async (id: string, payment_method: string) => {
       const res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -166,7 +244,7 @@ export function PayoutTable({
         setTimeout(() => setToast(""), 5000);
       }
     },
-    [methodMap, onRowChange, isGlobalAdmin, undo]
+    [onRowChange, isGlobalAdmin, undo]
   );
 
   // V5: persistent Revert on Paid rows (Global-Admin ledger correction). Same
@@ -256,8 +334,10 @@ export function PayoutTable({
       >
         <>
           {visible.map((p) => {
-            const detail = payToDetail(p);
+            const detail = payToDisplay(p);
             const ini = initials(p.practitioner?.name ?? "?");
+            // Manual fields are editable while Pending; frozen once Paid / in read-only views.
+            const editable = p.status === "Pending" && !readOnly;
             return (
               <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
                 {/* Practitioner */}
@@ -298,50 +378,66 @@ export function PayoutTable({
                 <td style={TD}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
                 </td>
-                {/* Pay to */}
+                {/* Pay to — manual override of the payment destination */}
                 <td style={TD}>
                   <div style={{ fontSize: 13 }}>{p.practitioner?.name ?? "—"}</div>
-                  {detail && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontFamily: "monospace",
-                        color: "var(--ink-faint)",
-                        marginTop: 1,
-                      }}
-                    >
-                      {detail}
-                    </div>
+                  {editable ? (
+                    <input
+                      value={fieldValue(p, "pay_to")}
+                      onChange={(e) => setEdits((m) => ({ ...m, [editKey(p.id, "pay_to")]: e.target.value }))}
+                      onBlur={() => commitText(p, "pay_to")}
+                      placeholder="UPI / bank / payee"
+                      aria-label={`Pay to destination for ${p.invoice_ref}`}
+                      style={{ ...inlineInput, fontFamily: "monospace", marginTop: 2 }}
+                    />
+                  ) : (
+                    detail && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontFamily: "monospace",
+                          color: "var(--ink-faint)",
+                          marginTop: 1,
+                        }}
+                      >
+                        {detail}
+                      </div>
+                    )
                   )}
                 </td>
-                {/* Method */}
+                {/* Method — preset dropdown + "Other" free-text escape */}
                 <td style={TD}>
-                  {p.status === "Pending" && !readOnly ? (
+                  {editable ? (
                     <div>
                       <select
-                        value={methodMap[p.id] ?? "UPI"}
-                        onChange={(e) =>
-                          setMethodMap((m) => ({ ...m, [p.id]: e.target.value }))
-                        }
+                        value={methodSelValue(p)}
+                        onChange={(e) => {
+                          const sel = e.target.value;
+                          setMethodSel((m) => ({ ...m, [p.id]: sel }));
+                          // Persist immediately for a preset; for "Other" wait for the text.
+                          if (sel !== "Other") saveField(p.id, { payment_method: sel });
+                        }}
+                        aria-label={`Payment method for ${p.invoice_ref}`}
                         style={selectStyle}
                       >
-                        {PAYMENT_METHODS.map((m) => (
+                        {METHOD_OPTIONS.map((m) => (
                           <option key={m} value={m}>
                             {m}
                           </option>
                         ))}
                       </select>
-                      {detail && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontFamily: "monospace",
-                            color: "var(--ink-faint)",
-                            marginTop: 3,
+                      {methodSelValue(p) === "Other" && (
+                        <input
+                          value={methodOtherValue(p)}
+                          onChange={(e) => setMethodOther((m) => ({ ...m, [p.id]: e.target.value }))}
+                          onBlur={() => {
+                            const v = methodOtherValue(p).trim();
+                            if (v && v !== p.payment_method) saveField(p.id, { payment_method: v });
                           }}
-                        >
-                          {detail}
-                        </div>
+                          placeholder="Method"
+                          aria-label={`Custom payment method for ${p.invoice_ref}`}
+                          style={{ ...inlineInput, marginTop: 4 }}
+                        />
                       )}
                     </div>
                   ) : (
@@ -350,11 +446,21 @@ export function PayoutTable({
                     </span>
                   )}
                 </td>
-                {/* Invoice ref. */}
+                {/* Invoice ref. — auto-generated prefill, manually overridable */}
                 <td style={TD}>
-                  <span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {p.invoice_ref}
-                  </span>
+                  {editable ? (
+                    <input
+                      value={fieldValue(p, "invoice_ref")}
+                      onChange={(e) => setEdits((m) => ({ ...m, [editKey(p.id, "invoice_ref")]: e.target.value }))}
+                      onBlur={() => commitText(p, "invoice_ref")}
+                      aria-label="Invoice reference"
+                      style={{ ...inlineInput, fontFamily: "monospace", minWidth: 130 }}
+                    />
+                  ) : (
+                    <span style={{ fontFamily: "monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                      {p.invoice_ref}
+                    </span>
+                  )}
                 </td>
                 {/* Payment status */}
                 <td style={TD}>
@@ -386,7 +492,7 @@ export function PayoutTable({
                       ) : (
                       <>
                         <button
-                          onClick={() => markPaid(p.id)}
+                          onClick={() => markPaid(p.id, effectiveMethod(p))}
                           style={{
                             background: "#c9982a",
                             color: "#14161d",
@@ -530,4 +636,18 @@ const selectStyle: React.CSSProperties = {
   color: "#14161d",
   cursor: "pointer",
   fontFamily: "inherit",
+};
+
+// Inline text-edit affordance for manual Pending-row fields (Pay to / Invoice / Other method).
+const inlineInput: React.CSSProperties = {
+  fontSize: 12,
+  padding: "4px 8px",
+  borderRadius: 6,
+  border: "1px solid rgba(20,18,12,.18)",
+  background: "#fcfbf8",
+  color: "#14161d",
+  fontFamily: "inherit",
+  width: "100%",
+  maxWidth: 180,
+  boxSizing: "border-box",
 };

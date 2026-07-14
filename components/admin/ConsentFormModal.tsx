@@ -89,6 +89,10 @@ export function ConsentFormModal({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [generatedLink, setGeneratedLink] = useState("");
+  // Whether the consent email reached the practitioner ('sent'|'delivered'|'failed'
+  // |'bounced'|'no_email') — drives the post-generate guidance so we never falsely
+  // claim an email was sent.
+  const [emailStatus, setEmailStatus] = useState("");
   const [copied, setCopied] = useState(false);
   // Keyed by session id so a stale fetch (from a previously-picked session) is never
   // shown against the current one — the render derives from this + form.sessionId.
@@ -213,9 +217,10 @@ export function ConsentFormModal({
       return setError(body.error ?? "Could not generate confirmation.");
     }
     const { data } = (await res.json()) as {
-      data: { id: string; ref_code: string; consent_link: string; net: number };
+      data: { id: string; ref_code: string; consent_link: string; net: number; emailStatus?: string };
     };
     const nowIso = new Date().toISOString();
+    const emailState = data.emailStatus ?? "sent";
     onCreated({
       id: data.id,
       ref_code: data.ref_code,
@@ -234,6 +239,8 @@ export function ConsentFormModal({
       signer_ip: null,
       storage_path: null,
       status: "Awaiting consent",
+      email_status: emailState,
+      email_last_attempt_at: emailState === "no_email" ? null : nowIso,
       issued_on: nowIso,
       created_at: nowIso,
       updated_at: null,
@@ -243,6 +250,7 @@ export function ConsentFormModal({
         : null,
     });
     setGeneratedLink(data.consent_link);
+    setEmailStatus(emailState);
   }
 
   async function copyLink() {
@@ -260,6 +268,7 @@ export function ConsentFormModal({
     setForm(empty);
     setAutofill(null);
     setGeneratedLink("");
+    setEmailStatus("");
     setCopied(false);
   }
 
@@ -290,9 +299,19 @@ export function ConsentFormModal({
     <>
       {generatedLink ? (
         <div>
-          <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
-            Confirmation generated. An email was sent to the practitioner — you can also copy the consent link and send it yourself:
-          </div>
+          {emailStatus === "failed" || emailStatus === "bounced" ? (
+            <div style={{ fontSize: 13, color: "var(--amber)", background: "var(--amber-light)", border: "1px solid var(--amber-f)", borderRadius: 8, padding: "9px 11px", marginBottom: 10 }}>
+              Confirmation generated, but we <strong>couldn&apos;t email the practitioner</strong>. Copy the consent link below and send it to them directly (WhatsApp / email).
+            </div>
+          ) : emailStatus === "no_email" ? (
+            <div style={{ fontSize: 13, color: "var(--ink-muted)", background: "var(--surface-sunken)", borderRadius: 8, padding: "9px 11px", marginBottom: 10 }}>
+              Confirmation generated. <strong>No email is on file</strong> for this practitioner — copy the consent link below and send it manually.
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
+              Confirmation generated and the consent email was sent to the practitioner — you can also copy the consent link and send it yourself:
+            </div>
+          )}
           <div
             style={{
               display: "flex",

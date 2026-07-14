@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
 import { payoutPaid } from "@/lib/email/templates";
-import { guardEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 import { z } from "zod";
 
 const Body = z.object({
@@ -87,7 +87,8 @@ export async function PATCH(
         });
         await sendEmail({ to: practitioner.email as string, name: practitioner.name as string, subject, htmlContent });
       } catch (emailErr) {
-        log.error("Payout paid email failed", { error: String(emailErr), payoutId: id });
+        log.error("Payout paid email failed — revoking sentinel so it can retry", { error: String(emailErr), payoutId: id });
+        await revokeEmailSend("payout_paid", id);
       }
     }
   }

@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
 import { sessionCancelledEmail } from "@/lib/email/templates";
-import { guardEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +97,8 @@ export async function PATCH(
         });
         await sendEmail({ to: request.email as string, name: request.name as string, subject, htmlContent });
       } catch (emailErr) {
-        log.error("Session cancelled email failed", { error: String(emailErr), requestId: id });
+        log.error("Session cancelled email failed — revoking sentinel so it can retry", { error: String(emailErr), requestId: id });
+        await revokeEmailSend("session_cancelled", id);
       }
     }
   }

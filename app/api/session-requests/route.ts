@@ -5,8 +5,10 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
-import { clientFollowUpEmail } from "@/lib/email/templates";
-import { guardEmailSend } from "@/lib/email/idempotency";
+import { clientFollowUpEmail, newSessionRequestAdminEmail } from "@/lib/email/templates";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { notifyAdmin } from "@/lib/email/notify-admin";
+import { getBaseUrl } from "@/lib/base-url";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
@@ -81,9 +83,31 @@ export async function POST(req: NextRequest) {
       );
       await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
     } catch (emailErr) {
-      log.error("Session request confirmation email failed", { error: String(emailErr), requestId });
+      log.error("Session request confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), requestId });
+      await revokeEmailSend("session_request_received", requestId);
     }
   }
+
+  // Notify the internal team of the new request (best-effort, idempotent).
+  const adminMail = newSessionRequestAdminEmail({
+    name:           `${d.firstName} ${d.lastName ?? ""}`.trim(),
+    topic:          d.topic,
+    audienceType:   d.audienceType,
+    groupSize:      d.groupSize ?? "",
+    orgName:        d.orgName?.trim() || undefined,
+    city:           d.city,
+    state:          d.state,
+    preferredDates: d.preferredDates,
+    email:          d.email,
+    phone:          d.phone,
+    consoleUrl:     `${getBaseUrl(req)}/console`,
+  });
+  await notifyAdmin({
+    emailType:   "admin_new_session_request",
+    entityId:    requestId,
+    subject:     adminMail.subject,
+    htmlContent: adminMail.htmlContent,
+  });
 
   return NextResponse.json({ id: requestId }, { status: 201 });
 }

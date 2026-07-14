@@ -4,9 +4,7 @@ import { log } from "@/lib/logger";
 import { computeNet, generateConfirmationRef } from "@/lib/consent";
 import { signConsentUrl } from "@/lib/hmac";
 import { generateAndStoreConfirmationPdf } from "@/lib/pdf/generate-confirmation";
-import { sendEmail } from "@/lib/email/brevo";
-import { sessionConfirmationEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { deliverConfirmationEmail, type ConfirmationEmailOutcome } from "@/lib/email/deliver-confirmation-email";
 import { logActivity, type ActorRole } from "@/lib/admin-audit";
 import type { DurationOption } from "@/lib/schemas/consent";
 
@@ -46,7 +44,7 @@ export interface GenerateConfirmationInput {
 }
 
 export type GenerateConfirmationResult =
-  | { ok: true; id: string; ref_code: string; consent_link: string; net: number }
+  | { ok: true; id: string; ref_code: string; consent_link: string; net: number; emailStatus: ConfirmationEmailOutcome }
   | { ok: false; status: number; error: string };
 
 // The read-only fields the consent form auto-populates from the request + practitioner
@@ -304,25 +302,27 @@ export async function generateConfirmationForSession(
     log.error("Confirmation PDF generation failed — record exists, storage_path NULL", { error: String(pdfErr), refCode });
   }
 
-  // Email the signed consent link (best-effort, idempotent). Admin can also copy the link.
-  if (practitionerEmail) {
-    const alreadySent = await guardEmailSend("session_confirmation", created.id, practitionerEmail);
-    if (!alreadySent) {
-      try {
-        const { subject, htmlContent } = sessionConfirmationEmail(practitionerName, {
-          refCode: session.ref_code, module: session.module, date: dateDisplay,
-          startTime: startDisplay, endTime: endDisplay, venue: session.venue,
-          participants: session.participants,
-          grossAmount: gross, tdsAmount, netAmount: net, tdsRate,
-          consentUrl: consentLink,
-        });
-        await sendEmail({ to: practitionerEmail, name: practitionerName, subject, htmlContent });
-      } catch (emailErr) {
-        log.error("Session confirmation email failed — revoking sentinel", { error: String(emailErr), refCode });
-        await revokeEmailSend("session_confirmation", created.id);
-      }
-    }
-  }
+  // Email the signed consent link (best-effort, idempotent) and record the outcome so
+  // the console shows whether it reached the practitioner. Admin can also copy the link.
+  const emailStatus = await deliverConfirmationEmail({
+    confirmationId: created.id,
+    practitionerName,
+    practitionerEmail: practitionerEmail || null,
+    fields: {
+      refCode: session.ref_code, module: session.module, date: dateDisplay,
+      startTime: startDisplay, endTime: endDisplay, venue: session.venue,
+      participants: session.participants,
+      grossAmount: gross, tdsAmount, netAmount: net, tdsRate,
+      consentUrl: consentLink,
+    },
+  });
+  await supabase
+    .from("confirmations")
+    .update({
+      email_status: emailStatus,
+      email_last_attempt_at: emailStatus === "no_email" ? null : new Date().toISOString(),
+    })
+    .eq("id", created.id);
 
   if (actor) {
     await logActivity({
@@ -332,5 +332,5 @@ export async function generateConfirmationForSession(
     });
   }
 
-  return { ok: true, id: created.id, ref_code: refCode, consent_link: consentLink, net };
+  return { ok: true, id: created.id, ref_code: refCode, consent_link: consentLink, net, emailStatus };
 }

@@ -652,6 +652,10 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   const handlePayoutRowChange = (id: string, patch: { status: string; paid_at: string; payment_method: string | null }) => {
     setPayoutsData((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
+  // Inline manual-field edits (Pay to / Method / Invoice ref.) on a Pending row.
+  const handlePayoutFieldSaved = (id: string, patch: { pay_to?: string | null; payment_method?: string | null; invoice_ref?: string }) => {
+    setPayoutsData((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  };
 
   // ── Header actions: Export / + Add manually / + Create session ──
   function exportActiveTab() {
@@ -689,6 +693,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         { key: (p) => p.practitioner?.name ?? "", label: "Practitioner" },
         { key: (p) => p.session?.ref_code ?? "", label: "Session" },
         { key: "gross_amount", label: "Gross" }, { key: "net_amount", label: "Net" },
+        { key: (p) => p.pay_to ?? p.practitioner?.upi_id ?? p.practitioner?.bank_account ?? "", label: "Pay to" },
         { key: "payment_method", label: "Method" }, { key: "status", label: "Status" },
         { key: "paid_at", label: "Paid at" },
       ]));
@@ -908,7 +913,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               extraActions={[]}
             />
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
+              <PayoutTable initialData={payoutsData} onRowChange={handlePayoutRowChange} onFieldSaved={handlePayoutFieldSaved} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onEdit={isGlobalAdmin ? (id) => { const row = payoutsData.find((p) => p.id === id); if (row) setEditingPayout(row); } : undefined} />
             </div>
           </div>
         )}

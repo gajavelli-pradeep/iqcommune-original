@@ -60,6 +60,10 @@ export async function createPayoutForSession(
   const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
   const invoiceRef = `INV-${session.ref_code}-${ym}`;
 
+  // NOTE: `pay_to` is intentionally left NULL here. It is a *manual override* only —
+  // when NULL the console derives the destination from the practitioner's (decrypted)
+  // UPI / bank on display. Copying the encrypted upi_id in here would persist
+  // ciphertext, so prefill happens at the display layer, not at rest.
   // NOTE: net_amount already reflects the TDS deduction, so the TDS *rate* is not
   // persisted on the payout — the `payouts` table's remote schema doesn't expose a
   // `tds_rate` column (PostgREST schema-cache), and the rate is derivable from the

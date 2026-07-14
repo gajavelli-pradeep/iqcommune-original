@@ -5,6 +5,32 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-14] Consent-email delivery status (surface + resend + Brevo webhook) — CODE COMPLETE (migration pending)
+
+Closed the silent-failure gap where the consent (Brevo) email could bounce/fail and neither the
+admin nor the console showed it — the confirmation generated "successfully" and the modal always
+claimed "an email was sent." Plan: `../EMAIL-STATUS-PLAN.md`.
+
+- **Schema:** `0033_confirmation_email_status.sql` adds `email_status`
+  (`not_sent`|`no_email`|`sent`|`delivered`|`failed`|`bounced`) + `email_last_attempt_at` to
+  `confirmations` (additive, idempotent). Historical/seed rows stay `not_sent`.
+- **Send core:** `sendEmail` now returns Brevo's `messageId`; new `lib/email/deliver-confirmation-email.ts`
+  centralises send+record (writes `brevo_message_id` on the `sent_emails` sentinel; `force` bypasses
+  idempotency for resends; never throws). `consent-generate.ts` uses it and persists the outcome; the
+  reassignment flow inherits it for free.
+- **Feedback:** POST `/api/admin/consent` returns `emailStatus`; the generate modal now shows the true
+  state — amber "couldn't email, copy the link" on fail/bounce, "no email on file" when absent,
+  success only when actually sent.
+- **Recovery:** new `POST /api/admin/consent/[id]/resend-email` (force resend from snapshot); ConsentTable
+  shows an email badge under the status pill (awaiting rows) + a **Resend email** action on failed/bounced.
+- **True delivery:** new token-guarded `POST /api/webhooks/brevo` refines `sent`→`delivered`/`bounced`
+  from Brevo events (only touches rows still `sent`, so it can't relabel an explicit failure).
+- Verified: `tsc --noEmit` clean; `eslint` clean on all touched files (badges use `var()` tokens).
+  **Runtime drive pending deploy** — requires: (1) apply migration 0033, (2) set `BREVO_WEBHOOK_SECRET`,
+  (3) point Brevo transactional webhook to `/api/webhooks/brevo?token=…`.
+
+---
+
 ## [2026-07-14] Auto-create payout on session completion + schema-bug fix — SHIPPED
 
 Made the finance loop live: marking a session **Completed** now auto-creates its Pending payout

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { data: { id: result.id, ref_code: result.ref_code, consent_link: result.consent_link, net: result.net } },
+    { data: { id: result.id, ref_code: result.ref_code, consent_link: result.consent_link, net: result.net, emailStatus: result.emailStatus } },
     { status: 201 }
   );
 }

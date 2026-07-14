@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: "Join as a Practitioner",
     description:
       "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed.",
-    url: "https://iqcommune.com/practitioners",
+    url: "/practitioners",
     siteName: "iqcommune",
     type: "website",
   },

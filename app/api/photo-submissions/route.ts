@@ -7,7 +7,7 @@ import { log } from "@/lib/logger";
 import { verifyPhotoLinkParams } from "@/lib/hmac";
 import { sendEmail } from "@/lib/email/brevo";
 import { photoReceived } from "@/lib/email/templates";
-import { guardEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
 
 const MAX_PHOTOS         = 10;
 const MAX_FILE_BYTES     = 25 * 1024 * 1024; // 25 MB
@@ -191,7 +191,8 @@ export async function POST(req: NextRequest) {
         htmlContent,
       });
     } catch (emailErr) {
-      log.error("Photo received email failed", { error: String(emailErr), submissionId: submission.id });
+      log.error("Photo received email failed — revoking sentinel so it can retry", { error: String(emailErr), submissionId: submission.id });
+      await revokeEmailSend("photo_received", submission.id as string);
     }
   }
 

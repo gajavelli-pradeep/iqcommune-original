@@ -35,6 +35,29 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+// Consent-email delivery indicator, shown under the status pill on rows still
+// awaiting consent — the one place "did it reach the practitioner?" is actionable.
+// Amber = needs action (send failed/bounced → resend or send the link manually),
+// per the token rules (red is reserved for true errors). Returns null when there's
+// nothing worth surfacing (not attempted yet).
+const EMAIL_BADGES: Record<string, { label: string; bg: string; fg: string }> = {
+  sent:      { label: "Emailed",          bg: "var(--surface-sunken)", fg: "var(--ink-soft)" },
+  delivered: { label: "Delivered",        bg: "var(--green-light)",    fg: "var(--green)" },
+  failed:    { label: "Email failed",     bg: "var(--amber-light)",    fg: "var(--amber)" },
+  bounced:   { label: "Email bounced",    bg: "var(--amber-light)",    fg: "var(--amber)" },
+  no_email:  { label: "No email on file", bg: "var(--surface-sunken)", fg: "var(--ink-faint)" },
+};
+
+function EmailBadge({ status }: { status: string }) {
+  const b = EMAIL_BADGES[status];
+  if (!b) return null;
+  return (
+    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 100, background: b.bg, color: b.fg, whiteSpace: "nowrap" }}>
+      {b.label}
+    </span>
+  );
+}
+
 // A pill-shaped, status-tinted <select> — the Global-Admin override control.
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
@@ -97,6 +120,23 @@ export function ConsentTable({
       window.open(url, "_blank");
     } catch {
       setError("Network error — please try again.");
+    }
+  }
+
+  async function resendEmail(row: ConfirmationRow) {
+    setError("");
+    setBusy(row.id);
+    try {
+      const res = await fetch(`/api/admin/consent/${row.id}/resend-email`, { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; data?: { emailStatus?: string } };
+      // The route returns the resulting email_status on both success and a re-fail,
+      // so reflect it either way (badge flips to Emailed on success, stays amber on fail).
+      if (body.data?.emailStatus) onRowChange(row.id, { email_status: body.data.emailStatus });
+      if (!res.ok) setError(body.error ?? "Could not resend the email.");
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -212,7 +252,10 @@ export function ConsentTable({
                   <td style={{ ...td, textAlign: "right", color: "var(--ink-muted)" }}>{money(row.gross_amount)}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
                   <td style={td}>
-                    <StatusPill status={row.status} />
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      <StatusPill status={row.status} />
+                      {awaiting && <EmailBadge status={row.email_status} />}
+                    </div>
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
                     {/* V5: inline action buttons (Copy link · PDF · Mark received · Revert · Void). */}
@@ -225,6 +268,10 @@ export function ConsentTable({
                         // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
                         // received → Awaiting, Global) · Void (→ Superseded, Global).
                         ...(!readOnly && awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
+                        // Recovery when the Brevo send failed/bounced — resend the consent email.
+                        ...(!readOnly && awaiting && (row.email_status === "failed" || row.email_status === "bounced") && busy !== row.id
+                          ? [{ label: "Resend email", onClick: () => resendEmail(row) }]
+                          : []),
                         ...(editable && row.status === "Consent received" && busy !== row.id
                           ? [{ label: "Revert", onClick: () => overrideStatus(row, "Awaiting consent") }]
                           : []),

@@ -6,8 +6,9 @@ import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
 import { encryptOptional } from "@/lib/encrypt";
 import { sendEmail } from "@/lib/email/brevo";
-import { applicationConfirmation } from "@/lib/email/templates";
-import { guardEmailSend } from "@/lib/email/idempotency";
+import { applicationConfirmation, newApplicationAdminEmail } from "@/lib/email/templates";
+import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { notifyAdmin } from "@/lib/email/notify-admin";
 import { signStatusUrl } from "@/lib/hmac";
 import { getBaseUrl } from "@/lib/base-url";
 
@@ -113,9 +114,30 @@ export async function POST(req: NextRequest) {
         htmlContent,
       });
     } catch (emailErr) {
-      log.error("Application confirmation email failed", { error: String(emailErr), id });
+      log.error("Application confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), id });
+      await revokeEmailSend("application_received", id);
     }
   }
+
+  // Notify the internal team of the new application (best-effort, idempotent).
+  const adminMail = newApplicationAdminEmail({
+    name:       `${d.firstName} ${d.lastName}`,
+    ref:        ref_code,
+    role:       d.role,
+    experience: d.experience,
+    city:       d.city,
+    state:      d.state,
+    modules:    [...d.modules],
+    email:      d.email,
+    phone:      d.phone,
+    consoleUrl: `${getBaseUrl(req)}/console`,
+  });
+  await notifyAdmin({
+    emailType:   "admin_new_application",
+    entityId:    id,
+    subject:     adminMail.subject,
+    htmlContent: adminMail.htmlContent,
+  });
 
   return NextResponse.json({ id, refCode: ref_code }, { status: 201 });
 }

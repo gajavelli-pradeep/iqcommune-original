@@ -9,17 +9,19 @@ import type { Database } from "@/lib/supabase/database.types";
 export const dynamic = "force-dynamic";
 
 const PAYOUT_STATUSES = ["Pending", "Paid"] as const;
-const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
 
 // Partial edit of a payout. net_amount is derived (never client-trusted) — the
 // route recomputes it from the effective gross + TDS rate so the ledger stays
 // internally consistent. The session/practitioner linkage is immutable here.
+// pay_to / payment_method are manual free-text fields (a dropdown default plus an
+// "Other" escape), so both are bounded strings, not enums.
 const EditPayoutSchema = z
   .object({
-    invoice_ref:    z.string().min(1),
+    invoice_ref:    z.string().trim().min(1).max(60),
     gross_amount:   z.number().int().min(1),
     tds_rate:       z.number().min(0).max(100).nullable(),
-    payment_method: z.enum(PAYMENT_METHODS).nullable(),
+    payment_method: z.string().trim().min(1).max(40).nullable(),
+    pay_to:         z.string().trim().min(1).max(120).nullable(),
     status:         z.enum(PAYOUT_STATUSES),
     paid_at:        z.string().nullable(),
   })

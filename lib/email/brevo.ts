@@ -5,16 +5,19 @@ interface EmailParams {
   htmlContent: string;
 }
 
-export async function sendEmail(params: EmailParams): Promise<void> {
+// Resolves with Brevo's `messageId` for the accepted message (used to map delivery
+// webhook events back to the record). Null if Brevo's 2xx body omits it.
+export async function sendEmail(params: EmailParams): Promise<{ messageId: string | null }> {
   // Validate at send time, not module load — a top-level throw crashes
   // `next build` page-data collection (build env has no BREVO_API_KEY).
-  if (!process.env.BREVO_API_KEY && process.env.NODE_ENV !== "test") {
-    throw new Error("BREVO_API_KEY environment variable is not set");
+  if (process.env.NODE_ENV !== "test") {
+    if (!process.env.BREVO_API_KEY) throw new Error("BREVO_API_KEY environment variable is not set");
+    if (!process.env.BREVO_SENDER_EMAIL) throw new Error("BREVO_SENDER_EMAIL environment variable is not set");
   }
-  await attempt(params, 2);
+  return attempt(params, 2);
 }
 
-async function attempt(params: EmailParams, retriesLeft: number): Promise<void> {
+async function attempt(params: EmailParams, retriesLeft: number): Promise<{ messageId: string | null }> {
   const { to, name, subject, htmlContent } = params;
 
   let res: Response;
@@ -55,6 +58,12 @@ async function attempt(params: EmailParams, retriesLeft: number): Promise<void> 
     }
     throw new Error(`Brevo send failed: ${res.status} ${text}`);
   }
+
+  const body = (await res.json().catch(() => null)) as { messageId?: string } | null;
+  // Brevo returns the id wrapped in angle brackets on send (<id@relay>) but the
+  // delivery webhook sends it bare — strip brackets so the two always match.
+  const raw = typeof body?.messageId === "string" ? body.messageId : null;
+  return { messageId: raw ? raw.replace(/^<|>$/g, "") : null };
 }
 
 function delay(ms: number): Promise<void> {

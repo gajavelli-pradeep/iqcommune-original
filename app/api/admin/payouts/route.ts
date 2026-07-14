@@ -71,8 +71,13 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
+    // 23505 = unique_violation on the invoice_ref index — surface a friendly 409.
+    const isDup = (error as { code?: string }).code === "23505";
     log.error("Payout POST failed", { error: error.message });
-    return NextResponse.json({ error: "Failed to create payout" }, { status: 500 });
+    return NextResponse.json(
+      { error: isDup ? "That invoice reference is already in use." : "Failed to create payout" },
+      { status: isDup ? 409 : 500 }
+    );
   }
   return NextResponse.json({ data }, { status: 201 });
 }
