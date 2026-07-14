@@ -388,7 +388,10 @@ export function PayoutTable({
                       onBlur={() => commitText(p, "pay_to")}
                       placeholder="UPI / bank / payee"
                       aria-label={`Pay to destination for ${p.invoice_ref}`}
-                      style={{ ...inlineInput, fontFamily: "monospace", marginTop: 2 }}
+                      // Floor the width so the column can't collapse (UPI IDs / bank
+                      // strings are long); the table scrolls horizontally, so a wider
+                      // cell is safe. Overrides inlineInput's 180px cap.
+                      style={{ ...inlineInput, fontFamily: "monospace", marginTop: 2, minWidth: 200, maxWidth: 300 }}
                     />
                   ) : (
                     detail && (

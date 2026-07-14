@@ -50,6 +50,10 @@ export default function Error({
         >
           Try again
         </button>
+        {/* Intentional full-document navigation (not <Link>): a hard reload
+            guarantees a clean slate, clearing any client state corrupted by the
+            error that a soft client-side navigation would carry to the homepage. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a
           href="/"
           style={{

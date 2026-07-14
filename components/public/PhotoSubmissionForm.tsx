@@ -18,7 +18,7 @@ export function PhotoSubmissionForm() {
   const params     = useSearchParams();
   const ref        = params.get("ref")     ?? "";
   const session    = params.get("session") ?? "";
-  const module     = params.get("module")  ?? "";
+  const sessionModule = params.get("module")  ?? "";
   const date       = params.get("date")    ?? "";
   const city       = params.get("city")    ?? "";
   const state      = params.get("state")   ?? "";
@@ -80,13 +80,13 @@ export function PhotoSubmissionForm() {
     const fd = new FormData();
     fd.append("ref",        ref);
     fd.append("sessionId",  session);
-    fd.append("module",     module);
+    fd.append("module",     sessionModule);
     fd.append("city",       city);
     fd.append("state",      state);
     if (org) fd.append("org", org);
     fd.append("participantConsent", "true");
     fd.append("linkSig",   sig);
-    fd.append("linkParams", JSON.stringify({ ref, session, module, date, city, state, name, role, org: org || undefined }));
+    fd.append("linkParams", JSON.stringify({ ref, session, module: sessionModule, date, city, state, name, role, org: org || undefined }));
     for (const f of files) fd.append("photos", f);
 
     try {
@@ -165,7 +165,7 @@ export function PhotoSubmissionForm() {
           >
             <ReceiptRow label="Submitted by"      value={name} />
             <ReceiptRow label="Practitioner ref."  value={`IQC-EMP-${ref}`} mono />
-            <ReceiptRow label="Session"            value={[session, module, city].filter(Boolean).join(" · ")} />
+            <ReceiptRow label="Session"            value={[session, sessionModule, city].filter(Boolean).join(" · ")} />
             <ReceiptRow label="Submitted at"       value={success.submittedAt} green />
             {success.expiryDate && (
               <ReceiptRow label="Storage expiry"   value={new Date(success.expiryDate).toLocaleDateString("en-IN")} />
@@ -272,7 +272,7 @@ export function PhotoSubmissionForm() {
         }}
       >
         <SessionField label="Session date" value={formattedDate} />
-        <SessionField label="Module"       value={module} />
+        <SessionField label="Module"       value={sessionModule} />
         <SessionField label="City"         value={city} sub={state} />
         <SessionField label="Session ID"   value={session} mono />
       </div>
@@ -315,7 +315,7 @@ export function PhotoSubmissionForm() {
                 key={i}
                 style={{
                   background: checked ? "#e9f5e9" : "var(--surface-soft)",
-                  border: checked ? "1.5px solid #b8d98a" : "1.5px solid rgba(20,18,12,0.12)",
+                  border: checked ? "1.5px solid var(--green-border)" : "1.5px solid rgba(20,18,12,0.12)",
                   borderRadius: 8,
                   padding: "9px 12px",
                   cursor: "pointer",

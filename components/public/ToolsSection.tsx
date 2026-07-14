@@ -777,7 +777,7 @@ export function ToolsSection() {
               fontWeight: 600,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "#f0c84a",
+              color: "var(--gold-on-ink)",
               background: "rgba(201,152,42,0.15)",
               border: "1px solid rgba(201,152,42,0.3)",
               padding: "5px 14px",
