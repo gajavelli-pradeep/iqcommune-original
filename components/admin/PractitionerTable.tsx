@@ -187,18 +187,39 @@ export function PractitionerTable({
     setData((prev) => prev.filter((pr) => pr.id !== p.id));
     onHardDeleted?.(p.id);
     setExpandedRow(null);
-    const res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
+    let res: Response;
+    try {
+      res = await fetch(`/api/admin/global/practitioners/${p.id}`, { method: "DELETE" });
+    } catch {
+      // The row was already removed optimistically, so a throw here would leave the
+      // console showing a deletion that never reached the database.
+      setData((prev) => [p, ...prev]);
+      showToast("Network error — nothing was deleted. Please try again.");
+      return;
+    }
     if (!res.ok) {
       setData((prev) => [p, ...prev]);
       showToast("Delete failed — please try again.");
       return;
     }
     undo.show(`${p.name} deleted`, async () => {
-      await fetch("/api/admin/global/trash", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table: "practitioners", id: p.id }),
-      });
+      // Restoring the row locally regardless of the outcome would claim an undo that
+      // didn't happen — the practitioner would reappear here and stay deleted in the DB.
+      let restore: Response;
+      try {
+        restore = await fetch("/api/admin/global/trash", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ table: "practitioners", id: p.id }),
+        });
+      } catch {
+        showToast("Network error — could not undo. Restore from Trash instead.");
+        return;
+      }
+      if (!restore.ok) {
+        showToast("Could not undo — restore from Trash instead.");
+        return;
+      }
       setData((prev) => [p, ...prev]);
     });
   }
@@ -249,11 +270,17 @@ export function PractitionerTable({
 
   const updateStatus = useCallback(
     async (id: string, status: string): Promise<boolean> => {
-      const res = await fetch(`/api/admin/practitioners/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`/api/admin/practitioners/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+      } catch {
+        showToast("Network error — status not updated. Please retry.");
+        return false;
+      }
       if (res.ok) {
         // Mirror the server's prev_status bookkeeping (P1-3) so a Revert affordance
         // appears immediately after a one-way Empanel/Reject, without a refetch.
@@ -278,11 +305,17 @@ export function PractitionerTable({
   // V5 P1-3: reversible Danger Zone actions (deactivate / reactivate / revert).
   const lifecycle = useCallback(
     async (id: string, action: "deactivate" | "reactivate" | "revert") => {
-      const res = await fetch(`/api/admin/practitioners/${id}/lifecycle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`/api/admin/practitioners/${id}/lifecycle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+      } catch {
+        showToast("Network error — the action didn't run. Please retry.");
+        return;
+      }
       if (res.ok) {
         const { status } = (await res.json()) as { status: string };
         setData((prev) =>
@@ -309,11 +342,17 @@ export function PractitionerTable({
 
   const generateLink = useCallback(
     async (p: Practitioner) => {
-      const res = await fetch("/api/admin/onboarding-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ practitionerId: p.id }),
-      });
+      let res: Response;
+      try {
+        res = await fetch("/api/admin/onboarding-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ practitionerId: p.id }),
+        });
+      } catch {
+        showToast("Network error — the link wasn't generated. Please retry.");
+        return;
+      }
       if (res.ok) {
         const body = await res.json();
         setGenLink({ ...body, practitioner: p });

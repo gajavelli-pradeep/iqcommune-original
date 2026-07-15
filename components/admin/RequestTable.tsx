@@ -158,18 +158,22 @@ export function RequestTable({
   }
 
   async function updateStatus(id: string, status: string) {
-    const res = await fetch(`/api/admin/session-requests?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-      onRowChange?.(id, { status });
-      showToast("Status updated");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Update failed: ${error ?? res.status}`);
+    try {
+      const res = await fetch(`/api/admin/session-requests?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setData((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+        onRowChange?.(id, { status });
+        showToast("Status updated");
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Update failed: ${error ?? res.status}`);
+      }
+    } catch {
+      showToast("Network error — status not updated. Please retry.");
     }
   }
 
@@ -179,15 +183,22 @@ export function RequestTable({
   // session to Cancelled and emails the client — so it needs a confirm step.
   async function cancelRequest(r: SessionRequest) {
     setCancelBusyId(r.id);
-    const res = await fetch(`/api/admin/session-requests/${r.id}/cancel`, { method: "PATCH" });
-    setCancelBusyId(null);
-    if (res.ok) {
-      setData((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: "Cancelled" } : x)));
-      onRowChange?.(r.id, { status: "Cancelled" });
-      showToast("Session cancelled — client notified");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Cancel failed: ${error ?? res.status}`);
+    try {
+      const res = await fetch(`/api/admin/session-requests/${r.id}/cancel`, { method: "PATCH" });
+      if (res.ok) {
+        setData((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: "Cancelled" } : x)));
+        onRowChange?.(r.id, { status: "Cancelled" });
+        showToast("Session cancelled — client notified");
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Cancel failed: ${error ?? res.status}`);
+      }
+    } catch {
+      showToast("Network error — the session was not cancelled. Please retry.");
+    } finally {
+      // In `finally`, not after the fetch: a network throw used to skip this and
+      // leave the row's Cancel button disabled until a full page reload.
+      setCancelBusyId(null);
     }
   }
 
@@ -199,19 +210,24 @@ export function RequestTable({
 
   async function correctRequestField(id: string, body: Record<string, unknown>, patch: Partial<SessionRequest>) {
     setFieldSaving(true);
-    const res = await fetch(`/api/admin/global/requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setFieldSaving(false);
-    if (res.ok) {
-      setData((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-      setEditingKey(null);
-      showToast("Correction saved to the request record");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Save failed: ${error ?? res.status}`);
+    try {
+      const res = await fetch(`/api/admin/global/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setData((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+        setEditingKey(null);
+        showToast("Correction saved to the request record");
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Save failed: ${error ?? res.status}`);
+      }
+    } catch {
+      showToast("Network error — the correction was not saved. Please retry.");
+    } finally {
+      setFieldSaving(false);
     }
   }
 
@@ -232,40 +248,53 @@ export function RequestTable({
     if (!Number.isFinite(payout) || payout < 0) { showToast("Enter a valid payout amount"); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(assignDate)) { showToast("Pick a session date"); return; }
     setAssignBusy(true);
-    const res = await fetch(`/api/admin/session-requests/${assignFor.requestId}/assign`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        practitionerId: assignFor.practitionerId,
-        payoutAmount: payout,
-        sessionDate: assignDate,
-        venue: assignFor.venue.trim() || undefined,
-      }),
-    });
-    setAssignBusy(false);
-    if (res.ok) {
-      const { sessionRef } = (await res.json().catch(() => ({}))) as { sessionRef?: string };
-      const { requestId, practitionerId, practitionerName } = assignFor;
-      setData((prev) => prev.map((r) => r.id === requestId
-        ? { ...r, status: "Confirmed", assigned_to: practitionerId, assigned_practitioner: { name: practitionerName } }
-        : r));
-      if (sessionRef) setSessionRefById((m) => ({ ...m, [requestId]: sessionRef }));
-      onRowChange?.(requestId, { status: "Confirmed", assigned_to: practitionerId });
-      setAssignFor(null); setAssignPayout(""); setAssignDate("");
-      // V5 instant-undo: ~9s to reverse a fresh assignment — soft-deletes the
-      // just-created session and resets the request to New, with no client email.
-      undo.show(`Confirmed — session ${sessionRef ?? ""} created`, async () => {
-        const rev = await fetch(`/api/admin/session-requests/${requestId}/unassign`, { method: "POST" });
-        if (!rev.ok) { showToast("Could not undo — cancel the session instead."); return; }
-        setData((prev) => prev.map((r) => r.id === requestId
-          ? { ...r, status: "New", assigned_to: null, assigned_practitioner: null }
-          : r));
-        setSessionRefById((m) => { const n = { ...m }; delete n[requestId]; return n; });
-        onRowChange?.(requestId, { status: "New", assigned_to: null });
+    try {
+      const res = await fetch(`/api/admin/session-requests/${assignFor.requestId}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          practitionerId: assignFor.practitionerId,
+          payoutAmount: payout,
+          sessionDate: assignDate,
+          venue: assignFor.venue.trim() || undefined,
+        }),
       });
-    } else {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      showToast(`Assign failed: ${error ?? res.status}`);
+      if (res.ok) {
+        const { sessionRef } = (await res.json().catch(() => ({}))) as { sessionRef?: string };
+        const { requestId, practitionerId, practitionerName } = assignFor;
+        setData((prev) => prev.map((r) => r.id === requestId
+          ? { ...r, status: "Confirmed", assigned_to: practitionerId, assigned_practitioner: { name: practitionerName } }
+          : r));
+        if (sessionRef) setSessionRefById((m) => ({ ...m, [requestId]: sessionRef }));
+        onRowChange?.(requestId, { status: "Confirmed", assigned_to: practitionerId });
+        setAssignFor(null); setAssignPayout(""); setAssignDate("");
+        // V5 instant-undo: ~9s to reverse a fresh assignment — soft-deletes the
+        // just-created session and resets the request to New, with no client email.
+        undo.show(`Confirmed — session ${sessionRef ?? ""} created`, async () => {
+          let rev: Response;
+          try {
+            rev = await fetch(`/api/admin/session-requests/${requestId}/unassign`, { method: "POST" });
+          } catch {
+            showToast("Network error — could not undo. Cancel the session instead.");
+            return;
+          }
+          if (!rev.ok) { showToast("Could not undo — cancel the session instead."); return; }
+          setData((prev) => prev.map((r) => r.id === requestId
+            ? { ...r, status: "New", assigned_to: null, assigned_practitioner: null }
+            : r));
+          setSessionRefById((m) => { const n = { ...m }; delete n[requestId]; return n; });
+          onRowChange?.(requestId, { status: "New", assigned_to: null });
+        });
+      } else {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        showToast(`Assign failed: ${error ?? res.status}`);
+      }
+    } catch {
+      showToast("Network error — the session was not assigned. Please retry.");
+    } finally {
+      // In `finally`: a network throw used to strand the dialog on "Assigning…"
+      // with no error and no way out short of a reload.
+      setAssignBusy(false);
     }
   };
 

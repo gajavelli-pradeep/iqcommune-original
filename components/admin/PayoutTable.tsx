@@ -161,11 +161,20 @@ export function PayoutTable({
   // on success; on failure the row re-sources from its unchanged persisted value.
   const saveField = useCallback(
     async (id: string, patch: FieldPatch): Promise<boolean> => {
-      const res = await fetch(`/api/admin/payouts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`/api/admin/payouts/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+      } catch {
+        // Without this the throw escapes to commitText's caller, the edit buffer is
+        // never cleared, and the cell silently keeps a value that was never saved.
+        setToast("Network error — the change wasn't saved. Please try again.");
+        setTimeout(() => setToast(""), 4000);
+        return false;
+      }
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         setToast(body.error ?? "Couldn't save — please try again.");
@@ -199,11 +208,20 @@ export function PayoutTable({
 
   const markPaid = useCallback(
     async (id: string, payment_method: string) => {
-      const res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paidOn: new Date().toISOString(), payment_method }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`/api/admin/payouts/${id}/mark-paid`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paidOn: new Date().toISOString(), payment_method }),
+        });
+      } catch {
+        // No busy guard on this button, so an unhandled throw produced literally no
+        // feedback — the click just looked ignored.
+        setToast("Network error — the payout was not marked paid. Please try again.");
+        setTimeout(() => setToast(""), 5000);
+        return;
+      }
       if (res.ok) {
         const paid_at = new Date().toISOString();
         setData((prev) =>
@@ -215,11 +233,18 @@ export function PayoutTable({
         // global admins — a plain admin's undo would 403. Others get a plain toast.
         if (isGlobalAdmin) {
           undo.show("Payout marked as paid", async () => {
-            const revert = await fetch(`/api/admin/global/payouts/${id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
-            });
+            let revert: Response;
+            try {
+              revert = await fetch(`/api/admin/global/payouts/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
+              });
+            } catch {
+              setToast("Network error — could not undo. The payout is still marked paid.");
+              setTimeout(() => setToast(""), 4000);
+              return;
+            }
             if (!revert.ok) {
               setToast("Could not undo — the payout is still marked paid.");
               setTimeout(() => setToast(""), 4000);
@@ -249,11 +274,18 @@ export function PayoutTable({
   // endpoint the post-mark-paid Undo uses, exposed as a standing button too.
   const revertPayout = useCallback(
     async (id: string) => {
-      const revert = await fetch(`/api/admin/global/payouts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
-      });
+      let revert: Response;
+      try {
+        revert = await fetch(`/api/admin/global/payouts/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
+        });
+      } catch {
+        setToast("Network error — the payout was not reverted. Please try again.");
+        setTimeout(() => setToast(""), 4000);
+        return;
+      }
       if (!revert.ok) {
         setToast("Could not revert — the payout is still marked paid.");
         setTimeout(() => setToast(""), 4000);
