@@ -1,7 +1,6 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/brevo";
 import { sessionConfirmationEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 import { log } from "@/lib/logger";
 
 // One email type keyed per confirmation id — matches the reference used by the
@@ -46,8 +45,6 @@ export async function deliverConfirmationEmail(args: {
   const { confirmationId, practitionerName, practitionerEmail, fields, force } = args;
   if (!practitionerEmail) return "no_email";
 
-  const supabase = createAdminClient();
-
   // Resend forces a fresh attempt — clear any prior sentinel so guardEmailSend re-inserts.
   if (force) await revokeEmailSend(EMAIL_TYPE, confirmationId);
 
@@ -57,13 +54,7 @@ export async function deliverConfirmationEmail(args: {
   try {
     const { subject, htmlContent } = sessionConfirmationEmail(practitionerName, fields);
     const { messageId } = await sendEmail({ to: practitionerEmail, name: practitionerName, subject, htmlContent });
-    if (messageId) {
-      await supabase
-        .from("sent_emails")
-        .update({ brevo_message_id: messageId, status: "sent" })
-        .eq("entity_id", confirmationId)
-        .eq("email_type", EMAIL_TYPE);
-    }
+    await recordEmailMessageId(EMAIL_TYPE, confirmationId, messageId);
     return "sent";
   } catch (err) {
     log.error("Confirmation email send failed", { error: String(err), confirmationId, refCode: fields.refCode });

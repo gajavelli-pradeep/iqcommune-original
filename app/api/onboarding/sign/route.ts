@@ -8,7 +8,7 @@ import { log } from "@/lib/logger";
 import { generateAndStoreAgreementPdf } from "@/lib/pdf/generate-agreement";
 import { sendEmail } from "@/lib/email/brevo";
 import { agreementConfirmed } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 
 // Drawn signatures are base64-encoded PNG — cap at ~600 KB to block
 // oversized uploads before they hit validation or DB storage.
@@ -149,7 +149,8 @@ export async function POST(req: NextRequest) {
   if (!alreadySent) {
     try {
       const { subject, htmlContent } = agreementConfirmed({ name: fullName, ref: linkParams.ref });
-      await sendEmail({ to: linkParams.email, name: fullName, subject, htmlContent });
+      const { messageId } = await sendEmail({ to: linkParams.email, name: fullName, subject, htmlContent });
+      await recordEmailMessageId("agreement_signed", agreementId, messageId);
     } catch (emailErr) {
       log.error("Agreement confirmation email failed — revoking sentinel for retry", {
         error: String(emailErr),

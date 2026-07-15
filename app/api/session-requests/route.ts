@@ -6,7 +6,7 @@ import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
 import { clientFollowUpEmail, newSessionRequestAdminEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 import { notifyAdmin } from "@/lib/email/notify-admin";
 import { getBaseUrl } from "@/lib/base-url";
 
@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
           preferredDates: d.preferredDates ?? "Flexible",
         }
       );
-      await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
+      const { messageId } = await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
+      await recordEmailMessageId("session_request_received", requestId, messageId);
     } catch (emailErr) {
       log.error("Session request confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), requestId });
       await revokeEmailSend("session_request_received", requestId);

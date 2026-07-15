@@ -7,7 +7,7 @@ import { log } from "@/lib/logger";
 import { encryptOptional } from "@/lib/encrypt";
 import { sendEmail } from "@/lib/email/brevo";
 import { applicationConfirmation, newApplicationAdminEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 import { notifyAdmin } from "@/lib/email/notify-admin";
 import { signStatusUrl } from "@/lib/hmac";
 import { getBaseUrl } from "@/lib/base-url";
@@ -107,12 +107,13 @@ export async function POST(req: NextRequest) {
         modules:   [...d.modules],
         statusUrl: signStatusUrl(ref_code, getBaseUrl(req)),
       });
-      await sendEmail({
+      const { messageId } = await sendEmail({
         to:          d.email,
         name:        `${d.firstName} ${d.lastName}`,
         subject,
         htmlContent,
       });
+      await recordEmailMessageId("application_received", id, messageId);
     } catch (emailErr) {
       log.error("Application confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), id });
       await revokeEmailSend("application_received", id);

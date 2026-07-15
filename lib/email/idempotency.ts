@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/logger";
 
 /**
  * Returns true if this email was already sent (duplicate — skip it).
@@ -33,15 +34,48 @@ export async function guardEmailSend(
   // Any other DB error — log but allow send (fail-open is safer than
   // silently suppressing the email on a transient DB error)
   if (error) {
-    console.error("[guardEmailSend] unexpected error — allowing send", {
+    log.error("guardEmailSend: unexpected DB error — allowing send", {
       code:      error.code,
-      message:   error.message,
+      error:     error.message,
       emailType,
       entityId,
     });
   }
 
   return false;
+}
+
+/**
+ * Record Brevo's messageId on the sentinel so the delivery webhook can map a later
+ * delivered/bounced event back to this entity.
+ *
+ * Skipping this doesn't fail the send — it quietly forfeits ever learning the truth
+ * about it. The webhook matches on `brevo_message_id`, so a row without one keeps its
+ * default 'sent' status forever, no matter what Brevo does with the message.
+ * Best-effort by design: the email is already away, so a failure here is logged, not
+ * thrown back at a caller who can't act on it.
+ */
+export async function recordEmailMessageId(
+  emailType: string,
+  entityId: string,
+  messageId: string | null
+): Promise<void> {
+  if (!messageId) return;
+
+  const { error } = await createAdminClient()
+    .from("sent_emails")
+    .update({ brevo_message_id: messageId })
+    .eq("entity_id", entityId)
+    .eq("email_type", emailType);
+
+  if (error) {
+    log.error("Failed to record Brevo messageId — delivery events can't be mapped back", {
+      code: error.code,
+      error: error.message,
+      emailType,
+      entityId,
+    });
+  }
 }
 
 /**
@@ -64,10 +98,11 @@ export async function revokeEmailSend(
     .eq("idempotency_key", idempotencyKey);
 
   if (error) {
-    console.error("[revokeEmailSend] failed to remove sentinel — retries blocked", {
+    log.error("revokeEmailSend: failed to remove sentinel — retries blocked", {
       code: error.code,
-      message: error.message,
+      error: error.message,
       emailType,
+      entityId,
     });
   }
 }

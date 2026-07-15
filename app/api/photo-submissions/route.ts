@@ -7,7 +7,7 @@ import { log } from "@/lib/logger";
 import { verifyPhotoLinkParams } from "@/lib/hmac";
 import { sendEmail } from "@/lib/email/brevo";
 import { photoReceived } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 
 const MAX_PHOTOS         = 10;
 const MAX_FILE_BYTES     = 25 * 1024 * 1024; // 25 MB
@@ -184,12 +184,13 @@ export async function POST(req: NextRequest) {
         sessionRef:       d.sessionId,
         expiryDate:       expiryDate.toLocaleDateString("en-IN"),
       });
-      await sendEmail({
+      const { messageId } = await sendEmail({
         to:   practitioner.email as string,
         name: practitioner.name as string,
         subject,
         htmlContent,
       });
+      await recordEmailMessageId("photo_received", submission.id as string, messageId);
     } catch (emailErr) {
       log.error("Photo received email failed — revoking sentinel so it can retry", { error: String(emailErr), submissionId: submission.id });
       await revokeEmailSend("photo_received", submission.id as string);

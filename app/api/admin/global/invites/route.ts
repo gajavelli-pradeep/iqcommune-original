@@ -6,7 +6,7 @@ import { generateInviteToken, hashToken, buildInviteUrl, INVITE_TTL_DAYS, isExpi
 import { getBaseUrl } from "@/lib/base-url";
 import { sendEmail } from "@/lib/email/brevo";
 import { adminInviteEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 import { resolveDbError, PG_CODE } from "@/lib/db-error";
 import { roleLabel } from "@/lib/supabase/roles";
 import { log } from "@/lib/logger";
@@ -187,15 +187,7 @@ export async function POST(req: NextRequest) {
         ttlDays: INVITE_TTL_DAYS,
       });
       const { messageId } = await sendEmail({ to: email, subject, htmlContent });
-      // Record Brevo's id on the sentinel so a later delivery/bounce event can be
-      // mapped back to this invite (mirrors deliver-confirmation-email.ts).
-      if (messageId) {
-        await supabase
-          .from("sent_emails")
-          .update({ brevo_message_id: messageId, status: "sent" })
-          .eq("entity_id", data.id)
-          .eq("email_type", "admin_invite");
-      }
+      await recordEmailMessageId("admin_invite", data.id, messageId);
       emailStatus = "queued";
     } catch (emailErr) {
       log.error("Admin invite email failed — revoking sentinel so it can retry", { error: String(emailErr), inviteId: data.id });
