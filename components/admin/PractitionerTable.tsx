@@ -28,12 +28,18 @@ const STATUSES = [
 
 // V5 practitioner status filter (Practitioners tab only, per the mockup): a
 // "Filter:" label + pill chips. Active chip = ink fill + surface label.
+// Per the mockup's `.filter-bar`, this is the table card's top strip — it carries
+// the frame's top edge so the `connected` AdminTable below continues it unbroken.
 const filterRowStyle: React.CSSProperties = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
   alignItems: "center",
-  padding: "0 0 1rem",
+  background: "var(--surface)",
+  border: "1px solid rgba(20,18,12,.10)",
+  borderBottom: "none",
+  borderRadius: "10px 10px 0 0",
+  padding: "0.75rem 1.25rem",
 };
 const filterLabelStyle: React.CSSProperties = {
   fontSize: 12,
@@ -420,6 +426,7 @@ export function PractitionerTable({
         }]}
         dateFilter={df.control}
         dateLabel="Applied in:"
+        standalone
       />
 
       {/* V5 status filter — Practitioners tab only (per the mockup). */}
