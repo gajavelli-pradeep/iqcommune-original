@@ -7,14 +7,10 @@ import { getBaseUrl } from "@/lib/base-url";
 import { sendEmail } from "@/lib/email/brevo";
 import { adminInviteEmail } from "@/lib/email/templates";
 import { guardEmailSend, revokeEmailSend } from "@/lib/email/idempotency";
+import { resolveDbError, PG_CODE } from "@/lib/db-error";
+import { roleLabel } from "@/lib/supabase/roles";
 import { log } from "@/lib/logger";
 import { z } from "zod";
-
-const ROLE_LABELS: Record<string, string> = {
-  user: "User",
-  admin: "Admin",
-  global_admin: "Global Admin",
-};
 
 type InviteView = {
   id: string;
@@ -78,26 +74,55 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Reject if this email already belongs to an existing account.
-  const { data: userList } = await supabase.auth.admin.listUsers();
-  const exists = (userList?.users ?? []).some((u) => u.email?.toLowerCase() === email);
+  // Reject if this email already belongs to an existing account. A failed lookup
+  // must NOT fall through: `data` would be null, `exists` false, and we'd invite an
+  // email that already has an account — failing open on the very check this guards.
+  const { data: userList, error: listErr } = await supabase.auth.admin.listUsers();
+  if (listErr || !userList) {
+    log.error("Create admin invite — account lookup failed", { error: listErr?.message });
+    return NextResponse.json(
+      { error: "Couldn't verify whether this email already has an account. Try again." },
+      { status: 503 }
+    );
+  }
+  const exists = userList.users.some((u) => u.email?.toLowerCase() === email);
   if (exists) {
     return NextResponse.json({ error: "A user with this email already exists" }, { status: 409 });
   }
 
   // Reject a duplicate live invite (the partial-unique index also enforces this).
-  const { data: live } = await supabase
+  // Same reasoning: a query error here is not "no pending invite".
+  const { data: live, error: liveErr } = await supabase
     .from("admin_invites")
     .select("id, expires_at")
     .eq("email", email)
     .eq("status", "Pending")
     .maybeSingle();
+  if (liveErr) {
+    log.error("Create admin invite — pending-invite lookup failed", { code: liveErr.code, error: liveErr.message });
+    return NextResponse.json(
+      { error: "Couldn't check for an existing invite. Try again." },
+      { status: 503 }
+    );
+  }
   if (live && !isExpired(live.expires_at)) {
     return NextResponse.json({ error: "A pending invite for this email already exists" }, { status: 409 });
   }
-  // A stale Pending row would collide with the unique index — expire it first.
+  // A stale Pending row would collide with the unique index — expire it first. If
+  // this fails, the insert below hits 23505 and reports a duplicate that the admin
+  // can't see; surface it here instead, where the cause is still known.
   if (live) {
-    await supabase.from("admin_invites").update({ status: "Expired" }).eq("id", live.id);
+    const { error: expireErr } = await supabase
+      .from("admin_invites")
+      .update({ status: "Expired" })
+      .eq("id", live.id);
+    if (expireErr) {
+      log.error("Create admin invite — expiring stale invite failed", { code: expireErr.code, error: expireErr.message, inviteId: live.id });
+      return NextResponse.json(
+        { error: "Couldn't clear the previous invite for this email. Try again." },
+        { status: 503 }
+      );
+    }
   }
 
   const token = generateInviteToken();
@@ -117,8 +142,19 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error || !data) {
-    log.error("Create admin invite failed", { error: error?.message });
-    return NextResponse.json({ error: "Failed to create invite" }, { status: 500 });
+    const { message, status } = resolveDbError({
+      op: "Create admin invite",
+      error,
+      fallback: "Failed to create invite",
+      byCode: {
+        // The DB is the final authority on which roles are invitable; if it and
+        // INVITE_ROLES ever drift again, say so instead of a bare 500.
+        [PG_CODE.CHECK_VIOLATION]: `The database rejected the "${parsed.data.role}" role. It may not be enabled yet — contact support.`,
+        [PG_CODE.UNIQUE_VIOLATION]: "A pending invite for this email already exists.",
+      },
+      ctx: { role: parsed.data.role },
+    });
+    return NextResponse.json({ error: message }, { status });
   }
 
   await logAdminAction({
@@ -133,19 +169,34 @@ export async function POST(req: NextRequest) {
 
   // Email the invite (best-effort, idempotent). The admin can also copy the link
   // or open it in their own mail app — so a failed send never blocks the invite.
-  let emailStatus: "sent" | "failed" = "failed";
-  const alreadySent = await guardEmailSend("admin_invite", data.id, email);
-  if (alreadySent) {
-    emailStatus = "sent";
+  //
+  // "queued", never "sent": Brevo's 2xx only means the message was accepted for
+  // delivery. A rejected sender, a blocked contact, or a bounce is reported
+  // asynchronously (delivery webhook) and never appears in this response — so
+  // claiming "sent" here would assert a delivery we cannot observe. The copy-link
+  // fallback stays the reliable path.
+  let emailStatus: "queued" | "failed" = "failed";
+  const alreadyQueued = await guardEmailSend("admin_invite", data.id, email);
+  if (alreadyQueued) {
+    emailStatus = "queued";
   } else {
     try {
       const { subject, htmlContent } = adminInviteEmail({
         inviteUrl,
-        roleLabel: ROLE_LABELS[parsed.data.role] ?? parsed.data.role,
+        roleLabel: roleLabel(parsed.data.role),
         ttlDays: INVITE_TTL_DAYS,
       });
-      await sendEmail({ to: email, subject, htmlContent });
-      emailStatus = "sent";
+      const { messageId } = await sendEmail({ to: email, subject, htmlContent });
+      // Record Brevo's id on the sentinel so a later delivery/bounce event can be
+      // mapped back to this invite (mirrors deliver-confirmation-email.ts).
+      if (messageId) {
+        await supabase
+          .from("sent_emails")
+          .update({ brevo_message_id: messageId, status: "sent" })
+          .eq("entity_id", data.id)
+          .eq("email_type", "admin_invite");
+      }
+      emailStatus = "queued";
     } catch (emailErr) {
       log.error("Admin invite email failed — revoking sentinel so it can retry", { error: String(emailErr), inviteId: data.id });
       await revokeEmailSend("admin_invite", data.id);

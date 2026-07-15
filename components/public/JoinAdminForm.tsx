@@ -20,7 +20,7 @@ const label: React.CSSProperties = {
   display: "block",
 };
 
-export function JoinAdminForm({ email, token }: { email: string; token: string }) {
+export function JoinAdminForm({ email, token, roleLabel }: { email: string; token: string; roleLabel: string }) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -134,7 +134,7 @@ export function JoinAdminForm({ email, token }: { email: string; token: string }
       >
         {[
           { k: "Email", v: email },
-          { k: "Role", v: "Admin" },
+          { k: "Role", v: roleLabel },
         ].map(({ k, v }) => (
           <div key={k} style={{ background: "var(--surface-soft)", padding: "10px 12px" }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--ink-faint)", marginBottom: 3 }}>

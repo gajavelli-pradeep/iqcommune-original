@@ -34,6 +34,18 @@ const INVITE_STATUS_COLOR: Record<AdminInvite["status"], { fg: string; bg: strin
   Expired:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(20,18,12,.12)" },
 };
 
+// Insert-or-merge by id. handleCreate's optimistic insert and the Realtime INSERT
+// event race, and Realtime nearly always wins: the POST inserts the row (firing the
+// event immediately) and only then attempts the email, which can block the response
+// for seconds on a Brevo timeout/retry. Appending unconditionally therefore renders
+// the row twice — and since UPDATE patches every copy sharing the id, both duplicates
+// then track the same status. Whichever path lands second must merge, not append.
+function upsertInvite(prev: AdminInvite[], row: AdminInvite): AdminInvite[] {
+  return prev.some((i) => i.id === row.id)
+    ? prev.map((i) => (i.id === row.id ? { ...i, ...row } : i))
+    : [row, ...prev];
+}
+
 const inputStyle: React.CSSProperties = {
   fontFamily: "inherit",
   fontSize: 13,
@@ -51,7 +63,7 @@ export function InviteTeamMember() {
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
-  const [emailStatus, setEmailStatus] = useState<"sent" | "failed" | null>(null);
+  const [emailStatus, setEmailStatus] = useState<"queued" | "failed" | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -70,7 +82,7 @@ export function InviteTeamMember() {
   useRealtimeChannel("admin_invites", (payload) => {
     if (payload.eventType === "INSERT") {
       const row = payload.new as unknown as AdminInvite;
-      setInvites((prev) => (prev.some((i) => i.id === row.id) ? prev : [row, ...prev]));
+      setInvites((prev) => upsertInvite(prev, row));
     } else if (payload.eventType === "UPDATE") {
       const row = payload.new as unknown as AdminInvite;
       setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, ...row } : i)));
@@ -98,10 +110,10 @@ export function InviteTeamMember() {
       if (!res.ok) { setError(j.error ?? "Failed to create invite."); return; }
       setInviteLink(j.url as string);
       setInvitedEmail((j.email as string) ?? trimmed);
-      setEmailStatus((j.emailStatus as "sent" | "failed") ?? null);
+      setEmailStatus((j.emailStatus as "queued" | "failed") ?? null);
       setEmail("");
       setCopied(false);
-      if (j.data) setInvites((prev) => [j.data as AdminInvite, ...prev]);
+      if (j.data) setInvites((prev) => upsertInvite(prev, j.data as AdminInvite));
     } catch {
       setError("Network error.");
     } finally {
@@ -219,9 +231,9 @@ export function InviteTeamMember() {
       {inviteLink && (
         <div style={{ marginTop: 10 }}>
           {emailStatus && (
-            <div style={{ fontSize: 12, marginBottom: 6, color: emailStatus === "sent" ? "var(--green)" : "var(--ink-muted)" }}>
-              {emailStatus === "sent"
-                ? `Invite emailed to ${invitedEmail} ✓ — or share the link below.`
+            <div style={{ fontSize: 12, marginBottom: 6, color: "var(--ink-muted)" }}>
+              {emailStatus === "queued"
+                ? `Invite sent to ${invitedEmail} — delivery isn't confirmed. If it doesn't arrive, share the link below.`
                 : "Couldn't email the invite automatically — send it manually below."}
             </div>
           )}

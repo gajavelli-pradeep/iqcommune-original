@@ -1,25 +1,29 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken, isExpired } from "@/lib/admin-invite";
+import { roleLabel } from "@/lib/supabase/roles";
 import { JoinAdminForm } from "@/components/public/JoinAdminForm";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import type { Metadata } from "next";
 
+// Role-neutral: the tab title is static, but the invite may be for any tier.
 export const metadata: Metadata = {
-  title: "Join as Admin — IQCommune",
+  title: "Join the console — IQCommune",
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";
 
 type InviteState =
-  | { ok: true; email: string; token: string }
+  | { ok: true; email: string; token: string; roleLabel: string }
   | { ok: false; reason: string };
 
 async function resolveInvite(token: string | undefined): Promise<InviteState> {
   if (!token) return { ok: false, reason: "This invite link is missing its token." };
 
+  // `role` drives every label on this page — without it the page can only guess,
+  // which is exactly how it came to tell a read-only User they were an Admin.
   const { data: invite } = await createAdminClient()
     .from("admin_invites")
-    .select("email, status, expires_at")
+    .select("email, role, status, expires_at")
     .eq("token_hash", hashToken(token))
     .maybeSingle();
 
@@ -29,7 +33,7 @@ async function resolveInvite(token: string | undefined): Promise<InviteState> {
   if (invite.status === "Expired" || isExpired(invite.expires_at))
     return { ok: false, reason: "This invite link has expired." };
 
-  return { ok: true, email: invite.email, token };
+  return { ok: true, email: invite.email, token, roleLabel: roleLabel(invite.role) };
 }
 
 const card: React.CSSProperties = {
@@ -87,16 +91,17 @@ export default async function JoinAdminPage({
     <Frame>
       <div style={card}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gold-dark)", marginBottom: 6 }}>
-          IQCommune · Admin
+          IQCommune · {state.roleLabel}
         </div>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", margin: "0 0 6px" }}>
-          Set up your admin account
+          Set up your account
         </h1>
         <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 20px" }}>
-          You&apos;ve been invited to join the IQCommune console as an admin
+          You&apos;ve been invited to join the IQCommune console as{" "}
+          <strong style={{ color: "var(--ink)" }}>{state.roleLabel}</strong>
           {" "}for <strong style={{ color: "var(--ink)" }}>{state.email}</strong>. Choose your name and a password to finish.
         </p>
-        <JoinAdminForm email={state.email} token={state.token} />
+        <JoinAdminForm email={state.email} token={state.token} roleLabel={state.roleLabel} />
       </div>
     </Frame>
   );
