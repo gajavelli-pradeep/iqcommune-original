@@ -46,7 +46,20 @@ export async function deliverConfirmationEmail(args: {
   if (!practitionerEmail) return "no_email";
 
   // Resend forces a fresh attempt — clear any prior sentinel so guardEmailSend re-inserts.
-  if (force) await revokeEmailSend(EMAIL_TYPE, confirmationId);
+  // If the clear fails the sentinel survives, and guardEmailSend below would read it as
+  // "already sent" and return "sent" without sending anything — so an admin's explicit
+  // "resend" would silently do nothing and report success. Abort instead: a failed
+  // resend the admin can retry beats a fake one they trust.
+  if (force) {
+    const cleared = await revokeEmailSend(EMAIL_TYPE, confirmationId);
+    if (!cleared) {
+      log.error("Confirmation resend aborted — could not clear the idempotency sentinel", {
+        confirmationId,
+        refCode: fields.refCode,
+      });
+      return "failed";
+    }
+  }
 
   const alreadySent = await guardEmailSend(EMAIL_TYPE, confirmationId, practitionerEmail);
   if (alreadySent) return "sent"; // a prior successful send holds the sentinel

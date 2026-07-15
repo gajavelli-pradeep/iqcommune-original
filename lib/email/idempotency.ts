@@ -82,11 +82,17 @@ export async function recordEmailMessageId(
  * Remove the idempotency sentinel if the email send failed, so the next
  * call to guardEmailSend() allows a retry.
  * Call in the catch block after a failed sendEmail().
+ *
+ * Returns whether the sentinel is actually gone. A caller that is clearing the
+ * sentinel in order to *force* a resend MUST check this: if the delete failed the
+ * row survives, and the next guardEmailSend() reads it as "already sent" and
+ * reports success for an email nobody sent. Best-effort cleanup in a catch block
+ * can ignore the result — the failure is logged either way.
  */
 export async function revokeEmailSend(
   emailType: string,
   entityId: string
-): Promise<void> {
+): Promise<boolean> {
   const supabase = createAdminClient();
   const idempotencyKey = createHash("sha256")
     .update(`${emailType}:${entityId}`)
@@ -104,5 +110,7 @@ export async function revokeEmailSend(
       emailType,
       entityId,
     });
+    return false;
   }
+  return true;
 }
