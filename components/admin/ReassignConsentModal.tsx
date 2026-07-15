@@ -12,6 +12,7 @@ import {
 import { computeNet } from "@/lib/consent";
 import { DURATION_OPTIONS } from "@/lib/schemas/consent";
 import type { ConfirmationRow } from "@/components/admin/ConsentTable";
+import type { ConfirmationEmailOutcome } from "@/lib/email/deliver-confirmation-email";
 
 interface PractitionerOption {
   id: string;
@@ -55,6 +56,7 @@ export function ReassignConsentModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
+  const [emailStatus, setEmailStatus] = useState<ConfirmationEmailOutcome | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Only empanelled practitioners other than the one currently on the session.
@@ -104,9 +106,16 @@ export function ReassignConsentModal({
       return setError(body.error ?? "Could not reassign the session.");
     }
     const { data } = (await res.json()) as {
-      data: { confirmation: ConfirmationRow; supersededIds: string[]; consent_link: string; newPractitionerId: string };
+      data: {
+        confirmation: ConfirmationRow;
+        supersededIds: string[];
+        consent_link: string;
+        newPractitionerId: string;
+        emailStatus?: ConfirmationEmailOutcome;
+      };
     };
     onReassigned(data.confirmation, data.supersededIds, data.newPractitionerId);
+    setEmailStatus(data.emailStatus ?? null);
     setGeneratedLink(data.consent_link);
   }
 
@@ -149,8 +158,12 @@ export function ReassignConsentModal({
       {generatedLink ? (
         <div>
           <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
-            Reassigned. {currentName}&apos;s confirmation is now <strong>Superseded</strong>; a fresh
-            confirmation was emailed to the new practitioner — you can also copy the consent link:
+            Reassigned. {currentName}&apos;s confirmation is now <strong>Superseded</strong>.{" "}
+            {emailStatus === "failed"
+              ? "The consent email couldn't be sent — share the link below with the new practitioner."
+              : emailStatus === "no_email"
+                ? "The new practitioner has no email on file — share the link below with them."
+                : "A fresh confirmation was sent to the new practitioner; delivery isn't confirmed, so share the link below if it doesn't arrive."}
           </div>
           <div
             style={{

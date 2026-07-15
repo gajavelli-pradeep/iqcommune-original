@@ -142,20 +142,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Return the full new confirmation row (with practitioner join) so the console can
-  // prepend it and flip the superseded row locally.
-  const { data: newRow } = await supabase
+  // prepend it and flip the superseded row locally. The cascade already succeeded, so
+  // a failed re-read is not a failed reassignment — log it and let the client refetch
+  // rather than reporting a false failure for work that actually landed.
+  const { data: newRow, error: rowErr } = await supabase
     .from("confirmations")
     .select("*, practitioner:practitioners(name, email)")
     .eq("id", gen.id)
     .single();
+  if (rowErr) {
+    log.error("Reassign: post-cascade re-read failed", { error: rowErr.message, confirmationId: gen.id, sessionId });
+  }
 
   return NextResponse.json(
     {
       data: {
-        confirmation: newRow,
+        confirmation: newRow ?? null,
         supersededIds: (superseded ?? []).map((c) => c.id),
         consent_link: gen.consent_link,
         newPractitionerId,
+        // Without this the modal cannot know whether the consent email actually went
+        // out, and it defaulted to claiming it had.
+        emailStatus: gen.emailStatus,
       },
     },
     { status: 201 }
