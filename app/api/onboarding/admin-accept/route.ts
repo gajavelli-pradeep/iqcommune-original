@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   // Consume the invite atomically — only flip a still-Pending row so a double
   // submit can't create two accounts (the second create already 409s above).
-  const { data: consumed } = await supabase
+  const { data: consumed, error: consumeErr } = await supabase
     .from("admin_invites")
     .update({
       status: "Accepted",
@@ -97,9 +97,35 @@ export async function POST(req: NextRequest) {
     .select("id")
     .maybeSingle();
 
+  // A failed query and a lost race both leave `consumed` empty, but they demand
+  // opposite responses — and only one of them may delete the account we just made.
+  // Treat "the update errored" as retryable and KEEP the account: deleting it here
+  // would destroy a legitimate first-time acceptance over a transient DB blip and
+  // lock the invitee out with a message ("already used") that is simply false.
+  if (consumeErr) {
+    log.error("Admin-accept invite consume failed — keeping account, invite left Pending", {
+      error: consumeErr.message,
+      code: consumeErr.code,
+      inviteId: invite.id,
+      userId: created.user.id,
+    });
+    return NextResponse.json(
+      { error: "Your account was created but we couldn't finish setting it up. Contact your global admin before trying again." },
+      { status: 500 }
+    );
+  }
+
   if (!consumed) {
-    // Lost a race — another request consumed it. Remove the extra account.
-    await supabase.auth.admin.deleteUser(created.user.id);
+    // Genuinely lost the race: the query succeeded and matched no still-Pending row,
+    // so another request already consumed this invite. Remove the extra account.
+    const { error: delErr } = await supabase.auth.admin.deleteUser(created.user.id);
+    if (delErr) {
+      log.error("Admin-accept failed to remove orphaned account after invite race", {
+        error: delErr.message,
+        userId: created.user.id,
+        inviteId: invite.id,
+      });
+    }
     return NextResponse.json({ error: "This invite has already been used" }, { status: 410 });
   }
 
