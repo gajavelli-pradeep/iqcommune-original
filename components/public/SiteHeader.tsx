@@ -28,14 +28,17 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
           position: "sticky",
           top: 0,
           zIndex: 100,
-          background: "rgba(255,255,255,0.97)",
+          background: "var(--surface-nav)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(20,18,12,0.10)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
         <div
           style={{
-            maxWidth: 1100,
+            // 1100 content + 2×2rem gutters. Padding sits on this box (not on <nav>,
+            // which would double-pad the drawer below), so border-box needs it added
+            // back or the header sits 32px inboard of every section's 1100 column.
+            maxWidth: 1164,
             margin: "0 auto",
             padding: "0 2rem",
             display: "flex",

@@ -107,13 +107,15 @@ const navTriggerStyle: React.CSSProperties = {
   padding: "10px 22px",
   fontSize: 14,
   fontWeight: 500,
+  // Preflight gives <button> `line-height: inherit`, which pulls in the body's 1.7
+  // and renders this 5px taller than the V5 spec. `normal` restores the 38.67px box.
+  // The 44px touch floor lives in globals.css, gated on a coarse pointer.
+  lineHeight: "normal",
   cursor: "pointer",
   fontFamily: "inherit",
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  minHeight: 44,
-  minWidth: 44,
 };
 
 // Gap 1: hero CTA dark button style (btn-primary)

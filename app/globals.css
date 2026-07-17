@@ -37,6 +37,8 @@
   --surface: #ffffff;
   --surface-sunken: #f4f2ec;
   --surface-soft: #f8f7f4;
+  /* Sticky-nav backdrop: translucent so backdrop-filter has something to blur. */
+  --surface-nav: rgba(255, 255, 255, 0.97);
   --input-paper: #fcfbf8;
   --input-hover: #faf8f3;
   --gold: #c9982a;
@@ -116,6 +118,27 @@ a {
 @media (max-width: 768px) {
   .nav-cta-desktop { display: none !important; }
   .nav-hamburger   { display: flex !important; }
+}
+
+/* The nav CTA is 38.67px tall to match the V5 spec, which is under the 44px touch
+   minimum. It only renders above 768px, but touch laptops and tablets land there —
+   so raise the box to 44 where the pointer is actually coarse. */
+@media (any-pointer: coarse) {
+  .nav-cta-desktop button { min-height: 44px; }
+}
+
+/* The hamburger's visual box is ~43×39 — sized to sit beside the logo, which at
+   320px leaves no room to grow. Extend the hit area to 44×44 via a pseudo-element
+   so the touch target meets the minimum without taking any layout space. */
+.nav-hamburger { position: relative; }
+.nav-hamburger::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 @media (max-width: 600px) {
