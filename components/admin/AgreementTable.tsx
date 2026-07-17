@@ -6,6 +6,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
+import { initials } from "@/lib/format";
 
 // V5-MATCH: the mockup's only Agreements row action is Download. Edit/Delete are
 // global-admin improvements, gated off (not deleted) so the handlers stay wired
@@ -139,7 +140,7 @@ export function AgreementTable({
                     >
                       {row.practitioner_ini ??
                         (row.practitioner_name
-                          ? row.practitioner_name.split(" ").filter(Boolean).map((n: string) => n[0]).join("").slice(0, 2) || "??"
+                          ? initials(row.practitioner_name, { uppercase: false, compact: true }) || "??"
                           : "??"
                         )
                       }
