@@ -1,13 +1,12 @@
 "use client";
 
-import type { RowAction } from "@/components/admin/RowActionsMenu";
+import type { RowAction } from "@/components/admin/table-types";
 
 /**
  * Inline row-action buttons — the V5 "iqcommune-admin-console.html" pattern
  * (Copy link · PDF · Mark received · Void …) rendered as small buttons in the
- * Actions cell instead of a "⋯" dropdown. Consumes the SAME RowAction[] shape as
- * RowActionsMenu, so a table swaps one presentation for the other with no change
- * to its action data.
+ * Actions cell instead of a "⋯" dropdown. Consumes the shared RowAction[] shape
+ * (see table-types.ts), so a table's action data is presentation-agnostic.
  *
  * Variants: `primary` → gold fill with an ink label (brand contrast rule — never
  * white on gold); `danger` → red ghost; default → neutral ghost. Buttons wrap

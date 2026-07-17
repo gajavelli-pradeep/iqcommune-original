@@ -1,7 +1,7 @@
 "use client";
 
 import { MONTHS } from "@/lib/admin/use-date-filter";
-import type { DateFilterControl } from "@/components/admin/TableFilterBar";
+import type { DateFilterControl } from "@/components/admin/table-types";
 
 // V5 prototype table toolbar (`.pending-bar`): clickable pending stat-card(s) on
 // the left, Month + Year period dropdowns on the right. Sits directly on top of

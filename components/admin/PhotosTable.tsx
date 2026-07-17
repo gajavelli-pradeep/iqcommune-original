@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { PhotoViewModal } from "@/components/admin/PhotoViewModal";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
-import { type RowAction } from "@/components/admin/RowActionsMenu";
+import { type RowAction } from "@/components/admin/table-types";
 import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
