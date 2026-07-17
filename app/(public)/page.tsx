@@ -9,17 +9,17 @@ import { GallerySection } from "@/components/public/GallerySection";
 import { getBaseUrl } from "@/lib/base-url";
 
 export const metadata: Metadata = {
-  title: { absolute: "iqcommune — Where financial intelligence connects" },
+  title: { absolute: "iqcommune — Where the insight quotient is unleashed" },
   description: "In-person finance sessions led by active practitioners. No products. No pitch. Just knowledge.",
   openGraph: {
-    title: "iqcommune — Where financial intelligence connects",
+    title: "iqcommune — Where the insight quotient is unleashed",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
     type: "website",
     siteName: "iqcommune",
   },
   twitter: {
     card: "summary",
-    title: "iqcommune — Where financial intelligence connects",
+    title: "iqcommune — Where the insight quotient is unleashed",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
   },
 };
@@ -1545,7 +1545,7 @@ export default function HomePage() {
       {/* ── FOOTER ── */}
       <SiteFooter
         email="hello@iqcommune.com"
-        tagline="Where financial intelligence connects."
+        tagline="Where the insight quotient is unleashed"
         top={
           <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", paddingBottom: "1.5rem", marginBottom: "1.25rem" }}>
             <p

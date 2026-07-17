@@ -71,7 +71,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
                   lineHeight: 1,
                 }}
               >
-                Where financial intelligence connects
+                Where the insight quotient is unleashed
               </span>
               </span>
             </span>

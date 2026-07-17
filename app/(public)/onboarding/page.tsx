@@ -198,7 +198,7 @@ export default function OnboardingPage() {
                   lineHeight: 1,
                 }}
               >
-                Where financial intelligence connects
+                Where the insight quotient is unleashed
               </span>
             </div>
             {/* Vertical divider */}

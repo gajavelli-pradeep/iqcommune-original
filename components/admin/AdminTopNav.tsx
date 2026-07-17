@@ -72,7 +72,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
               color: "var(--ink-faint)",
             }}
           >
-            Where financial intelligence connects
+            Where the insight quotient is unleashed
           </div>
         </div>
 

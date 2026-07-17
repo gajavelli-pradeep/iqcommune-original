@@ -5,6 +5,31 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-17] Brand tagline — "Where the insight quotient is unleashed" — SHIPPED
+
+Client copy change: the tagline now decodes the brand name (*insight quotient* = **IQ**).
+Replaces "Where financial intelligence connects" in all 9 code occurrences.
+
+- **Uppercase locations unchanged in code** — `SiteHeader.tsx` (home/practitioners/status/
+  join-admin), `AdminTopNav.tsx`, `onboarding/page.tsx` all render via `text-transform:
+  uppercase`, so the string stays sentence-case and CSS produces the caps the client
+  approved ("wherever there are capitals … all capitals … no issues"). No all-caps literals.
+- **Footers** — home + status (`SiteFooter` `tagline` prop). Normalised the trailing period
+  away: home previously had `connects.`, status had none. Now both are period-less.
+- **Metadata** — home `title.absolute`, `openGraph.title`, `twitter.title` (browser tab, OG
+  card, Twitter card). Root `layout.tsx` untouched — it uses "Finance Learning Sessions".
+- **Not in scope** — practitioners footer passes `tagline="practitioner network"` (different
+  string); `opengraph-image.tsx` carries no tagline.
+- **Spec divergence (intentional):** the V5 mockups under `../client_requirements/
+  pleaseusetheseonly (V5)/` still carry the old tagline. Client-supplied source left
+  untouched; code now intentionally diverges. Future V5 audits should treat this as accepted,
+  including the admin console, whose 100%-match mandate is superseded here by client copy.
+- Verified at 1440/320: caps render via CSS, tagline 237.7→243.5px (single line desktop,
+  2 lines at 320 as before), nav height 68 and logo/hero alignment unchanged, no horizontal
+  scroll, 0 console errors. `tsc` clean; `eslint` 0 errors.
+
+---
+
 ## [2026-07-14] Uniform table toolbar — status chips on every table (layer ②) — SHIPPED
 
 Every admin table now shows the same three-layer stack the client asked for: ① pending stat

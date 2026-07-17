@@ -267,7 +267,7 @@ export default async function StatusPage({ searchParams }: Props) {
       </main>
 
       <SiteFooter
-        tagline="Where financial intelligence connects"
+        tagline="Where the insight quotient is unleashed"
         email="hello@iqcommune.com"
       />
     </>
