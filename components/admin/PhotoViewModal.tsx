@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { fetchJson } from "@/lib/http";
 
 interface ViewPayload {
   urls: string[];
@@ -30,13 +31,11 @@ export function PhotoViewModal({
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    fetch(`/api/admin/photos/${id}/view`)
-      .then((r) => {
-        if (!r.ok) return r.json().then((b: { error?: string }) => { throw new Error(b.error ?? "Failed to load photos"); });
-        return r.json() as Promise<ViewPayload>;
-      })
-      .then((data) => { setPayload(data); setLoading(false); })
-      .catch((e: Error) => { setError(e.message); setLoading(false); });
+    let cancelled = false;
+    fetchJson<ViewPayload>(`/api/admin/photos/${id}/view`)
+      .then((data) => { if (!cancelled) { setPayload(data); setLoading(false); } })
+      .catch((e: Error) => { if (!cancelled) { setError(e.message); setLoading(false); } });
+    return () => { cancelled = true; };
   }, [id]);
 
   const handleKey = useCallback((e: KeyboardEvent) => {
