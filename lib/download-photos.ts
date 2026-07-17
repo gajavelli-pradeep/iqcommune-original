@@ -1,73 +1,82 @@
-import { fetchJson } from "@/lib/http";
-
 export type PhotoDownloadResult = {
-  /** True only when every file was saved. */
   ok: boolean;
+  /** Files saved (subset path); for the ZIP path this is 1 archive on success. */
   saved: number;
   total: number;
-  /** Present when nothing could be attempted (fetch/auth/empty set). */
+  /** Present on failure. */
   error?: string;
 };
 
-/**
- * Saving a cross-origin file needs a same-origin `blob:` URL.
- *
- * An <a download> pointing at another origin does NOT download — the spec makes
- * the browser ignore `download` cross-origin, so the click becomes a top-level
- * navigation that only becomes a save because Supabase sends
- * Content-Disposition: attachment. Fire several of those in a row and each
- * navigation supersedes the one before it, so an arbitrary subset of files is
- * silently lost (this is why the old code staggered clicks and still dropped
- * files). Fetching the bytes first and pointing the anchor at a blob: URL keeps
- * it same-origin: `download` is honoured, nothing navigates, and — the point of
- * the exercise — each file reports whether it actually saved.
- */
-async function saveOne(url: string, index: number): Promise<boolean> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return false;
-    const blob = await res.blob();
-
-    // Name from the real MIME type — these are PNGs, previously saved as ".jpg".
-    const subtype = blob.type.split("/")[1] ?? "";
-    const ext = (subtype === "jpeg" ? "jpg" : subtype) || "jpg";
-
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = `iqcommune-photo-${index + 1}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // Release only after the browser has taken the blob; revoking immediately
-    // can cancel an in-flight save.
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
-    return true;
-  } catch {
-    return false;
-  }
+/** Save a blob under a filename via a same-origin object URL. */
+function saveBlob(blob: Blob, filename: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Release after the browser has taken the blob; revoking immediately can cancel the save.
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
 
-/** Download the given signed URLs, reporting how many actually saved. */
+const dispositionFilename = (header: string | null): string | undefined =>
+  header?.match(/filename="?([^"]+)"?/i)?.[1];
+
+/**
+ * Download every photo in a submission as one ZIP.
+ *
+ * The server streams a single same-origin attachment, so there is exactly one
+ * request to succeed or fail — no cross-origin `download` that the browser
+ * ignores, no navigation race that silently drops files, and a partial result is
+ * impossible (the route 500s rather than returning a short archive).
+ */
+export async function downloadPhotoSet(photoId: string): Promise<PhotoDownloadResult> {
+  const url = `/api/admin/photos/${photoId}/download`;
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    return { ok: false, saved: 0, total: 0, error: "Network error — please check your connection and try again." };
+  }
+
+  if (!res.ok) {
+    // Error responses are JSON; parse defensively in case a proxy returns HTML.
+    const body = await res.json().catch(() => null);
+    const message =
+      body && typeof body.error === "string"
+        ? body.error
+        : res.status === 401
+          ? "Your session has expired — please sign in again."
+          : `Couldn't prepare the download (${res.status}). Please try again.`;
+    return { ok: false, saved: 0, total: 0, error: message };
+  }
+
+  const blob = await res.blob();
+  saveBlob(blob, dispositionFilename(res.headers.get("content-disposition")) ?? "photos.zip");
+  return { ok: true, saved: 1, total: 1 };
+}
+
+/**
+ * Download a chosen subset of already-signed URLs (the View modal's "Download
+ * selected"). Fetches each as a same-origin blob so `download` is honoured and
+ * each file reports whether it saved — the ZIP route can't serve a subset.
+ */
 export async function downloadPhotoUrls(urls: string[]): Promise<PhotoDownloadResult> {
-  if (urls.length === 0) return { ok: false, saved: 0, total: 0, error: "There are no photo files to download." };
+  if (urls.length === 0) return { ok: false, saved: 0, total: 0, error: "There are no photos selected to download." };
 
   let saved = 0;
-  // Sequential: concurrent saves re-introduce the throttling this fix removes.
   for (const [i, url] of urls.entries()) {
-    if (await saveOne(url, i)) saved++;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+      saveBlob(blob, `iqcommune-photo-${i + 1}.${ext}`);
+      saved++;
+    } catch {
+      /* counted as not-saved below */
+    }
   }
   return { ok: saved === urls.length, saved, total: urls.length };
-}
-
-/** Download every photo in a submission. */
-export async function downloadPhotoSet(photoId: string): Promise<PhotoDownloadResult> {
-  let downloadUrls: string[];
-  try {
-    const data = await fetchJson<{ downloadUrls?: string[] }>(`/api/admin/photos/${photoId}/view`);
-    downloadUrls = data.downloadUrls ?? [];
-  } catch (e) {
-    return { ok: false, saved: 0, total: 0, error: (e as Error).message };
-  }
-  return downloadPhotoUrls(downloadUrls);
 }

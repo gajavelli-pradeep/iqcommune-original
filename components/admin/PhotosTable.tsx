@@ -184,14 +184,12 @@ export function PhotosTable({
   // Download every photo in the set. Reports a partial save rather than letting
   // files go missing quietly — the browser can still refuse a save.
   async function downloadSet(p: PhotoSubmission) {
-    if (downloadBusyId) return; // a second run would interleave saves
+    if (downloadBusyId) return; // guard against a second concurrent request
     setDownloadBusyId(p.id);
     setToast("Preparing download…");
-    const { ok, saved, total, error } = await downloadPhotoSet(p.id);
+    const { ok, error } = await downloadPhotoSet(p.id);
     setDownloadBusyId(null);
-    if (error) setToast(error);
-    else if (ok) setToast(saved === 1 ? "1 photo downloaded" : `${saved} photos downloaded`);
-    else setToast(`Only ${saved} of ${total} photos downloaded — please retry.`);
+    setToast(ok ? "Photos downloaded" : (error ?? "Download failed — please retry."));
     setTimeout(() => setToast(""), 3500);
   }
 
