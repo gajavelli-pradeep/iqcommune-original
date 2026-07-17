@@ -122,6 +122,7 @@ export function PhotosTable({
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
+  const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
   const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
@@ -177,6 +178,20 @@ export function PhotosTable({
       /* clipboard blocked — link still generated */
     }
     setToast(`Reminder link copied — send to ${name}`);
+    setTimeout(() => setToast(""), 3500);
+  }
+
+  // Download every photo in the set. Reports a partial save rather than letting
+  // files go missing quietly — the browser can still refuse a save.
+  async function downloadSet(p: PhotoSubmission) {
+    if (downloadBusyId) return; // a second run would interleave saves
+    setDownloadBusyId(p.id);
+    setToast("Preparing download…");
+    const { ok, saved, total, error } = await downloadPhotoSet(p.id);
+    setDownloadBusyId(null);
+    if (error) setToast(error);
+    else if (ok) setToast(saved === 1 ? "1 photo downloaded" : `${saved} photos downloaded`);
+    else setToast(`Only ${saved} of ${total} photos downloaded — please retry.`);
     setTimeout(() => setToast(""), 3500);
   }
 
@@ -411,7 +426,7 @@ export function PhotosTable({
                   ariaLabel={`Actions for ${p.session_ref}`}
                   actions={[
                     { label: "View", icon: <ImageIcon />, onClick: () => setViewId(p.id) },
-                    { label: "Download", icon: <DownloadIcon />, onClick: () => downloadPhotoSet(p.id) },
+                    { label: downloadBusyId === p.id ? "Downloading…" : "Download", icon: <DownloadIcon />, onClick: () => void downloadSet(p) },
                     ...(SHOW_OFFSPEC_ACTIONS && canGallery
                       ? [{
                           label: galleryBusyId === p.id ? "Working…" : p.featured ? "Remove from gallery" : "Feature in gallery",

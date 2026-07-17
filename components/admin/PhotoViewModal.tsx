@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { fetchJson } from "@/lib/http";
+import { downloadPhotoUrls } from "@/lib/download-photos";
 
 interface ViewPayload {
   urls: string[];
@@ -28,6 +29,7 @@ export function PhotoViewModal({
   const [payload, setPayload] = useState<ViewPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -64,23 +66,16 @@ export function PhotoViewModal({
   const selectAll = () =>
     setSelected(allSelected ? new Set() : new Set(Array.from({ length: total }, (_, i) => i)));
 
-  // Download only the selected photos. Supabase download-signed URLs carry a
-  // Content-Disposition: attachment header; stagger the clicks so the browser
-  // doesn't drop rapid-fire downloads.
+  // Download only the selected photos, reporting any the browser refused to save.
   const downloadSelected = useCallback(async () => {
     const dl = payload?.downloadUrls ?? [];
-    const idxs = [...selected].sort((a, b) => a - b);
-    for (const i of idxs) {
-      const url = dl[i];
-      if (!url) continue;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `iqcommune-photo-${i + 1}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      await new Promise((resolve) => setTimeout(resolve, 400));
-    }
+    const urls = [...selected].sort((a, b) => a - b).map((i) => dl[i]).filter(Boolean);
+    setDownloading(true);
+    setError("");
+    const { ok, saved, total, error: err } = await downloadPhotoUrls(urls);
+    setDownloading(false);
+    if (err) setError(err);
+    else if (!ok) setError(`Only ${saved} of ${total} photos downloaded — please retry.`);
   }, [payload, selected]);
 
   return (
@@ -179,13 +174,13 @@ export function PhotoViewModal({
               </button>
               <button
                 onClick={downloadSelected}
-                disabled={selected.size === 0}
-                style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: selected.size === 0 ? "not-allowed" : "pointer", opacity: selected.size === 0 ? 0.5 : 1, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
+                disabled={selected.size === 0 || downloading}
+                style={{ background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: selected.size === 0 || downloading ? "not-allowed" : "pointer", opacity: selected.size === 0 || downloading ? 0.5 : 1, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
               >
                 <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Download selected
+                {downloading ? "Downloading…" : "Download selected"}
               </button>
             </div>
           </div>
