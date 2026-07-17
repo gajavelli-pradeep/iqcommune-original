@@ -10,6 +10,7 @@ import { PendingBar } from "@/components/admin/PendingBar";
 import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { useUndoToast } from "@/components/admin/useUndoToast";
+import { sendReminderRequest } from "@/lib/admin/send-reminder";
 
 interface Session {
   id: string;
@@ -122,7 +123,20 @@ export function SessionTable({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [emailBusyId, setEmailBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Email the photo-upload link via Brevo. The "Generate photo link" action
+  // (open + copy) remains the manual fallback on failure.
+  async function emailPhotoLink(sessionId: string) {
+    if (emailBusyId) return; // guard a double-click firing two sends
+    setEmailBusyId(sessionId);
+    setToast("Sending…");
+    const result = await sendReminderRequest(`/api/admin/sessions/${sessionId}/send-photo-reminder`);
+    setEmailBusyId(null);
+    setToast(result.ok ? `Photo link emailed to ${result.sentTo}` : result.error);
+    setTimeout(() => setToast((t) => (t ? null : t)), 4000);
+  }
 
   // Persist a delivery-status change. Optimistic (parent updates immediately via
   // onStatusChange); revert + toast on failure so the cell never lies about the DB.
@@ -345,6 +359,13 @@ export function SessionTable({
                                 // silently ignore — user can retry
                               }
                             },
+                          },
+                          {
+                            label: emailBusyId === s.id ? "Sending…" : "Email photo link",
+                            icon: (
+                              <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            ),
+                            onClick: () => void emailPhotoLink(s.id),
                           }]
                         : []),
                       ...(s.status === "Completed" && s.photos_submitted

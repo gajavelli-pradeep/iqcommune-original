@@ -28,6 +28,12 @@ export interface ContactDraftModalProps {
   title?: string;
   /** Modal subtitle, e.g. 'Pre-filled · copy and send via your preferred channel' */
   subtitle?: string;
+  /**
+   * Optional automatic send (email only). When provided, a "Send via email"
+   * button appears on the Email tab; Copy / Open-in-mail stay as the manual
+   * fallback. Must resolve — never throw — so failures degrade to manual.
+   */
+  onSend?: () => Promise<{ ok: boolean; error?: string }>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -55,16 +61,32 @@ export function ContactDraftModal({
   reMeta,
   title = "Draft message",
   subtitle = "Pre-filled · copy and send via your preferred channel",
+  onSend,
 }: ContactDraftModalProps) {
   const [channel, setChannel] = useState<Channel>(defaultChannel);
+  const [sendState, setSendState] = useState<"idle" | "sending" | "sent">("idle");
+  const [sendError, setSendError] = useState("");
   const titleId   = useId();
   const cardRef   = useRef<HTMLDivElement>(null);
+
+  async function handleSend() {
+    if (!onSend || sendState === "sending") return;
+    setSendState("sending");
+    setSendError("");
+    const { ok, error } = await onSend();
+    setSendState(ok ? "sent" : "idle");
+    if (!ok) setSendError(error ?? "Couldn't send. Copy the draft and send it manually instead.");
+  }
 
   // Reset to the caller's default channel each time the modal (re)opens — a
   // controlled-prop sync, not a render-derived value.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) setChannel(defaultChannel);
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setChannel(defaultChannel);
+      setSendState("idle");
+      setSendError("");
+    }
   }, [open, defaultChannel]);
 
   // Global Escape key
@@ -346,9 +368,45 @@ export function ContactDraftModal({
             background: "#fff",
           }}
         >
-          <div style={{ fontSize: 11, color: "var(--ink-faint)", flex: 1, lineHeight: 1.5 }}>
-            Edit as needed before sending. Nothing is sent automatically.
+          <div
+            role={sendError ? "alert" : undefined}
+            style={{ fontSize: 11, color: sendError ? "var(--red)" : "var(--ink-faint)", flex: 1, lineHeight: 1.5 }}
+          >
+            {sendError
+              ? sendError
+              : sendState === "sent"
+                ? "Sent. You can also copy the draft to send it again."
+                : onSend && channel === "email"
+                  ? "Send directly, or copy to send it your own way."
+                  : "Edit as needed before sending. Nothing is sent automatically."}
           </div>
+
+          {/* Send via Brevo — email tab only, opt-in (onSend). Manual buttons remain the fallback. */}
+          {onSend && channel === "email" && (
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={sendState === "sending" || sendState === "sent"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "6px 14px",
+                borderRadius: 100,
+                border: "none",
+                background: sendState === "sent" ? "var(--green)" : "var(--gold)",
+                color: sendState === "sent" ? "#fff" : "var(--ink)",
+                cursor: sendState === "sending" || sendState === "sent" ? "default" : "pointer",
+                opacity: sendState === "sending" ? 0.7 : 1,
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {sendState === "sending" ? "Sending…" : sendState === "sent" ? "Sent ✓" : "Send via email"}
+            </button>
+          )}
 
           {/* Copy ghost btn */}
           <button

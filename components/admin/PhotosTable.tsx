@@ -10,6 +10,7 @@ import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { downloadPhotoSet } from "@/lib/download-photos";
+import { sendReminderRequest } from "@/lib/admin/send-reminder";
 
 interface PhotoSubmission {
   id: string;
@@ -49,6 +50,7 @@ const iconProps = { width: 11, height: 11, fill: "none", stroke: "currentColor",
 const ImageIcon = () => (<svg {...iconProps}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>);
 const DownloadIcon = () => (<svg {...iconProps}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>);
 const BellIcon = () => (<svg {...iconProps}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>);
+const MailIcon = () => (<svg {...iconProps}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>);
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const HEADERS = [
@@ -123,6 +125,7 @@ export function PhotosTable({
   const [toast, setToast] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
   const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
+  const [emailBusyId, setEmailBusyId] = useState<string | null>(null);
   const [galleryBusyId, setGalleryBusyId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
@@ -179,6 +182,18 @@ export function PhotosTable({
     }
     setToast(`Reminder link copied — send to ${name}`);
     setTimeout(() => setToast(""), 3500);
+  }
+
+  // Email the upload link via Brevo. On failure the "Send reminder" copy action
+  // above remains the manual fallback.
+  async function emailReminder(sessionId: string) {
+    if (emailBusyId) return; // guard against a double-click firing two sends
+    setEmailBusyId(sessionId);
+    setToast("Sending…");
+    const result = await sendReminderRequest(`/api/admin/sessions/${sessionId}/send-photo-reminder`);
+    setEmailBusyId(null);
+    setToast(result.ok ? `Reminder emailed to ${result.sentTo}` : result.error);
+    setTimeout(() => setToast(""), 4000);
   }
 
   // Download every photo in the set. Reports a partial save rather than letting
@@ -331,7 +346,10 @@ export function PhotosTable({
             <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
               <RowActionsInline
                 ariaLabel={`Actions for ${s.session_ref}`}
-                actions={readOnly ? [] : [{ label: "Send reminder", icon: <BellIcon />, onClick: () => sendReminder(s.id, s.practitioner_name) }]}
+                actions={readOnly ? [] : [
+                  { label: "Send reminder", icon: <BellIcon />, onClick: () => sendReminder(s.id, s.practitioner_name) },
+                  { label: emailBusyId === s.id ? "Sending…" : "Email reminder", icon: <MailIcon />, onClick: () => void emailReminder(s.id) },
+                ]}
               />
             </td>
           </tr>

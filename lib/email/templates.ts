@@ -84,6 +84,47 @@ export function agreementLinkEmail(
   };
 }
 
+export function photoLinkReminderEmail(
+  practitionerName: string,
+  uploadUrl: string,
+  sessionRef: string
+): { subject: string; htmlContent: string } {
+  const first = esc(practitionerName.split(" ")[0] || "there");
+  // uploadUrl is HMAC-signed by the server — safe to embed as href.
+  return {
+    subject: escSubject(`iqcommune — Please upload your session photos (${sessionRef})`),
+    htmlContent: `<div style="${BASE}">
+<p>Hi ${first},</p>
+<p>Thanks for teaching your recent session. When you have a moment, please upload the session photos using your personal link below.</p>
+<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(uploadUrl)}" style="${GOLD_BTN}">Upload session photos →</a>
+</div>
+<p style="font-size:12px;color:#9496a1">This link is personal to you. Photos help us document the session for our records and gallery. If you have questions, reply to this email.</p>
+<p>Warm regards,<br/>iqcommune team</p>
+</div>`,
+  };
+}
+
+export function payoutReminderEmail(
+  practitionerName: string,
+  details: { invoiceRef: string; netAmount: string; module: string }
+): { subject: string; htmlContent: string } {
+  const first = esc(practitionerName.split(" ")[0] || "there");
+  return {
+    subject: escSubject(`Payout reminder: ${details.invoiceRef}`),
+    htmlContent: `<div style="${BASE}">
+<p>Hi ${first},</p>
+<p>This is a reminder regarding your payout for the <strong>${esc(details.module)}</strong> session.</p>
+<table style="border-collapse:collapse;width:100%;margin:1.25rem 0">
+${row("Invoice ref", details.invoiceRef)}
+${row("Net payout", details.netAmount)}
+</table>
+<p>Please confirm receipt of this payout, or let us know if you have any questions.</p>
+<p>Warm regards,<br/>iqcommune team<br/><a href="mailto:hello@iqcommune.com">hello@iqcommune.com</a></p>
+</div>`,
+  };
+}
+
 export function clientFollowUpEmail(
   clientName: string,
   request: {

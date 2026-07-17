@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { sendReminderRequest } from "@/lib/admin/send-reminder";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
@@ -122,6 +123,7 @@ export function PayoutTable({
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<{
     open: boolean;
+    id?: string;
     name?: string;
     invoice?: string;
     net?: string;
@@ -540,6 +542,7 @@ export function PayoutTable({
                           onClick={() =>
                             setDraft({
                               open: true,
+                              id: p.id,
                               name: p.practitioner?.name ?? "",
                               invoice: p.invoice_ref,
                               net: formatInr(p.net_amount),
@@ -646,6 +649,7 @@ export function PayoutTable({
         emailBody={`Dear ${draft.name},\n\nThis is a reminder regarding your payout for the ${draft.module} session.\n\nInvoice ref: ${draft.invoice}\nNet payout: ${draft.net}\n\nPlease confirm receipt of this payout or let us know if you have any questions.\n\nWarm regards,\nThe iqcommune Team`}
         waBody={`Hi ${draft.name}! 👋\n\nJust a quick note from the iqcommune team — your payout for the *${draft.module}* session is ready.\n\nInvoice: *${draft.invoice}*\nNet: *${draft.net}*\n\nLet us know if you have any questions!`}
         recipientName={draft.name}
+        onSend={draft.id ? () => sendReminderRequest(`/api/admin/payouts/${draft.id}/send-reminder`) : undefined}
       />
     </div>
   );
