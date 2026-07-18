@@ -246,6 +246,12 @@ export function PractitionerTable({
       subject = "Update on your iqcommune practitioner application";
       emailBody = buildRejectEmail(p.name);
       waBody = buildRejectWA(p.name);
+    } else if (statusForDraft === "agreement") {
+      // Op-procedure Part 1 step 4: send the prefilled agreement for signing.
+      title = `Agreement: ${p.name}`;
+      subject = "Your iqcommune practitioner agreement — please sign";
+      emailBody = `Dear ${p.name},\n\nPlease find your iqcommune practitioner agreement, prefilled with your details. Review it, sign, and return it to us to complete your empanelment.\n\nWarm regards,\nThe iqcommune Team`;
+      waBody = `Hi ${p.name}! 👋 Your iqcommune practitioner agreement (prefilled) is ready — please review, sign, and send it back to complete your empanelment.`;
     } else {
       title = `Message: ${p.name}`;
       subject = `iqcommune — ${p.name}`;
@@ -621,12 +627,31 @@ export function PractitionerTable({
                                 )}
 
                                 {!readOnly && p.status === "Screening Done" && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                                    style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                  >
-                                    Generate agreement link
-                                  </button>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {/* Op-procedure Part 1 steps 3–4: download the prefilled
+                                        agreement (P3) + draft the covering email (P4). The
+                                        e-sign "Generate agreement link" stays as the alternative. */}
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); window.open(`/api/admin/practitioners/${p.id}/agreement-pdf`, "_blank", "noopener,noreferrer"); }}
+                                        style={{ flex: 1, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
+                                      >
+                                        Download agreement (PDF)
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; openDraft(p, "agreement"); }}
+                                        style={{ flex: 1, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
+                                      >
+                                        Draft agreement email
+                                      </button>
+                                    </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
+                                      style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    >
+                                      Generate agreement link
+                                    </button>
+                                  </div>
                                 )}
 
                                 {/* V4 terminal gates: green Empanel (only at Agreement Sent) + red Reject (any non-terminal).

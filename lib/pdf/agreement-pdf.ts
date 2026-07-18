@@ -15,9 +15,9 @@ export interface AgreementPdfData {
   city:             string;
   state:            string;
   ref:              string;       // 4-digit ref, e.g. "0042"
-  signedAt:         string;       // ISO timestamp from server
-  sigMode:          "typed" | "drawn";
-  sigTypedName:     string;
+  signedAt?:        string;       // ISO timestamp; omit to render a prefilled UNSIGNED copy (P3)
+  sigMode?:         "typed" | "drawn";
+  sigTypedName?:    string;
 }
 
 export function generateAgreementPdf(data: AgreementPdfData): Buffer {
@@ -145,46 +145,70 @@ export function generateAgreementPdf(data: AgreementPdfData): Buffer {
   doc.setLineWidth(0.6);
   doc.roundedRect(M, y - 3, CW, 36, 3, 3, "S");
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text("SIGNED BY", M + 5, y + 5);
+  if (data.signedAt) {
+    // ── Signed copy ──
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text("SIGNED BY", M + 5, y + 5);
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(data.sigMode === "typed" ? 16 : 11);
-  doc.setTextColor(...INK);
-  doc.text(
-    data.sigMode === "typed" ? data.sigTypedName : "[Drawn signature on file]",
-    M + 5,
-    y + 14
-  );
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(data.sigMode === "typed" ? 16 : 11);
+    doc.setTextColor(...INK);
+    doc.text(
+      data.sigMode === "typed" ? (data.sigTypedName ?? "") : "[Drawn signature on file]",
+      M + 5,
+      y + 14
+    );
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text("SIGNED ON", M + 5, y + 22);
-  doc.setFontSize(9);
-  doc.setTextColor(...INK);
-  const parsedDate = new Date(data.signedAt);
-  if (isNaN(parsedDate.getTime())) {
-    throw new Error(`generateAgreementPdf: invalid signedAt "${data.signedAt}"`);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text("SIGNED ON", M + 5, y + 22);
+    doc.setFontSize(9);
+    doc.setTextColor(...INK);
+    const parsedDate = new Date(data.signedAt);
+    if (isNaN(parsedDate.getTime())) {
+      throw new Error(`generateAgreementPdf: invalid signedAt "${data.signedAt}"`);
+    }
+    const sigDate = parsedDate.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "long",
+      timeStyle: "short",
+    });
+    doc.text(`${sigDate} IST`, M + 5, y + 28);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text(
+      `Mode: ${data.sigMode === "typed" ? "Typed" : "Drawn"} · Ref: IQC-EMP-${data.ref}`,
+      W - M,
+      y + 28,
+      { align: "right" }
+    );
+  } else {
+    // ── Prefilled UNSIGNED copy (P3: download before signing) — blank signature lines ──
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text("SIGNED BY", M + 5, y + 5);
+    doc.setDrawColor(...BORDER);
+    doc.setLineWidth(0.3);
+    doc.line(M + 5, y + 15, MID - 6, y + 15);
+
+    doc.text("SIGNED ON", M + 5, y + 23);
+    doc.line(M + 5, y + 31, MID - 6, y + 31);
+
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(...MUTED);
+    doc.text(
+      `Awaiting signature · Ref: IQC-EMP-${data.ref}`,
+      W - M,
+      y + 28,
+      { align: "right" }
+    );
   }
-  const sigDate = parsedDate.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    dateStyle: "long",
-    timeStyle: "short",
-  });
-  doc.text(`${sigDate} IST`, M + 5, y + 28);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(
-    `Mode: ${data.sigMode === "typed" ? "Typed" : "Drawn"} · Ref: IQC-EMP-${data.ref}`,
-    W - M,
-    y + 28,
-    { align: "right" }
-  );
 
   // ── Footer ───────────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
