@@ -2,17 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, useRef, useCallback } from "react";
-
-const SHOT_LIST = [
-  { title: "Back of room — trainer in focus",         hint: "Full audience visible in background" },
-  { title: "From trainer's position",                  hint: "Audience facing the screen" },
-  { title: "Front-left corner",                        hint: "Wide view of the full room" },
-  { title: "Front-right corner",                       hint: "Trainer and session materials visible" },
-  { title: "Candid — working through numbers",         hint: "Participant engaged with content" },
-  { title: "Candid — Q&A or discussion moment",        hint: "Natural interaction" },
-  { title: "Candid — notes or worksheet close-up",     hint: "In-session working material" },
-  { title: "Group photo",                              hint: "Trainer and all participants" },
-] as const;
+import { PHOTO_SHOT_LIST as SHOT_LIST } from "@/lib/photo-guide";
 
 export function PhotoSubmissionForm() {
   const params     = useSearchParams();

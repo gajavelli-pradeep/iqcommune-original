@@ -9,6 +9,7 @@ import { AgreementTable, type Agreement } from "@/components/admin/AgreementTabl
 import { PhotosTable } from "@/components/admin/PhotosTable";
 import { ConsentTable, type ConfirmationRow } from "@/components/admin/ConsentTable";
 import { ConsentFormModal } from "@/components/admin/ConsentFormModal";
+import { PhotoGuideSection } from "@/components/admin/PhotoGuideSection";
 import { ReassignConsentModal } from "@/components/admin/ReassignConsentModal";
 import { MasterDataTable } from "@/components/admin/MasterDataTable";
 import { RolesPermissions } from "@/components/admin/RolesPermissions";
@@ -956,6 +957,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   />
                 )}
               />
+              {/* Op-procedure Part 4 steps 22-24: photo-guide sub-section. */}
+              {!readOnly && <PhotoGuideSection sessions={sessionsData} />}
             </div>
           </div>
         )}
