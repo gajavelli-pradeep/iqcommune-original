@@ -4,6 +4,26 @@ Branch: `v5/opproc-alignment` (NOT main — nothing here deploys to production).
 Goal: make the admin console match `iqcommune-operating-procedure-current.docx`, closing the 25
 non-matching contracts from `V5-OPPROC-REALITY-CHECK.md` (7 partial + 10 diverge + 8 missing).
 
+---
+
+## 📌 STATUS (2026-07-18) — 15/25 done · 10 pending
+
+**✅ Done (15, all compile-verified — runtime unverified, admin is auth-gated):**
+P3, P4, P7, P8, E2, C4, C5, S2, S4 · P6, C6, P9 (upload UIs + routes) · PY3 · C1, C8 (photo-guide).
+Commits `22dad66 → f023d96`.
+
+### ⛔ Remaining 10 — the exact reason each is still open
+
+| Contract | Blocker |
+|---|---|
+| **S3** — client rating email | Needs a `session → request_id → session_requests.client_email` lookup + a draft action. Doable next, but wants a **test admin login** to confirm the email actually resolves before trusting it. |
+| **PH2** — admin photo upload | Needs constructing a `photo_submissions` row per session (complex); **login** to verify against storage/RLS. |
+| **R2, R3, C7, P5** | **DB migration + product decision** (overrides the V5-mockup mandate, reverses `0029`). Migration `0033` to be written as a repo file on sign-off; **not** applied to production without an explicit go. |
+| **E4, P2, E1** (group ③) | Left as-is by agreement — recommended **against** (each degrades working behaviour: E4 risks dropped client notifications, P2 bypasses the one-way empanel trigger, E1 weakens the permission model). |
+| **P10** (literal reset) | Deferred — refactor/lint-cascade risk for marginal gain over the E2 delete-to-redo that already works. |
+
+**Two unblocks to finish the rest:** (1) a **test admin login** → finish S3 + PH2 and runtime-verify the whole branch; (2) explicit **"apply migration 0033 to prod"** → wire R2/R3/C7.
+
 > **Standing conflict to resolve first (product decision):** several contracts require *reversing
 > deliberate decisions* — migration `0029` removed the "Matched" status on purpose, and
 > `SHOW_OFFSPEC_ACTIONS=false` hid the manual flows to match the **V5 HTML mockup**. Matching this
