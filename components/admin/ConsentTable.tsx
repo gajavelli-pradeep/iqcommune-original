@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { Database } from "@/lib/supabase/database.types";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -165,6 +165,41 @@ export function ConsentTable({
     }
   }
 
+  // Op-procedure Part 4 step 20: upload the practitioner's signed consent reply.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingUploadId = useRef<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  function chooseSignedReply(id: string) {
+    pendingUploadId.current = id;
+    fileInputRef.current?.click();
+  }
+
+  async function onSignedReplyPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const id = pendingUploadId.current;
+    e.target.value = "";
+    if (!file || !id) return;
+    setUploadingId(id);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/admin/consent/${id}/upload`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(j.error ?? "Upload failed");
+        return;
+      }
+      const { data } = (await res.json()) as { data: { storage_path: string } };
+      onRowChange(id, { status: "Consent received", storage_path: data.storage_path });
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
   // Global-Admin direct status override. Superseding is confirmed first (destructive);
   // Awaiting ↔ Consent received flip freely (reversible via the same control).
   async function overrideStatus(row: ConfirmationRow, status: string) {
@@ -203,6 +238,7 @@ export function ConsentTable({
 
   return (
     <div>
+      <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png" hidden onChange={onSignedReplyPicked} />
       <PendingBar
         pendingCards={[{ count: pendingCount, label: "Awaiting consent", active: filter === "Awaiting consent", onToggle: () => setFilter(filter === "Awaiting consent" ? "All" : "Awaiting consent") }]}
         dateFilter={df.control}
@@ -262,6 +298,10 @@ export function ConsentTable({
                         // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
                         // received → Awaiting, Global) · Void (→ Superseded, Global).
                         ...(!readOnly && awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
+                        // Op-procedure Part 4 step 20: upload the signed reply as the consent record.
+                        ...(!readOnly && awaiting && busy !== row.id
+                          ? [{ label: uploadingId === row.id ? "Uploading…" : "Upload signed reply", onClick: () => chooseSignedReply(row.id) }]
+                          : []),
                         // Recovery when the Brevo send failed/bounced — resend the consent email.
                         ...(!readOnly && awaiting && (row.email_status === "failed" || row.email_status === "bounced") && busy !== row.id
                           ? [{ label: "Resend email", onClick: () => resendEmail(row) }]

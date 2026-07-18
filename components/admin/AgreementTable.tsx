@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import type { Database } from "@/lib/supabase/database.types";
 import { useUndoToast } from "@/components/admin/useUndoToast";
@@ -29,14 +29,56 @@ export function AgreementTable({
   isGlobalAdmin = false,
   onHardDeleted,
   onEdit,
+  onUploaded,
 }: {
   initialData: Agreement[];
   isGlobalAdmin?: boolean;
   onHardDeleted?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onUploaded?: (id: string, patch: Partial<Agreement>) => void;
 }) {
   const [toast, setToast] = useState("");
   const undo = useUndoToast();
+
+  // Op-procedure Part 2 step 7: upload the signed copy via a hidden file picker.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingUploadId = useRef<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  function chooseSignedCopy(id: string) {
+    pendingUploadId.current = id;
+    fileInputRef.current?.click();
+  }
+
+  async function onSignedCopyPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const id = pendingUploadId.current;
+    e.target.value = ""; // allow re-picking the same file
+    if (!file || !id) return;
+    setUploadingId(id);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/admin/agreements/${id}/upload`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        showToast(j.error ?? "Upload failed");
+        return;
+      }
+      const { data } = (await res.json()) as { data: Partial<Agreement> };
+      onUploaded?.(id, {
+        storage_path: data.storage_path,
+        status: data.status,
+        signed_at: data.signed_at,
+        signature_method: data.signature_method,
+      });
+      showToast("Signed copy uploaded");
+    } catch {
+      showToast("Upload failed — please try again.");
+    } finally {
+      setUploadingId(null);
+    }
+  }
 
   // V5 act-then-undo: delete (soft) then offer ~9s to Undo (restore via trash).
   async function deleteAgreementWithUndo(id: string, label: string) {
@@ -72,6 +114,7 @@ export function AgreementTable({
 
   return (
     <div>
+      <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png" hidden onChange={onSignedCopyPicked} />
       <PendingBar
         pendingCards={[{
           count: pendingCount,
@@ -265,6 +308,20 @@ export function AgreementTable({
                     </svg>
                     Download
                   </button>
+                  {/* Op-procedure Part 2 step 7 + P9: upload the signed copy; the
+                      button disappears once a file exists, so you can't re-upload
+                      over a real record (use Delete/Edit to redo). */}
+                  {isGlobalAdmin && !row.storage_path && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); chooseSignedCopy(row.id); }}
+                      disabled={uploadingId === row.id}
+                      title={`Upload signed copy for ${row.practitioner_name}`}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 10px", cursor: uploadingId === row.id ? "default" : "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 500 }}
+                    >
+                      <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      {uploadingId === row.id ? "Uploading…" : "Upload signed copy"}
+                    </button>
+                  )}
                   {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}

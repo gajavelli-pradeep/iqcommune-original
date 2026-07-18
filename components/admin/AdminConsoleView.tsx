@@ -911,7 +911,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 Download (kept); Edit/Delete are SA-gated, so a read-only user sees
                 just the download button. */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <AgreementTable initialData={agreementsData} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} />
+              <AgreementTable initialData={agreementsData} isGlobalAdmin={isGlobalAdmin} onHardDeleted={(id) => setAgreementsData((prev) => prev.filter((a) => a.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = agreementsData.find((a) => a.id === id); if (row) setEditingAgreement(row); } : undefined} onUploaded={(id, patch) => setAgreementsData((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)))} />
             </div>
           </div>
         )}
