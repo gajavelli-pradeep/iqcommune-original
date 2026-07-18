@@ -371,12 +371,14 @@ export function SessionTable({
                       ...(s.status === "Completed" && s.photos_submitted
                         ? [{ label: "View photos", onClick: () => onNavigate?.("photos") }]
                         : []),
-                      ...(SHOW_OFFSPEC_ACTIONS && !readOnly && s.status === "Completed"
+                      // Op-procedure Part 5 steps 26/29: Completed unlocks the
+                      // rating; writing it is Global-Admin only (route enforces it too).
+                      ...(isGlobalAdmin && s.status === "Completed"
                         ? [{
                             label: (() => {
                               const fb = feedbackBySession[s.id];
-                              if (!fb) return "Add feedback";
-                              return `Feedback · ${fb.overall_rating !== null ? fb.overall_rating.toFixed(1) : "—"}`;
+                              if (!fb) return "Rate practitioner";
+                              return `Rating · ${fb.overall_rating !== null ? fb.overall_rating.toFixed(1) : "—"}`;
                             })(),
                             onClick: () => setFeedbackModal({
                               sessionId:        s.id,

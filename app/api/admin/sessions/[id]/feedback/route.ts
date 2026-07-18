@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin, getAdminUser } from "@/lib/supabase/require-admin";
+import { requireGlobalAdmin } from "@/lib/supabase/require-global-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
@@ -50,7 +51,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin();
+  // Op-procedure Part 5 step 29: writing the practitioner rating is Global-Admin
+  // only ("only a Global Admin can do this step"). Reads (GET) stay any-admin.
+  const denied = await requireGlobalAdmin();
   if (denied) return denied;
 
   const { id: sessionId } = await params;
@@ -128,7 +131,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin();
+  // Global-Admin only — see POST.
+  const denied = await requireGlobalAdmin();
   if (denied) return denied;
 
   const { id: sessionId } = await params;
