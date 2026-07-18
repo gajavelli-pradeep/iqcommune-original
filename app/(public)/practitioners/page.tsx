@@ -557,8 +557,11 @@ export default function PractitionersPage() {
               </span>
             </div>
 
-            {/* H1 */}
+            {/* H1 — the hard <br/>s are hidden on mobile (see globals .p-hero-h1)
+                so the headline wraps naturally instead of fragmenting into ragged
+                3–4 line pieces on a narrow screen. */}
             <h1
+              className="p-hero-h1"
               style={{
                 fontSize: "clamp(32px,4.5vw,54px)",
                 fontWeight: 600,
@@ -1594,11 +1597,11 @@ export default function PractitionersPage() {
           {/* overflowX:auto keeps any too-wide field (e.g. the module grid at 320px)
               inside its own visible scrollbar so the page body never scrolls sideways. */}
           <div
+            className="p-form-card"
             style={{
               background: "var(--surface)",
               border: "1px solid rgba(20,18,12,0.18)",
               borderRadius: 20,
-              padding: "2.5rem",
               boxShadow: "0 12px 48px rgba(0,0,0,0.06)",
               overflowX: "auto",
             }}

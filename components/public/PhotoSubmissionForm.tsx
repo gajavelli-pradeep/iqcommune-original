@@ -182,7 +182,7 @@ export function PhotoSubmissionForm() {
 
   // ── Form ────────────────────────────────────────────────────────────────────
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 860, margin: "0 auto", padding: "0 2rem 4rem" }}>
+    <form onSubmit={handleSubmit} style={{ maxWidth: 860, margin: "0 auto", padding: "0 1.25rem 4rem" }}>
 
       {/* ── Card header ── */}
       <div
@@ -267,7 +267,10 @@ export function PhotoSubmissionForm() {
           padding: "0.85rem 1rem",
           marginBottom: 24,
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          // auto-fit collapses 4→2→1 columns as the card narrows, so the date /
+          // module / city / session-ID values never overflow at 320px (was a fixed
+          // repeat(4,1fr) that crushed each cell to ~55px on a phone).
+          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
           gap: "1rem",
         }}
       >
@@ -307,7 +310,7 @@ export function PhotoSubmissionForm() {
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.10em", color: "var(--ink-faint)", textTransform: "uppercase", marginBottom: "0.75rem" }}>
           Shot checklist — tick what you captured
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "7px" }}>
           {SHOT_LIST.map((shot, i) => {
             const checked = checkedShots.has(i);
             return (

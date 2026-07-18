@@ -146,6 +146,123 @@ a {
   .admin-nav-label   { display: none !important; }
 }
 
+/* ── Admin console mobile drawer ─────────────────────────────────────────────
+   Mockup-safe: every rule here is gated to <768px, and the toggle/backdrop are
+   display:none by default — so the V5 desktop console (≥768px) is pixel-identical.
+   Below 768px the 220px fixed rail (which otherwise eats ~69% of a phone) becomes
+   an off-canvas drawer opened by the top-nav hamburger. */
+.admin-hamburger { display: none; }
+.admin-drawer-backdrop { display: none; }
+@media (max-width: 767px) {
+  .admin-hamburger { display: inline-flex; }
+  .admin-sidebar {
+    position: fixed !important;
+    z-index: 150;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+  }
+  .admin-sidebar[data-open="true"] { transform: translateX(0); }
+  .admin-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(20, 18, 12, 0.42);
+    z-index: 140;
+  }
+}
+
+/* ── Mobile foundation (2026-07-18 mobile-UX pass) ───────────────────────────
+   Systemic fixes applied across every public route. Desktop is unaffected: the
+   font-size rule is gated to ≤480px and the touch floor to coarse pointers, and
+   a mouse-driven desktop matches neither — so the admin V5 desktop mockup stays
+   pixel-identical. */
+
+/* iOS force-zooms the viewport when a focused field computes to <16px. Many
+   controls are inline-styled at 14px; normalise them on small screens so
+   focusing an input never triggers the zoom jump. */
+@media (max-width: 480px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    /* !important is required: every form control sets an inline fontSize:14,
+       which is more specific than a plain stylesheet rule — without this the
+       zoom fix silently loses to the inline value and iOS still zooms. */
+    font-size: 16px !important;
+  }
+}
+
+/* 44px touch floor for form controls on coarse pointers (phones/tablets). The
+   globals floor above only covered the nav CTA + hamburger; form fields, which
+   are the bulk of touch interaction on the public routes, were left short. */
+@media (any-pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}
+
+/* SiteHeader lockup: the wordmark tagline + optional badge are the widest items
+   in the row and overflow the fixed 68px header below ~600px (the one P1 hitting
+   home, practitioners, and status at once). Drop them and let the logo shrink so
+   the header never wraps or clips on a phone. */
+@media (max-width: 600px) {
+  .site-header-tagline,
+  .site-header-badge { display: none !important; }
+  .site-header-logo  { min-width: 0; }
+}
+
+/* RequestModal 2-up field rows. Grid lives in CSS (not inline) so the media query
+   can collapse it — an inline grid-template-columns would out-specify the rule and
+   the row would never stack on a phone. */
+.rm-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+@media (max-width: 480px) {
+  .rm-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Practitioners hero: drop the hard line breaks on mobile (natural wrap reads
+   cleaner than forced fragments). Padding is class-owned so the media query can
+   trim the application-card gutters on a phone. */
+.p-form-card { padding: 2.5rem; }
+@media (max-width: 480px) {
+  .p-hero-h1 br { display: none; }
+  .p-form-card { padding: 1.25rem; }
+}
+
+/* Status result card: two columns on desktop, stacked on phones (the page had no
+   mobile CSS, so its core card overflowed at 320px). */
+.status-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+@media (max-width: 600px) {
+  .status-card { grid-template-columns: 1fr; gap: 1.75rem; }
+}
+
+/* Shared inline-nav helpers for the onboarding / consent / submit-photos sticky
+   headers (each hand-rolls its own <nav> instead of using SiteHeader). Trim the
+   gutter and drop secondary labels on a phone so the row never crowds. */
+@media (max-width: 480px) {
+  .ob-nav { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .ob-hide-mobile { display: none !important; }
+}
+
+/* Consent detail grids (kv-grid-2) + agreement signature fields (av-grid-2):
+   2-up on desktop, stacked on phones. Grid is class-owned so the media query
+   wins — an inline grid-template-columns could not be collapsed. */
+.kv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.5rem; }
+.av-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 480px) {
+  .kv-grid-2,
+  .av-grid-2 { grid-template-columns: 1fr; }
+}
+
 /* ── Module-accent card hover interactions ────────────────────────────────── */
 /* Each card sets its own `--accent` inline; one rule lifts + borders in-colour. */
 .topic-card,

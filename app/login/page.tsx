@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                style={{ ...inputStyle, paddingRight: 42 }}
+                style={{ ...inputStyle, paddingRight: 46 }}
                 placeholder="••••••••••"
               />
               <button
@@ -104,7 +104,7 @@ export default function LoginPage() {
                   right: 1,
                   top: 1,
                   bottom: 1,
-                  width: 40,
+                  width: 44,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -146,6 +146,7 @@ export default function LoginPage() {
             disabled={loading}
             style={{
               padding: "12px",
+              minHeight: 44,
               background: "var(--ink)",
               color: "var(--surface)",
               border: "none",

@@ -114,6 +114,7 @@ export default function SubmitPhotosPage() {
     <main style={{ background: "var(--surface-soft)", minHeight: "100vh" }}>
       {/* ── NAV ── */}
       <nav
+        className="ob-nav"
         style={{
           height: 68,
           background: "rgba(255,255,255,0.95)",
@@ -144,6 +145,7 @@ export default function SubmitPhotosPage() {
                 <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 24, letterSpacing: "-0.04em" }}>commune</span>
               </span>
               <span
+                className="ob-hide-mobile"
                 style={{
                   fontSize: 9.5,
                   fontWeight: 500,

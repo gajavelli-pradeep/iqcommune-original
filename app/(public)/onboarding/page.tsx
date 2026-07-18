@@ -42,6 +42,7 @@ export default function OnboardingPage() {
     <main style={{ background: "var(--surface-soft)", minHeight: "100vh" }}>
       {/* ── NAV ── */}
       <nav
+        className="ob-nav"
         style={{
           height: 68,
           background: "rgba(255,255,255,0.95)",
@@ -93,6 +94,7 @@ export default function OnboardingPage() {
               </span>
               {/* Tagline */}
               <span
+                className="ob-hide-mobile"
                 style={{
                   fontSize: 9.5,
                   fontWeight: 500,
@@ -108,6 +110,7 @@ export default function OnboardingPage() {
             {/* Vertical divider */}
             <span
               aria-hidden="true"
+              className="ob-hide-mobile"
               style={{
                 display: "inline-block",
                 width: 1,
@@ -117,7 +120,7 @@ export default function OnboardingPage() {
               }}
             />
             {/* Stacked Practitioner / Network */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div className="ob-hide-mobile" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span
                 style={{
                   fontSize: 10,
@@ -146,6 +149,7 @@ export default function OnboardingPage() {
           {/* Right: "Onboarding" label + "Step 2 of 2" pill */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span
+              className="ob-hide-mobile"
               style={{
                 fontSize: 12,
                 color: "var(--ink-faint)",

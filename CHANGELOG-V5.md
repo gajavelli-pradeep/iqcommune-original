@@ -5,6 +5,39 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-18] Mobile UX pass — all public routes + mockup-safe admin drawer — SHIPPED
+
+Systemic-first mobile (320–480px) overhaul across the 9 public routes; admin got only
+mockup-safe additions (desktop V5 layout provably untouched — all admin rules gated `<768px`).
+
+- **Foundation (`globals.css`)** — (1) `@media(max-width:480px)` forces `font-size:16px
+  !important` on inputs/selects/textareas to kill iOS focus-zoom (the `!important` is
+  required — every control sets an inline `fontSize:14` that beats a plain rule); (2)
+  `@media(any-pointer:coarse)` 44px min touch floor on form controls; (3) `SiteHeader`
+  tagline + `badge` hidden ≤600px with `min-width:0` on the logo — fixes the header
+  overflow P1 that hit home/practitioners/status at once.
+- **Home/shared** — `FaqAccordion` now measures panel height (was clipped at 1000px);
+  `GallerySection` slides are `min(320px,100vw-4rem)` with a runtime-measured paging step,
+  touch-swipe, 44px arrows; `RequestModal` gets body-scroll-lock + `overscroll-behavior:
+  contain`, class-based 2-up rows that stack ≤480px, autocomplete hints.
+- **Practitioners** — hero `<br>` dropped on mobile (natural wrap); form-card padding trimmed.
+- **Status** — result card (was `1fr 1fr`, zero mobile CSS) stacks ≤600px.
+- **Forms/auth** — `PhotoSubmissionForm` session band `repeat(4,1fr)`→`auto-fit`;
+  Consent/Agreement 2-up grids stack ≤480px; login/global-login/join-admin eye-toggles &
+  submits raised to 44px; onboarding/consent/submit-photos hand-rolled navs trim gutter +
+  drop secondary labels ≤480px.
+- **Admin (mockup-safe)** — `AdminTable` `min-width:680` (scrolls on phones, desktop
+  unaffected); 220px sidebar becomes an off-canvas drawer `<768px` via a top-nav hamburger
+  (`AdminUIContext.sidebarOpen`). Every drawer rule is `@media(max-width:767px)` and the
+  hamburger/backdrop are `display:none` by default → desktop console is pixel-identical.
+- **Verified** at true 360px (CDP emulation) across home/practitioners/status/login/
+  global-login/onboarding: 0 horizontal overflow, tagline hidden, modal grid stacks,
+  scroll-lock restores on close, inputs 16px + 44px. `tsc` + `eslint` clean. Admin drawer
+  runtime is behind auth — desktop safety is guaranteed by construction, phone drawer not
+  screenshot-driven (no credentials).
+
+---
+
 ## [2026-07-17] Brand tagline — "Where the insight quotient is unleashed" — SHIPPED
 
 Client copy change: the tagline now decodes the brand name (*insight quotient* = **IQ**).

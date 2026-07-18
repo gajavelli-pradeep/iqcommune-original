@@ -182,6 +182,8 @@ const overlayStyle: React.CSSProperties = {
   background: "rgba(0,0,0,0.55)",
   zIndex: 200,
   overflowY: "auto",
+  // Keep touch scrolling inside the overlay from chaining to the locked page.
+  overscrollBehavior: "contain",
   WebkitOverflowScrolling: "touch",
   display: "flex",
   alignItems: "flex-start",
@@ -311,6 +313,15 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
       'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
     );
     el?.focus();
+  }, [open]);
+
+  // Lock body scroll while open so the page behind the dialog can't scroll on
+  // touch; restore the prior value on every close/unmount path.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   // Trap focus within dialog; close on Escape
@@ -730,14 +741,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   </div>
 
                   {/* ── Name row ── */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0.75rem",
-                      marginBottom: "1rem",
-                    }}
-                  >
+                  <div className="rm-grid-2" style={{ marginBottom: "1rem" }}>
                     <div>
                       <label htmlFor="modal-fname" style={labelStyle}>
                         First name
@@ -745,6 +749,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <input
                         id="modal-fname"
                         type="text"
+                        autoComplete="given-name"
                         value={form.firstName}
                         onChange={(e) =>
                           updateField("firstName", e.target.value)
@@ -761,6 +766,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <input
                         id="modal-lname"
                         type="text"
+                        autoComplete="family-name"
                         value={form.lastName}
                         onChange={(e) =>
                           updateField("lastName", e.target.value)
@@ -779,6 +785,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     <input
                       id="modal-email"
                       type="email"
+                      autoComplete="email"
                       value={form.email}
                       onChange={(e) => updateField("email", e.target.value)}
                       placeholder="rohan@example.com"
@@ -795,6 +802,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                     <input
                       id="modal-phone"
                       type="tel"
+                      autoComplete="tel"
                       value={form.phone}
                       onChange={(e) => updateField("phone", e.target.value)}
                       placeholder="+91 98765 43210"
@@ -804,14 +812,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   </div>
 
                   {/* ── City + State (all audiences) ── */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0.75rem",
-                      marginBottom: "1rem",
-                    }}
-                  >
+                  <div className="rm-grid-2" style={{ marginBottom: "1rem" }}>
                     <div>
                       <label htmlFor="modal-city" style={labelStyle}>
                         City
@@ -819,6 +820,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <input
                         id="modal-city"
                         type="text"
+                        autoComplete="address-level2"
                         value={form.city}
                         onChange={(e) => updateField("city", e.target.value)}
                         placeholder="Mumbai"
@@ -833,6 +835,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <input
                         id="modal-state"
                         type="text"
+                        autoComplete="address-level1"
                         value={form.state}
                         onChange={(e) => updateField("state", e.target.value)}
                         placeholder="Maharashtra"
@@ -888,14 +891,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
 
                   {/* ── Group size + Date row (Groups audience only) ── */}
                   {selectedAudience === "group" && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "0.75rem",
-                        marginBottom: "1rem",
-                      }}
-                    >
+                    <div className="rm-grid-2" style={{ marginBottom: "1rem" }}>
                       <div>
                         <label htmlFor="modal-groupsize" style={labelStyle}>
                           Group size

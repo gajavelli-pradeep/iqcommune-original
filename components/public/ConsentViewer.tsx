@@ -51,7 +51,6 @@ const sectionLabel: React.CSSProperties = {
   color: "var(--gold-dark)",
   margin: "1.5rem 0 0.85rem",
 };
-const kvGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1.5rem" };
 const kvLabel: React.CSSProperties = { fontSize: 11.5, color: "var(--ink-faint)", marginBottom: 2 };
 const kvValue: React.CSSProperties = { fontSize: 14.5, fontWeight: 500, color: "var(--ink)" };
 const divider: React.CSSProperties = { height: 1, background: "rgba(20,18,12,0.10)", margin: "1.5rem 0" };
@@ -144,7 +143,7 @@ export function ConsentViewer({
           Please review everything below carefully. Your consent confirms acceptance of this session and the stated payout.
         </div>
 
-        <div style={kvGrid}>
+        <div className="kv-grid-2">
           <KV label="Confirmation Ref. No." value={dash(refCode)} />
           <KV label="Empanelment Agreement Ref." value={dash(snapshot.agreementRef)} />
           <KV label="Issued On" value={dash(snapshot.issuedOn)} />
@@ -152,7 +151,7 @@ export function ConsentViewer({
         </div>
 
         <div style={sectionLabel}>Session details</div>
-        <div style={kvGrid}>
+        <div className="kv-grid-2">
           <KV label="Module confirmed for" value={dash(snapshot.module)} />
           <KV label="Date" value={dash(snapshot.date)} />
           <KV label="Start time" value={dash(snapshot.startTime ?? snapshot.time)} />
@@ -167,7 +166,7 @@ export function ConsentViewer({
         <div style={divider} />
 
         <div style={{ ...sectionLabel, marginTop: 0 }}>Payout confirmation</div>
-        <div style={kvGrid}>
+        <div className="kv-grid-2">
           <KV label="Gross payout amount" value={rupee(snapshot.gross)} />
           <KV label="TDS applicable" value={`${snapshot.tdsRate}% deducted`} />
           <KV label="GST applicable" value={gstDisplay} />
@@ -197,7 +196,7 @@ export function ConsentViewer({
         </div>
 
         <div style={sectionLabel}>Tax invoice details</div>
-        <div style={kvGrid}>
+        <div className="kv-grid-2">
           <KV label="Invoice should be raised by" value={dash(snapshot.invoiceBy)} />
           <KV label="Payment method on file" value={dash(snapshot.paymentMethod)} />
         </div>

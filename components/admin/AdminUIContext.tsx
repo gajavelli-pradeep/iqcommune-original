@@ -15,6 +15,10 @@ interface AdminUI {
   setActiveTab: (v: string) => void;
   viewAs: RoleView;
   setViewAs: (v: RoleView) => void;
+  // Mobile-only: whether the off-canvas sidebar drawer is open (<768px). Ignored
+  // by CSS on desktop, where the sidebar is always visible.
+  sidebarOpen: boolean;
+  setSidebarOpen: (v: boolean) => void;
 }
 
 const AdminUIContext = createContext<AdminUI | null>(null);
@@ -35,6 +39,7 @@ export function AdminUIProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
 
   const [globalSearch, setGlobalSearch] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global-admin "Viewing as" preview. Defaults to full access; a non-global
   // viewer's console ignores this entirely (see AdminConsoleView), so it is a
@@ -59,8 +64,8 @@ export function AdminUIProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ globalSearch, setGlobalSearch, activeTab, setActiveTab, viewAs, setViewAs }),
-    [globalSearch, activeTab, setActiveTab, viewAs]
+    () => ({ globalSearch, setGlobalSearch, activeTab, setActiveTab, viewAs, setViewAs, sidebarOpen, setSidebarOpen }),
+    [globalSearch, activeTab, setActiveTab, viewAs, sidebarOpen]
   );
 
   return <AdminUIContext.Provider value={value}>{children}</AdminUIContext.Provider>;

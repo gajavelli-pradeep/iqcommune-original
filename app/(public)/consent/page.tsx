@@ -12,6 +12,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main style={{ background: "var(--surface-soft)", minHeight: "100vh" }}>
       <nav
+        className="ob-nav"
         style={{
           height: 68,
           background: "rgba(255,255,255,0.95)",

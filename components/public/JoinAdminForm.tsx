@@ -177,9 +177,10 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
             type="button"
             onClick={() => setShowPw((v) => !v)}
             style={{
-              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+              position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)",
               background: "transparent", border: "none", cursor: "pointer",
               fontSize: 12, fontWeight: 600, color: "var(--ink-soft)", fontFamily: "inherit",
+              minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
             {showPw ? "Hide" : "Show"}
@@ -225,6 +226,7 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
           border: "none",
           borderRadius: 8,
           padding: "11px",
+          minHeight: 44,
           fontSize: 14,
           fontWeight: 600,
           cursor: submitting ? "not-allowed" : "pointer",

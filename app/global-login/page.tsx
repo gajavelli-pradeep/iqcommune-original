@@ -128,8 +128,8 @@ export default function GlobalLoginPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 34,
-                  height: 34,
+                  width: 44,
+                  height: 44,
                   background: "transparent",
                   border: "none",
                   borderRadius: 8,
@@ -167,6 +167,7 @@ export default function GlobalLoginPage() {
             disabled={loading}
             style={{
               padding: "12px",
+              minHeight: 44,
               background: "var(--gold)",
               color: "var(--ink)",
               border: "none",

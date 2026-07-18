@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
 
 export interface FaqItem {
   q: string;
@@ -13,6 +13,24 @@ export interface FaqItem {
  */
 export function FaqAccordion({ items }: { items: FaqItem[] }) {
   const [open, setOpen] = useState<number | null>(null);
+
+  // The open panel's height is measured, not capped. A fixed maxHeight (e.g. the
+  // old 1000px) silently clips long answers on narrow screens — worse as text
+  // reflows taller on mobile. Measure the content and re-measure on resize so the
+  // panel always reveals its full answer at every width.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [panelH, setPanelH] = useState(0);
+
+  const measure = useCallback(() => {
+    if (contentRef.current) setPanelH(contentRef.current.scrollHeight);
+  }, []);
+
+  useLayoutEffect(() => {
+    measure();
+    if (open === null) return;
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open, measure]);
 
   return (
     <div>
@@ -79,19 +97,20 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
               </svg>
             </button>
 
-            {/* Height is driven entirely by inline style — no CSS class dependency */}
+            {/* Height is measured (see `measure` above) so long answers never clip. */}
             <div
               id={panelId}
               role="region"
               aria-labelledby={btnId}
               style={{
                 overflow: "hidden",
-                maxHeight: isOpen ? 1000 : 0,
+                maxHeight: isOpen ? panelH : 0,
                 opacity: isOpen ? 1 : 0,
                 transition: "max-height 0.35s ease, opacity 0.25s ease",
               }}
             >
               <div
+                ref={isOpen ? contentRef : undefined}
                 style={{
                   padding: "1rem 1.4rem 1.1rem",
                   fontSize: 14,

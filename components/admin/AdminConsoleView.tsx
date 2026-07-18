@@ -414,7 +414,7 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin: realIsGlobalAdmin = false, galleryAdminAccess = true, readOnly: realReadOnly = false }: Props) {
-  const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab, viewAs } = useAdminUI();
+  const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab, viewAs, sidebarOpen, setSidebarOpen } = useAdminUI();
 
   // V5 "Viewing as" preview — downgrade-only. Only a real global admin can
   // preview a lower scope; every other tier ignores viewAs, so it can never
@@ -754,8 +754,22 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     // Gap 7: no global padding on main; layout wrapper
     <div style={{ display: "flex", paddingTop: 64, minHeight: "100vh", background: "#f8f7f4" }}>
 
+      {/* ── Mobile drawer backdrop (<768px only; CSS-gated, desktop never shows it) ── */}
+      {sidebarOpen && (
+        <div
+          className="admin-drawer-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Sidebar ── */}
+      {/* On desktop this stays the sticky 220px rail (inline styles, unchanged). Below
+          768px, globals.css turns .admin-sidebar into an off-canvas drawer toggled by
+          data-open — the mockup is a desktop spec, so the phone drawer is mockup-safe. */}
       <aside
+        className="admin-sidebar"
+        data-open={sidebarOpen}
         style={{
           width: 220,
           flexShrink: 0,
@@ -792,7 +806,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               return (
                 <button
                   key={item.tab}
-                  onClick={() => setActiveTab(item.tab)}
+                  onClick={() => { setActiveTab(item.tab); setSidebarOpen(false); }}
                   onMouseEnter={() => setHovered(item.tab)}
                   onMouseLeave={() => setHovered(null)}
                   style={{

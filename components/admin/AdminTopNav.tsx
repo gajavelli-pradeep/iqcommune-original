@@ -26,7 +26,7 @@ const NOTIF_LINKS: { label: string; tab: string }[] = [
 ];
 
 export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; isGlobalAdmin?: boolean }) {
-  const { globalSearch, setGlobalSearch, setActiveTab, viewAs, setViewAs } = useAdminUI();
+  const { globalSearch, setGlobalSearch, setActiveTab, viewAs, setViewAs, sidebarOpen, setSidebarOpen } = useAdminUI();
   const [bellOpen, setBellOpen] = useState(false);
   const pathname = usePathname();
   // The "Viewing as" preview belongs to the Global Admin console (/globaladmin) —
@@ -52,6 +52,42 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
         gap: "1.5rem",
       }}
     >
+      {/* Mobile-only sidebar toggle — hidden on desktop via globals (.admin-hamburger),
+          so the V5 desktop header is unchanged. */}
+      <button
+        className="admin-hamburger"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+        aria-expanded={sidebarOpen}
+        style={{
+          background: "none",
+          border: "1px solid rgba(20,18,12,.15)",
+          borderRadius: 9,
+          width: 40,
+          height: 40,
+          flexShrink: 0,
+          cursor: "pointer",
+          color: "var(--ink)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          {sidebarOpen ? (
+            <>
+              <line x1="3" y1="3" x2="15" y2="15" />
+              <line x1="15" y1="3" x2="3" y2="15" />
+            </>
+          ) : (
+            <>
+              <line x1="2" y1="5" x2="16" y2="5" />
+              <line x1="2" y1="9" x2="16" y2="9" />
+              <line x1="2" y1="13" x2="16" y2="13" />
+            </>
+          )}
+        </svg>
+      </button>
+
       {/* Logo — Gap 1, 2, 32: logo-col wraps wordmark + tagline; link stays '/' */}
       <Link href="/" style={{ textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 14 }}>
         {/* logo-col: wordmark + tagline stacked */}

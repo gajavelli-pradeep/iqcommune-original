@@ -50,7 +50,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
           {/* Logo: wordmark + tagline, optional badge */}
           <Link
             href={logoHref}
-            className="nav-logo"
+            className="nav-logo site-header-logo"
             style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: badge ? 14 : 0 }}
           >
             {/* IQ mark + wordmark lockup — mark aligned to the wordmark/tagline column */}
@@ -62,6 +62,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
                 <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 26, letterSpacing: "-0.04em" }}>commune</span>
               </span>
               <span
+                className="site-header-tagline"
                 style={{
                   fontSize: 9.5,
                   fontWeight: 500,
@@ -78,6 +79,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
 
             {badge && (
               <span
+                className="site-header-badge"
                 style={{
                   borderLeft: "1px solid rgba(20,18,12,0.18)",
                   paddingLeft: 14,

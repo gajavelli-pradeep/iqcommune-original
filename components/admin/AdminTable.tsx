@@ -72,6 +72,11 @@ const connectedFrame: React.CSSProperties = {
 
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  // Floor keeps columns legible when the container is narrow: the wrapper's
+  // overflow:auto scrolls the table horizontally on a phone instead of crushing
+  // every column. Desktop is wider than this, so width:100% wins and nothing
+  // changes there.
+  minWidth: 680,
   borderCollapse: "collapse",
   fontSize: 13,
 };

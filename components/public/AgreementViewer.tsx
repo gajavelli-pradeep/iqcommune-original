@@ -1090,9 +1090,7 @@ export function AgreementViewer() {
 
               {/* Gap 31: label "Full name (as it should appear on the agreement)" */}
               {/* Gap 34: inputStyle border 1.5px solid rgba(20,18,12,0.20), padding 11px 14px */}
-              <div
-                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}
-              >
+              <div className="av-grid-2" style={{ marginBottom: "1rem" }}>
                 <div>
                   <label htmlFor="sig-fullname" style={labelStyle}>
                     Full name (as it should appear on the agreement)

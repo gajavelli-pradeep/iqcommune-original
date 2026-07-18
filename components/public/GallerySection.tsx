@@ -43,11 +43,18 @@ export function GallerySection() {
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const touchX = useRef<number | null>(null);
 
   // Real published photos if any, else placeholders.
   const slides: Slide[] = photos && photos.length > 0 ? photos : PLACEHOLDERS;
   const total = slides.length;
-  const maxOffset = Math.max(0, total - VISIBLE);
+
+  // Slides are CSS-clamped to min(320px, viewport − 4rem), so on a phone each
+  // slide is narrower than 320px. The transform step must match the *rendered*
+  // width or paging drifts — so measure it (and how many slides fit) at runtime.
+  const [step, setStep] = useState(STEP);
+  const [maxOffset, setMaxOffset] = useState(Math.max(0, total - VISIBLE));
 
   const loadGallery = useCallback(() => {
     fetch("/api/gallery")
@@ -70,9 +77,9 @@ export function GallerySection() {
 
   const applyOffset = useCallback((idx: number) => {
     if (trackRef.current) {
-      trackRef.current.style.transform = `translateX(-${Math.min(idx, maxOffset) * STEP}px)`;
+      trackRef.current.style.transform = `translateX(-${Math.min(idx, maxOffset) * step}px)`;
     }
-  }, [maxOffset]);
+  }, [maxOffset, step]);
 
   const goTo = useCallback((idx: number) => {
     const next = ((idx % total) + total) % total;
@@ -97,9 +104,38 @@ export function GallerySection() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [startAuto]);
 
+  // Measure the rendered slide width → derive the paging step + visible count.
+  useEffect(() => {
+    const measure = () => {
+      const track = trackRef.current;
+      const vp = viewportRef.current;
+      const firstSlide = track?.firstElementChild as HTMLElement | null;
+      if (!track || !vp || !firstSlide) return;
+      const nextStep = firstSlide.offsetWidth + SLIDE_GAP;
+      const visible = Math.max(1, Math.round((vp.clientWidth + SLIDE_GAP) / nextStep));
+      setStep(nextStep);
+      setMaxOffset(Math.max(0, total - visible));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [total]);
+
+  // Re-clamp the current position whenever the step/limit changes (e.g. rotate).
+  useEffect(() => { applyOffset(current); }, [step, maxOffset, current, applyOffset]);
+
   const nav = (dir: -1 | 1) => {
     goTo(current + dir);
     startAuto();
+  };
+
+  // Touch swipe: primary paging affordance on phones (arrows/dots are secondary).
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    if (Math.abs(dx) > 40) nav(dx < 0 ? 1 : -1);
+    touchX.current = null;
   };
 
   return (
@@ -118,7 +154,12 @@ export function GallerySection() {
       </div>
 
       {/* Track */}
-      <div style={{ position: "relative", overflow: "hidden" }}>
+      <div
+        ref={viewportRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        style={{ position: "relative", overflow: "hidden" }}
+      >
         <div
           ref={trackRef}
           style={{ display: "flex", gap: SLIDE_GAP, padding: "0 2rem 2rem", transition: "transform 0.5s cubic-bezier(0.25,0.8,0.25,1)" }}
@@ -127,7 +168,7 @@ export function GallerySection() {
             <div
               key={i}
               style={{
-                flex: `0 0 ${SLIDE_W}px`,
+                flex: `0 0 min(${SLIDE_W}px, calc(100vw - 4rem))`,
                 borderRadius: 10,
                 overflow: "hidden",
                 position: "relative",
@@ -179,32 +220,38 @@ export function GallerySection() {
       </div>
 
       {/* Navigation */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, padding: "1.25rem 2rem 2.5rem", background: "#0a0a0a" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, padding: "1.25rem 1.25rem 2.5rem", background: "#0a0a0a" }}>
         <button
           onClick={() => nav(-1)}
           aria-label="Previous slide"
-          style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ width: 44, height: 44, flexShrink: 0, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
 
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 3 }}>
           {slides.map((_, i) => (
+            // 44px-tall hit area; the gold bar is an inner span so the touch target
+            // grows without the visual dot changing. (7 full 44-wide dots can't fit a
+            // 320px row, so width stays compact while the height meets the floor.)
             <button
               key={i}
               onClick={() => { goTo(i); startAuto(); }}
               aria-label={`Go to slide ${i + 1}`}
-              style={{ width: current === i ? 18 : 6, height: 6, borderRadius: current === i ? 3 : "50%", background: current === i ? "var(--gold)" : "rgba(255,255,255,0.15)", border: "none", cursor: "pointer", padding: 0, transition: "background 0.3s, width 0.3s" }}
-            />
+              aria-current={current === i}
+              style={{ height: 44, width: current === i ? 26 : 18, minHeight: 0, padding: 0, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <span style={{ width: current === i ? 18 : 6, height: 6, borderRadius: current === i ? 3 : "50%", background: current === i ? "var(--gold)" : "rgba(255,255,255,0.15)", transition: "background 0.3s, width 0.3s" }} />
+            </button>
           ))}
         </div>
 
         <button
           onClick={() => nav(1)}
           aria-label="Next slide"
-          style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ width: 44, height: 44, flexShrink: 0, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
         </button>
       </div>
 

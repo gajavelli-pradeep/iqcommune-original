@@ -117,17 +117,17 @@ export default async function StatusPage({ searchParams }: Props) {
                 </p>
               </div>
 
-              {/* Card */}
+              {/* Card — grid is class-owned (status-card) so it stacks to a single
+                  column on phones; an inline grid-template-columns would out-specify
+                  the media query and the two columns would stay crushed at 320px. */}
               <div
+                className="status-card"
                 style={{
                   background: "var(--surface)",
                   border: "1px solid rgba(20,18,12,.09)",
                   borderTop: "3px solid var(--gold)",
                   borderRadius: 12,
                   padding: "2rem",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "2.5rem",
                 }}
               >
                 {/* Left — profile summary */}
