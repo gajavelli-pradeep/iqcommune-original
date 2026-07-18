@@ -8,10 +8,11 @@ import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 
-// V5-MATCH: the mockup's only Agreements row action is Download. Edit/Delete are
-// global-admin improvements, gated off (not deleted) so the handlers stay wired
-// and re-enabling is one flag flip. See ADMIN-V5-SPECDIFF.md.
-const SHOW_OFFSPEC_ACTIONS = false;
+// Op-procedure alignment (branch v5/opproc-alignment): the doc's Agreements flow
+// needs manual controls — set signed-date/method (P7/P8) and Delete-to-redo (E2).
+// This flag (gates only the Global-Admin Edit + Delete row actions) is ON here; it
+// stays OFF on the mockup-match branch. See ADMIN-V5-SPECDIFF.md / V5-OPPROC-*.md.
+const SHOW_OFFSPEC_ACTIONS = true;
 
 // Agreements row joined with practitioner name + role
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];

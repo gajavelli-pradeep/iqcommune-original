@@ -5,6 +5,8 @@ import { FormModal, fieldLabelStyle, fieldInputStyle, fieldSelectStyle, primaryB
 import type { Agreement } from "@/components/admin/AgreementTable";
 
 const KNOWN_STATUSES = ["Pending signature", "Active"];
+// Op-procedure Part 2 step 9: signature method is a Drawn/Typed choice, not free text.
+const KNOWN_METHODS = ["Drawn", "Typed"];
 
 function fromRecord(a: Agreement) {
   return {
@@ -33,6 +35,10 @@ export function AgreementEditModal({
 
   // Keep the record's current status selectable even if it isn't a known one.
   const statuses = KNOWN_STATUSES.includes(form.status) ? KNOWN_STATUSES : [form.status, ...KNOWN_STATUSES];
+  // Preserve any pre-existing method value (e.g. an e-sign string) alongside Drawn/Typed.
+  const methods = form.signatureMethod && !KNOWN_METHODS.includes(form.signatureMethod)
+    ? [form.signatureMethod, ...KNOWN_METHODS]
+    : KNOWN_METHODS;
 
   const set = (k: keyof ReturnType<typeof fromRecord>) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -94,7 +100,12 @@ export function AgreementEditModal({
             {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
-        <Field label="Signature method"><input id="ae-method" name="ae-method" style={fieldInputStyle} placeholder="e.g. Typed / Drawn" value={form.signatureMethod} onChange={set("signatureMethod")} /></Field>
+        <Field label="Signature method">
+          <select id="ae-method" name="ae-method" style={fieldSelectStyle} value={form.signatureMethod} onChange={set("signatureMethod")}>
+            <option value="">Not set</option>
+            {methods.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </Field>
         <div style={{ gridColumn: "1 / -1" }}>
           <Field label="Signed on"><input id="ae-signed-at" name="ae-signed-at" type="date" style={fieldInputStyle} value={form.signedAt} onChange={set("signedAt")} /></Field>
         </div>

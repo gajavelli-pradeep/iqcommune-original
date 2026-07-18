@@ -22,12 +22,14 @@ non-matching contracts from `V5-OPPROC-REALITY-CHECK.md` (7 partial + 10 diverge
   `components/admin/SessionTable.tsx` (feedback row action → `isGlobalAdmin && status==="Completed"`, relabelled "Rate practitioner").
 - Still open in this Part: **S3** (draft "rate /5" email to the original client) — deferred to Phase 2 (needs client email plumbed onto session rows).
 
-### Phase 2 — buildable, NO DB migration (surgical un-gates + small behaviour)
-- **P7/P8/P10/E2 (agreements):** un-gate `AgreementTable` edit/delete for Global Admin; change the method field in `AgreementEditModal` from free-text to a **Drawn/Typed dropdown** (P8). *(verify `onEdit`/`onDelete` are wired from `AdminConsoleView`.)*
-- **S3:** plumb the requesting client's email onto the session row (session→request join in the sessions query), add a "Draft rating email" action opening `ContactDraftModal` addressed to the client.
-- **E4:** change Cancel from a silent server auto-email to opening a **pre-drafted `ContactDraftModal`** the admin reviews/sends; add a client-notify path to the Sessions-tab dropdown cancel.
-- **P4:** give the Practitioners "Message" draft an agreement-specific template.
-- **PY3:** expose "Paid" via a status dropdown (currently a button).
+### ✅ Phase 2 — Agreements manual controls (DONE, builds clean)
+- **P7/P8/P10(partial)/E2:** re-enabled the Global-Admin **Edit + Delete** row actions in `AgreementTable` (flipped its `SHOW_OFFSPEC_ACTIONS` — that flag gates only these two, handlers already wired from `AdminConsoleView`). Edit gives a manual **Signed-on date** (P7) and a **Drawn/Typed method dropdown** (P8, `AgreementEditModal` — was free text). Delete = soft-delete + undo (E2). *P10 "reset to Pending" is only partial — a true `Pending` agreement status needs the CHECK-constraint migration in Phase 3.*
+
+### Phase 2b — DEFERRED (needs data plumbing or changes a working flow; unverifiable behind auth)
+- **E4:** Cancel currently **auto-emails** the client server-side (`session-requests/[id]/cancel`). The doc wants a **review-and-send draft** — but switching off the auto-send risks dropped notifications and needs client-email + `ContactDraftModal` wiring. Product decision + runtime verification required.
+- **S3:** "Draft rating email to the client" needs the requesting client's email joined onto session rows (sessions query in `AdminConsoleView`) — a data-layer change to verify.
+- **P4:** agreement-specific practitioner "Message" template (low value).
+- **PY3:** expose "Paid" via a status dropdown (currently a button — risks the working payout flow).
 - **P2:** widen the practitioner status dropdown toward Applied→Screening Done→Empanelled (careful — Empanelled is a one-way trigger via `0006`).
 
 ### Phase 3 — DB migrations (review + apply + runtime-verify required)
