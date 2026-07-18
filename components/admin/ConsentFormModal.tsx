@@ -12,6 +12,7 @@ import {
 import { computeNet } from "@/lib/consent";
 import { DURATION_OPTIONS } from "@/lib/schemas/consent";
 import type { ConfirmationRow } from "@/components/admin/ConsentTable";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 
 // V5 duration labels (values stay the schema enum "3 hours" / "6 hours").
 const DURATION_LABELS: Record<string, string> = {
@@ -94,6 +95,11 @@ export function ConsentFormModal({
   // claim an email was sent.
   const [emailStatus, setEmailStatus] = useState("");
   const [copied, setCopied] = useState(false);
+  // Op-procedure Part 4: after Generate the admin can download the consent PDF
+  // (C4) and open a pre-filled draft email with the consent link (C5).
+  const [generatedId, setGeneratedId] = useState("");
+  const [generatedRecipient, setGeneratedRecipient] = useState<{ name?: string; email?: string }>({});
+  const [draftOpen, setDraftOpen] = useState(false);
   // Keyed by session id so a stale fetch (from a previously-picked session) is never
   // shown against the current one — the render derives from this + form.sessionId.
   const [autofill, setAutofill] = useState<{ sessionId: string; data: ConsentAutofill } | null>(null);
@@ -250,7 +256,22 @@ export function ConsentFormModal({
         : null,
     });
     setGeneratedLink(data.consent_link);
+    setGeneratedId(data.id);
+    setGeneratedRecipient({ name: selected.practitioner?.name, email: selected.practitioner?.email });
     setEmailStatus(emailState);
+  }
+
+  // C4: stream the consent PDF that was generated + stored at generate-time.
+  async function downloadPdf() {
+    if (!generatedId) return;
+    try {
+      const r = await fetch(`/api/admin/consent/${generatedId}/download`);
+      if (!r.ok) return;
+      const { url } = (await r.json()) as { url: string };
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      /* download unavailable — the consent link above is still copyable */
+    }
   }
 
   async function copyLink() {
@@ -268,6 +289,9 @@ export function ConsentFormModal({
     setForm(empty);
     setAutofill(null);
     setGeneratedLink("");
+    setGeneratedId("");
+    setGeneratedRecipient({});
+    setDraftOpen(false);
     setEmailStatus("");
     setCopied(false);
   }
@@ -328,6 +352,21 @@ export function ConsentFormModal({
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" style={{ ...ghostBtn, flexShrink: 0 }} onClick={downloadPdf}>Download PDF</button>
+            <button type="button" style={{ ...ghostBtn, flexShrink: 0 }} onClick={() => setDraftOpen(true)}>Draft email</button>
+          </div>
+          <ContactDraftModal
+            open={draftOpen}
+            onClose={() => setDraftOpen(false)}
+            recipientName={generatedRecipient.name}
+            recipientEmail={generatedRecipient.email}
+            subject="Please review & sign your session consent"
+            emailBody={`Dear ${generatedRecipient.name ?? "Practitioner"},\n\nPlease review and sign your session consent form:\n${generatedLink}\n\nWarm regards,\nThe iqcommune Team`}
+            waBody={`Hi ${generatedRecipient.name ?? ""}! Please review & sign your session consent form:\n${generatedLink}`}
+            title="Draft consent email"
+            subtitle="Pre-filled - copy and send via your preferred channel"
+          />
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>

@@ -32,15 +32,28 @@ non-matching contracts from `V5-OPPROC-REALITY-CHECK.md` (7 partial + 10 diverge
 - **PY3:** expose "Paid" via a status dropdown (currently a button — risks the working payout flow).
 - **P2:** widen the practitioner status dropdown toward Applied→Screening Done→Empanelled (careful — Empanelled is a one-way trigger via `0006`).
 
-### Phase 3 — DB migrations (review + apply + runtime-verify required)
-- **R2/R3/C7:** reintroduce a `Matched` request status + `Confirmed` session status; make setting them the trigger that creates/surfaces the session (reverses `0029`). New migration + `assign`/status route rework.
-- **P10:** add a `Pending` agreement status to the agreements CHECK constraint so Delete can reset to it.
+> **DOUBLE-CHECK correction (2026-07-18):** the "needs migration / net-new" framing below was
+> **overstated**. All statuses are `text + CHECK` (no Postgres enums, no TS unions), so any status
+> change is a trivial one-line CHECK swap; and every "net-new" contract has real reusable
+> scaffolding (PDF gen `lib/pdf/*`, storage-upload `photo-submissions/route.ts`, `ContactDraftModal`,
+> `FormModal`, dropzones). See the revised effort/risk per contract below.
 
-### Phase 4 — net-new features
-- **P3:** prefilled (blank) agreement-PDF **download** route + Practitioners-tab button.
-- **P6/P9 · C6 · PH2:** admin **upload** modals (signed agreement / signed consent / photos) with the "grey-out after upload" lock.
-- **C1/C8:** Consent tab **3rd sub-section** (photo-guide) — new route + UI + guide asset + draft email.
-- **C4/C5:** make Generate **download** the consent PDF immediately + add a **Draft email** button (rework `consent-generate` from auto-send to download+draft).
+### ✅ Phase 3a — Consent Generate download + draft (DONE, builds clean)
+- **C4** (~90% pre-built): after Generate, a **Download PDF** button streams the consent PDF already stored at generate-time (via the existing `consent/[id]/download` route).
+- **C5**: a **Draft email** button opens `ContactDraftModal` pre-filled with the consent link + practitioner recipient.
+- File: `components/admin/ConsentFormModal.tsx` (additive — the existing generate+send flow is unchanged).
+
+### Phase 3b — cheap, no migration (S/low, do next)
+- **P10:** change agreement Delete/redo to **reset status to `Pending signature`** (already a legal value) + clear signature fields, instead of soft-delete. *(Caveat: trigger `0006` won't auto-demote the practitioner from Empanelled — the route must handle that.)*
+- **P4:** add an agreement-specific template to the already-wired Practitioners `ContactDraftModal`.
+- **P3:** add one `if(signedAt) else` unsigned branch to `lib/pdf/agreement-pdf.ts` + a GET route that streams the Buffer + a Practitioners-tab button.
+
+### Phase 4 — net-new but scaffolded (M, needs a test admin login to verify)
+- **P6 · C6 · PH2:** clone the proven upload trio (dropzone + `photo-submissions` upload body + `FormModal`) into admin upload modals over the existing `agreements`/`confirmations`/`session-photos` buckets, with the grey-out-after-upload lock. *(Must not collide with the e-sign trigger `0006`.)*
+- **C1/C8:** add the Consent tab **3rd sub-section** (photo-guide) — reuse `SHOT_LIST` as the guide, the session-select pattern, and `ContactDraftModal`.
+
+### Phase 5 — genuinely needs a migration + PRODUCT DECISION (overrides the V5 mockup mandate)
+- **R2/R3 (literal "Matched") · C7 (persisted "Confirmed")**: the *outcomes* already ship (Assign auto-creates the session; Upcoming already surfaces in Session Details). A persisted `Matched`/`Confirmed` value needs a 1-line CHECK swap **plus** auditing the ~15 `status==='Upcoming'` branches — only worth it if the client mandates the literal statuses + dropdown-as-trigger. Also clean up the stale `Matched` still in the request Zod enums (`session-requests/route.ts:42,98`) that the DB now rejects.
 
 ## Cross-cutting files the parent (not parallel agents) must own
 `components/admin/AdminConsoleView.tsx` (tab wiring, data queries), shared status enums/`lib`,
