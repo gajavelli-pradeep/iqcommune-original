@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { StatusPill } from "@/components/shared/StatusPill";
+import { StatusPill, StatusSelect } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { sendReminderRequest } from "@/lib/admin/send-reminder";
 import { formatInr } from "@/lib/tds";
@@ -522,22 +522,13 @@ export function PayoutTable({
                         <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
                       ) : (
                       <>
-                        <button
-                          onClick={() => markPaid(p.id, effectiveMethod(p))}
-                          style={{
-                            background: "#c9982a",
-                            color: "#14161d",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "5px 12px",
-                            fontSize: 12,
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Mark as paid
-                        </button>
+                        {/* Op-procedure Part 7 step 36: set the dropdown to Paid — the final step. */}
+                        <StatusSelect
+                          value={p.status}
+                          options={["Pending", "Paid"]}
+                          ariaLabel={`Set payout status for ${p.invoice_ref}`}
+                          onChange={(next) => { if (next === "Paid") markPaid(p.id, effectiveMethod(p)); }}
+                        />
                         <button
                           onClick={() =>
                             setDraft({
