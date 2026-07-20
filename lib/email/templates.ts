@@ -202,9 +202,12 @@ export function sessionCancelledEmail(
   };
 }
 
+// Body copy is verbatim from client_email.txt (flow 2). The only addition is the
+// "Track your application" button: signStatusUrl() is called in exactly one place
+// (app/api/applications/route.ts) and delivered only here, so dropping it would leave
+// the /status page unreachable. Flagged to the client as a deliberate extra.
 export function applicationConfirmation({
   name,
-  modules,
   statusUrl,
 }: {
   name: string;
@@ -213,10 +216,12 @@ export function applicationConfirmation({
   statusUrl?: string;
 }): { subject: string; htmlContent: string } {
   const first = esc(name.split(" ")[0] || "there");
+  // Padding, not margin — Outlook/Gmail collapse margins on block elements, which is
+  // why the button rendered flush against the sign-off.
   const statusBtn = statusUrl
-    ? `<div style="text-align:center;margin:2rem 0">
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 0 28px 0">
   <a href="${safeHref(statusUrl)}" style="${GOLD_BTN}">Track your application →</a>
-</div>`
+</td></tr></table>`
     : "";
   return {
     subject: "iqcommune — we've received your application",
@@ -224,7 +229,6 @@ export function applicationConfirmation({
 <p>Hi ${first},</p>
 <p>Thanks for applying to join the iqcommune practitioner network — we've received your application.</p>
 <p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.</p>
-<p style="font-size:13px;color:#4a4d5c"><strong>Modules applied for:</strong><br>${modules.map(esc).join("<br>")}</p>
 ${statusBtn}
 <p>Regards,<br>The iqcommune Team</p>
 </div>`,
@@ -386,12 +390,14 @@ export function newApplicationAdminEmail({
   consoleUrl: string;
 }): { subject: string; htmlContent: string } {
   return {
-    subject: `iqcommune [admin] — New practitioner application: ${escSubject(name)} (${escSubject(ref)})`,
+    subject: `iqcommune [admin] — New practitioner application: ${escSubject(name)} (IQC-EMP-${escSubject(ref)})`,
     htmlContent: `<div style="${BASE}">
 <p>A new practitioner application was submitted.</p>
 <table style="border-collapse:collapse;width:100%;margin:1rem 0">
   ${row("Applicant", name)}
-  ${row("Ref.", ref)}
+  ${/* Prefixed to match what the console shows — the bare number sent admins
+       hunting for "0019" when every screen displays "IQC-EMP-0019". */ ""}
+  ${row("Ref.", `IQC-EMP-${ref}`)}
   ${row("Role", role)}
   ${row("Experience", experience)}
   ${row("Location", `${city}, ${state}`)}

@@ -990,10 +990,14 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   communication_address: p.communication_address, tshirt_size: p.tshirt_size,
                 }))}
               />
-              {/* Team & Access — bare on the soft page (no card). D11 resolved: the
-                  roster GET is now requireAdmin (display-only fields), so the table
-                  renders for every role as the mockup shows; the invite box, "Manage
-                  team" and all per-row controls stay Global-Admin only. */}
+              {/* Team & Access — bare on the soft page (no card). D11: the roster GET is
+                  requireAdmin (display-only fields), so Admin and Global Admin both see
+                  the table as the mockup shows; the invite box, "Manage team" and all
+                  per-row controls stay Global-Admin only.
+                  The read-only User tier is excluded: requireAdmin does NOT admit `user`,
+                  so rendering this for them produced a 403 "Failed to load team." banner —
+                  and a viewer tier has no business reading the staff roster. */}
+              {!readOnly && (
               <div style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                   <div>
@@ -1031,6 +1035,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
                 {isGlobalAdmin && <InviteTeamMember />}
               </div>
+              )}
 
               {/* Roles & Permissions (V6) — Global-Admin only, same as Activity. */}
               {isGlobalAdmin && <RolesPermissions />}
