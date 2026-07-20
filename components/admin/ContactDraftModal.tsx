@@ -74,7 +74,7 @@ export function ContactDraftModal({
   toMeta,
   reMeta,
   title = "Draft message",
-  subtitle = "Pre-filled · copy and send via your preferred channel",
+  subtitle = "Click into the text below to edit before sending",
   editable = false,
   sendLabel = "Click to send",
   onSend,

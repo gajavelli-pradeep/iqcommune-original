@@ -974,7 +974,7 @@ export function PractitionerTable({
         open={draft.open}
         editable
         sendLabel="Click to send"
-        subtitle="Review or edit, then click Send"
+        subtitle="Click into the text below to edit before sending"
         onClose={closeDraft}
         title={draft.title}
         subject={draft.subject}

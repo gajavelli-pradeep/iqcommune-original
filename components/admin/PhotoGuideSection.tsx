@@ -11,6 +11,9 @@ interface GuideSession {
   ref_code: string;
   module: string;
   status: string;
+  // Shown in the selected-session reference panel.
+  session_date?: string | null;
+  venue?: string | null;
   practitioner: { name: string; email: string } | null;
 }
 
@@ -73,12 +76,34 @@ export function PhotoGuideSection({ sessions }: { sessions: GuideSession[] }) {
         </select>
       </label>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+      {/* Selected-session reference panel (mockup `pg-picker-info`) — the details you
+          need in front of you while messaging the practitioner. */}
+      {selected && (
+        <div style={{ background: "var(--surface-soft)", borderRadius: 8, padding: "12px 14px", marginTop: 14, fontSize: 12.5 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
+            {([
+              ["Practitioner", name || "—"],
+              ["Module", selected.module],
+              ["Session date", selected.session_date ? new Date(selected.session_date).toLocaleDateString("en-IN") : "—"],
+              ["Venue", selected.venue || "—"],
+            ] as const).map(([label, value]) => (
+              <div key={label}>
+                <div style={{ color: "var(--ink-faint)", fontSize: 10.5 }}>{label}</div>
+                <div style={{ fontWeight: 500, color: "var(--ink)" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+        {/* Mockup makes the download the dark primary of this pair. */}
         <button
           type="button"
-          style={btnStyle}
+          style={{ ...btnStyle, background: "var(--ink)", color: "#fff", border: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
           onClick={() => window.open("/api/admin/photo-guide", "_blank", "noopener,noreferrer")}
         >
+          <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
           Download photo guide (PDF)
         </button>
         <button

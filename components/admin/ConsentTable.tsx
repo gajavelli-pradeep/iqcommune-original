@@ -191,9 +191,18 @@ export function ConsentTable({
             {visible.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
-                  {data.length === 0
-                    ? "No confirmations generated yet — pick a Matched session in Part 1 above to generate one."
-                    : "No confirmations match the current filter"}
+                  {data.length === 0 ? (
+                    <>
+                      <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>
+                        No confirmations generated yet
+                      </div>
+                      <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
+                        Select a Matched session above to generate its revenue confirmation.
+                      </div>
+                    </>
+                  ) : (
+                    "No confirmations match the current filter"
+                  )}
                 </td>
               </tr>
             )}

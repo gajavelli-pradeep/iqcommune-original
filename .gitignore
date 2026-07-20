@@ -47,3 +47,4 @@ test-results/
 playwright-report/
 v6-shots/
 v6-diff/
+scripts/v6-text-parity.json

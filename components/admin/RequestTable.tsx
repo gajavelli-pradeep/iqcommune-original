@@ -627,6 +627,9 @@ export function RequestTable({
                                 {assignBusy === r.id ? "Creating session…" : "Cancelling…"}
                               </div>
                             )}
+                            <div style={{ fontSize: 10.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>
+                              Set to Matched once you&apos;ve filled in the practitioner and payout on the left. Set to Cancelled if the session falls through.
+                            </div>
                             <button
                               onClick={(e) => { e.stopPropagation(); openDraft(r); }}
                               style={{
@@ -719,7 +722,7 @@ export function RequestTable({
         open={draft.open}
         editable
         sendLabel="Click to send"
-        subtitle="Review or edit, then click Send"
+        subtitle="Click into the text below to edit before sending"
         onClose={() => setDraft({ open: false })}
         title={draft.title}
         subject={draft.subject}
