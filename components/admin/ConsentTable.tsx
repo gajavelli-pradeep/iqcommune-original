@@ -111,7 +111,11 @@ export function ConsentTable({
     setRecoverBusy(id);
     setError("");
     try {
-      const res = await fetch(`/api/admin/consent/${id}/${action}`, { method: "POST" });
+      // The two routes differ: resend-email is POST, mark-received is PATCH. Using
+      // POST for both silently 405'd the mark-received branch.
+      const res = await fetch(`/api/admin/consent/${id}/${action}`, {
+        method: action === "mark-received" ? "PATCH" : "POST",
+      });
       if (res.ok) router.refresh();
       else {
         const { error: msg } = await res.json().catch(() => ({ error: "" }));
