@@ -51,10 +51,36 @@ export async function createPayoutForSession(
     return { ok: true, created: false, payout: existing as PayoutSummary };
   }
 
-  const gross = session.payout_amount as number;
-  const tdsRate = session.tds_applicable && session.tds_rate ? (session.tds_rate as number) : 0;
-  const tdsAmount = Math.round((gross * tdsRate) / 100);
-  const net = gross - tdsAmount;
+  // The signed confirmation is the single source of truth for the agreed figures — it is
+  // the document the practitioner actually consented to, and it is the only place GST is
+  // recorded. Deriving from the session instead used to ignore GST entirely and read a
+  // TDS flag that defaults off, so a payout could read net == gross while the signed PDF
+  // said "TDS 10%, GST 18%".
+  const { data: confirmation } = await supabase
+    .from("confirmations")
+    .select("ref_code, gross_amount, net_amount, tds_rate, gst_rate")
+    .eq("session_id", sessionId)
+    .is("deleted_at", null)
+    .neq("status", "Superseded")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let gross: number;
+  let net: number;
+  if (confirmation) {
+    gross = confirmation.gross_amount as number;
+    net = confirmation.net_amount as number;
+  } else {
+    // No consent on record (a session completed without one). Fall back to the session's
+    // own figures and say so — a payout with no signed basis is worth noticing.
+    gross = session.payout_amount as number;
+    const tdsRate = session.tds_applicable && session.tds_rate ? (session.tds_rate as number) : 0;
+    net = gross - Math.round((gross * tdsRate) / 100);
+    log.warn("Create payout: no active confirmation for session — falling back to session figures", {
+      sessionId, sessionRef: session.ref_code, gross, net,
+    });
+  }
 
   const now = new Date();
   const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -64,10 +90,10 @@ export async function createPayoutForSession(
   // when NULL the console derives the destination from the practitioner's (decrypted)
   // UPI / bank on display. Copying the encrypted upi_id in here would persist
   // ciphertext, so prefill happens at the display layer, not at rest.
-  // NOTE: net_amount already reflects the TDS deduction, so the TDS *rate* is not
-  // persisted on the payout — the `payouts` table's remote schema doesn't expose a
-  // `tds_rate` column (PostgREST schema-cache), and the rate is derivable from the
-  // session if ever needed. Writing it here previously 500'd the (gated) insert.
+  // NOTE: gross/net are copied verbatim from the signed confirmation, so the rates are
+  // not persisted on the payout — the `payouts` table's remote schema doesn't expose
+  // rate columns (PostgREST schema-cache), and both rates remain on the confirmation.
+  // Writing them here previously 500'd the (gated) insert.
   const { data: payout, error: insertErr } = await supabase
     .from("payouts")
     .insert({
