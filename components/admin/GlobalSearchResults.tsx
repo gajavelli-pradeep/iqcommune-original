@@ -32,7 +32,7 @@ export function GlobalSearchResults({
 
   return (
     <div>
-      <div style={{ background: "#fff", borderBottom: "1px solid rgba(20,18,12,.10)", padding: "1.25rem 1.75rem" }}>
+      <div style={{ background: "#fff", borderBottom: "1px solid rgba(15,17,23,.10)", padding: "1.25rem 1.75rem" }}>
         <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--ink)", margin: 0 }}>Search results</h1>
         <p style={{ fontSize: 13, color: "var(--ink-faint)", marginTop: 1, marginBottom: 0 }}>
           {total} match{total === 1 ? "" : "es"} for “{q}”
@@ -74,8 +74,8 @@ export function GlobalSearchResults({
 function Section({ title, count, onSeeAll, children }: { title: string; count: number; onSeeAll: () => void; children: React.ReactNode }) {
   if (count === 0) return null;
   return (
-    <div style={{ background: "#fff", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1.25rem", borderBottom: "1px solid rgba(20,18,12,.08)" }}>
+    <div style={{ background: "#fff", border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1.25rem", borderBottom: "1px solid rgba(15,17,23,.08)" }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{title} ({count})</span>
         <button onClick={onSeeAll} style={{ fontSize: 12, color: "#8a6510", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
           Open tab →
@@ -90,7 +90,7 @@ function Row({ primary, secondary, status, onClick }: { primary: string; seconda
   return (
     <button
       onClick={onClick}
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textAlign: "left", padding: "0.7rem 1.25rem", background: "none", border: "none", borderBottom: "1px solid rgba(20,18,12,.05)", cursor: "pointer", fontFamily: "inherit" }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textAlign: "left", padding: "0.7rem 1.25rem", background: "none", border: "none", borderBottom: "1px solid rgba(15,17,23,.05)", cursor: "pointer", fontFamily: "inherit" }}
       onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#f8f7f4")}
       onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
     >

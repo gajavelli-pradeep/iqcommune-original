@@ -35,6 +35,7 @@ export default function GlobalLoginPage() {
 
   return (
     <div
+      className="min-h-screen-dvh"
       style={{
         minHeight: "100vh",
         background: "var(--ink)",

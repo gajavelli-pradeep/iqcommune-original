@@ -20,17 +20,17 @@ type SortKey = "name" | "phone" | "email" | "city" | "state";
 
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(20,18,12,.1)",
+  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(15,17,23,.1)",
   whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
 };
-const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "9px 12px", borderBottom: "1px solid rgba(20,18,12,.06)" };
+const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "9px 12px", borderBottom: "1px solid rgba(15,17,23,.06)" };
 const field: React.CSSProperties = {
-  padding: "7px 12px", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6,
+  padding: "7px 12px", border: "1px solid rgba(15,17,23,.18)", borderRadius: 6,
   fontFamily: "inherit", fontSize: 12.5, background: "var(--input-paper)", color: "var(--ink)", outline: "none",
 };
 const btnGhost: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6, background: "#fff",
-  border: "1px solid rgba(20,18,12,0.18)", borderRadius: 100, padding: "6px 12px",
+  border: "1px solid rgba(15,17,23,0.18)", borderRadius: 100, padding: "6px 12px",
   fontSize: 12, fontWeight: 500, cursor: "pointer", color: "var(--ink)", fontFamily: "inherit",
 };
 const DownloadIcon = () => (
@@ -94,10 +94,10 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
   }
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+    <div style={{ marginBottom: "1.5rem" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>Practitioner Master Data</div>
       <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginBottom: "1rem", lineHeight: 1.6, maxWidth: 620 }}>
-        Quick reference for offline contact — name, phone, email, city, and state.
+        Quick reference for offline contact — name, phone, email, city, and state only.
         Full profiles (modules, experience, payment details) live under Practitioners.
       </div>
 
@@ -117,7 +117,7 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
           <option value="">All states</option>
           {states.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{rows.length} of {practitioners.length}</span>
+        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>{rows.length} of {practitioners.length} shown</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
@@ -132,7 +132,7 @@ export function MasterDataTable({ practitioners }: { practitioners: MasterDataPe
         </div>
       </div>
 
-      <div style={{ overflowX: "auto", border: "1px solid rgba(20,18,12,.08)", borderRadius: 8 }}>
+      <div style={{ overflowX: "auto", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
           <thead>
             <tr>

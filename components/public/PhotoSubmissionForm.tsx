@@ -112,7 +112,7 @@ export function PhotoSubmissionForm() {
         <div
           style={{
             background: "#fff",
-            border: "1px solid rgba(20,18,12,.10)",
+            border: "1px solid rgba(15,17,23,.10)",
             borderRadius: 12,
             padding: "3rem 2rem",
             textAlign: "center",
@@ -124,7 +124,7 @@ export function PhotoSubmissionForm() {
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "#e9f5e9",
+              background: "var(--green-light)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -147,7 +147,7 @@ export function PhotoSubmissionForm() {
           <div
             style={{
               background: "var(--surface-soft)",
-              border: "1px solid rgba(20,18,12,.10)",
+              border: "1px solid rgba(15,17,23,.10)",
               borderRadius: 8,
               padding: "1.25rem 1.5rem",
               textAlign: "left",
@@ -178,7 +178,7 @@ export function PhotoSubmissionForm() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(20,18,12,.10)",
+          border: "1px solid rgba(15,17,23,.10)",
           borderRadius: 12,
           padding: "2rem",
           marginBottom: 0,
@@ -188,10 +188,10 @@ export function PhotoSubmissionForm() {
         }}
       >
         <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--ink)", marginBottom: "0.4rem", letterSpacing: "-0.01em" }}>
-          Submit your session photos
+          Your session photo link
         </h2>
         <p style={{ fontSize: 14, color: "var(--ink-soft)", lineHeight: 1.6, margin: 0 }}>
-          Eight standard angles — all on your phone. Once submitted, your photos sit in our review queue. We&apos;ll process and publish the confirmed ones; anything not selected is automatically deleted after 30 days.
+          Bookmark or save this page — come back to it during your session or right after to submit your photos. Eight standard angles, all on your phone. Once submitted, your photos sit in our review queue; we&apos;ll process and publish the confirmed ones, and anything not selected is automatically deleted after 30 days.
         </p>
       </div>
 
@@ -199,7 +199,7 @@ export function PhotoSubmissionForm() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(20,18,12,.10)",
+          border: "1px solid rgba(15,17,23,.10)",
           borderRadius: 12,
           borderTopLeftRadius: 0,
           borderTopRightRadius: 0,
@@ -212,7 +212,7 @@ export function PhotoSubmissionForm() {
       <div
         style={{
           background: "var(--surface-soft)",
-          border: "1px solid rgba(20,18,12,.10)",
+          border: "1px solid rgba(15,17,23,.10)",
           borderRadius: 8,
           padding: "0.85rem 1rem",
           marginBottom: 20,
@@ -252,7 +252,7 @@ export function PhotoSubmissionForm() {
       <div
         style={{
           background: "var(--surface-soft)",
-          border: "1px solid rgba(20,18,12,.10)",
+          border: "1px solid rgba(15,17,23,.10)",
           borderRadius: 8,
           padding: "0.85rem 1rem",
           marginBottom: 24,
@@ -308,7 +308,7 @@ export function PhotoSubmissionForm() {
                 key={i}
                 style={{
                   background: checked ? "#e9f5e9" : "var(--surface-soft)",
-                  border: checked ? "1.5px solid var(--green-border)" : "1.5px solid rgba(20,18,12,0.12)",
+                  border: checked ? "1.5px solid var(--green-border)" : "1.5px solid rgba(15,17,23,0.12)",
                   borderRadius: 8,
                   padding: "9px 12px",
                   cursor: "pointer",
@@ -445,7 +445,7 @@ export function PhotoSubmissionForm() {
             gap: 12,
             cursor: "pointer",
             background: "var(--surface-soft)",
-            border: "1.5px solid rgba(20,18,12,0.12)",
+            border: "1.5px solid rgba(15,17,23,0.12)",
             borderRadius: 8,
             padding: "1rem 1.25rem",
           }}
@@ -543,7 +543,7 @@ function SessionField({ label, value, mono, sub }: { label: string; value: strin
 
 function ReceiptRow({ label, value, mono, green }: { label: string; value: string; mono?: boolean; green?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, padding: "4px 0", borderBottom: "1px solid rgba(20,18,12,.06)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, padding: "4px 0", borderBottom: "1px solid rgba(15,17,23,.06)" }}>
       <span style={{ fontSize: 13, color: "var(--ink-faint)", flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: 13, color: green ? "#2a6b2a" : "var(--ink)", fontFamily: mono ? "monospace" : undefined, textAlign: "right", fontWeight: green ? 500 : 400 }}>
         {value}

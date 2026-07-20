@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ConsentViewer, type ConfSnapshot } from "@/components/public/ConsentViewer";
 
 export const metadata: Metadata = {
-  title: "Session Revenue Consent",
+  title: "iqcommune — Session Consent",
   robots: { index: false, follow: false },
 };
 
@@ -18,14 +18,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(20,18,12,0.10)",
+          borderBottom: "1px solid rgba(15,17,23,0.10)",
           padding: "0 2rem",
           position: "sticky",
           top: 0,
           zIndex: 100,
         }}
       >
-        <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68 }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68 }}>
           <span style={{ display: "flex", alignItems: "baseline", lineHeight: 1 }}>
             <span style={{ color: "var(--gold)", fontWeight: 700, fontSize: 24, letterSpacing: "-0.04em" }}>iq</span>
             <span style={{ color: "var(--ink)", fontWeight: 300, fontSize: 24, letterSpacing: "-0.04em" }}>commune</span>

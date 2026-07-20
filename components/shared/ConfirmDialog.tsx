@@ -72,7 +72,7 @@ export function ConfirmDialog({
               padding: "8px 18px",
               background: "transparent",
               color: "var(--ink-soft)",
-              border: "1px solid rgba(20,18,12,.18)",
+              border: "1px solid rgba(15,17,23,.18)",
               borderRadius: 8,
               fontSize: 13,
               cursor: "pointer",

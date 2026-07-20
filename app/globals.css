@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #14161d;
-  --color-ink-muted: #383b47;
-  --color-ink-faint: #71717f;
+  /* V6 pixel-match: mockup ink tones (--ink #0f1117 / --ink-m #4a4d5c / --ink-f #9496a1). */
+  --color-ink: #0f1117;
+  --color-ink-muted: #4a4d5c;
+  --color-ink-faint: #9496a1;
   --color-surface: #ffffff;
   --color-soft: #f8f7f4;
   --color-gold: #c9982a;
@@ -22,17 +23,18 @@
   --color-teal: #0f7d8c;
   --color-teal-light: #e2f3f5;
   --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
-  --radius: 12px;
+  --radius: 10px;
   --radius-sm: 6px;
 }
 
 :root {
-  --ink: #14161d;
-  --ink-strong: #14161d;
-  --ink-body: #383b47;
-  --ink-muted: #383b47;
+  /* V6 pixel-match: mockup ink tones. */
+  --ink: #0f1117;
+  --ink-strong: #0f1117;
+  --ink-body: #4a4d5c;
+  --ink-muted: #4a4d5c;
   --ink-soft: #5b5e6c;
-  --ink-faint: #71717f;
+  --ink-faint: #9496a1;
   --eyebrow: #8a6510;
   --surface: #ffffff;
   --surface-sunken: #f4f2ec;
@@ -54,10 +56,11 @@
   --amber-light: #faeeda;
   --purple: #534ab7;
   --purple-light: #eeedfe;
-  --border: rgba(20, 18, 12, 0.09);
-  --border-card: rgba(20, 18, 12, 0.12);
-  --border-input: rgba(20, 18, 12, 0.18);
-  --border-strong: rgba(20, 18, 12, 0.20);
+  /* V6 pixel-match: cool-ink hairlines (mockup --border / --border-s). */
+  --border: rgba(15, 17, 23, 0.10);
+  --border-card: rgba(15, 17, 23, 0.12);
+  --border-input: rgba(15, 17, 23, 0.18);
+  --border-strong: rgba(15, 17, 23, 0.18);
   --border-gold: rgba(138, 101, 16, 0.28);
   /* Edge-case tokens — added to kill recurring magic hexes (color audit 2026-06-24). */
   --gold-border: rgba(138, 101, 16, 0.28); /* pill/badge/ribbon borders (replaces #e0c870) */
@@ -72,15 +75,15 @@
   --shadow-focus: 0 0 0 3px rgba(201, 152, 42, 0.16);
   --admin-nav-h: 64px;
   --admin-sidebar-w: 220px;
-  /* tint variants used in admin panels and status indicators */
-  --ink-m: rgba(15, 17, 23, 0.70);
-  --ink-f: rgba(15, 17, 23, 0.45);
-  --amber-m: rgba(201, 152, 42, 0.15);
+  /* V6 pixel-match: solid mid-tones (mockup uses these as pill borders). */
+  --ink-m: #4a4d5c;
+  --ink-f: #9496a1;
+  --amber-m: #fac775;
   --amber-f: rgba(201, 152, 42, 0.30);
-  --blue-m: rgba(24, 95, 165, 0.15);
-  --purple-m: rgba(83, 74, 183, 0.15);
-  --red-m: rgba(163, 45, 45, 0.15);
-  --green-m: rgba(42, 107, 42, 0.15);
+  --blue-m: #85b7eb;
+  --purple-m: #afa9ec;
+  --red-m: #f0b0b0;
+  --green-m: #c8e6c8;
 }
 
 *,
@@ -144,6 +147,38 @@ a {
 @media (max-width: 600px) {
   .admin-nav-tagline { display: none !important; }
   .admin-nav-label   { display: none !important; }
+  /* Free up width so the search field + bell/avatar never clip on a phone:
+     drop the "Admin Console" lockup label and its divider below 600px. */
+  .admin-nav-console { display: none !important; }
+  /* The search box's flex:1 wrapper stays as a spacer, but the box itself would be
+     crushed to ~0 width on a phone — hide it (search isn't a primary mobile action). */
+  .admin-nav-search { display: none !important; }
+  /* The "Viewing as" role-preview switcher (~180px) is the widest right-cluster item
+     and not essential on a phone — hide it so the bell + avatar never clip. */
+  .admin-nav-viewas { display: none !important; }
+}
+@media (max-width: 480px) {
+  /* Tighten the fixed top nav so its non-shrinkable children fit at 320-430px. */
+  .admin-topnav { gap: 0.55rem !important; padding: 0 0.85rem !important; }
+}
+
+/* Full-height centered screens: use the dynamic viewport unit so vertically-centered
+   content (login CTAs) isn't pushed under mobile browser chrome. !important beats the
+   inline minHeight:100vh these layouts set; the 100vh line is the fallback for browsers
+   without dvh support. */
+.min-h-screen-dvh {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+
+/* Rating stars: the 5×40px row overflows a ~216px card at 320px → page h-scroll.
+   Shrink the glyphs + gap on very narrow phones. !important beats the inline
+   fontSize:40 on each star (button + readonly span). */
+@media (max-width: 380px) {
+  .rating-stars { gap: 4px !important; }
+  .rating-stars button,
+  .rating-stars > span { font-size: 30px !important; }
+  .rating-stars button { padding: 3px !important; }
 }
 
 /* ── Admin console mobile drawer ─────────────────────────────────────────────
@@ -167,7 +202,7 @@ a {
     display: block;
     position: fixed;
     inset: 64px 0 0 0;
-    background: rgba(20, 18, 12, 0.42);
+    background: rgba(15, 17, 23, 0.42);
     z-index: 140;
   }
 }
@@ -524,7 +559,7 @@ textarea:focus-visible {
   select:hover:not(:focus),
   textarea:hover:not(:focus) {
     background-color: var(--input-hover, #faf8f3) !important;
-    border-color: rgba(20, 18, 12, 0.34) !important;
+    border-color: rgba(15, 17, 23, 0.34) !important;
   }
 }
 
@@ -608,7 +643,7 @@ textarea:focus-visible {
   right: 12%;
   height: 2px;
   border-radius: 2px;
-  background: rgba(20, 18, 12, 0.12);
+  background: rgba(15, 17, 23, 0.12);
   overflow: hidden;
   z-index: 0;
 }

@@ -174,7 +174,7 @@ export function SelectField({
           width: "100%",
           minHeight: 44,
           padding: "11px 14px",
-          border: `1.5px solid ${invalid ? "var(--red-border)" : ring ? "var(--gold)" : "rgba(20,18,12,0.13)"}`,
+          border: `1.5px solid ${invalid ? "var(--red-border)" : ring ? "var(--gold)" : "rgba(15,17,23,0.13)"}`,
           borderRadius: 9,
           fontSize: 14,
           fontFamily: "inherit",
@@ -182,7 +182,7 @@ export function SelectField({
           background: "var(--input-paper)",
           color: current ? "var(--ink)" : "var(--ink-faint)",
           cursor: "pointer",
-          boxShadow: ring ? "0 0 0 3px rgba(201,152,42,0.16)" : "inset 0 1px 2px rgba(20,18,12,0.04)",
+          boxShadow: ring ? "0 0 0 3px rgba(201,152,42,0.16)" : "inset 0 1px 2px rgba(15,17,23,0.04)",
           outline: "none",
           transition: "border-color .16s ease, box-shadow .16s ease",
         }}
@@ -223,7 +223,7 @@ export function SelectField({
             maxHeight: 264,
             overflowY: "auto",
             background: "var(--surface)",
-            border: "1px solid rgba(20,18,12,0.12)",
+            border: "1px solid rgba(15,17,23,0.12)",
             borderRadius: 10,
             boxShadow: "0 14px 36px -14px rgba(20,16,10,0.28), 0 2px 6px rgba(20,16,10,0.06)",
           }}

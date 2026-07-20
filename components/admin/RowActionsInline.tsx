@@ -59,7 +59,7 @@ const baseBtn: React.CSSProperties = {
 const ghostStyle: React.CSSProperties = {
   ...baseBtn,
   background: "var(--surface)",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   color: "var(--ink)",
 };
 

@@ -1,76 +1,65 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/supabase/database.types";
 import { PendingBar } from "@/components/admin/PendingBar";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { RowActionsInline } from "@/components/admin/RowActionsInline";
-import { useUndoToast } from "@/components/admin/useUndoToast";
+import { StatusSelect } from "@/components/shared/StatusPill";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 
 export type ConfirmationRow = Database["public"]["Tables"]["confirmations"]["Row"] & {
   practitioner: { name: string; email: string } | null;
 };
 
-// V5-MATCH: the mockup's consent row actions are Mark received · Revert · Void only.
-// Copy link, PDF and Replace practitioner are gated off (re-enablable improvements).
-const SHOW_OFFSPEC_ACTIONS = false;
 
 const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
+// V6: pending consent is RED, received is green (matching the mockup). The
+// underlying status values are unchanged — only colour + shown label are remapped.
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
-  "Awaiting consent": { bg: "#fbf1d9", fg: "#8a6510" },
-  "Consent received": { bg: "#eef7ee", fg: "#2a6b2a" },
-  Superseded: { bg: "#f1f0ec", fg: "#71717f" },
+  "Awaiting consent": { bg: "var(--red-light)", fg: "var(--red)" },
+  "Consent received": { bg: "var(--green-light)", fg: "var(--green)" },
+  Superseded: { bg: "var(--surface-sunken)", fg: "var(--ink-faint)" },
+};
+const STATUS_LABEL: Record<string, string> = {
+  "Awaiting consent": "Pending",
+  "Consent received": "Received",
 };
 
 function StatusPill({ status }: { status: string }) {
   const c = STATUS_COLORS[status] ?? STATUS_COLORS.Superseded;
   return (
     <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 100, background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>
-      {status}
+      {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
 
 // Consent-email delivery indicator, shown under the status pill on rows still
 // awaiting consent — the one place "did it reach the practitioner?" is actionable.
-// Amber = needs action (send failed/bounced → resend or send the link manually),
-// per the token rules (red is reserved for true errors). Returns null when there's
-// nothing worth surfacing (not attempted yet).
-const EMAIL_BADGES: Record<string, { label: string; bg: string; fg: string }> = {
-  sent:      { label: "Emailed",          bg: "var(--surface-sunken)", fg: "var(--ink-soft)" },
-  delivered: { label: "Delivered",        bg: "var(--green-light)",    fg: "var(--green)" },
-  failed:    { label: "Email failed",     bg: "var(--amber-light)",    fg: "var(--amber)" },
-  bounced:   { label: "Email bounced",    bg: "var(--amber-light)",    fg: "var(--amber)" },
-  no_email:  { label: "No email on file", bg: "var(--surface-sunken)", fg: "var(--ink-faint)" },
-};
-
-function EmailBadge({ status }: { status: string }) {
-  const b = EMAIL_BADGES[status];
-  if (!b) return null;
-  return (
-    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 100, background: b.bg, color: b.fg, whiteSpace: "nowrap" }}>
-      {b.label}
-    </span>
-  );
-}
 
 // A pill-shaped, status-tinted <select> — the Global-Admin override control.
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
-  color: "var(--ink-faint)", padding: "10px 12px", borderBottom: "1px solid rgba(20,18,12,.10)", whiteSpace: "nowrap",
+  color: "var(--ink-faint)", padding: "10px 12px", borderBottom: "1px solid rgba(15,17,23,.10)", whiteSpace: "nowrap",
 };
-const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "11px 12px", borderBottom: "1px solid rgba(20,18,12,.06)", verticalAlign: "middle" };
+const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "11px 12px", borderBottom: "1px solid rgba(15,17,23,.06)", verticalAlign: "middle" };
+
+// V6: gold uppercase section labels that structure the Session Consent tab.
+export const consentPartLabel: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "var(--gold-dark)",
+  margin: "1.25rem 0 0.6rem",
+};
+
 
 export function ConsentTable({
   initialData,
-  onRowChange,
-  isGlobalAdmin = false,
   readOnly = false,
-  reassignableSessionIds = [],
-  onReassign,
-  onStatusOverridden,
+  sessionStatusById = {},
   beforeTable,
 }: {
   initialData: ConfirmationRow[];
@@ -83,30 +72,40 @@ export function ConsentTable({
   onReassign?: (row: ConfirmationRow) => void;
   // Global-Admin status override applied; parent reconciles the confirmation + session.
   onStatusOverridden?: (row: ConfirmationRow, status: string) => void;
+  // V6 Session-status column: linked session's status (sessions.id → status),
+  // threaded from the parent (kept fresh by the sessions realtime subscription).
+  sessionStatusById?: Record<string, string>;
   // V5: content rendered between the filter bar and the table (the generate card),
   // so the PendingBar/filters sit above it as in the mockup.
   beforeTable?: React.ReactNode;
 }) {
+  const router = useRouter();
   const data = initialData;
-  const reassignable = new Set(reassignableSessionIds);
-  const [supersedeTarget, setSupersedeTarget] = useState<ConfirmationRow | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
-  const undo = useUndoToast();
+  // V6: the Session-status column is an editable dropdown; local optimistic override.
+  const [sessStatus, setSessStatus] = useState<Record<string, string>>({});
+
+  async function patchSessionStatus(sessionId: string, next: string) {
+    const prev = sessStatus[sessionId] ?? sessionStatusById[sessionId];
+    setSessStatus((m) => ({ ...m, [sessionId]: next }));
+    try {
+      const res = await fetch(`/api/admin/sessions/${sessionId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!res.ok) { setSessStatus((m) => ({ ...m, [sessionId]: prev })); setError("Couldn't update the session status."); }
+    } catch {
+      setSessStatus((m) => ({ ...m, [sessionId]: prev }));
+      setError("Network error — the session status wasn't changed.");
+    }
+  }
   const df = useDateFilter(data.map((r) => r.issued_on));
   const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
     .filter((r) => df.matchesDate(r.issued_on));
   const pendingCount = data.filter((r) => r.status === "Awaiting consent" && df.matchesDate(r.issued_on)).length;
 
-  async function copyLink(row: ConfirmationRow) {
-    if (!row.consent_link) return;
-    try {
-      await navigator.clipboard.writeText(row.consent_link);
-    } catch {
-      /* clipboard blocked */
-    }
-  }
 
   async function downloadPdf(row: ConfirmationRow) {
     if (!row.storage_path) return;
@@ -121,116 +120,16 @@ export function ConsentTable({
     }
   }
 
-  async function resendEmail(row: ConfirmationRow) {
-    setError("");
-    setBusy(row.id);
-    try {
-      const res = await fetch(`/api/admin/consent/${row.id}/resend-email`, { method: "POST" });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; data?: { emailStatus?: string } };
-      // The route returns the resulting email_status on both success and a re-fail,
-      // so reflect it either way (badge flips to Emailed on success, stays amber on fail).
-      if (body.data?.emailStatus) onRowChange(row.id, { email_status: body.data.emailStatus });
-      if (!res.ok) setError(body.error ?? "Could not resend the email.");
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setBusy(null);
-    }
-  }
 
-  async function markReceived(row: ConfirmationRow) {
-    setError("");
-    setBusy(row.id);
-    try {
-      const res = await fetch(`/api/admin/consent/${row.id}/mark-received`, { method: "PATCH" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? "Could not mark received.");
-      } else {
-        onRowChange(row.id, { status: "Consent received" });
-        // V5 instant-undo. Reverting consent is a Global-Admin-only override
-        // (§3.2 / the /global/consent endpoint), so only offer Undo to global
-        // admins — a plain admin's undo would 403. The row updates in place for
-        // everyone regardless.
-        if (isGlobalAdmin) {
-          undo.show(`${row.ref_code} marked as consent received`, () =>
-            overrideStatus(row, "Awaiting consent"),
-          );
-        }
-      }
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setBusy(null);
-    }
-  }
 
-  // Op-procedure Part 4 step 20: upload the practitioner's signed consent reply.
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingUploadId = useRef<string | null>(null);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  function chooseSignedReply(id: string) {
-    pendingUploadId.current = id;
-    fileInputRef.current?.click();
-  }
-
-  async function onSignedReplyPicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    const id = pendingUploadId.current;
-    e.target.value = "";
-    if (!file || !id) return;
-    setUploadingId(id);
-    setError("");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch(`/api/admin/consent/${id}/upload`, { method: "POST", body: fd });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(j.error ?? "Upload failed");
-        return;
-      }
-      const { data } = (await res.json()) as { data: { storage_path: string } };
-      onRowChange(id, { status: "Consent received", storage_path: data.storage_path });
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setUploadingId(null);
-    }
-  }
-
-  // Global-Admin direct status override. Superseding is confirmed first (destructive);
-  // Awaiting ↔ Consent received flip freely (reversible via the same control).
-  async function overrideStatus(row: ConfirmationRow, status: string) {
-    setError("");
-    setBusy(row.id);
-    try {
-      const res = await fetch(`/api/admin/global/consent/${row.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? "Could not update the status.");
-      } else {
-        onStatusOverridden?.(row, status);
-      }
-    } catch {
-      setError("Network error — please try again.");
-    } finally {
-      setBusy(null);
-      setSupersedeTarget(null);
-    }
-  }
 
   if (data.length === 0) {
     return (
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center" }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>No confirmations generated yet</div>
         <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
-          Select a session above once it&apos;s Confirmed and awaiting the practitioner&apos;s digital consent.
+          Select a Matched session above to generate its revenue confirmation.
         </div>
       </div>
     );
@@ -238,15 +137,26 @@ export function ConsentTable({
 
   return (
     <div>
-      <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png" hidden onChange={onSignedReplyPicked} />
       <PendingBar
-        pendingCards={[{ count: pendingCount, label: "Awaiting consent", active: filter === "Awaiting consent", onToggle: () => setFilter(filter === "Awaiting consent" ? "All" : "Awaiting consent") }]}
+        pendingCards={[{ count: pendingCount, label: "Signed copy not yet received", active: filter === "Awaiting consent", onToggle: () => setFilter(filter === "Awaiting consent" ? "All" : "Awaiting consent") }]}
         dateFilter={df.control}
         dateLabel="Issued in:"
         standalone={!!beforeTable}
       />
       {beforeTable}
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderTop: beforeTable ? undefined : "none", borderRadius: beforeTable ? 10 : "0 0 10px 10px", overflow: "hidden" }}>
+      {/* V6 Part-2 section label + manual refresh (mockup: "Check for updates now") */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "1.25rem 0 0.6rem" }}>
+        <div style={{ ...consentPartLabel, margin: 0 }}>Part 2 — Track Status</div>
+        <button
+          type="button"
+          onClick={() => router.refresh()}
+          style={{ fontSize: 11, fontWeight: 500, padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(15,17,23,.18)", background: "#fff", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+        >
+          Check for updates now
+        </button>
+      </div>
+      {/* V6: the table is its own card, separate from the pending bar above. */}
+      <div style={{ background: "var(--surface)", border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, overflow: "hidden" }}>
       {error && <div role="alert" style={{ fontSize: 12, color: "#a32d2d", padding: "8px 12px" }}>{error}</div>}
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
@@ -255,25 +165,22 @@ export function ConsentTable({
               <th style={th}>Confirmation ref.</th>
               <th style={th}>Session</th>
               <th style={th}>Practitioner</th>
-              <th style={{ ...th, textAlign: "right" }}>Gross</th>
+              <th style={{ ...th, textAlign: "right" }}>Gross payout</th>
               <th style={{ ...th, textAlign: "right" }}>Net payout</th>
-              <th style={th}>Status</th>
-              <th style={{ ...th, textAlign: "right" }}>Actions</th>
+              <th style={th}>Consent status</th>
+              <th style={th}>Download Signed Consent</th>
+              <th style={th}>Session status</th>
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
+                <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
                   No confirmations match the current filter
                 </td>
               </tr>
             )}
             {visible.map((row) => {
-              const awaiting = row.status === "Awaiting consent";
-              // Editable only while the session is still Upcoming — a Completed/Cancelled
-              // session's confirmation is a historical record, shown read-only.
-              const editable = isGlobalAdmin && reassignable.has(row.session_id);
               return (
                 <tr key={row.id}>
                   <td style={{ ...td, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}>{row.ref_code}</td>
@@ -282,41 +189,42 @@ export function ConsentTable({
                   <td style={{ ...td, textAlign: "right", color: "var(--ink-muted)" }}>{money(row.gross_amount)}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
                   <td style={td}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                      <StatusPill status={row.status} />
-                      {awaiting && <EmailBadge status={row.email_status} />}
-                    </div>
+                    <StatusPill status={row.status} />
                   </td>
-                  <td style={{ ...td, textAlign: "right" }}>
-                    {/* V5: inline action buttons (Copy link · PDF · Mark received · Revert · Void). */}
-                    <RowActionsInline
-                      ariaLabel={`Actions for ${row.ref_code}`}
-                      actions={[
-                        // Copy link is a share (comms) action — hidden for read-only; PDF is a download, kept.
-                        ...(!readOnly && row.consent_link ? [{ label: "Copy link", onClick: () => copyLink(row) }] : []),
-                        ...(row.storage_path ? [{ label: "PDF", onClick: () => downloadPdf(row) }] : []),
-                        // V5 discrete actions: Mark received (Awaiting) · Revert (Consent
-                        // received → Awaiting, Global) · Void (→ Superseded, Global).
-                        ...(!readOnly && awaiting && busy !== row.id ? [{ label: "Mark received", primary: true, onClick: () => markReceived(row) }] : []),
-                        // Op-procedure Part 4 step 20: upload the signed reply as the consent record.
-                        ...(!readOnly && awaiting && busy !== row.id
-                          ? [{ label: uploadingId === row.id ? "Uploading…" : "Upload signed reply", onClick: () => chooseSignedReply(row.id) }]
-                          : []),
-                        // Recovery when the Brevo send failed/bounced — resend the consent email.
-                        ...(!readOnly && awaiting && (row.email_status === "failed" || row.email_status === "bounced") && busy !== row.id
-                          ? [{ label: "Resend email", onClick: () => resendEmail(row) }]
-                          : []),
-                        ...(editable && row.status === "Consent received" && busy !== row.id
-                          ? [{ label: "Revert", onClick: () => overrideStatus(row, "Awaiting consent") }]
-                          : []),
-                        ...(editable && row.status !== "Superseded" && busy !== row.id
-                          ? [{ label: "Void", danger: true, onClick: () => setSupersedeTarget(row) }]
-                          : []),
-                        ...(SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onReassign && row.status !== "Superseded" && reassignable.has(row.session_id)
-                          ? [{ label: "Replace practitioner", onClick: () => onReassign(row) }]
-                          : []),
-                      ]}
-                    />
+                  {/* Download Signed Consent — own column (mirrors the Agreements tab) */}
+                  <td style={td}>
+                    <button
+                      type="button"
+                      onClick={() => downloadPdf(row)}
+                      disabled={!row.storage_path}
+                      title={row.storage_path ? undefined : "No signed consent file yet"}
+                      style={{
+                        fontSize: 11, padding: "4px 10px", borderRadius: 100,
+                        border: "1px solid rgba(15,17,23,.18)", background: "#fff",
+                        color: row.storage_path ? "var(--ink-soft)" : "var(--ink-faint)",
+                        cursor: row.storage_path ? "pointer" : "not-allowed",
+                        opacity: row.storage_path ? 1 : 0.5, fontFamily: "inherit", fontWeight: 500,
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                      }}
+                    >
+                      <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download
+                    </button>
+                  </td>
+                  {/* Session status — V6: editable dropdown only (mockup has no ops menu). */}
+                  <td style={td} onClick={(e) => e.stopPropagation()}>
+                    {sessionStatusById[row.session_id] ? (
+                      <StatusSelect
+                        value={sessStatus[row.session_id] ?? sessionStatusById[row.session_id]}
+                        options={["Upcoming", "Completed", "Cancelled"]}
+                        labels={{ Upcoming: "Pending", Completed: "Confirmed", Cancelled: "Cancelled" }}
+                        disabled={readOnly}
+                        ariaLabel={`Session status for ${row.ref_code}`}
+                        onChange={(next) => patchSessionStatus(row.session_id, next)}
+                      />
+                    ) : (
+                      <span style={{ color: "var(--ink-faint)" }}>—</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -325,15 +233,6 @@ export function ConsentTable({
         </table>
       </div>
       </div>
-      <ConfirmDialog
-        open={!!supersedeTarget}
-        title="Supersede this confirmation?"
-        description={`This voids ${supersedeTarget?.ref_code ?? "this confirmation"} and resets the session to Pending consent, so a corrected confirmation can be re-issued. The practitioner's current consent no longer applies.`}
-        confirmLabel="Supersede"
-        onCancel={() => setSupersedeTarget(null)}
-        onConfirm={() => supersedeTarget && overrideStatus(supersedeTarget, "Superseded")}
-      />
-      {undo.node}
     </div>
   );
 }

@@ -5,16 +5,18 @@ import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
-const VALID_STATUSES = [
+// V6 §5: "Agreement Sent" and "Empanelled" are set ONLY by the agreement flow
+// (generate/sign) — they are read-only pills, never a manual dropdown choice. This
+// route only accepts the genuine judgement-call statuses; the two agreement-driven
+// states are rejected server-side, not just hidden in the UI.
+const MANUAL_STATUSES = [
   "Applied",
   "Under Review",
   "Screening Done",
-  "Agreement Sent",
-  "Empanelled",
   "Rejected",
 ] as const;
 
-const Body = z.object({ status: z.enum(VALID_STATUSES) });
+const Body = z.object({ status: z.enum(MANUAL_STATUSES) });
 
 export async function PATCH(
   req: NextRequest,

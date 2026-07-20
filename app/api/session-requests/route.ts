@@ -5,7 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/ip";
 import { log } from "@/lib/logger";
 import { sendEmail } from "@/lib/email/brevo";
-import { clientFollowUpEmail, newSessionRequestAdminEmail } from "@/lib/email/templates";
+import { sessionRequestReceivedEmail, newSessionRequestAdminEmail } from "@/lib/email/templates";
 import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
 import { notifyAdmin } from "@/lib/email/notify-admin";
 import { getBaseUrl } from "@/lib/base-url";
@@ -72,14 +72,9 @@ export async function POST(req: NextRequest) {
   const alreadySent = await guardEmailSend("session_request_received", requestId, d.email);
   if (!alreadySent) {
     try {
-      const { subject, htmlContent } = clientFollowUpEmail(
+      const { subject, htmlContent } = sessionRequestReceivedEmail(
         `${d.firstName} ${d.lastName}`,
-        {
-          topic:          d.topic,
-          groupSize:      d.groupSize ?? "—",
-          audienceType:   d.audienceType,
-          preferredDates: d.preferredDates ?? "Flexible",
-        }
+        d.topic,
       );
       const { messageId } = await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
       await recordEmailMessageId("session_request_received", requestId, messageId);

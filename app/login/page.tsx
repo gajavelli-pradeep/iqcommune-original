@@ -31,6 +31,7 @@ export default function LoginPage() {
 
   return (
     <div
+      className="min-h-screen-dvh"
       style={{
         minHeight: "100vh",
         background: "var(--surface-soft)",
@@ -43,7 +44,7 @@ export default function LoginPage() {
       <div
         style={{
           background: "var(--surface)",
-          border: "1px solid rgba(20,18,12,.1)",
+          border: "1px solid rgba(15,17,23,.1)",
           borderRadius: 14,
           padding: "2.5rem 2rem",
           width: "100%",
@@ -190,7 +191,7 @@ function EyeOff() {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",

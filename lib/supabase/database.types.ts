@@ -812,6 +812,10 @@ export interface Database {
         Args: { retention?: string };
         Returns: { table_name: string; purged: number }[];
       };
+      prune_activity_log: {
+        Args: { retention?: string };
+        Returns: { table_name: string; purged: number }[];
+      };
     };
     Enums: Record<string, never>;
   };

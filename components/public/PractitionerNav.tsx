@@ -20,7 +20,7 @@ const PILL_STYLE: React.CSSProperties = {
   textDecoration: "none",
   whiteSpace: "nowrap",
   background: "transparent",
-  border: "1px solid rgba(20,18,12,0.20)",
+  border: "1px solid rgba(15,17,23,0.20)",
   borderRadius: 100,
   padding: "9px 18px",
 };

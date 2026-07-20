@@ -9,17 +9,17 @@ import { GallerySection } from "@/components/public/GallerySection";
 import { getBaseUrl } from "@/lib/base-url";
 
 export const metadata: Metadata = {
-  title: { absolute: "iqcommune — Where the insight quotient is unleashed" },
+  title: { absolute: "iqcommune — Where financial intelligence connects" },
   description: "In-person finance sessions led by active practitioners. No products. No pitch. Just knowledge.",
   openGraph: {
-    title: "iqcommune — Where the insight quotient is unleashed",
+    title: "iqcommune — Where financial intelligence connects",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
     type: "website",
     siteName: "iqcommune",
   },
   twitter: {
     card: "summary",
-    title: "iqcommune — Where the insight quotient is unleashed",
+    title: "iqcommune — Where financial intelligence connects",
     description: "In-person finance sessions led by active practitioners. No products. No pitch.",
   },
 };
@@ -565,7 +565,7 @@ export default function HomePage() {
       <section
         style={{
           background: "var(--surface-soft)",
-          borderBottom: "1px solid rgba(20,18,12,0.10)",
+          borderBottom: "1px solid rgba(15,17,23,0.10)",
           padding: "5rem 2rem 4.5rem",
           position: "relative",
           overflow: "hidden",
@@ -660,7 +660,7 @@ export default function HomePage() {
             className="hero-card-anim"
             style={{
               background: "linear-gradient(180deg, #ffffff 0%, #fdfcfa 100%)",
-              border: "1px solid rgba(20,18,12,0.18)",
+              border: "1px solid rgba(15,17,23,0.18)",
               borderRadius: 20,
               padding: "2rem",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85), 0 2px 4px rgba(20,16,10,0.05), 0 16px 40px -14px rgba(20,16,10,0.16)",
@@ -688,7 +688,7 @@ export default function HomePage() {
                   style={{
                     textAlign: "center",
                     padding: "0.65rem 0.5rem",
-                    borderRight: i < 2 ? "1px solid rgba(20,18,12,0.10)" : undefined,
+                    borderRight: i < 2 ? "1px solid rgba(15,17,23,0.10)" : undefined,
                   }}
                 >
                   <div style={{ fontSize: 26, fontWeight: 600, color: "#14161d", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
@@ -702,7 +702,7 @@ export default function HomePage() {
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, background: "rgba(20,18,12,0.10)", margin: "1rem 0" }} />
+            <div style={{ height: 1, background: "rgba(15,17,23,0.10)", margin: "1rem 0" }} />
 
             {/* Role grid */}
             <div
@@ -730,7 +730,7 @@ export default function HomePage() {
             <div
               style={{
                 paddingTop: "1rem",
-                borderTop: "1px solid rgba(20,18,12,0.10)",
+                borderTop: "1px solid rgba(15,17,23,0.10)",
                 fontSize: 12,
                 color: "#71717f",
                 display: "flex",
@@ -841,7 +841,7 @@ export default function HomePage() {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              border: "1px solid rgba(20,18,12,0.18)",
+              border: "1px solid rgba(15,17,23,0.18)",
               borderRadius: 12,
               overflow: "hidden",
               maxWidth: 900,
@@ -859,7 +859,7 @@ export default function HomePage() {
                   textTransform: "uppercase",
                   background: "#f8f7f4",
                   color: "#71717f",
-                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  borderBottom: "1px solid rgba(15,17,23,0.18)",
                 }}
               >
                 Conventional Trainers
@@ -873,10 +873,10 @@ export default function HomePage() {
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_THEM.length - 1 ? "1px solid rgba(20,18,12,0.10)" : undefined,
+                    borderBottom: i < DIFF_THEM.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
                     fontSize: 14,
                     color: "#383b47",
-                    borderRight: "1px solid rgba(20,18,12,0.18)",
+                    borderRight: "1px solid rgba(15,17,23,0.18)",
                   }}
                 >
                   <CrossSvg />
@@ -896,7 +896,7 @@ export default function HomePage() {
                   textTransform: "uppercase",
                   background: "#14161d",
                   color: "#ffffff",
-                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  borderBottom: "1px solid rgba(15,17,23,0.18)",
                 }}
               >
                 Our Practitioners
@@ -910,7 +910,7 @@ export default function HomePage() {
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_US.length - 1 ? "1px solid rgba(20,18,12,0.10)" : undefined,
+                    borderBottom: i < DIFF_US.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
                     fontSize: 14,
                     color: "#14161d",
                     fontWeight: 500,
@@ -970,7 +970,7 @@ export default function HomePage() {
                 className="audience-card-inner"
                 style={{
                   background: "#f8f7f4",
-                  border: "1.5px solid rgba(20,18,12,0.10)",
+                  border: "1.5px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   padding: "1.6rem 1.75rem",
                   flex: "1 1 210px",
@@ -1086,7 +1086,7 @@ export default function HomePage() {
                 className="topic-card"
                 style={{
                   background: "#ffffff",
-                  border: "1px solid rgba(20,18,12,0.10)",
+                  border: "1px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   padding: "1.5rem",
                   transition: "border-color 0.2s, transform 0.2s",
@@ -1186,7 +1186,7 @@ export default function HomePage() {
                 key={bundle.modules[0]}
                 style={{
                   background: "#f8f7f4",
-                  border: "1px solid rgba(20,18,12,0.10)",
+                  border: "1px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   padding: "1.5rem",
                 }}
@@ -1207,7 +1207,7 @@ export default function HomePage() {
                         justifyContent: "space-between",
                         gap: 10,
                         padding: "0.6rem 0",
-                        borderBottom: idx === 0 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                        borderBottom: idx === 0 ? "1px solid rgba(15,17,23,0.10)" : "none",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -1224,7 +1224,7 @@ export default function HomePage() {
                           flexShrink: 0,
                           whiteSpace: "nowrap",
                           background: "#fff",
-                          border: "1px solid rgba(20,18,12,0.10)",
+                          border: "1px solid rgba(15,17,23,0.10)",
                           padding: "2px 8px",
                           borderRadius: 100,
                         }}
@@ -1371,7 +1371,7 @@ export default function HomePage() {
                 key={card.title}
                 className="walkout-card"
                 style={{
-                  border: "1px solid rgba(20,18,12,0.10)",
+                  border: "1px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   overflow: "hidden",
                   transition: "transform 0.2s, border-color 0.2s",
@@ -1422,7 +1422,7 @@ export default function HomePage() {
           <div
             style={{
               background: "#f8f7f4",
-              border: "1px solid rgba(20,18,12,0.10)",
+              border: "1px solid rgba(15,17,23,0.10)",
               borderLeft: "3px solid #c9982a",
               borderRadius: "0 12px 12px 0",
               padding: "1rem 1.5rem",
@@ -1545,7 +1545,7 @@ export default function HomePage() {
       {/* ── FOOTER ── */}
       <SiteFooter
         email="hello@iqcommune.com"
-        tagline="Where the insight quotient is unleashed"
+        tagline="Where financial intelligence connects"
         top={
           <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", paddingBottom: "1.5rem", marginBottom: "1.25rem" }}>
             <p

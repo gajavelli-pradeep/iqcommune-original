@@ -22,7 +22,7 @@ function Loading() {
           style={{
             width: 32,
             height: 32,
-            border: "3px solid rgba(20,18,12,.1)",
+            border: "3px solid rgba(15,17,23,.1)",
             borderTopColor: "var(--ink)",
             borderRadius: "50%",
             animation: "spin 0.7s linear infinite",
@@ -39,8 +39,9 @@ function Loading() {
 // Progress stepper
 function Stepper() {
   const steps = [
-    { label: "Session completed", state: "done"    as const, num: 1 },
-    { label: "Submit session photos", state: "active" as const, num: 2 },
+    { label: "Link received ahead of session", state: "done" as const, num: 1 },
+    { label: "Capture & submit during/after session", state: "active" as const, num: 2 },
+    { label: "Reviewed & published", state: "pending" as const, num: 3 },
   ];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto" }}>
@@ -62,7 +63,7 @@ function Stepper() {
                   ? { background: "var(--ink)", color: "#fff" }
                   : {
                       background: "var(--surface-soft)",
-                      border: "1.5px solid rgba(20,18,12,0.20)",
+                      border: "1.5px solid rgba(15,17,23,0.20)",
                       color: "var(--ink-faint)",
                     }),
               }}
@@ -93,7 +94,7 @@ function Stepper() {
             <span
               aria-hidden="true"
               style={{
-                color: "rgba(20,18,12,0.20)",
+                color: "rgba(15,17,23,0.20)",
                 fontSize: 14,
                 flexShrink: 0,
                 userSelect: "none",
@@ -120,7 +121,7 @@ export default function SubmitPhotosPage() {
           background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(20,18,12,0.10)",
+          borderBottom: "1px solid rgba(15,17,23,0.10)",
           padding: "0 2rem",
           position: "sticky",
           top: 0,
@@ -183,7 +184,7 @@ export default function SubmitPhotosPage() {
       <div
         style={{
           background: "#ffffff",
-          border: "1px solid rgba(20,18,12,0.10)",
+          border: "1px solid rgba(15,17,23,0.10)",
           borderRadius: 12,
           padding: "1rem 1.5rem",
           maxWidth: 860,

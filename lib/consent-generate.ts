@@ -41,10 +41,12 @@ export interface GenerateConfirmationInput {
   duration: DurationOption;
   baseUrl: string;
   actor: { email: string; role: ActorRole } | null;
+  // V6 §3: false → generate without emailing (client sends the editable preview).
+  sendEmail?: boolean;
 }
 
 export type GenerateConfirmationResult =
-  | { ok: true; id: string; ref_code: string; consent_link: string; net: number; emailStatus: ConfirmationEmailOutcome }
+  | { ok: true; id: string; ref_code: string; consent_link: string; net: number; emailStatus: ConfirmationEmailOutcome | "skipped" }
   | { ok: false; status: number; error: string };
 
 // The read-only fields the consent form auto-populates from the request + practitioner
@@ -304,23 +306,27 @@ export async function generateConfirmationForSession(
 
   // Email the signed consent link (best-effort, idempotent) and record the outcome so
   // the console shows whether it reached the practitioner. Admin can also copy the link.
-  const emailStatus = await deliverConfirmationEmail({
-    confirmationId: created.id,
-    practitionerName,
-    practitionerEmail: practitionerEmail || null,
-    fields: {
-      refCode: session.ref_code, module: session.module, date: dateDisplay,
-      startTime: startDisplay, endTime: endDisplay, venue: session.venue,
-      participants: session.participants,
-      grossAmount: gross, tdsAmount, netAmount: net, tdsRate,
-      consentUrl: consentLink,
-    },
-  });
+  // §3: skip the auto-email when the client will send its own edited preview.
+  const emailStatus: ConfirmationEmailOutcome | "skipped" =
+    input.sendEmail === false
+      ? "skipped"
+      : await deliverConfirmationEmail({
+          confirmationId: created.id,
+          practitionerName,
+          practitionerEmail: practitionerEmail || null,
+          fields: {
+            refCode: session.ref_code, module: session.module, date: dateDisplay,
+            startTime: startDisplay, endTime: endDisplay, venue: session.venue,
+            participants: session.participants,
+            grossAmount: gross, tdsAmount, netAmount: net, tdsRate,
+            consentUrl: consentLink,
+          },
+        });
   await supabase
     .from("confirmations")
     .update({
       email_status: emailStatus,
-      email_last_attempt_at: emailStatus === "no_email" ? null : new Date().toISOString(),
+      email_last_attempt_at: emailStatus === "no_email" || emailStatus === "skipped" ? null : new Date().toISOString(),
     })
     .eq("id", created.id);
 

@@ -9,11 +9,11 @@ import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
 const PLACEHOLDERS = [
   { label: "From the back of the room", sub: "Trainer in focus, audience visible", topLeft: "Deep in a foundations session", bottomRight: null as string | null },
   { label: "Audience in focus", sub: "Trainer's perspective, room engaged", topLeft: "Full house for equity investing", bottomRight: "Mumbai" },
-  { label: "Group photo", sub: "End of session", topLeft: "Wrapping up a portfolio strategy session", bottomRight: null },
-  { label: "Candid — mid session", sub: "Numbers being worked through", topLeft: "Working through the retirement numbers", bottomRight: "Bengaluru" },
-  { label: "Front-left corner view", sub: "Full room, wide angle", topLeft: "A packed asset-allocation workshop", bottomRight: null },
+  { label: "Group photo", sub: "End of session", topLeft: "Wrapping up on a high note", bottomRight: null },
+  { label: "Candid — mid session", sub: "Numbers being worked through", topLeft: "Working through a retirement plan", bottomRight: "Bengaluru" },
+  { label: "Front-left corner view", sub: "Full room, wide angle", topLeft: "Building out a portfolio, live", bottomRight: null },
   { label: "Candid — Q&A moment", sub: "Participant raising a question", topLeft: "Great question from the back row", bottomRight: "Pune" },
-  { label: "Front-right corner view", sub: "Trainer and board visible", topLeft: "Every seat taken for the basics", bottomRight: "Delhi" },
+  { label: "Front-right corner view", sub: "Trainer and board visible", topLeft: "Foundations, session two", bottomRight: "Delhi" },
 ];
 
 interface Slide {

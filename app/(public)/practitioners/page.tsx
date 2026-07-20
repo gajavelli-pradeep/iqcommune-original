@@ -391,8 +391,8 @@ const FAQS: FAQ[] = [
     a: "No exclusivity. You're free to conduct your own independent sessions or workshops. The empanelment is non-exclusive by design — we don't want to restrict what you do with your own expertise outside of our platform.",
   },
   {
-    q: "Can my revenue share be paid to a family member's account?",
-    a: "Yes. We understand this is a practical consideration for some professionals and we accommodate it. During the application, you can specify a family member's name, relationship, and payment details. You'll be asked to sign a simple declaration confirming you authorise this arrangement and acknowledge that the tax responsibility remains yours. We don't question the reason — we just need the authorisation documented.",
+    q: "Can my revenue share be credited to a different account?",
+    a: "Yes. During the application, you can choose to have payment credited to a different UPI ID or bank account than your own. Payment is made against the details provided in the invoice you raise, and you remain responsible for the invoice and for any tax obligations arising from this income. You'll be asked to sign a simple declaration confirming this before submitting.",
   },
 ];
 
@@ -786,7 +786,7 @@ export default function PractitionersPage() {
                 className="role-card"
                 style={{
                   background: "var(--surface)",
-                  border: "1px solid rgba(20,18,12,0.10)",
+                  border: "1px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   padding: "1.5rem",
                   transition: "border-color 0.2s, transform 0.2s",
@@ -959,7 +959,7 @@ export default function PractitionersPage() {
               gridTemplateColumns: "1fr 1fr",
               columnGap: 2,
               rowGap: 0,
-              border: "1px solid rgba(20,18,12,0.18)",
+              border: "1px solid rgba(15,17,23,0.18)",
               borderRadius: 12,
               overflow: "hidden",
               maxWidth: 860,
@@ -975,7 +975,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  borderBottom: "1px solid rgba(15,17,23,0.18)",
                   background: "var(--surface-soft)",
                   color: "var(--ink-faint)",
                 }}
@@ -991,7 +991,7 @@ export default function PractitionersPage() {
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < YOU_BRING.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                    borderBottom: i < YOU_BRING.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
                     fontSize: 14,
                     color: "var(--ink-muted)",
                     lineHeight: 1.5,
@@ -1014,7 +1014,7 @@ export default function PractitionersPage() {
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  borderBottom: "1px solid rgba(20,18,12,0.18)",
+                  borderBottom: "1px solid rgba(15,17,23,0.18)",
                   background: "var(--ink)",
                   color: "var(--surface)",
                 }}
@@ -1030,7 +1030,7 @@ export default function PractitionersPage() {
                     alignItems: "flex-start",
                     gap: 12,
                     padding: "1rem 1.75rem",
-                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                    borderBottom: i < IQCOMMUNE_HANDLES.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
                     fontSize: 14,
                     color: "var(--ink)",
                     fontWeight: 500,
@@ -1092,7 +1092,7 @@ export default function PractitionersPage() {
                 className="module-card"
                 style={{
                   background: "var(--surface)",
-                  border: "1.5px solid rgba(20,18,12,0.10)",
+                  border: "1.5px solid rgba(15,17,23,0.10)",
                   borderRadius: 12,
                   padding: "1.25rem",
                   transition: "border-color 0.2s, transform 0.2s",
@@ -1376,7 +1376,7 @@ export default function PractitionersPage() {
               className="iq-disclosure-card"
               style={{
                 background: "var(--surface-soft)",
-                border: "1px solid rgba(20,18,12,0.10)",
+                border: "1px solid rgba(15,17,23,0.10)",
                 borderRadius: 12,
                 padding: "1.75rem",
               }}
@@ -1527,7 +1527,7 @@ export default function PractitionersPage() {
               maxWidth: 880,
               margin: "1.5rem auto 0",
               background: "var(--surface-soft)",
-              border: "1px solid rgba(20,18,12,0.10)",
+              border: "1px solid rgba(15,17,23,0.10)",
               borderLeft: "3px solid var(--gold)",
               borderRadius: "0 12px 12px 0",
               padding: "1rem 1.25rem",
@@ -1600,7 +1600,7 @@ export default function PractitionersPage() {
             className="p-form-card"
             style={{
               background: "var(--surface)",
-              border: "1px solid rgba(20,18,12,0.18)",
+              border: "1px solid rgba(15,17,23,0.18)",
               borderRadius: 20,
               boxShadow: "0 12px 48px rgba(0,0,0,0.06)",
               overflowX: "auto",

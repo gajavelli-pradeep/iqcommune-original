@@ -9,7 +9,7 @@ export default function ConsoleLoading() {
           display: "flex",
           gap: 4,
           marginBottom: 28,
-          borderBottom: "1px solid rgba(20,18,12,.09)",
+          borderBottom: "1px solid rgba(15,17,23,.09)",
           paddingBottom: 0,
         }}
       >
@@ -53,7 +53,7 @@ export default function ConsoleLoading() {
             display: "flex",
             gap: 12,
             padding: "14px 12px",
-            borderBottom: "1px solid rgba(20,18,12,.07)",
+            borderBottom: "1px solid rgba(15,17,23,.07)",
             opacity: 1 - i * 0.07,
           }}
         >

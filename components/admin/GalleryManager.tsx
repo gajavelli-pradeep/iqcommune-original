@@ -12,6 +12,8 @@ interface GalleryPhoto {
   url: string;
 }
 
+const GAL_MAX = 20;
+
 export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,43 +21,12 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
   const [toast, setToast] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  // Upload form
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [topLeft, setTopLeft] = useState("");
-  const [bottomRight, setBottomRight] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  // Object-URL lifecycle: created in the picker (event handler), revoked here on change/unmount.
-  useEffect(() => {
-    if (!previewUrl) return;
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
-
-  // Validate client-side before accepting a file (drag-drop can bypass the input's accept).
-  const pickFile = useCallback((f: File | null | undefined) => {
-    if (!f) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
-      setError("Please choose a JPEG, PNG or WebP image."); return;
-    }
-    if (f.size > 5 * 1024 * 1024) { setError("Image exceeds the 5 MB limit."); return; }
-    setError("");
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
-  }, []);
-
-  const clearFile = useCallback(() => {
-    setFile(null);
-    setPreviewUrl(null);
-    if (fileRef.current) fileRef.current.value = "";
-  }, []);
-
-  const fmtBytes = (b: number) => (b < 1024 * 1024 ? `${Math.round(b / 1024)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`);
 
   const load = useCallback(() => {
     fetch("/api/admin/gallery")
@@ -71,26 +42,34 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
   // signed image URL is resolved server-side, so a light refetch beats patching.
   useRealtimeChannel("gallery_photos", load);
 
-  async function handleUpload() {
-    if (!file) { setError("Choose an image first."); return; }
-    setUploading(true);
+  // Drop/pick → upload each file straight to DRAFT (published=false); captions are
+  // filled per-card afterwards, matching the V6 two-stage flow.
+  const uploadFiles = useCallback(async (files: FileList | File[] | null | undefined) => {
+    if (!files) return;
+    const list = Array.from(files);
+    if (!list.length) return;
     setError("");
-    const fd = new FormData();
-    fd.append("photo", file);
-    fd.append("captionTopLeft", topLeft);
-    fd.append("captionBottomRight", bottomRight);
-    try {
-      const res = await fetch("/api/admin/gallery", { method: "POST", body: fd });
-      const j = await res.json();
-      if (!res.ok) { setError(j.error ?? "Upload failed."); }
-      else {
-        setPhotos((prev) => [...prev, j.data as GalleryPhoto]);
-        clearFile(); setTopLeft(""); setBottomRight("");
-        flash("Photo added to the gallery.");
+    setUploading(true);
+    for (const f of list) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
+        setError("Please choose JPEG, PNG or WebP images."); continue;
       }
-    } catch { setError("Network error."); }
-    finally { setUploading(false); }
-  }
+      if (f.size > 5 * 1024 * 1024) { setError(`${f.name} exceeds the 5 MB limit.`); continue; }
+      const fd = new FormData();
+      fd.append("photo", f);
+      fd.append("captionTopLeft", "");
+      fd.append("captionBottomRight", "");
+      fd.append("published", "false");
+      try {
+        const res = await fetch("/api/admin/gallery", { method: "POST", body: fd });
+        const j = await res.json();
+        if (!res.ok) setError(j.error ?? "Upload failed.");
+        else setPhotos((prev) => [...prev, j.data as GalleryPhoto]);
+      } catch { setError("Network error."); }
+    }
+    if (fileRef.current) fileRef.current.value = "";
+    setUploading(false);
+  }, []);
 
   async function patch(id: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/admin/gallery/${id}`, {
@@ -110,29 +89,26 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
     if (ok) flash("Caption saved."); else setError("Could not save caption.");
   }
 
-  async function togglePublish(p: GalleryPhoto) {
-    setBusyId(p.id);
-    const ok = await patch(p.id, { published: !p.published });
-    if (ok) setPhotos((prev) => prev.map((x) => (x.id === p.id ? { ...x, published: !x.published } : x)));
-    else setError("Could not update.");
-    setBusyId(null);
+  // Publish every draft. The server enforces the 20 cap by unpublishing the oldest
+  // (never deleting), so a refetch reflects the final live set.
+  async function publishAllDrafts(count: number) {
+    if (!count) return;
+    setPublishing(true);
+    const drafts = photos.filter((p) => !p.published);
+    let ok = true;
+    for (const d of drafts) ok = (await patch(d.id, { published: true })) && ok;
+    load();
+    setPublishing(false);
+    if (ok) flash(`Published — ${count} photo(s) added to the live gallery.`);
+    else setError("Some photos could not be published.");
   }
 
-  async function move(index: number, dir: -1 | 1) {
-    const target = index + dir;
-    if (target < 0 || target >= photos.length) return;
-    const a = photos[index], b = photos[target];
-    setBusyId(a.id);
-    // Swap sort_order values, persist both, reorder locally.
-    const ok = (await patch(a.id, { sort_order: b.sort_order })) && (await patch(b.id, { sort_order: a.sort_order }));
-    if (ok) {
-      setPhotos((prev) => {
-        const next = [...prev];
-        next[index] = { ...b, sort_order: a.sort_order };
-        next[target] = { ...a, sort_order: b.sort_order };
-        return next;
-      });
-    } else setError("Could not reorder.");
+  // Live "remove" = send back to draft (non-destructive). Draft ✕ = delete the upload.
+  async function unpublish(p: GalleryPhoto) {
+    setBusyId(p.id);
+    const ok = await patch(p.id, { published: false });
+    if (ok) setPhotos((prev) => prev.map((x) => (x.id === p.id ? { ...x, published: false } : x)));
+    else setError("Could not update.");
     setBusyId(null);
   }
 
@@ -145,6 +121,9 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
     setConfirmDeleteId(null);
   }
 
+  const drafts = photos.filter((p) => !p.published);
+  const live = [...photos.filter((p) => p.published)].sort((a, b) => a.sort_order - b.sort_order);
+
   return (
     <div>
       {toast && (
@@ -154,130 +133,120 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
         <div style={{ background: "var(--red-light)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "var(--red)", marginBottom: 14 }}>{error}</div>
       )}
 
-      {/* Upload panel — hidden for the read-only User tier (view-only gallery). */}
+      {/* ── DRAFT card — upload + stage, publish to go live ── */}
       {!readOnly && (
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem", marginBottom: "1.5rem" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 12 }}>Add a photo</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>Image</label>
-            {/* Hidden native input, driven by the dropzone below */}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => pickFile(e.target.files?.[0])}
-              style={{ display: "none" }}
-            />
-            {file && previewUrl ? (
-              // Selected-file preview card
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 10, border: "1px solid rgba(20,18,12,.15)", borderRadius: 10, background: "var(--surface-soft)" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewUrl} alt="" style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid rgba(20,18,12,.1)" }} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{fmtBytes(file.size)}</div>
-                </div>
-                <button type="button" onClick={() => fileRef.current?.click()} style={smallBtn}>Change</button>
-                <button type="button" onClick={clearFile} aria-label="Remove image" style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)" }}>Remove</button>
-              </div>
-            ) : (
-              // Empty dropzone
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => fileRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files?.[0]); }}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: "1.75rem 1rem", textAlign: "center", cursor: "pointer",
-                  border: `1.5px dashed ${dragging ? "var(--gold)" : "rgba(20,18,12,.22)"}`,
-                  borderRadius: 10,
-                  background: dragging ? "var(--input-hover)" : "var(--input-paper)",
-                  transition: "border-color .12s, background .12s",
-                }}
-              >
-                <svg width={26} height={26} fill="none" stroke="var(--ink-faint)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <div style={{ fontSize: 13, color: "var(--ink)" }}>
-                  <span style={{ fontWeight: 600, color: "var(--gold-dark)" }}>Click to upload</span> or drag &amp; drop
-                </div>
-                <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>JPEG, PNG or WebP · up to 5 MB</div>
-              </div>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>Caption (a full sentence describing the session)</label>
-            <input style={inputStyle} value={topLeft} onChange={(e) => setTopLeft(e.target.value)} placeholder="e.g. A full room learning retirement planning" />
-          </div>
-          <div>
-            <label style={labelStyle}>City (optional)</label>
-            <input style={inputStyle} value={bottomRight} onChange={(e) => setBottomRight(e.target.value)} placeholder="Mumbai" />
-          </div>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: "1.25rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>Draft photos — add city and a caption, then publish</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)", background: "var(--surface-soft)", padding: "5px 12px", borderRadius: 100 }}>{drafts.length} in draft</div>
         </div>
-        <button
-          onClick={handleUpload}
-          disabled={uploading || !file}
-          style={{ marginTop: 14, background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: uploading || !file ? "not-allowed" : "pointer", opacity: uploading || !file ? 0.6 : 1, fontFamily: "inherit" }}
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          onChange={(e) => uploadFiles(e.target.files)}
+          style={{ display: "none" }}
+        />
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => fileRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); uploadFiles(e.dataTransfer.files); }}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+            padding: 24, textAlign: "center", cursor: "pointer",
+            border: `2px dashed ${dragging ? "var(--gold)" : "var(--border-strong)"}`,
+            borderRadius: 10,
+            background: dragging ? "var(--input-hover)" : "var(--input-paper)",
+            transition: "border-color .15s, background .15s",
+          }}
         >
-          {uploading ? "Uploading…" : "Add to gallery"}
-        </button>
+          <svg width={26} height={26} fill="none" stroke="var(--ink-faint)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>{uploading ? "Uploading…" : "Drag photos here, or click to browse"}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>JPG or PNG — multiple files at once</div>
+        </div>
+
+        {/* Draft grid — 3-col, per-card city + caption */}
+        {drafts.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
+            {drafts.map((p) => (
+              <div key={p.id} style={{ border: "1px solid var(--border-strong)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ position: "relative", aspectRatio: "1" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  {confirmDeleteId === p.id ? (
+                    <button onClick={() => remove(p)} disabled={busyId === p.id} style={{ position: "absolute", top: 5, right: 5, borderRadius: 100, background: "var(--red)", color: "#fff", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 600, padding: "3px 8px" }}>Confirm</button>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(p.id)} aria-label="Remove draft" style={{ position: "absolute", top: 5, right: 5, width: 22, height: 22, borderRadius: "50%", background: "rgba(26,26,26,.75)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>✕</button>
+                  )}
+                </div>
+                <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input style={draftInput} defaultValue={p.caption_bottom_right ?? ""} placeholder="City" onBlur={(e) => saveCaption(p, "caption_bottom_right", e.target.value)} />
+                  <input style={draftInput} defaultValue={p.caption_top_left ?? ""} placeholder="Caption (e.g. 'Group discussion, Q&amp;A round')" onBlur={(e) => saveCaption(p, "caption_top_left", e.target.value)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
+          <div style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
+            {drafts.length === 0 ? "Nothing in draft yet" : `${drafts.length} photo${drafts.length === 1 ? "" : "s"} ready — not live until published`}
+          </div>
+          <button
+            onClick={() => publishAllDrafts(drafts.length)}
+            disabled={drafts.length === 0 || publishing}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6, background: "var(--ink)", color: "#fff", border: "none",
+              borderRadius: 100, padding: "6px 12px", fontSize: 12, fontWeight: 500, fontFamily: "inherit",
+              cursor: drafts.length === 0 || publishing ? "not-allowed" : "pointer", opacity: drafts.length === 0 || publishing ? 0.4 : 1, whiteSpace: "nowrap",
+            }}
+          >
+            <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            {publishing ? "Publishing…" : "Publish — adds to live gallery"}
+          </button>
+        </div>
       </div>
       )}
 
-      {/* Grid */}
+      {/* ── Currently live section ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Currently live on the landing page</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)", background: "var(--surface-soft)", padding: "5px 12px", borderRadius: 100 }}>{live.length} / {GAL_MAX}</div>
+      </div>
+
       {loading ? (
         <div style={{ color: "var(--ink-faint)", fontSize: 13 }}>Loading…</div>
-      ) : photos.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
-          <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>Nothing published yet</div>
-          <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
-            {readOnly
-              ? "No gallery photos have been published yet."
-              : "Curate a few photos above and click Publish to populate the landing page gallery."}
+      ) : live.length === 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "4rem 2rem", textAlign: "center", color: "var(--ink-faint)" }}>
+          <svg width={32} height={32} fill="none" stroke="var(--border-strong)" strokeWidth={1.2} viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)" }}>Nothing published yet</div>
+          <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, lineHeight: 1.6 }}>
+            {readOnly ? "No gallery photos have been published yet." : "Curate a few photos above and click Publish to populate the landing page gallery."}
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-          {photos.map((p, i) => (
-            <div key={p.id} style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, overflow: "hidden", opacity: p.published ? 1 : 0.6 }}>
-              {/* Thumbnail with live overlay preview */}
-              <div style={{ position: "relative", aspectRatio: "4/3", background: "#0a0a0a" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                {/* V5 caption: top-left translucent badge + faint bottom-right city
-                    — mirrors the landing render. */}
-                {p.caption_top_left && (
-                  <div style={{ position: "absolute", top: 8, left: 8, maxWidth: "70%", background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "4px 8px", fontSize: 10.5, fontWeight: 500, color: "rgba(255,255,255,0.85)", lineHeight: 1.35 }}>{p.caption_top_left}</div>
-                )}
-                {p.caption_bottom_right && (
-                  <span style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(26,26,26,0.55)", borderRadius: 6, padding: "2px 7px", fontSize: 9.5, fontWeight: 500, color: "rgba(255,255,255,0.92)" }}>{p.caption_bottom_right}</span>
-                )}
-                {!p.published && (
-                  <span style={{ position: "absolute", top: 8, right: 8, fontSize: 9.5, fontWeight: 600, color: "var(--ink)", background: "var(--amber-light)", border: "0.5px solid var(--amber)", borderRadius: 100, padding: "2px 8px" }}>Draft</span>
-                )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          {live.map((p, i) => (
+            <div key={p.id} style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", border: "1px solid var(--border-strong)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              {i === 0 && (
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, background: "rgba(26,26,26,.7)", color: "#fff", fontSize: 9, textAlign: "center", padding: "2px 0" }}>oldest — next to go</div>
+              )}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,.65))", color: "#fff", fontSize: 10, padding: "12px 6px 4px" }}>
+                {p.caption_top_left && <div style={{ fontWeight: 500 }}>{p.caption_top_left}</div>}
+                {p.caption_bottom_right && <div style={{ opacity: 0.85 }}>{p.caption_bottom_right}</div>}
               </div>
-
-              {/* Edit controls — hidden for the read-only User tier. */}
               {!readOnly && (
-              <div style={{ padding: "10px 12px", display: "grid", gap: 8 }}>
-                <input style={inputStyle} defaultValue={p.caption_top_left ?? ""} placeholder="Caption (full sentence)" onBlur={(e) => saveCaption(p, "caption_top_left", e.target.value)} />
-                <input style={inputStyle} defaultValue={p.caption_bottom_right ?? ""} placeholder="City (optional)" onBlur={(e) => saveCaption(p, "caption_bottom_right", e.target.value)} />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button onClick={() => togglePublish(p)} disabled={busyId === p.id} style={smallBtn}>{p.published ? "Unpublish" : "Publish"}</button>
-                  <button onClick={() => move(i, -1)} disabled={busyId === p.id || i === 0} style={{ ...smallBtn, opacity: i === 0 ? 0.4 : 1 }} aria-label="Move up">↑</button>
-                  <button onClick={() => move(i, 1)} disabled={busyId === p.id || i === photos.length - 1} style={{ ...smallBtn, opacity: i === photos.length - 1 ? 0.4 : 1 }} aria-label="Move down">↓</button>
-                  {confirmDeleteId === p.id ? (
-                    <button onClick={() => remove(p)} disabled={busyId === p.id} style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)", marginLeft: "auto" }}>Confirm</button>
-                  ) : (
-                    <button onClick={() => setConfirmDeleteId(p.id)} style={{ ...smallBtn, border: "1px solid var(--red-border)", color: "var(--red)", marginLeft: "auto" }}>Delete</button>
-                  )}
-                </div>
-              </div>
+                <button onClick={() => unpublish(p)} disabled={busyId === p.id} title="Remove from the live gallery (moves it back to drafts)" aria-label="Remove from live" style={{ position: "absolute", top: 5, right: 5, width: 20, height: 20, borderRadius: "50%", background: "rgba(26,26,26,.75)", color: "#fff", border: "none", cursor: "pointer", fontSize: 11 }}>✕</button>
               )}
             </div>
           ))}
@@ -287,14 +256,8 @@ export function GalleryManager({ readOnly = false }: { readOnly?: boolean } = {}
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 11, color: "var(--ink-faint)", marginBottom: 5, fontWeight: 500,
-};
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "8px 11px", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8,
-  fontSize: 13, fontFamily: "inherit", background: "var(--input-paper)", color: "var(--ink)", boxSizing: "border-box",
-};
-const smallBtn: React.CSSProperties = {
-  fontSize: 12, padding: "5px 11px", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6,
-  background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", color: "var(--ink)", whiteSpace: "nowrap",
+const draftInput: React.CSSProperties = {
+  fontFamily: "inherit", fontSize: 12, padding: "6px 8px",
+  border: "1px solid var(--border-strong)", borderRadius: 5,
+  background: "var(--input-paper)", color: "var(--ink)", width: "100%", boxSizing: "border-box",
 };

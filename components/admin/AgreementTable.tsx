@@ -12,7 +12,10 @@ import { initials } from "@/lib/format";
 // needs manual controls — set signed-date/method (P7/P8) and Delete-to-redo (E2).
 // This flag (gates only the Global-Admin Edit + Delete row actions) is ON here; it
 // stays OFF on the mockup-match branch. See ADMIN-V5-SPECDIFF.md / V5-OPPROC-*.md.
-const SHOW_OFFSPEC_ACTIONS = true;
+// V6 clone: OFF — the mockup's Agreements row has no Edit/Delete (signatures are
+// captured automatically on online signing). Upload-signed-copy stays as the manual
+// fallback path. Flip to true only on the manual-controls branch.
+const SHOW_OFFSPEC_ACTIONS = false;
 
 // Agreements row joined with practitioner name + role
 type AgreementRow = Database["public"]["Tables"]["agreements"]["Row"];
@@ -118,7 +121,7 @@ export function AgreementTable({
       <PendingBar
         pendingCards={[{
           count: pendingCount,
-          label: "Awaiting signature",
+          label: "Signed copy not yet uploaded",
           active: filter === "Pending signature",
           onToggle: () => setFilter(filter === "Pending signature" ? "All" : "Pending signature"),
         }]}
@@ -133,23 +136,21 @@ export function AgreementTable({
             width: "100%",
             borderCollapse: "collapse",
             background: "#fff",
-            border: "1px solid rgba(20,18,12,.10)",
-            borderTop: "none",
-            borderRadius: "0 0 10px 10px",
+            border: "1px solid rgba(15,17,23,.10)",
+            borderRadius: 10,
             overflow: "hidden",
           }}
         >
           <thead>
             <tr>
-              {/* Gap 24: 8 columns matching source exactly — 'Agreement ref.' lowercase r with period, 'Signed on' lowercase o, + 'Timestamp' */}
+              {/* V6: 7 columns — Module + Timestamp dropped; Download gets its own column. */}
               {[
                 "Practitioner",
                 "Agreement ref.",
-                "Module",
                 "Signed on",
-                "Timestamp",
                 "Method",
                 "Status",
+                "Download Signed Agreement",
                 "Actions",
               ].map((h) => (
                 <th key={h} scope="col" style={thStyle}>
@@ -162,7 +163,7 @@ export function AgreementTable({
             {visible.map((row) => (
               <tr
                 key={row.id}
-                style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}
+                style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}
               >
                 {/* Gap 37: avatar circle (gold-l bg, gold-d text) + name only (no role) */}
                 <td style={tdStyle}>
@@ -210,11 +211,6 @@ export function AgreementTable({
                   </span>
                 </td>
 
-                {/* Module */}
-                <td style={{ ...tdStyle, fontSize: 13, color: "var(--ink-soft)" }}>
-                  {row.module}
-                </td>
-
                 {/* Gap 39: 'Signed on' — format as '12 Jun 2025' */}
                 <td
                   style={{
@@ -230,31 +226,7 @@ export function AgreementTable({
                         month: "short",
                         year: "numeric",
                       })
-                    : "—"}
-                </td>
-
-                {/* Gap 24: Timestamp column — precise datetime in monospace */}
-                <td
-                  style={{
-                    ...tdStyle,
-                    fontSize: 11,
-                    fontFamily: "monospace",
-                    color: "var(--ink-faint)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {/* Use signed_at with time component if available, else '—' */}
-                  {row.signed_at
-                    ? new Date(row.signed_at).toLocaleString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                        hour12: false,
-                      })
-                    : "Pending"}
+                    : "— awaiting signature —"}
                 </td>
 
                 {/* Gap 25: Method as full plain text, not styled badge */}
@@ -277,7 +249,7 @@ export function AgreementTable({
                       fontSize: 11,
                       padding: "4px 10px",
                       borderRadius: 100,
-                      border: "1px solid rgba(20,18,12,.18)",
+                      border: "1px solid rgba(15,17,23,.18)",
                       color: row.storage_path ? "var(--ink-soft)" : "var(--ink-faint)",
                       background: "#fff",
                       cursor: row.storage_path ? "pointer" : "not-allowed",
@@ -308,6 +280,10 @@ export function AgreementTable({
                     </svg>
                     Download
                   </button>
+                </td>
+
+                {/* Actions — manual fallbacks (upload signed copy / edit / delete) */}
+                <td style={tdStyle}>
                   {/* Op-procedure Part 2 step 7 + P9: upload the signed copy; the
                       button disappears once a file exists, so you can't re-upload
                       over a real record (use Delete/Edit to redo). */}
@@ -316,7 +292,7 @@ export function AgreementTable({
                       onClick={(e) => { e.stopPropagation(); chooseSignedCopy(row.id); }}
                       disabled={uploadingId === row.id}
                       title={`Upload signed copy for ${row.practitioner_name}`}
-                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 10px", cursor: uploadingId === row.id ? "default" : "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 500 }}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(15,17,23,.18)", borderRadius: 100, padding: "3px 10px", cursor: uploadingId === row.id ? "default" : "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 500 }}
                     >
                       <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                       {uploadingId === row.id ? "Uploading…" : "Upload signed copy"}
@@ -325,7 +301,7 @@ export function AgreementTable({
                   {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}
-                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                      style={{ marginLeft: 6, background: "none", border: "1px solid rgba(15,17,23,.18)", borderRadius: 100, padding: "3px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
                       title={`Edit agreement for ${row.practitioner_name}`}
                     >
                       <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -351,7 +327,7 @@ export function AgreementTable({
             {visible.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   style={{
                     textAlign: "center",
                     padding: 40,
@@ -398,7 +374,7 @@ const thStyle: React.CSSProperties = {
   letterSpacing: "0.06em",
   textTransform: "uppercase",
   color: "var(--ink-faint)",
-  borderBottom: "1px solid rgba(20,18,12,.10)",
+  borderBottom: "1px solid rgba(15,17,23,.10)",
   whiteSpace: "nowrap",
 };
 

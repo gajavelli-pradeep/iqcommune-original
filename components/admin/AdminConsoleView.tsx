@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PractitionerTable } from "@/components/admin/PractitionerTable";
 import { SessionTable } from "@/components/admin/SessionTable";
 import { RequestTable } from "@/components/admin/RequestTable";
 import { PayoutTable } from "@/components/admin/PayoutTable";
 import { AgreementTable, type Agreement } from "@/components/admin/AgreementTable";
 import { PhotosTable } from "@/components/admin/PhotosTable";
-import { ConsentTable, type ConfirmationRow } from "@/components/admin/ConsentTable";
+import { ConsentTable, consentPartLabel, type ConfirmationRow } from "@/components/admin/ConsentTable";
 import { ConsentFormModal } from "@/components/admin/ConsentFormModal";
 import { PhotoGuideSection } from "@/components/admin/PhotoGuideSection";
 import { ReassignConsentModal } from "@/components/admin/ReassignConsentModal";
@@ -136,11 +137,11 @@ interface Props {
 const TAB_META: Record<string, { title: string; subtitle: string }> = {
   requests:       { title: "Session Requests",      subtitle: "Incoming requests from iqcommune.com — assign a practitioner to confirm" },
   practitioners:  { title: "Practitioner pipeline", subtitle: "Manage applications, onboarding, and empanelment" },
-  sessions:       { title: "Session Details",       subtitle: "Track delivery status — sessions are created automatically when a practitioner is assigned to a request" },
-  agreements:     { title: "Agreements",            subtitle: "All empanelment agreements — signed and awaiting signature" },
-  consent:        { title: "Session Consent",       subtitle: "Generate the per-session revenue confirmation and track practitioner consent." },
-  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — mark paid after bank transfer. These records are permanent and can't be deleted; corrections happen via Revert (Global Admin) instead." },
-  photos:         { title: "Session Photos",        subtitle: "Track photo uploads from practitioners after each completed session — view, download, or delete." },
+  sessions:       { title: "Session Details",       subtitle: "An overall dashboard — delivery status, payout figures, and post-session rating for every session" },
+  agreements:     { title: "Agreements",            subtitle: "Practitioners appear here automatically once marked Empanelled — signed date, method, and status are all captured automatically the moment they sign online" },
+  consent:        { title: "Session Consent",       subtitle: "The critical junction of the whole loop — generate consent, track it, then send the photo guide once confirmed." },
+  payouts:        { title: "Payouts",               subtitle: "Track practitioner payments per session — Gross and Net pull from the session's consent record; mark Paid once the bank transfer is done." },
+  photos:         { title: "Session Photos",        subtitle: "Every completed session appears here — photos land automatically if the practitioner uses the link, or upload them yourself if they send them another way." },
   gallery:        { title: "Gallery",               subtitle: "Curate photos for “Sessions in the room” on the main landing page. Standalone — not linked to practitioners, sessions, or requests." },
   activity:       { title: "Activity",              subtitle: "A running log of actions taken across the console — visible to Global Admins only." },
   settings:       { title: "Settings",              subtitle: "Manage team access and review platform-wide permissions." },
@@ -166,28 +167,22 @@ const TAB_ACTIONS: Record<string, ActionButton[]> = {
     { label: "Export",        variant: "ghost",   ariaLabel: "Export practitioners" },
     // { label: "+ Add manually",variant: "primary", ariaLabel: "Add a practitioner manually" },
   ],
-  // V5: Session Details header has no action buttons.
+  // V6: Session Details header has a "Check for updates" button.
   sessions:      [
-    // { label: "+ Create session", variant: "gold", ariaLabel: "Create a new session", icon: "plus" },
+    { label: "Check for updates", variant: "ghost", ariaLabel: "Check for session updates" },
   ],
-  // V5: agreements only 'Export'
-  agreements:    [
-    { label: "Export",        variant: "ghost",   ariaLabel: "Export agreements" },
-  ],
-  // V5: the "Generate a new confirmation" form is inline on the tab, not a header button.
+  // V6: agreements header has no button.
+  agreements:    [],
+  // V6: the "Generate a new confirmation" form is inline on the tab, not a header button.
   consent:       [],
-  // V5: payouts only 'Export' (no 'Mark paid')
-  payouts:       [
-    { label: "Export",        variant: "ghost",   ariaLabel: "Export payouts" },
-  ],
-  // V5: Photos header button reads "Export log".
+  // V6: payouts header has no button.
+  payouts:       [],
+  // V6: Photos header button is "Check for updates".
   photos:        [
-    { label: "Export log",    variant: "ghost",   ariaLabel: "Export photo submissions" },
+    { label: "Check for updates", variant: "ghost", ariaLabel: "Check for photo updates" },
   ],
-  // V5: Activity header has an "Export log" button (Global-Admin-only tab).
-  activity:      [
-    { label: "Export log",    variant: "ghost",   ariaLabel: "Export activity log" },
-  ],
+  // V6: Activity header has no button.
+  activity:      [],
   settings:      [],
 };
 
@@ -283,9 +278,9 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
       { label: "Payouts", tab: "payouts", badge: counts.pendingPayouts, badgeBg: "#a32d2d" },
     ],
   };
-  // V5 sidebar: all roles see the System section (Settings + Gallery); only
-  // Activity is Global-Admin-only. The read-only User sees Settings and Gallery
-  // view-only (edit surfaces inside them are stripped by their own readOnly mode).
+  // V6 sidebar: System group order is Gallery → Settings → Activity. Activity is
+  // Global-Admin-only. The read-only User sees Gallery and Settings view-only
+  // (edit surfaces inside them are stripped by their own readOnly mode).
   return [
     practitionerMgmt,
     sessionPipeline,
@@ -293,9 +288,9 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
     {
       heading: "System",
       items: [
-        ...(isGlobalAdmin ? [{ label: "Activity", tab: "activity" }] : []),
-        { label: "Settings", tab: "settings" },
         ...(galleryVisible ? [{ label: "Gallery", tab: "gallery" }] : []),
+        { label: "Settings", tab: "settings" },
+        ...(isGlobalAdmin ? [{ label: "Activity", tab: "activity" }] : []),
       ],
     },
   ];
@@ -306,7 +301,7 @@ function buildSections(counts: Counts, galleryVisible: boolean, isGlobalAdmin: b
 // Gap 34: border-radius 100 (pill) for all buttons
 const ghostBtnStyle: React.CSSProperties = {
   background: "#fff",
-  border: "1px solid rgba(20,18,12,0.18)",
+  border: "1px solid rgba(15,17,23,0.18)",
   borderRadius: 100,
   padding: "6px 12px",
   fontSize: 12,
@@ -368,14 +363,16 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
     <div
       style={{
         background: "#fff",
-        borderBottom: "1px solid rgba(20,18,12,.10)",
+        borderBottom: "1px solid rgba(15,17,23,.10)",
         padding: "1.25rem 1.75rem",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: "0.75rem",
+        flexWrap: "wrap",
       }}
     >
-      <div>
+      <div style={{ minWidth: 0 }}>
         <h1
           style={{
             fontSize: 18,
@@ -394,7 +391,7 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
       </div>
 
       {actions.length > 0 && (
-        <div style={{ display: "flex", gap: "0.65rem" }}>
+        <div style={{ display: "flex", gap: "0.65rem", flexShrink: 0, flexWrap: "wrap" }}>
           {actions.map((btn) => {
             const style =
               btn.variant === "gold"    ? goldBtnStyle :
@@ -416,6 +413,7 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
 
 export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin: realIsGlobalAdmin = false, galleryAdminAccess = true, readOnly: realReadOnly = false }: Props) {
   const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab, viewAs, sidebarOpen, setSidebarOpen } = useAdminUI();
+  const router = useRouter();
 
   // V5 "Viewing as" preview — downgrade-only. Only a real global admin can
   // preview a lower scope; every other tier ignores viewAs, so it can never
@@ -734,7 +732,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   }
 
   function handleHeaderAction(label: string) {
-    if (label.includes("Create session")) setSessionModalOpen(true);
+    if (label === "Check for updates") router.refresh();
+    else if (label.includes("Create session")) setSessionModalOpen(true);
     else if (label.includes("Add manually")) setPractitionerModalOpen(true);
     else if (label.includes("Add request")) setRequestModalOpen(true);
     else if (label.includes("Create payout")) setPayoutModalOpen(true);
@@ -775,7 +774,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           width: 220,
           flexShrink: 0,
           background: "#ffffff",
-          borderRight: "1px solid rgba(20,18,12,.10)",
+          borderRight: "1px solid rgba(15,17,23,.10)",
           position: "sticky",
           top: 64,
           height: "calc(100vh - 64px)",
@@ -787,7 +786,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         {sections.map((section, si) => (
           <div key={section.heading}>
             {si > 0 && (
-              <div style={{ height: 1, background: "rgba(20,18,12,.10)", margin: "0.5rem 1.25rem" }} />
+              <div style={{ height: 1, background: "rgba(15,17,23,.10)", margin: "0.5rem 1.25rem" }} />
             )}
             <div
               style={{
@@ -853,7 +852,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
         ))}
 
         {/* Sidebar footer — Gap 23: no avatar, just name + email lines */}
-        <div style={{ marginTop: "auto", padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,0.10)" }}>
+        <div style={{ marginTop: "auto", padding: "1rem 1.25rem", borderTop: "1px solid rgba(15,17,23,0.10)" }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Admin User</div>
           {/* Gap 23: email defaults to hello@iqcommune.com */}
           <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{email ?? "hello@iqcommune.com"}</div>
@@ -948,17 +947,26 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                 reassignableSessionIds={upcomingSessions.map((s) => s.id)}
                 onReassign={isGlobalAdmin ? (row) => setReassigning(row) : undefined}
                 onStatusOverridden={isGlobalAdmin ? handleStatusOverridden : undefined}
+                sessionStatusById={Object.fromEntries(sessionsData.map((s) => [s.id, s.status]))}
                 beforeTable={!readOnly && (
-                  <ConsentFormModal
-                    inline
-                    isGlobalAdmin={isGlobalAdmin}
-                    confirmedSessionIds={confirmedSessionIds}
-                    onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
-                  />
+                  <>
+                    <div style={consentPartLabel}>Part 1 — Generate &amp; Send Consent</div>
+                    <ConsentFormModal
+                      inline
+                      isGlobalAdmin={isGlobalAdmin}
+                      confirmedSessionIds={confirmedSessionIds}
+                      onCreated={(c) => { setConfirmationsData((prev) => [c, ...prev]); }}
+                    />
+                  </>
                 )}
               />
               {/* Op-procedure Part 4 steps 22-24: photo-guide sub-section. */}
-              {!readOnly && <PhotoGuideSection sessions={sessionsData} />}
+              {!readOnly && (
+                <>
+                  <div style={consentPartLabel}>Part 3 — Send Photo Guide</div>
+                  <PhotoGuideSection sessions={sessionsData} />
+                </>
+              )}
             </div>
           </div>
         )}
@@ -984,7 +992,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   }))}
                 isGlobalAdmin={isGlobalAdmin}
                 readOnly={readOnly}
-                canGallery={galleryVisible && !readOnly}
                 onStatusChange={(id, status) =>
                   setPhotosData((prev) =>
                     status === "Deleted"
@@ -1032,17 +1039,28 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   communication_address: p.communication_address, tshirt_size: p.tshirt_size,
                 }))}
               />
-              {/* Team & Access (V4) — inline management via the admins modal */}
-              {isGlobalAdmin && (
-                <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Team &amp; Access</div>
-                      <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 3, maxWidth: 460, lineHeight: 1.6 }}>
-                        Everyone with console access. Invite new admins, set passwords, promote to global
-                        admin, and grant gallery access — every action is recorded in the Activity log.
-                      </div>
+              {/* Team & Access (V6) — table renders for every role; invite box +
+                  management stay Global-Admin only. Bare on the soft page (no card). */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Team &amp; Access</div>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 3, maxWidth: 520, lineHeight: 1.6 }}>
+                      Everyone below can sign in to this console. Their role determines what they can do once inside.
+                      {isGlobalAdmin && (
+                        <>
+                          {" "}
+                          <button
+                            onClick={() => setTeamReloadKey((k) => k + 1)}
+                            style={{ ...ghostBtnStyle, fontSize: 11, padding: "3px 10px", verticalAlign: "middle" }}
+                          >
+                            Check for updates
+                          </button>
+                        </>
+                      )}
                     </div>
+                  </div>
+                  {isGlobalAdmin && (
                     <button
                       onClick={() => setCredentialsOpen(true)}
                       style={{ ...primaryBtnStyle, flexShrink: 0 }}
@@ -1050,15 +1068,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                     >
                       Manage team
                     </button>
-                  </div>
-                  <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
-                  {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
-                  <InviteTeamMember />
+                  )}
                 </div>
-              )}
+                <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
+                {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
+                {isGlobalAdmin && <InviteTeamMember />}
+              </div>
 
-              {/* Roles & Permissions (V5) — reference table, visible to every role. */}
-              <RolesPermissions />
+              {/* Roles & Permissions (V6) — Global-Admin only, same as Activity. */}
+              {isGlobalAdmin && <RolesPermissions />}
             </div>
           </div>
         )}

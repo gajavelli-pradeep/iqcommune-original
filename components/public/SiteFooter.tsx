@@ -6,7 +6,7 @@ const LINKEDIN_URL = "https://www.linkedin.com/company/iqcommune/";
  * Shared public-site footer. One component, both pages.
  * - `top`     : optional block above the brand line (home = recruitment CTA,
  *               practitioners = back link).
- * - `tagline` : second row of the brand lockup ("Where the insight quotient is unleashed").
+ * - `tagline` : second row of the brand lockup ("Where financial intelligence connects").
  * - `email`   : contact address; rendered as a mailto link.
  * Copyright year is always dynamic. Brand line is an IQ-mark + 2-row lockup.
  */

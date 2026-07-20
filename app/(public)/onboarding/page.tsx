@@ -3,7 +3,7 @@ import { AgreementViewer } from "@/components/public/AgreementViewer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Practitioner Onboarding",
+  title: "iqcommune — Practitioner Onboarding & Agreement",
   robots: { index: false, follow: false },
 };
 
@@ -23,7 +23,7 @@ function Loading() {
           style={{
             width: 36,
             height: 36,
-            border: "3px solid rgba(20,18,12,.1)",
+            border: "3px solid rgba(15,17,23,.1)",
             borderTopColor: "var(--ink)",
             borderRadius: "50%",
             animation: "spin 0.7s linear infinite",
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
           background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(20,18,12,0.10)",
+          borderBottom: "1px solid rgba(15,17,23,0.10)",
           padding: "0 2rem",
           position: "sticky",
           top: 0,
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
                   lineHeight: 1,
                 }}
               >
-                Where the insight quotient is unleashed
+                Where financial intelligence connects
               </span>
             </div>
             {/* Vertical divider */}
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
                 display: "inline-block",
                 width: 1,
                 height: 20,
-                background: "rgba(20,18,12,0.20)",
+                background: "rgba(15,17,23,0.20)",
                 flexShrink: 0,
               }}
             />

@@ -9,7 +9,9 @@ import nextTs from "eslint-config-next/typescript";
 //  as "#2a6b2a"/"#185fa5" are NOT flagged.) See COLOR-PSYCHOLOGY-AUDIT.md.
 const BANNED_HEX_RE =
   "#(0f1117|080a0e|1a1c22|4a4d5c|9496a1|c9c9c9|e0c870|f0c84a|6fcf6f|b8d98a|f0b0b0)";
-const BANNED_RGBA_RE = "rgba\\(15,17,23,"; // cool ink base — use rgba(20,18,12,…)
+// V6 clone (2026-07): borders switched to the mockup's COOL ink base app-wide.
+// The warm base is now the regression to guard against. See COLOR-PSYCHOLOGY-AUDIT.md.
+const BANNED_RGBA_RE = "rgba\\(20,18,12,"; // warm ink base — use rgba(15,17,23,…)
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -29,7 +31,7 @@ const eslintConfig = defineConfig([
         {
           selector: `Literal[value=/${BANNED_RGBA_RE}/i]`,
           message:
-            "Banned cool ink-base border rgba(15,17,23,…) — use the warm token base rgba(20,18,12,…). See COLOR-PSYCHOLOGY-AUDIT.md.",
+            "Banned warm ink-base border rgba(20,18,12,…) — the V6 clone uses the cool ink base rgba(15,17,23,…). See COLOR-PSYCHOLOGY-AUDIT.md.",
         },
       ],
     },

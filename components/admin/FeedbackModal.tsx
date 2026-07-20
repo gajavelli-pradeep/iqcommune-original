@@ -51,7 +51,7 @@ function StarPicker({
             border: "none",
             padding: "0 1px",
             cursor: "pointer",
-            color: active !== null && star <= active ? "var(--gold)" : "rgba(20,18,12,.20)",
+            color: active !== null && star <= active ? "var(--gold)" : "rgba(15,17,23,.20)",
             fontSize: size,
             lineHeight: 1,
           }}
@@ -142,7 +142,7 @@ export function FeedbackModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(20,18,12,.55)",
+        background: "rgba(15,17,23,.55)",
         zIndex: 9000,
         display: "flex",
         alignItems: "center",
@@ -159,14 +159,14 @@ export function FeedbackModal({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 8px 40px rgba(20,18,12,.18)",
+          boxShadow: "0 8px 40px rgba(15,17,23,.18)",
         }}
       >
         {/* Header */}
         <div
           style={{
             padding: "1rem 1.25rem",
-            borderBottom: "1px solid rgba(20,18,12,.10)",
+            borderBottom: "1px solid rgba(15,17,23,.10)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -298,7 +298,7 @@ export function FeedbackModal({
                 fontSize: 13,
                 padding: "8px 10px",
                 borderRadius: 8,
-                border: "1px solid rgba(20,18,12,.15)",
+                border: "1px solid rgba(15,17,23,.15)",
                 background: "var(--input-paper)",
                 fontFamily: "inherit",
                 resize: "vertical",
@@ -329,7 +329,7 @@ export function FeedbackModal({
                 fontSize: 13,
                 padding: "7px 10px",
                 borderRadius: 8,
-                border: "1px solid rgba(20,18,12,.15)",
+                border: "1px solid rgba(15,17,23,.15)",
                 background: "var(--input-paper)",
                 fontFamily: "inherit",
                 outline: "none",
@@ -350,7 +350,7 @@ export function FeedbackModal({
         <div
           style={{
             padding: "1rem 1.25rem",
-            borderTop: "1px solid rgba(20,18,12,.10)",
+            borderTop: "1px solid rgba(15,17,23,.10)",
             display: "flex",
             gap: 8,
             justifyContent: "flex-end",
@@ -361,7 +361,7 @@ export function FeedbackModal({
             onClick={onClose}
             disabled={saving}
             style={{
-              background: "rgba(20,18,12,.07)",
+              background: "rgba(15,17,23,.07)",
               color: "var(--ink)",
               border: "none",
               borderRadius: 8,
@@ -378,7 +378,7 @@ export function FeedbackModal({
             onClick={save}
             disabled={saving}
             style={{
-              background: saving ? "rgba(20,18,12,.20)" : "#c9982a",
+              background: saving ? "rgba(15,17,23,.20)" : "#c9982a",
               color: "#14161d",
               border: "none",
               borderRadius: 8,

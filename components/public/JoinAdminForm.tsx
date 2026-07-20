@@ -5,7 +5,7 @@ import { useState } from "react";
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
@@ -35,7 +35,7 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
     setError("");
     if (name.trim().length < 2) return setError("Please enter your name.");
     if (password.length < 8) return setError("Password must be at least 8 characters.");
-    if (password !== confirm) return setError("Passwords do not match.");
+    if (password !== confirm) return setError("Passwords don't match — check and try again.");
 
     setSubmitting(true);
     try {
@@ -62,40 +62,33 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
 
   if (done) {
     return (
-      <div
-        style={{
-          background: "var(--green-light)",
-          border: "1px solid var(--green-border)",
-          borderRadius: 10,
-          padding: "1.5rem 1.25rem",
-          textAlign: "center",
-        }}
-      >
-        {/* V5 success: green circle + checkmark */}
+      <div style={{ textAlign: "center" }}>
+        {/* V6 success: white card, 56px green-light circle + green check, dark title */}
         <div
           style={{
-            width: 48,
-            height: 48,
+            width: 56,
+            height: 56,
             borderRadius: "50%",
-            background: "var(--green)",
+            background: "var(--green-light)",
+            color: "var(--green)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            margin: "0 auto 12px",
+            margin: "0 auto 1.25rem",
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M20 6 9 17l-5-5" />
+          <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--green)", marginBottom: 6 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>
           Account activated
         </div>
         <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 14px" }}>
-          Your admin account for <strong style={{ color: "var(--ink)" }}>{email}</strong> is ready.
+          Your account is ready. Log in any time at iqcommune.com/login with this email and the password you just set.
         </p>
         {activatedAt && (
-          <p style={{ fontSize: 11.5, color: "var(--ink-faint)", margin: "0 0 16px" }}>
+          <p style={{ fontSize: 12.5, color: "var(--ink-faint)", fontFamily: "monospace", margin: "0 0 16px" }}>
             Activated: {activatedAt}
           </p>
         )}
@@ -126,8 +119,8 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 1,
-          background: "rgba(20,18,12,.10)",
-          border: "1px solid rgba(20,18,12,.12)",
+          background: "rgba(15,17,23,.10)",
+          border: "1px solid rgba(15,17,23,.12)",
           borderRadius: 8,
           overflow: "hidden",
         }}
@@ -224,17 +217,17 @@ export function JoinAdminForm({ email, token, roleLabel }: { email: string; toke
           background: "var(--ink)",
           color: "var(--surface)",
           border: "none",
-          borderRadius: 8,
-          padding: "11px",
+          borderRadius: 10,
+          padding: "0.9rem",
           minHeight: 44,
           fontSize: 14,
-          fontWeight: 600,
+          fontWeight: 500,
           cursor: submitting ? "not-allowed" : "pointer",
           opacity: submitting ? 0.6 : 1,
           fontFamily: "inherit",
         }}
       >
-        {submitting ? "Creating account…" : "Create my admin account"}
+        {submitting ? "Activating…" : "Activate account"}
       </button>
     </form>
   );

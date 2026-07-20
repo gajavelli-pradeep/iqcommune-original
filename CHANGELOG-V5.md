@@ -5,6 +5,64 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
+## [2026-07-20] V6 fresh clone — exact-text + safe admin polish — SHIPPED (build-verified)
+
+Client replaced admin-console HTML + landing + empanelment + `client_email.txt` (all 13:46).
+Governing decision: prototype IS the spec, clone as-is (V6-FULL-PARITY 04:18 + client_email 13:47).
+Full 4-lane read-only audit; parent applied writes serially. Tracker: `../V6-FRESH-CLONE-MASTER.md`.
+
+- **Tagline (brand) — all surfaces** → "Where financial intelligence connects" (SiteHeader, home page
+  metadata ×4, onboarding, status, AdminTopNav, SiteFooter). Every V6 mockup incl. admin uses this →
+  supersedes the 2026-07-17 "insight quotient" tagline.
+- **Exact email/popup copy (client_email.txt, 4 flows):** empanelment popup + `applicationConfirmation`
+  email (subject/body, 3–5→2–3 days, "Regards, The iqcommune Team"); session-request popup + new
+  `sessionRequestReceivedEmail` template wired to public `api/session-requests` (`clientFollowUpEmail`
+  retained for admin follow-up).
+- **Public text:** gallery captions ×4; RequestModal city/state "e.g." placeholders + venue wording;
+  practitioners FAQ Q10/A10; onboarding + consent metadata titles.
+- **Empanelment alt-payment restructure:** "family member" → "a different account"; removed payee
+  name/relationship fields (schema refinement relaxed, DB columns stay nullable); UPI + declaration copy.
+- **Admin polish:** Consent EmailBadge removed; Photos "↑ urgent" removed; Roles cells plain ink ✓/— + left-aligned.
+- **Deferred (see tracker):** large admin rebuilds (Practitioners/Requests/Gallery/Settings), pill-button
+  reskin, full responsive pass (browser-verification-dependent); 10 human-decision items (D1–D10).
+
+## [2026-07-20] V6 large admin rebuilds + responsive — SHIPPED (Playwright-verified)
+
+Continuation of the fresh clone. Global-admin login → screenshot each rebuilt tab vs mockup.
+
+- **Gallery** two-stage (`GalleryManager`): draft card ("N in draft" pill + dropzone + 3-col grid, per-card
+  City+Caption, dark "Publish — adds to live gallery") + "Currently live" ("N / 20" pill, 5-col grid,
+  "oldest — next to go" ribbon, gradient overlay). Upload→draft (published=false); server 20-cap already
+  unpublishes oldest. ✓ verified.
+- **Settings**: dropped white-card wrappers (bare h2+p+table on soft page); Team & Access table renders for
+  EVERY role (invite + Manage-team GA-only); "Check for updates" ghost added; Roles cells plain ink ✓/—
+  left-aligned. `AdminConsoleView`/`MasterDataTable`/`RolesPermissions`. ✓ verified.
+- **Session Details** (`SessionTable`): Practitioner-Rating cell renders "—" for non-Completed sessions.
+- **Practitioner card** (`PractitionerTable`): 52px identity block, avg-rating band, mockup-order kv (D2 PII
+  skipped), prof-close ✕, editable status select [Applied/Screening Done/Rejected]+hint vs read-only pill+note,
+  per-status pill actions (Generate-agreement / ghost resend + Check-for-updates + `<details>` manual-empanel /
+  ghost welcome + red deactivation / gold Reactivate), dashed danger zone (Delete-only, GA), Message/Notes at
+  bottom; removed Revert + PDF/draft-email ghosts + Why-teach + collapsed sub-line role·org·★avg. ✓ verified.
+- **Responsive**: no body h-scroll @320/375 on rebuilt admin tabs + public pages (Playwright-asserted).
+- Tracker: `../V6-FRESH-CLONE-MASTER.md`.
+
+## [2026-07-20] V6 Requests "Assignment" rebuild — SHIPPED (Playwright-verified)
+
+Decision D1: **keep DB value `Confirmed`**; the mockup's "Matched" is label-only (`StatusPill` already maps
+`Confirmed`→"Matched"; the status option is labelled "Matched", value stays `Confirmed`).
+- `RequestTable`: col-2 → "Assignment" (helper + "Practitioner who agreed" select of all empanelled +
+  "Agreed gross payout (₹)" inline); removed the Assign modal + session-date field + module-match filter;
+  col-3 "Actions"→"Status" select [New, Matched(=Confirmed), Cancelled] via one `handleStatusChange`
+  (Confirmed creates session / Confirmed→New unassigns / Confirmed→Cancelled cascades+emails); added
+  "Send cancellation message"; prof-close ✕; "→ Session {ref}" subline; col-1 SPOC + Received rows; venue
+  amber→gold-dark; group-size left "{n} people"; min-commit weight 600; SPOC cell drops email/phone.
+- `POST/PATCH /assign`: `sessionDate` now optional (mockup collects no date — scheduled later in Session
+  Details; defaults to the request's preferred date if ISO else today; `session_date` stays NOT NULL — no
+  migration). Re-homed session creation into `assignAndConfirm`/`unassignRequest` (nothing lost).
+- ✓ Playwright: status→Confirmed with practitioner+payout, no date → `/assign` 200, session IQC-SES-0009
+  created, Undo reversed it.
+- Still open (cosmetic): pill reskin on Invite/TeamAccess; ★avg suffix on the practitioner options.
+
 ## [2026-07-18] Mobile UX pass — all public routes + mockup-safe admin drawer — SHIPPED
 
 Systemic-first mobile (320–480px) overhaul across the 9 public routes; admin got only

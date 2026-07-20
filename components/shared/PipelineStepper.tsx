@@ -69,7 +69,7 @@ export function PipelineStepper({ status, timestamps }: Props) {
                   ? { background: "var(--ink)", color: "#fff" }
                   : {
                       background: "var(--surface-sunken)",
-                      border: "1px solid rgba(20,18,12,.18)",
+                      border: "1px solid rgba(15,17,23,.18)",
                       color: "var(--ink-faint)",
                     }),
               }}

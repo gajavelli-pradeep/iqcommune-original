@@ -94,20 +94,8 @@ export const ApplicationSchema = z
     if (data.payToFamily) {
       const req = (v: unknown) =>
         typeof v === "string" && v.trim().length > 0;
-      if (!req(data.familyName)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Required",
-          path: ["familyName"],
-        });
-      }
-      if (!req(data.familyRelation)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Required",
-          path: ["familyRelation"],
-        });
-      }
+      // V6: payment to a different account no longer collects the payee's
+      // name/relationship — only the account details + a billing declaration.
       const hasFamilyUpi = req(data.familyUpi);
       const hasFamilyBank =
         req(data.familyAccountName) &&
@@ -117,7 +105,7 @@ export const ApplicationSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message:
-            "Provide the family member's UPI ID or full bank account details.",
+            "Provide the UPI ID or full bank account details for the account.",
           path: ["familyUpi"],
         });
       }

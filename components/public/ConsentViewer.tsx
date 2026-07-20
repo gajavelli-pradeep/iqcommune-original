@@ -36,9 +36,9 @@ const dash = (s: string | undefined | null) => (s && String(s).trim() ? String(s
 
 const card: React.CSSProperties = {
   background: "var(--surface)",
-  border: "1px solid rgba(20,18,12,0.12)",
+  border: "1px solid rgba(15,17,23,0.12)",
   borderRadius: 14,
-  padding: "1.75rem 1.9rem",
+  padding: "2rem 2.25rem",
   marginBottom: "1.25rem",
 };
 const cardTitle: React.CSSProperties = { fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: 6 };
@@ -49,11 +49,11 @@ const sectionLabel: React.CSSProperties = {
   letterSpacing: "0.06em",
   textTransform: "uppercase",
   color: "var(--gold-dark)",
-  margin: "1.5rem 0 0.85rem",
+  margin: "1.5rem 0 0.75rem",
 };
 const kvLabel: React.CSSProperties = { fontSize: 11.5, color: "var(--ink-faint)", marginBottom: 2 };
 const kvValue: React.CSSProperties = { fontSize: 14.5, fontWeight: 500, color: "var(--ink)" };
-const divider: React.CSSProperties = { height: 1, background: "rgba(20,18,12,0.10)", margin: "1.5rem 0" };
+const divider: React.CSSProperties = { height: 1, background: "rgba(15,17,23,0.10)", margin: "1.5rem 0" };
 const note: React.CSSProperties = { fontSize: 12.5, color: "var(--ink-muted)", fontStyle: "italic", marginTop: "0.5rem" };
 
 function KV({ label, value }: { label: string; value: string }) {
@@ -135,7 +135,7 @@ export function ConsentViewer({
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "2.5rem 1.5rem 4rem" }}>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "2.5rem 1.5rem 4rem" }}>
       {/* Details */}
       <div style={card}>
         <div style={cardTitle}>Confirm your session details</div>
@@ -242,7 +242,7 @@ export function ConsentViewer({
             style={{
               width: "100%",
               padding: "11px 14px",
-              border: "1.5px solid rgba(20,18,12,0.16)",
+              border: "1.5px solid rgba(15,17,23,0.16)",
               borderRadius: 9,
               fontSize: 14,
               fontFamily: "inherit",

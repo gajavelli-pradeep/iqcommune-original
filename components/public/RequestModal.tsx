@@ -197,7 +197,7 @@ const dialogStyle: React.CSSProperties = {
   padding: "2.5rem",
   width: "100%",
   maxWidth: 520,
-  border: "1px solid rgba(20,18,12,0.12)",
+  border: "1px solid rgba(15,17,23,0.12)",
   boxShadow:
     "0 4px 8px rgba(20,16,10,0.07), 0 28px 56px -14px rgba(20,16,10,0.26)",
   position: "relative",
@@ -208,7 +208,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
   border: "1px solid",
-  borderColor: "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+  borderColor: "rgba(15,17,23,0.13) rgba(15,17,23,0.13) rgba(15,17,23,0.22)",
   borderRadius: 9,
   fontFamily: "inherit",
   fontSize: 14,
@@ -616,9 +616,8 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   <p
                     style={{ fontSize: 14, color: "#383b47", lineHeight: 1.65 }}
                   >
-                    We&apos;ll reach out within 2–3 working days to understand
-                    your needs better and take the conversation forward. Keep an
-                    eye on your inbox and phone.
+                    Thanks — your session request is in. We&apos;ll be in touch
+                    within 2–3 working days.
                   </p>
                 </div>
               ) : (
@@ -675,7 +674,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                           borderColor:
                             selectedAudience === chip.id
                               ? "#c9982a"
-                              : "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+                              : "rgba(15,17,23,0.13) rgba(15,17,23,0.13) rgba(15,17,23,0.22)",
                           background:
                             selectedAudience === chip.id
                               ? "#f5e9c8"
@@ -692,7 +691,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                           boxShadow:
                             selectedAudience === chip.id
                               ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(201,152,42,0.22)"
-                              : "inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 1px rgba(20,18,12,0.03)",
+                              : "inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 1px rgba(15,17,23,0.03)",
                         }}
                         aria-pressed={selectedAudience === chip.id}
                       >
@@ -706,7 +705,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   <div
                     style={{
                       background: "#f8f7f4",
-                      border: "1px solid rgba(20,18,12,0.10)",
+                      border: "1px solid rgba(15,17,23,0.10)",
                       borderLeft: "3px solid #c9982a",
                       borderRadius: "0 8px 8px 0",
                       padding: "10px 14px",
@@ -823,7 +822,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         autoComplete="address-level2"
                         value={form.city}
                         onChange={(e) => updateField("city", e.target.value)}
-                        placeholder="Mumbai"
+                        placeholder="e.g. Mumbai"
                         style={inputStyle}
                         required
                       />
@@ -838,7 +837,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                         autoComplete="address-level1"
                         value={form.state}
                         onChange={(e) => updateField("state", e.target.value)}
-                        placeholder="Maharashtra"
+                        placeholder="e.g. Maharashtra"
                         style={inputStyle}
                         required
                       />
@@ -984,10 +983,9 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <div
                         style={{ fontSize: 11, color: "#71717f", marginTop: 4 }}
                       >
-                        Venue booking is your group&apos;s responsibility —
-                        please share the space you&apos;ve finalised (or let us
-                        know if you&apos;d like a few suggestions for your
-                        city).
+                        Venue booking is your group&apos;s responsibility. Share
+                        the space you&apos;ve finalised, or let us know if
+                        you&apos;d like a few suggestions for your city.
                       </div>
                     </div>
                   )}
@@ -1069,7 +1067,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       <div
                         style={{
                           background: "#f8f7f4",
-                          border: "1.5px solid rgba(20,18,12,0.18)",
+                          border: "1.5px solid rgba(15,17,23,0.18)",
                           borderRadius: 8,
                           padding: "0.9rem 1rem",
                         }}
@@ -1201,7 +1199,7 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                       border: "none",
                       boxShadow: isSubmitting
                         ? "none"
-                        : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(20,18,12,0.22)",
+                        : "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(15,17,23,0.22)",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       opacity: isSubmitting ? 0.6 : 1,
                       display: "flex",

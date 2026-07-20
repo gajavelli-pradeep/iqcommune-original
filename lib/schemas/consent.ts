@@ -13,6 +13,9 @@ export const GenerateConsentSchema = z.object({
   // step leaves them blank), so the confirmation/PDF carry a real session time.
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Start time is required"), // 24h HH:MM
   duration: z.enum(DURATION_OPTIONS),
+  // V6 §3: when false, generate the confirmation + link WITHOUT emailing, so the
+  // client can show an editable send-preview and email it (with a 15s undo) itself.
+  sendEmail: z.boolean().default(true),
 });
 export type GenerateConsentInput = z.infer<typeof GenerateConsentSchema>;
 

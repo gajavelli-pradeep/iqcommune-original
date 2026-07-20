@@ -13,8 +13,6 @@ import {
   TSHIRT_SIZES,
 } from "@/lib/schemas/application";
 
-const FAMILY_RELATIONS = ["Spouse", "Parent", "Sibling", "Other"] as const;
-
 export function ApplicationForm() {
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -87,7 +85,7 @@ export function ApplicationForm() {
           </svg>
         </div>
         <h3 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8, color: "#14161d" }}>
-          Application received.
+          Application received!
         </h3>
         <p
           style={{
@@ -96,10 +94,7 @@ export function ApplicationForm() {
             lineHeight: 1.65,
           }}
         >
-          Thank you for your interest. We&apos;ll go through your application and reach out within 2–3 working days to have a brief conversation.
-          <br />
-          <br />
-          No formal screening — just a short chat to understand each other better.
+          Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick, informal chat.
         </p>
       </div>
     );
@@ -229,7 +224,7 @@ export function ApplicationForm() {
                     gap: 9,
                     padding: "9px 12px",
                     // Gap 46: active border gold #c9982a
-                    border: active ? "1.5px solid #c9982a" : "1.5px solid rgba(20,18,12,0.18)",
+                    border: active ? "1.5px solid #c9982a" : "1.5px solid rgba(15,17,23,0.18)",
                     borderRadius: 8,
                     background: active ? "#f5e9c8" : "#ffffff",
                     cursor: "pointer",
@@ -331,7 +326,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(20,18,12,0.18)",
+            border: "1.5px solid rgba(15,17,23,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginBottom: "0.85rem",
@@ -366,7 +361,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(20,18,12,0.18)",
+            border: "1.5px solid rgba(15,17,23,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginBottom: "0.85rem",
@@ -433,9 +428,9 @@ export function ApplicationForm() {
 
         {/* Gap 51: OR divider, fontSize 11, letterSpacing 0.06em */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
           <span style={{ fontSize: 11, fontWeight: 500, color: "#71717f", letterSpacing: "0.06em" }}>OR</span>
-          <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+          <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
         </div>
 
         {/* Gap 50: 'Bank account details' label above bank fields */}
@@ -461,7 +456,7 @@ export function ApplicationForm() {
         <div
           style={{
             background: "#f8f7f4",
-            border: "1.5px solid rgba(20,18,12,0.18)",
+            border: "1.5px solid rgba(15,17,23,0.18)",
             borderRadius: 12,
             padding: "1.1rem 1.25rem",
             marginTop: "0.25rem",
@@ -484,39 +479,21 @@ export function ApplicationForm() {
               {...register("payToFamily")}
               style={{ accentColor: "#c9982a", width: 15, height: 15, cursor: "pointer" }}
             />
-            I would like payment credited to a family member&apos;s account instead
+            I would like payment credited to a different account instead
           </label>
 
           {payToFamily && (
             <div style={{ marginTop: "0.85rem" }}>
-              {/* Gap 38: family member fields with correct labels */}
-              <div style={rowTwo}>
-                {/* Gap 38: 'Family member's full name', hint, placeholder 'Anita Kulkarni' */}
-                <Field label="Family member's full name" hint="As it should appear on the tax invoice." error={errors.familyName?.message}>
-                  <input {...register("familyName")} style={inputStyle} placeholder="Anita Kulkarni" />
-                </Field>
-                {/* Gap 38: 'Relationship to you', placeholder 'Select…' */}
-                {/* Gap 37: no 'Child' option */}
-                <Field label="Relationship to you" error={errors.familyRelation?.message}>
-                  <SelectField
-                    options={FAMILY_RELATIONS}
-                    value={watch("familyRelation") ?? ""}
-                    onChange={(v) => setValue("familyRelation", v as Application["familyRelation"], { shouldValidate: true })}
-                  />
-                </Field>
-              </div>
-
-              {/* Gap 38: 'Their UPI ID (if paying via UPI)' */}
-              {/* Gap 57: placeholder 'familymember@upi' */}
+              {/* V6: 'UPI ID (if paying via UPI)' — payee name/relationship removed */}
               <div style={{ marginTop: 0 }}>
                 <label style={{ fontSize: 13, fontWeight: 500, color: "#14161d", display: "block", marginBottom: 5 }}>
-                  Their UPI ID{" "}
+                  UPI ID{" "}
                   <span style={{ fontWeight: 400, color: "#71717f" }}>(if paying via UPI)</span>
                 </label>
                 <input
                   {...register("familyUpi")}
                   style={inputStyle}
-                  placeholder="familymember@upi"
+                  placeholder="name@upi"
                 />
                 {errors.familyUpi && (
                   <p style={errStyle} role="alert">{errors.familyUpi.message}</p>
@@ -525,9 +502,9 @@ export function ApplicationForm() {
 
               {/* Gap 51: family OR divider */}
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
-                <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
                 <span style={{ fontSize: 11, fontWeight: 500, color: "#71717f", letterSpacing: "0.06em" }}>OR</span>
-                <div style={{ flex: 1, height: 1, background: "rgba(20,18,12,0.10)" }} />
+                <div style={{ flex: 1, height: 1, background: "rgba(15,17,23,0.10)" }} />
               </div>
 
               {/* Gap 50: Bank account details label inside family section */}
@@ -577,7 +554,7 @@ export function ApplicationForm() {
                   Important — please read before proceeding
                 </div>
                 <p style={{ fontSize: 12.5, color: "#8a6510", lineHeight: 1.6, marginBottom: "0.75rem" }}>
-                  The tax invoice for your revenue share will be generated in the name of <strong>the family member specified above</strong> — not in your name. This is a requirement of the arrangement and cannot be changed after confirmation.
+                  Payment shall be made against the details provided in the invoice only.
                 </p>
                 <label
                   style={{
@@ -597,7 +574,7 @@ export function ApplicationForm() {
                     style={{ marginTop: 3, width: 16, height: 16, accentColor: "#c9982a", cursor: "pointer", flexShrink: 0 }}
                   />
                   <span>
-                    I declare that I authorise iqcommune to credit my revenue share to the above family member&apos;s account and to generate tax invoices in their name. I understand that I remain responsible for any tax obligations arising from this income, regardless of the invoice name.
+                    I declare that I authorise iqcommune to credit my revenue share to the account specified above. I understand that I am responsible for raising the invoice and for any tax obligations arising from this income.
                   </span>
                 </label>
                 {errors.consentBilling && (
@@ -708,7 +685,7 @@ const sectionLabelStyle: React.CSSProperties = {
   marginTop: "1.5rem",
   marginBottom: "1rem",
   paddingBottom: "0.5rem",
-  borderBottom: "1px solid rgba(20,18,12,0.12)",
+  borderBottom: "1px solid rgba(15,17,23,0.12)",
 };
 
 const sectionStyle: React.CSSProperties = { display: "grid", gap: 14 };
@@ -719,7 +696,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
   border: "1.5px solid",
-  borderColor: "rgba(20,18,12,0.13) rgba(20,18,12,0.13) rgba(20,18,12,0.22)",
+  borderColor: "rgba(15,17,23,0.13) rgba(15,17,23,0.13) rgba(15,17,23,0.22)",
   borderRadius: 9,
   fontSize: 14,
   fontFamily: "inherit",

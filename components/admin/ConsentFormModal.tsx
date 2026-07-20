@@ -13,6 +13,8 @@ import { computeNet } from "@/lib/consent";
 import { DURATION_OPTIONS } from "@/lib/schemas/consent";
 import type { ConfirmationRow } from "@/components/admin/ConsentTable";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { useSendWithUndo } from "@/components/admin/useSendWithUndo";
+import { sendMessageRequest } from "@/lib/admin/send-message";
 
 // V5 duration labels (values stay the schema enum "3 hours" / "6 hours").
 const DURATION_LABELS: Record<string, string> = {
@@ -100,6 +102,7 @@ export function ConsentFormModal({
   const [generatedId, setGeneratedId] = useState("");
   const [generatedRecipient, setGeneratedRecipient] = useState<{ name?: string; email?: string }>({});
   const [draftOpen, setDraftOpen] = useState(false);
+  const sendUndo = useSendWithUndo();
   // Keyed by session id so a stale fetch (from a previously-picked session) is never
   // shown against the current one — the render derives from this + form.sessionId.
   const [autofill, setAutofill] = useState<{ sessionId: string; data: ConsentAutofill } | null>(null);
@@ -211,7 +214,7 @@ export function ConsentFormModal({
       res = await fetch("/api/admin/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate, startTime, duration: form.duration }),
+        body: JSON.stringify({ sessionId: selected.id, gross, tdsRate, gstRate, startTime, duration: form.duration, sendEmail: false }),
       });
     } catch {
       setSaving(false);
@@ -297,7 +300,7 @@ export function ConsentFormModal({
   }
 
   const title = "Generate a new confirmation";
-  const subtitle = "All fields below flow from the original Session Request and Practitioner onboarding record. Global Admin can correct any field on the underlying record.";
+  const subtitle = "All fields below flow from the original Session Request and Practitioner onboarding record. Global Admin can correct any field here — the fix is saved on the underlying record, not just this document.";
   const footer = generatedLink ? (
     inline
       ? <button type="button" style={primaryBtn} onClick={reset}>Generate another</button>
@@ -313,7 +316,7 @@ export function ConsentFormModal({
           disabled={saving}
           onClick={submit}
         >
-          {saving ? "Generating…" : "Generate & send for consent"}
+          {saving ? "Generating…" : "Generate confirmation & download PDF"}
         </button>
       )}
     </>
@@ -330,6 +333,10 @@ export function ConsentFormModal({
           ) : emailStatus === "no_email" ? (
             <div style={{ fontSize: 13, color: "var(--ink-muted)", background: "var(--surface-sunken)", borderRadius: 8, padding: "9px 11px", marginBottom: 10 }}>
               Confirmation generated. <strong>No email is on file</strong> for this practitioner — copy the consent link below and send it manually.
+            </div>
+          ) : emailStatus === "skipped" ? (
+            <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
+              Confirmation generated. Review &amp; send the consent email below — you&apos;ll get 15s to undo. You can also copy the link and send it yourself.
             </div>
           ) : (
             <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10 }}>
@@ -354,25 +361,36 @@ export function ConsentFormModal({
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button type="button" style={{ ...ghostBtn, flexShrink: 0 }} onClick={downloadPdf}>Download PDF</button>
-            <button type="button" style={{ ...ghostBtn, flexShrink: 0 }} onClick={() => setDraftOpen(true)}>Draft email</button>
+            <button type="button" style={{ ...primaryBtn, flexShrink: 0 }} onClick={() => setDraftOpen(true)}>Send consent request</button>
           </div>
           <ContactDraftModal
             open={draftOpen}
+            editable
+            sendLabel="Click to send"
             onClose={() => setDraftOpen(false)}
             recipientName={generatedRecipient.name}
             recipientEmail={generatedRecipient.email}
             subject="Please review & sign your session consent"
             emailBody={`Dear ${generatedRecipient.name ?? "Practitioner"},\n\nPlease review and sign your session consent form:\n${generatedLink}\n\nWarm regards,\nThe iqcommune Team`}
             waBody={`Hi ${generatedRecipient.name ?? ""}! Please review & sign your session consent form:\n${generatedLink}`}
-            title="Draft consent email"
-            subtitle="Pre-filled - copy and send via your preferred channel"
+            title="Send consent email"
+            subtitle="Review or edit, then send — you'll get 15s to undo"
+            onSend={(edited) => {
+              const to = generatedRecipient.email;
+              if (!to) return;
+              setDraftOpen(false);
+              sendUndo.send("delayed", `Consent request to ${to}`, async () => {
+                await sendMessageRequest({ to, name: generatedRecipient.name, subject: edited.subject, body: edited.emailBody, kind: "send-consent" });
+              });
+            }}
           />
+          {sendUndo.node}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem 1rem" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <label>
-              <span style={fieldLabelStyle}>Select session awaiting consent</span>
+              <span style={fieldLabelStyle}>Select confirmed session</span>
               <select style={fieldSelectStyle} value={form.sessionId} onChange={set("sessionId")}>
                 <option value="">
                   {loading ? "Loading sessions…" : eligible.length ? "— select session —" : "No eligible sessions"}
@@ -446,7 +464,7 @@ export function ConsentFormModal({
                               style={{ ...fieldInputStyle, padding: "5px 7px", fontSize: 12 }}
                             />
                             <button type="button" disabled={fieldSaving} onClick={() => saveField(edit.route, edit.body(fieldDraft), edit.apply(fieldDraft))} title="Save" style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 11, fontWeight: 600, cursor: fieldSaving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{fieldSaving ? "…" : "Save"}</button>
-                            <button type="button" onClick={() => setEditingField(null)} title="Cancel" style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "5px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
+                            <button type="button" onClick={() => setEditingField(null)} title="Cancel" style={{ background: "none", border: "1px solid rgba(15,17,23,.18)", borderRadius: 6, padding: "5px 8px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
                           </div>
                         ) : (
                           <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500, overflowWrap: "anywhere" }}>{value}</div>
@@ -493,15 +511,11 @@ export function ConsentFormModal({
               </label>
 
               <label>
-                <span style={fieldLabelStyle}>Gross amount (₹)</span>
-                <input type="number" min={1} style={fieldInputStyle} value={form.gross} onChange={set("gross")} />
-              </label>
-              <label>
                 <span style={fieldLabelStyle}>TDS %</span>
                 <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.tdsRate} onChange={set("tdsRate")} />
               </label>
               <label>
-                <span style={fieldLabelStyle}>GST %</span>
+                <span style={fieldLabelStyle}>GST % (if applicable)</span>
                 <input type="number" min={0} max={100} placeholder="0" style={fieldInputStyle} value={form.gstRate} onChange={set("gstRate")} />
               </label>
             </>
@@ -525,7 +539,7 @@ export function ConsentFormModal({
 
   if (inline) {
     return (
-      <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, background: "var(--surface)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+      <div style={{ border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, background: "var(--surface)", padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>{title}</div>
         <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 16, lineHeight: 1.5 }}>{subtitle}</div>
         {body}

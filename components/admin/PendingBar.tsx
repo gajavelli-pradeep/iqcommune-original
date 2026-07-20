@@ -89,12 +89,14 @@ export function PendingBar({
 }
 
 // ── Styles ──────────────────────────────────────────────────────────────────
+// V6: the pending/period bar is its OWN card, separate from the table card below
+// (fully rounded + full border + a gap beneath), not glued to the table.
 const barStyle: React.CSSProperties = {
   background: "var(--surface)",
-  border: "1px solid rgba(20,18,12,.10)",
-  borderRadius: "10px 10px 0 0",
-  borderBottom: "none",
+  border: "1px solid rgba(15,17,23,.10)",
+  borderRadius: 10,
   padding: ".85rem 1.25rem",
+  marginBottom: "1rem",
   display: "flex",
   flexDirection: "column",
   gap: "0.85rem",
@@ -113,7 +115,7 @@ const topRowStyle: React.CSSProperties = {
 const standaloneBarStyle: React.CSSProperties = {
   ...barStyle,
   borderRadius: 10,
-  borderBottom: "1px solid rgba(20,18,12,.10)",
+  borderBottom: "1px solid rgba(15,17,23,.10)",
   marginBottom: "1.5rem",
 };
 
@@ -123,10 +125,11 @@ function cardStyle(active: boolean): React.CSSProperties {
     flexDirection: "column",
     alignItems: "flex-start",
     textAlign: "left",
-    background: "var(--amber-light)",
-    border: "1px solid var(--amber)",
-    boxShadow: active ? "0 0 0 2px var(--amber-light)" : "none",
-    outline: active ? "1px solid var(--amber)" : "none",
+    // V6 pixel-match: the mockup's pending stat cards are RED (--red-l bg / --red).
+    background: "var(--red-light)",
+    border: "1px solid var(--red-border)",
+    boxShadow: active ? "0 0 0 2px var(--red-light)" : "none",
+    outline: active ? "1px solid var(--red)" : "none",
     borderRadius: 8,
     padding: "8px 16px",
     minWidth: 120,
@@ -139,7 +142,7 @@ function cardStyle(active: boolean): React.CSSProperties {
 const numStyle: React.CSSProperties = {
   fontSize: 22,
   fontWeight: 700,
-  color: "var(--amber)",
+  color: "var(--red)",
   lineHeight: 1.1,
 };
 
@@ -152,7 +155,7 @@ const cardLabelStyle: React.CSSProperties = {
 const showingStyle: React.CSSProperties = {
   fontSize: 9.5,
   fontWeight: 600,
-  color: "var(--amber)",
+  color: "var(--red)",
   marginTop: 3,
 };
 
@@ -165,7 +168,7 @@ const dateLabelStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   padding: "7px 10px",
   borderRadius: 8,
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   background: "var(--input-paper)",
   fontSize: 13,
   fontFamily: "inherit",

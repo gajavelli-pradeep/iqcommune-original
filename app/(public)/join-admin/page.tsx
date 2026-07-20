@@ -40,7 +40,7 @@ const card: React.CSSProperties = {
   width: "100%",
   maxWidth: 460,
   background: "var(--surface)",
-  border: "1px solid rgba(20,18,12,.12)",
+  border: "1px solid rgba(15,17,23,.12)",
   borderRadius: 14,
   padding: "2rem",
   boxShadow: "0 8px 40px rgba(0,0,0,.06)",
@@ -49,13 +49,13 @@ const card: React.CSSProperties = {
 /** V5 chrome: shared sticky header (badge) + centered card + confidential footer note. */
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--surface-soft)" }}>
-      <SiteHeader badge={["Account", "Setup"]} right={<span aria-hidden="true" />} />
+    <div className="min-h-screen-dvh" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--surface-soft)" }}>
+      <SiteHeader badge={["Account Setup"]} right={<span aria-hidden="true" />} />
       <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
         {children}
       </main>
       <footer style={{ textAlign: "center", padding: "1.5rem", fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.6 }}>
-        Confidential · This invite is meant only for you.{" "}
+        Confidential · Questions? Reply to the email this link was sent from, or write to{" "}
         <a href="mailto:hello@iqcommune.com" style={{ color: "var(--ink-soft)", textDecoration: "none" }}>
           hello@iqcommune.com
         </a>
@@ -90,16 +90,11 @@ export default async function JoinAdminPage({
   return (
     <Frame>
       <div style={card}>
-        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gold-dark)", marginBottom: 6 }}>
-          IQCommune · {state.roleLabel}
-        </div>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", margin: "0 0 6px" }}>
           Set up your account
         </h1>
         <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 20px" }}>
-          You&apos;ve been invited to join the IQCommune console as{" "}
-          <strong style={{ color: "var(--ink)" }}>{state.roleLabel}</strong>
-          {" "}for <strong style={{ color: "var(--ink)" }}>{state.email}</strong>. Choose your name and a password to finish.
+          You&apos;ve been invited to the iqcommune admin console. Confirm your details and choose a password to activate your account.
         </p>
         <JoinAdminForm email={state.email} token={state.token} roleLabel={state.roleLabel} />
       </div>

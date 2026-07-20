@@ -11,40 +11,40 @@ const CAPABILITIES: { cap: string; global: boolean; admin: boolean; user: boolea
 
 const th: React.CSSProperties = {
   fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(20,18,12,.1)", whiteSpace: "nowrap",
+  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(15,17,23,.1)", whiteSpace: "nowrap",
 };
-const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "10px 12px", borderBottom: "1px solid rgba(20,18,12,.06)" };
+const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "10px 12px", borderBottom: "1px solid rgba(15,17,23,.06)" };
 
 function Cell({ ok }: { ok: boolean }) {
   return ok
-    ? <span style={{ color: "var(--green)", fontWeight: 700 }} aria-label="Yes">✓</span>
-    : <span style={{ color: "var(--ink-faint)" }} aria-label="No">—</span>;
+    ? <span style={{ color: "var(--ink)" }} aria-label="Yes">✓</span>
+    : <span style={{ color: "var(--ink)" }} aria-label="No">—</span>;
 }
 
 export function RolesPermissions() {
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
+    <div style={{ marginBottom: "1.5rem" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginBottom: 3 }}>Roles &amp; Permissions</div>
       <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginBottom: "1rem" }}>
         Reference — what each role can and can&apos;t do across the console.
       </div>
-      <div style={{ overflowX: "auto", border: "1px solid rgba(20,18,12,.08)", borderRadius: 8 }}>
+      <div style={{ overflowX: "auto", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
           <thead>
             <tr>
               <th style={{ ...th, textAlign: "left" }}>Capability</th>
-              <th style={{ ...th, textAlign: "center" }}>Global Admin</th>
-              <th style={{ ...th, textAlign: "center" }}>Admin</th>
-              <th style={{ ...th, textAlign: "center" }}>User</th>
+              <th style={{ ...th, textAlign: "left" }}>Global Admin</th>
+              <th style={{ ...th, textAlign: "left" }}>Admin</th>
+              <th style={{ ...th, textAlign: "left" }}>User</th>
             </tr>
           </thead>
           <tbody>
             {CAPABILITIES.map((row) => (
               <tr key={row.cap}>
                 <td style={td}>{row.cap}</td>
-                <td style={{ ...td, textAlign: "center" }}><Cell ok={row.global} /></td>
-                <td style={{ ...td, textAlign: "center" }}><Cell ok={row.admin} /></td>
-                <td style={{ ...td, textAlign: "center" }}><Cell ok={row.user} /></td>
+                <td style={{ ...td, textAlign: "left" }}><Cell ok={row.global} /></td>
+                <td style={{ ...td, textAlign: "left" }}><Cell ok={row.admin} /></td>
+                <td style={{ ...td, textAlign: "left" }}><Cell ok={row.user} /></td>
               </tr>
             ))}
           </tbody>

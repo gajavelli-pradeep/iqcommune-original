@@ -69,7 +69,7 @@ export function FormModal({
         <div style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}>{children}</div>
 
         {footer && (
-          <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: ".65rem", flexShrink: 0 }}>
+          <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid rgba(15,17,23,.10)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: ".65rem", flexShrink: 0 }}>
             {footer}
           </div>
         )}

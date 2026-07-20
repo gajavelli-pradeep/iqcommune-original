@@ -36,6 +36,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
 
   return (
     <nav
+      className="admin-topnav"
       style={{
         height: 64,
         position: "fixed",
@@ -45,7 +46,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
         zIndex: 200,
         background: "rgba(255,255,255,0.97)",
         backdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(20,18,12,.10)",
+        borderBottom: "1px solid rgba(15,17,23,.10)",
         padding: "0 1.75rem",
         display: "flex",
         alignItems: "center",
@@ -61,7 +62,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
         aria-expanded={sidebarOpen}
         style={{
           background: "none",
-          border: "1px solid rgba(20,18,12,.15)",
+          border: "1px solid rgba(15,17,23,.15)",
           borderRadius: 9,
           width: 40,
           height: 40,
@@ -108,15 +109,15 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
               color: "var(--ink-faint)",
             }}
           >
-            Where the insight quotient is unleashed
+            Where financial intelligence connects
           </div>
         </div>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 32, background: "rgba(20,18,12,.18)", flexShrink: 0 }} />
+        <div className="admin-nav-console" style={{ width: 1, height: 32, background: "rgba(15,17,23,.18)", flexShrink: 0 }} />
 
         {/* Admin console label */}
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <div className="admin-nav-console" style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#8a6510", lineHeight: 1.4 }}>
             Admin
           </span>
@@ -126,12 +127,15 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
         </div>
       </Link>
 
-      {/* Search — Gap 3: corrected placeholder */}
+      {/* Search — Gap 3: corrected placeholder. The wrapper stays flex:1 (spacer that
+          keeps the right cluster right-aligned); the box itself is hidden on phones
+          (≤600px) where flex would otherwise crush it to 0 width. */}
       <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
         <div
+          className="admin-nav-search"
           style={{
             background: "#f8f7f4",
-            border: "1px solid rgba(20,18,12,.18)",
+            border: "1px solid rgba(15,17,23,.18)",
             borderRadius: 100,
             padding: "7px 16px",
             width: "100%",
@@ -170,6 +174,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
         {/* V5: "Viewing as" preview switcher — Global Admin console only, downgrade-only. */}
         {showViewAs && (
           <select
+            className="admin-nav-viewas"
             value={viewAs}
             onChange={(e) => setViewAs(e.target.value as RoleView)}
             aria-label="Preview the console as another role"
@@ -179,7 +184,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
               fontFamily: "inherit",
               color: "var(--ink)",
               background: `${VIEW_CHEVRON} no-repeat right 10px center, var(--surface-soft)`,
-              border: "1px solid rgba(20,18,12,.18)",
+              border: "1px solid rgba(15,17,23,.18)",
               borderRadius: 100,
               padding: "6px 30px 6px 14px",
               appearance: "none",
@@ -206,7 +211,7 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
               width: 34,
               height: 34,
               borderRadius: "50%",
-              border: "1px solid rgba(20,18,12,.18)",
+              border: "1px solid rgba(15,17,23,.18)",
               background: bellOpen ? "#f8f7f4" : "none",
               cursor: "pointer",
               color: "var(--ink-soft)",
@@ -228,9 +233,9 @@ export function AdminTopNav({ email, isGlobalAdmin = false }: { email: string; i
               <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 290 }} />
               <div
                 role="menu"
-                style={{ position: "absolute", top: 42, right: 0, width: 260, background: "#fff", border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, boxShadow: "0 16px 48px rgba(0,0,0,0.14)", zIndex: 300, overflow: "hidden" }}
+                style={{ position: "absolute", top: 42, right: 0, width: 260, background: "#fff", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10, boxShadow: "0 16px 48px rgba(0,0,0,0.14)", zIndex: 300, overflow: "hidden" }}
               >
-                <div style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-faint)", borderBottom: "1px solid rgba(20,18,12,.08)" }}>
+                <div style={{ padding: "10px 14px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-faint)", borderBottom: "1px solid rgba(15,17,23,.08)" }}>
                   Quick actions
                 </div>
                 {NOTIF_LINKS.map((n) => (

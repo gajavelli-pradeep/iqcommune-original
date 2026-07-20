@@ -281,7 +281,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "18px 22px",
-            borderBottom: "1px solid rgba(20,18,12,.1)",
+            borderBottom: "1px solid rgba(15,17,23,.1)",
           }}
         >
           <div>
@@ -359,7 +359,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                   fontSize: 13,
                   fontWeight: 600,
                   padding: "8px 14px",
-                  border: "1px solid rgba(20,18,12,.18)",
+                  border: "1px solid rgba(15,17,23,.18)",
                   borderRadius: 8,
                   background: "var(--surface)",
                   cursor: "pointer",
@@ -370,7 +370,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                 + New account
               </button>
             ) : (
-              <div style={{ border: "1px solid rgba(20,18,12,.12)", borderRadius: 10, padding: "14px", background: "var(--surface-soft)", display: "grid", gap: 10 }}>
+              <div style={{ border: "1px solid rgba(15,17,23,.12)", borderRadius: 10, padding: "14px", background: "var(--surface-soft)", display: "grid", gap: 10 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Create a new account</div>
                 <input
                   type="email"
@@ -406,7 +406,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                   </button>
                   <button
                     onClick={() => { setAdding(false); setError(""); }}
-                    style={{ padding: "8px 14px", background: "transparent", color: "var(--ink-soft)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+                    style={{ padding: "8px 14px", background: "transparent", color: "var(--ink-soft)", border: "1px solid rgba(15,17,23,.18)", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                   >
                     Cancel
                   </button>
@@ -432,7 +432,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                 <div
                   key={u.id}
                   style={{
-                    border: "1px solid rgba(20,18,12,.1)",
+                    border: "1px solid rgba(15,17,23,.1)",
                     borderRadius: 10,
                     padding: "12px 14px",
                     background: "var(--surface-soft)",
@@ -495,7 +495,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                   </div>
 
                   {u.id in revealed && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(15,17,23,.08)" }}>
                       {revealed[u.id] === null ? (
                         <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>
                           No global-admin-set password stored yet. Use <strong>Set password</strong> to create one.
@@ -519,7 +519,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                   )}
 
                   {editingId !== u.id && u.role === "admin" && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(15,17,23,.08)" }}>
                       <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>
                         Gallery access
                         <span style={{ fontSize: 11, color: "var(--ink-faint)", marginLeft: 6 }}>
@@ -535,7 +535,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                         style={{
                           flexShrink: 0, width: 38, height: 22, borderRadius: 100, border: "none",
                           cursor: galleryBusyId === u.id ? "not-allowed" : "pointer",
-                          background: u.gallery_access ? "var(--green)" : "rgba(20,18,12,.20)",
+                          background: u.gallery_access ? "var(--green)" : "rgba(15,17,23,.20)",
                           position: "relative", transition: "background .15s", padding: 0,
                           opacity: galleryBusyId === u.id ? 0.6 : 1,
                         }}
@@ -557,7 +557,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                           style={{
                             width: "100%",
                             padding: "9px 40px 9px 12px",
-                            border: "1px solid rgba(20,18,12,.18)",
+                            border: "1px solid rgba(15,17,23,.18)",
                             borderRadius: 8,
                             fontSize: 13,
                             fontFamily: "inherit",
@@ -622,7 +622,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
                             padding: "8px 14px",
                             background: "transparent",
                             color: "var(--ink-soft)",
-                            border: "1px solid rgba(20,18,12,.18)",
+                            border: "1px solid rgba(15,17,23,.18)",
                             borderRadius: 8,
                             fontSize: 13,
                             cursor: "pointer",
@@ -648,7 +648,7 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "9px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 8,
   fontSize: 13,
   fontFamily: "inherit",
@@ -659,7 +659,7 @@ const inputStyle: React.CSSProperties = {
 const smallBtn: React.CSSProperties = {
   fontSize: 12,
   padding: "5px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 6,
   background: "var(--surface)",
   cursor: "pointer",

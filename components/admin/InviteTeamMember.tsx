@@ -1,7 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
+import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { useSendWithUndo } from "@/components/admin/useSendWithUndo";
+import { sendMessageRequest } from "@/lib/admin/send-message";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // V5 Settings "Invite a new team member" block (iqcommune-admin-console.html §Team
 // & Access). Global-admin only — the caller gates rendering. Self-contained: owns
@@ -30,8 +35,8 @@ interface AdminInvite {
 const INVITE_STATUS_COLOR: Record<AdminInvite["status"], { fg: string; bg: string; border: string }> = {
   Pending:  { fg: "var(--gold-dark)", bg: "var(--gold-light)",  border: "var(--gold-border)" },
   Accepted: { fg: "var(--green)",     bg: "var(--green-light)", border: "var(--green-border)" },
-  Revoked:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(20,18,12,.12)" },
-  Expired:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(20,18,12,.12)" },
+  Revoked:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(15,17,23,.12)" },
+  Expired:  { fg: "var(--ink-faint)", bg: "var(--surface-sunken)", border: "rgba(15,17,23,.12)" },
 };
 
 // Insert-or-merge by id. handleCreate's optimistic insert and the Realtime INSERT
@@ -50,7 +55,7 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit",
   fontSize: 13,
   padding: "8px 10px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 6,
   background: "var(--input-paper)",
   color: "var(--ink)",
@@ -67,6 +72,17 @@ export function InviteTeamMember() {
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  // V6 §12: invalid/duplicate email must fail visibly — red border + refocus + message.
+  const [invalid, setInvalid] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const sendUndo = useSendWithUndo();
+  const [preview, setPreview] = useState<{ to: string; subject: string; body: string } | null>(null);
+
+  function failValidation(msg: string) {
+    setError(msg);
+    setInvalid(true);
+    emailRef.current?.focus();
+  }
 
   const loadInvites = useCallback(() => {
     fetch("/api/admin/global/invites")
@@ -94,9 +110,15 @@ export function InviteTeamMember() {
 
   async function handleCreate() {
     const trimmed = email.trim();
-    if (!trimmed) { setError("Enter an email to invite."); return; }
+    if (!trimmed) { failValidation("Enter an email to invite."); return; }
+    if (!EMAIL_RE.test(trimmed)) { failValidation("That doesn't look like a valid email address."); return; }
+    if (invites.some((i) => i.email.toLowerCase() === trimmed.toLowerCase() && (i.status === "Pending" || i.status === "Accepted"))) {
+      failValidation("That email already has an active invite.");
+      return;
+    }
     setInviting(true);
     setError("");
+    setInvalid(false);
     setInviteLink(null);
     setInvitedEmail(null);
     setEmailStatus(null);
@@ -104,16 +126,29 @@ export function InviteTeamMember() {
       const res = await fetch("/api/admin/global/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed, role }),
+        // §3: create the invite + get the link, but don't auto-email — we open an
+        // editable send-preview and email it (with a 15s undo) from the client.
+        body: JSON.stringify({ email: trimmed, role, sendEmail: false }),
       });
       const j = await res.json();
       if (!res.ok) { setError(j.error ?? "Failed to create invite."); return; }
-      setInviteLink(j.url as string);
-      setInvitedEmail((j.email as string) ?? trimmed);
-      setEmailStatus((j.emailStatus as "queued" | "failed") ?? null);
+      const url = j.url as string;
+      const to = (j.email as string) ?? trimmed;
+      setInviteLink(url);
+      setInvitedEmail(to);
+      setEmailStatus(null);
       setEmail("");
       setCopied(false);
       if (j.data) setInvites((prev) => upsertInvite(prev, j.data as AdminInvite));
+      const roleName = ROLE_OPTIONS.find((o) => o.value === role)?.label ?? role;
+      setPreview({
+        to,
+        subject: "You're invited to the iqcommune admin console",
+        body:
+          `Hi,\n\nYou've been invited to join the iqcommune admin console as ${roleName}.\n\n` +
+          `Accept your invite here:\n${url}\n\n` +
+          `This link is single-use and expires in 7 days.\n\nWarm regards,\nThe iqcommune team`,
+      });
     } catch {
       setError("Network error.");
     } finally {
@@ -166,8 +201,8 @@ export function InviteTeamMember() {
     fontSize: 12,
     fontWeight: 600,
     padding: "6px 12px",
-    border: "1px solid rgba(20,18,12,.18)",
-    borderRadius: 6,
+    border: "1px solid rgba(15,17,23,.18)",
+    borderRadius: 100,
     background: "var(--surface)",
     cursor: "pointer",
     fontFamily: "inherit",
@@ -182,12 +217,14 @@ export function InviteTeamMember() {
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input
+          ref={emailRef}
           type="email"
           value={email}
-          onChange={(e) => { setEmail(e.target.value); setError(""); }}
+          onChange={(e) => { setEmail(e.target.value); setError(""); setInvalid(false); }}
           placeholder="name@company.com"
           aria-label="Email to invite"
-          style={{ ...inputStyle, flex: 2, minWidth: 200 }}
+          aria-invalid={invalid}
+          style={{ ...inputStyle, flex: 2, minWidth: 200, border: invalid ? "1px solid var(--red-border)" : inputStyle.border, background: invalid ? "var(--red-light)" : inputStyle.background }}
         />
         <select
           value={role}
@@ -205,7 +242,7 @@ export function InviteTeamMember() {
           style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "8px 14px", background: "var(--ink)", color: "var(--surface)",
-            border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600,
+            border: "none", borderRadius: 100, fontSize: 13, fontWeight: 600,
             cursor: inviting ? "not-allowed" : "pointer", opacity: inviting ? 0.6 : 1,
             fontFamily: "inherit", whiteSpace: "nowrap",
           }}
@@ -260,7 +297,7 @@ export function InviteTeamMember() {
           {invites.map((inv) => {
             const c = INVITE_STATUS_COLOR[inv.status];
             return (
-              <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 12, padding: "6px 0", borderTop: "1px solid rgba(20,18,12,.08)" }}>
+              <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 12, padding: "6px 0", borderTop: "1px solid rgba(15,17,23,.08)" }}>
                 <span style={{ color: "var(--ink)", fontWeight: 500 }}>
                   {inv.email}
                   {inv.role === "global_admin" && (
@@ -286,6 +323,28 @@ export function InviteTeamMember() {
           })}
         </div>
       )}
+
+      {preview && (
+        <ContactDraftModal
+          open
+          editable
+          sendLabel="Click to send"
+          onClose={() => setPreview(null)}
+          recipientEmail={preview.to}
+          subject={preview.subject}
+          emailBody={preview.body}
+          title="Send team invite"
+          subtitle="Review or edit, then send — you'll get 15s to undo"
+          onSend={(edited) => {
+            const to = preview.to;
+            sendUndo.send("delayed", `Invite to ${to}`, async () => {
+              const r = await sendMessageRequest({ to, subject: edited.subject, body: edited.emailBody, kind: "invite-team-member" });
+              setError(r.ok ? "" : (r.error ?? "Send failed"));
+            });
+          }}
+        />
+      )}
+      {sendUndo.node}
     </div>
   );
 }

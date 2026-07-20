@@ -77,7 +77,7 @@ export function TrashModal({ open, onClose }: Props) {
     >
       <div style={{ background: "var(--surface)", borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,.18)", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid rgba(20,18,12,.1)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid rgba(15,17,23,.1)" }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>Trash</div>
             <div style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 2 }}>
@@ -119,11 +119,11 @@ export function TrashModal({ open, onClose }: Props) {
               {items.map((it) => {
                 const busy = busyId === it.id;
                 return (
-                  <div key={`${it.table}-${it.id}`} style={{ border: "1px solid rgba(20,18,12,.1)", borderRadius: 10, padding: "12px 14px", background: "var(--surface-soft)" }}>
+                  <div key={`${it.table}-${it.id}`} style={{ border: "1px solid rgba(15,17,23,.1)", borderRadius: 10, padding: "12px 14px", background: "var(--surface-soft)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-faint)", background: "var(--surface-sunken)", border: "1px solid rgba(20,18,12,.1)", borderRadius: 100, padding: "1px 8px" }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-faint)", background: "var(--surface-sunken)", border: "1px solid rgba(15,17,23,.1)", borderRadius: 100, padding: "1px 8px" }}>
                             {it.kind}
                           </span>
                           <span style={{ fontSize: 13, fontWeight: 600 }}>{it.label}</span>
@@ -161,7 +161,7 @@ export function TrashModal({ open, onClose }: Props) {
 const smallBtn: React.CSSProperties = {
   fontSize: 12,
   padding: "5px 12px",
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   borderRadius: 6,
   background: "var(--surface)",
   cursor: "pointer",

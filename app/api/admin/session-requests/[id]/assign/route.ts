@@ -5,15 +5,18 @@ import { logActivity } from "@/lib/admin-audit";
 import { log } from "@/lib/logger";
 import { z } from "zod";
 
-// V4 §4.2: one-click Assign — create the session, mark it awaiting consent, and
-// flip the request to Confirmed (read-only). Payout + date are captured in the
-// Assign dialog; start time/duration are entered later in Session Consent.
+// V6 Assignment: create the session, mark it awaiting consent, and flip the
+// request to Confirmed. Only the practitioner-who-agreed + agreed gross payout are
+// captured here — the date/time/venue are scheduled later in Session Details /
+// Session Consent (nothing is matched automatically). `sessionDate` is therefore
+// optional; when omitted the session is created for today as a placeholder and the
+// real date is set later (session_date is NOT NULL in the schema).
 const Body = z.object({
   practitionerId: z
     .string()
     .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid UUID"),
   payoutAmount: z.number().int().min(0),
-  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
   venue: z.string().trim().min(1).optional(),
 });
 
@@ -28,7 +31,7 @@ export async function PATCH(
   const body = Body.safeParse(await req.json());
   if (!body.success) {
     return NextResponse.json(
-      { error: "practitionerId, payoutAmount and sessionDate are required", details: body.error.flatten() },
+      { error: "practitionerId and payoutAmount are required", details: body.error.flatten() },
       { status: 400 }
     );
   }
@@ -46,7 +49,7 @@ export async function PATCH(
 
   const { data: request, error: rErr } = await supabase
     .from("session_requests")
-    .select("id, status, topic, audience_type, min_commit, venue")
+    .select("id, status, topic, audience_type, min_commit, venue, preferred_dates")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -68,13 +71,18 @@ export async function PATCH(
   const nextNum = last?.ref_code ? parseInt(last.ref_code.replace(/\D/g, ""), 10) + 1 : 1;
   const sessionRef = `IQC-SES-${String(nextNum).padStart(4, "0")}`;
 
+  // Date is scheduled later; fall back to the request's preferred date if it's a
+  // clean ISO date, otherwise today (session_date is NOT NULL).
+  const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const effectiveDate = sessionDate ?? (isIso(request.preferred_dates) ? request.preferred_dates : new Date().toISOString().slice(0, 10));
+
   const { data: session, error: sErr } = await supabase
     .from("sessions")
     .insert({
       ref_code:        sessionRef,
       module:          request.topic,
       practitioner_id: practitionerId,
-      session_date:    sessionDate,
+      session_date:    effectiveDate,
       start_time:      "",   // captured later in Session Consent (V4)
       end_time:        "",
       venue:           venue ?? request.venue ?? "To be confirmed with client",

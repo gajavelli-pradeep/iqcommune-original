@@ -81,11 +81,11 @@ export function PhotoViewModal({
   return (
     <div
       onClick={handleOverlayClick}
-      style={{ position: "fixed", inset: 0, background: "rgba(20,18,12,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
     >
       <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 860, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid rgba(20,18,12,.10)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid rgba(15,17,23,.10)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>
               {payload ? `${payload.meta.session_ref} — ${payload.meta.photo_count} photo${payload.meta.photo_count !== 1 ? "s" : ""}` : practitionerName}
@@ -112,7 +112,7 @@ export function PhotoViewModal({
           {loading && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={{ aspectRatio: "4/3", background: "rgba(20,18,12,.07)", borderRadius: 8 }} />
+                <div key={i} style={{ aspectRatio: "4/3", background: "rgba(15,17,23,.07)", borderRadius: 8 }} />
               ))}
             </div>
           )}
@@ -131,7 +131,7 @@ export function PhotoViewModal({
                       onClick={() => toggle(i)}
                       aria-pressed={isSel}
                       aria-label={`${isSel ? "Deselect" : "Select"} photo ${i + 1}`}
-                      style={{ position: "relative", padding: 0, borderRadius: 8, overflow: "hidden", cursor: "pointer", border: isSel ? "2px solid var(--gold)" : "2px solid rgba(20,18,12,.08)", background: "none", display: "block" }}
+                      style={{ position: "relative", padding: 0, borderRadius: 8, overflow: "hidden", cursor: "pointer", border: isSel ? "2px solid var(--gold)" : "2px solid rgba(15,17,23,.08)", background: "none", display: "block" }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -143,7 +143,7 @@ export function PhotoViewModal({
                       {/* selection checkbox */}
                       <span
                         aria-hidden="true"
-                        style={{ position: "absolute", top: 6, left: 6, width: 20, height: 20, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", background: isSel ? "var(--gold)" : "rgba(255,255,255,.85)", border: isSel ? "none" : "1px solid rgba(20,18,12,.25)", color: "var(--ink)" }}
+                        style={{ position: "absolute", top: 6, left: 6, width: 20, height: 20, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", background: isSel ? "var(--gold)" : "rgba(255,255,255,.85)", border: isSel ? "none" : "1px solid rgba(15,17,23,.25)", color: "var(--ink)" }}
                       >
                         {isSel && (
                           <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
@@ -163,12 +163,12 @@ export function PhotoViewModal({
 
         {/* Footer: N selected · Select all · Download selected (V4) */}
         {!loading && payload && payload.urls.length > 0 && (
-          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(20,18,12,.10)", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid rgba(15,17,23,.10)", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>{selected.size} selected</span>
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={selectAll}
-                style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+                style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(15,17,23,.18)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
               >
                 {allSelected ? "Clear all" : "Select all"}
               </button>

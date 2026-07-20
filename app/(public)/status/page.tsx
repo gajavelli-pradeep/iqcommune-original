@@ -60,7 +60,7 @@ export default async function StatusPage({ searchParams }: Props) {
             <div
               style={{
                 background: "var(--surface)",
-                border: "1px solid rgba(20,18,12,.10)",
+                border: "1px solid rgba(15,17,23,.10)",
                 borderRadius: 12,
                 padding: "2.5rem 2rem",
                 textAlign: "center",
@@ -124,7 +124,7 @@ export default async function StatusPage({ searchParams }: Props) {
                 className="status-card"
                 style={{
                   background: "var(--surface)",
-                  border: "1px solid rgba(20,18,12,.09)",
+                  border: "1px solid rgba(15,17,23,.09)",
                   borderTop: "3px solid var(--gold)",
                   borderRadius: 12,
                   padding: "2rem",
@@ -267,7 +267,7 @@ export default async function StatusPage({ searchParams }: Props) {
       </main>
 
       <SiteFooter
-        tagline="Where the insight quotient is unleashed"
+        tagline="Where financial intelligence connects"
         email="hello@iqcommune.com"
       />
     </>

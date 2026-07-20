@@ -26,12 +26,12 @@ const ROLE_LABEL: Record<TeamMember["role"], string> = {
 
 const th: React.CSSProperties = {
   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(20,18,12,.1)", whiteSpace: "nowrap",
+  color: "var(--ink-faint)", padding: "8px 12px", borderBottom: "1px solid rgba(15,17,23,.1)", whiteSpace: "nowrap",
 };
-const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "10px 12px", borderBottom: "1px solid rgba(20,18,12,.06)", verticalAlign: "middle" };
+const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "10px 12px", borderBottom: "1px solid rgba(15,17,23,.06)", verticalAlign: "middle" };
 
 const selectStyle: React.CSSProperties = {
-  fontSize: 12, padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)",
+  fontSize: 12, padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(15,17,23,.18)",
   background: "var(--input-paper)", color: "var(--ink)", fontFamily: "inherit", cursor: "pointer",
 };
 const menuItemStyle: React.CSSProperties = {
@@ -39,7 +39,7 @@ const menuItemStyle: React.CSSProperties = {
   background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--ink)", whiteSpace: "nowrap",
 };
 const smallBtn: React.CSSProperties = {
-  fontSize: 12, padding: "6px 12px", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8,
+  fontSize: 12, padding: "6px 12px", border: "1px solid rgba(15,17,23,.18)", borderRadius: 100,
   background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", color: "var(--ink)", whiteSpace: "nowrap",
 };
 
@@ -229,7 +229,7 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
         </div>
       )}
 
-      <div style={{ overflowX: "visible", border: "1px solid rgba(20,18,12,.08)", borderRadius: 8 }}>
+      <div style={{ overflowX: "visible", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
           <thead>
             <tr>
@@ -292,7 +292,7 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                         role="menu"
                         style={{
                           position: "absolute", top: "calc(100% - 2px)", right: 8, zIndex: 60, minWidth: 190,
-                          background: "var(--surface)", border: "1px solid rgba(20,18,12,.12)", borderRadius: 10,
+                          background: "var(--surface)", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10,
                           boxShadow: "0 14px 36px -14px rgba(20,16,10,0.28), 0 2px 6px rgba(20,16,10,0.06)",
                           padding: 4, textAlign: "left",
                         }}
@@ -314,7 +314,7 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                         {!isSelf && (
                           <button type="button" role="menuitem" style={{ ...menuItemStyle, color: "var(--red)" }}
                             onClick={() => { setOpenMenuId(null); askRemove(m); }}>
-                            Remove account
+                            Remove
                           </button>
                         )}
                       </div>

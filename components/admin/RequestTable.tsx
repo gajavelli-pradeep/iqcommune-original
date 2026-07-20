@@ -3,6 +3,8 @@
 import { useState, Fragment } from "react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { useSendWithUndo } from "@/components/admin/useSendWithUndo";
+import { sendMessageRequest } from "@/lib/admin/send-message";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
@@ -40,6 +42,25 @@ interface Practitioner {
   name: string;
   modules?: string[] | null;
   status: string;
+  subsection_averages?: {
+    content_avg: number | null;
+    delivery_avg: number | null;
+    engagement_avg: number | null;
+    logistics_avg: number | null;
+    rated_sessions: number | null;
+  } | null;
+}
+
+// V6: "★{avg}" suffix on the practitioner-who-agreed options, from the per-section
+// averages view already carried on the practitioner row.
+function practitionerAvg(p: Practitioner): number | null {
+  const s = p.subsection_averages;
+  if (!s || (s.rated_sessions ?? 0) < 1) return null;
+  const parts = [s.content_avg, s.delivery_avg, s.engagement_avg, s.logistics_avg].filter(
+    (x): x is number => x != null,
+  );
+  if (!parts.length) return null;
+  return Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) / 10;
 }
 
 interface DraftState {
@@ -50,6 +71,7 @@ interface DraftState {
   waBody?: string;
   recipientName?: string;
   recipientEmail?: string;
+  kind?: string; // V6 §3: classifies the send for the audit trail
 }
 
 const HEADERS = [
@@ -124,6 +146,7 @@ export function RequestTable({
   const [toast, setToast] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ open: false });
+  const sendUndo = useSendWithUndo();
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
@@ -231,70 +254,83 @@ export function RequestTable({
     }
   }
 
-  // V4 §4.2 one-click Assign: open a small dialog for payout + date, then create
-  // the session + confirm the request via /assign. sessionRefById holds the ref
-  // returned by the API for the "→ Session" read-only line.
-  const [assignFor, setAssignFor] = useState<
-    { requestId: string; practitionerId: string; practitionerName: string; venue: string } | null
-  >(null);
-  const [assignPayout, setAssignPayout] = useState("");
-  const [assignDate, setAssignDate] = useState("");
-  const [assignBusy, setAssignBusy] = useState(false);
+  // V6 Assignment: per-row "practitioner who agreed" + "agreed gross payout",
+  // filled after the offline call. Setting the request to Confirmed creates the
+  // session from these (no date — scheduled later). sessionRefById holds the ref
+  // returned by /assign for the "→ Session" line.
+  const [assignSel, setAssignSel] = useState<Record<string, string>>({}); // requestId -> practitionerId
+  const [assignPay, setAssignPay] = useState<Record<string, string>>({}); // requestId -> gross payout
+  const [assignBusy, setAssignBusy] = useState<string | null>(null);      // requestId being confirmed
   const [sessionRefById, setSessionRefById] = useState<Record<string, string>>({});
 
-  const confirmAssign = async () => {
-    if (!assignFor) return;
-    const payout = Math.round(Number(assignPayout));
-    if (!Number.isFinite(payout) || payout < 0) { showToast("Enter a valid payout amount"); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(assignDate)) { showToast("Pick a session date"); return; }
-    setAssignBusy(true);
+  const assignAndConfirm = async (r: SessionRequest): Promise<boolean> => {
+    const practitionerId = assignSel[r.id];
+    const payoutRaw = (assignPay[r.id] ?? "").trim();
+    if (!practitionerId) { showToast("Pick the practitioner who agreed first"); return false; }
+    const payout = Math.round(Number(payoutRaw));
+    if (payoutRaw === "" || !Number.isFinite(payout) || payout < 0) { showToast("Enter the agreed gross payout"); return false; }
+    const practitionerName = empanelled.find((p) => p.id === practitionerId)?.name ?? "practitioner";
+    setAssignBusy(r.id);
     try {
-      const res = await fetch(`/api/admin/session-requests/${assignFor.requestId}/assign`, {
+      const res = await fetch(`/api/admin/session-requests/${r.id}/assign`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          practitionerId: assignFor.practitionerId,
-          payoutAmount: payout,
-          sessionDate: assignDate,
-          venue: assignFor.venue.trim() || undefined,
-        }),
+        body: JSON.stringify({ practitionerId, payoutAmount: payout, venue: r.venue?.trim() || undefined }),
       });
       if (res.ok) {
         const { sessionRef } = (await res.json().catch(() => ({}))) as { sessionRef?: string };
-        const { requestId, practitionerId, practitionerName } = assignFor;
-        setData((prev) => prev.map((r) => r.id === requestId
-          ? { ...r, status: "Confirmed", assigned_to: practitionerId, assigned_practitioner: { name: practitionerName } }
-          : r));
-        if (sessionRef) setSessionRefById((m) => ({ ...m, [requestId]: sessionRef }));
-        onRowChange?.(requestId, { status: "Confirmed", assigned_to: practitionerId });
-        setAssignFor(null); setAssignPayout(""); setAssignDate("");
-        // V5 instant-undo: ~9s to reverse a fresh assignment — soft-deletes the
-        // just-created session and resets the request to New, with no client email.
-        undo.show(`Confirmed — session ${sessionRef ?? ""} created`, async () => {
-          let rev: Response;
-          try {
-            rev = await fetch(`/api/admin/session-requests/${requestId}/unassign`, { method: "POST" });
-          } catch {
-            showToast("Network error — could not undo. Cancel the session instead.");
-            return;
-          }
-          if (!rev.ok) { showToast("Could not undo — cancel the session instead."); return; }
-          setData((prev) => prev.map((r) => r.id === requestId
-            ? { ...r, status: "New", assigned_to: null, assigned_practitioner: null }
-            : r));
-          setSessionRefById((m) => { const n = { ...m }; delete n[requestId]; return n; });
-          onRowChange?.(requestId, { status: "New", assigned_to: null });
-        });
-      } else {
-        const { error } = await res.json().catch(() => ({ error: res.statusText }));
-        showToast(`Assign failed: ${error ?? res.status}`);
+        setData((prev) => prev.map((x) => x.id === r.id
+          ? { ...x, status: "Confirmed", assigned_to: practitionerId, assigned_practitioner: { name: practitionerName } }
+          : x));
+        if (sessionRef) setSessionRefById((m) => ({ ...m, [r.id]: sessionRef }));
+        onRowChange?.(r.id, { status: "Confirmed", assigned_to: practitionerId });
+        // ~9s to reverse a fresh assignment — soft-deletes the created session,
+        // resets the request to New, no client email.
+        undo.show(`Confirmed — session ${sessionRef ?? ""} created`, () => unassignRequest(r, true));
+        return true;
       }
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      showToast(`Assign failed: ${error ?? res.status}`);
+      return false;
     } catch {
       showToast("Network error — the session was not assigned. Please retry.");
+      return false;
     } finally {
-      // In `finally`: a network throw used to strand the dialog on "Assigning…"
-      // with no error and no way out short of a reload.
-      setAssignBusy(false);
+      setAssignBusy(null);
+    }
+  };
+
+  // Reset a Confirmed request to New (soft-deletes the created session). `quiet`
+  // suppresses the toast when called from the assignment undo.
+  const unassignRequest = async (r: SessionRequest, quiet = false) => {
+    let rev: Response;
+    try { rev = await fetch(`/api/admin/session-requests/${r.id}/unassign`, { method: "POST" }); }
+    catch { showToast("Network error — could not reset to New. Cancel the session instead."); return; }
+    if (!rev.ok) { showToast("Could not reset to New — cancel the session instead."); return; }
+    setData((prev) => prev.map((x) => x.id === r.id ? { ...x, status: "New", assigned_to: null, assigned_practitioner: null } : x));
+    setSessionRefById((m) => { const n = { ...m }; delete n[r.id]; return n; });
+    onRowChange?.(r.id, { status: "New", assigned_to: null });
+    if (!quiet) showToast("Reset to New");
+  };
+
+  // Central handler for the col-3 [New, Confirmed, Cancelled] status select.
+  const handleStatusChange = (r: SessionRequest, next: string) => {
+    if (next === r.status) return;
+    if (next === "Confirmed") { void assignAndConfirm(r); return; }
+    if (next === "Cancelled") {
+      if (r.status === "Confirmed") {
+        setConfirmDialog({
+          open: true,
+          title: `Cancel session for ${r.name}?`,
+          description: "This cancels the confirmed request and its linked session, and emails the client to let them know. The session drops out of the consent, photos and payout pipeline.",
+          onConfirm: () => { closeConfirm(); cancelRequest(r); },
+        });
+      } else { void updateStatus(r.id, "Cancelled"); }
+      return;
+    }
+    if (next === "New") {
+      if (r.status === "Confirmed") { void unassignRequest(r); }
+      else { void updateStatus(r.id, "New"); }
     }
   };
 
@@ -307,6 +343,20 @@ export function RequestTable({
       waBody: buildFollowupWA(r),
       recipientName: r.name,
       recipientEmail: r.email,
+      kind: "followup-client",
+    });
+  }
+
+  function openCancelDraft(r: SessionRequest) {
+    setDraft({
+      open: true,
+      title: `Cancellation: ${r.name}`,
+      subject: `iqcommune — update on your session request`,
+      emailBody: `Dear ${r.name},\n\nThank you for your interest in an iqcommune session on "${r.topic}".\n\nUnfortunately we're unable to take this request forward at this time. We're sorry for any inconvenience, and we'd be glad to help if your needs change or you'd like to explore another topic — simply reply to this email.\n\nWarm regards,\nThe iqcommune Team`,
+      waBody: `Hi ${r.name}, this is the iqcommune team regarding your session request for *${r.topic}*. Unfortunately we're unable to take it forward at this time. Do reach out if you'd like to explore another topic.`,
+      recipientName: r.name,
+      recipientEmail: r.email,
+      kind: "cancellation-client",
     });
   }
 
@@ -337,23 +387,17 @@ export function RequestTable({
               <tr
                 onClick={() => setExpandedRow(isExpanded ? null : r.id)}
                 style={{
-                  borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)",
+                  borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)",
                   cursor: "pointer",
                   background: isExpanded ? "#f8f7f4" : undefined,
                 }}
               >
-                {/* SPOC / Requester */}
+                {/* SPOC / Requester — V6: name + org only (email/phone live in the expand) */}
                 <td style={TD}>
                   <div style={{ fontWeight: 500 }}>{r.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
-                    {r.org ? `${r.org} · ` : ""}
-                    {r.email}
-                  </div>
-                  {r.phone && (
-                    <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.phone}</div>
-                  )}
-                  {/* V5: venue-status line under the requester. */}
-                  <div style={{ fontSize: 11, marginTop: 2, color: r.venue ? "var(--green)" : "var(--amber)" }}>
+                  {r.org && <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.org}</div>}
+                  {/* Venue-status line — pending uses gold-dark (needs-action), not red. */}
+                  <div style={{ fontSize: 11, marginTop: 2, color: r.venue ? "var(--green)" : "var(--gold-dark)" }}>
                     {r.venue ? "📍 Venue provided" : "⚠ Venue pending"}
                   </div>
                 </td>
@@ -368,20 +412,11 @@ export function RequestTable({
                     <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.state}</div>
                   )}
                 </td>
-                {/* Group size */}
-                <td style={{ ...TD, textAlign: "center" }}>{r.group_size ?? "—"}</td>
-                {/* Min. commitment */}
-                <td style={{ ...TD, fontWeight: 500, whiteSpace: "nowrap" }}>
-                  {r.min_commit != null ? (
-                    <>
-                      {r.min_commit}
-                      <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}>
-                        guaranteed
-                      </div>
-                    </>
-                  ) : (
-                    "—"
-                  )}
+                {/* Group size — V6: left-aligned "{n} people", muted */}
+                <td style={{ ...TD, color: "var(--ink-muted)" }}>{r.group_size ? `${r.group_size} people` : "—"}</td>
+                {/* Min. commitment — V6: "{n} pax" (gold-dark, weight 600) */}
+                <td style={{ ...TD, fontWeight: 600, whiteSpace: "nowrap", color: "var(--gold-dark)" }}>
+                  {r.min_commit != null ? `${r.min_commit} pax` : "—"}
                 </td>
                 {/* Preferred dates */}
                 <td style={TD}>{r.preferred_dates ?? "—"}</td>
@@ -398,23 +433,37 @@ export function RequestTable({
                   {r.status === "New" || !r.assigned_practitioner ? (
                     <span style={{ color: "var(--ink-faint)" }}>Unassigned</span>
                   ) : (
-                    <span style={{ color: "var(--ink-muted)" }}>{r.assigned_practitioner.name}</span>
+                    <div>
+                      <span style={{ color: "var(--ink-muted)" }}>{r.assigned_practitioner.name}</span>
+                      {sessionRefById[r.id] && (
+                        <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>→ Session {sessionRefById[r.id]}</div>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
 
               {isExpanded && (
-                <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
                   <td colSpan={10} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
                     <div
                       style={{
-                        border: "1px solid rgba(20,18,12,.10)",
+                        position: "relative",
+                        border: "1px solid rgba(15,17,23,.10)",
                         borderRadius: 8,
                         background: "#fff",
                         padding: "1rem 1.25rem",
                         borderTop: "2px solid #c9982a",
                       }}
                     >
+                      <button
+                        type="button"
+                        aria-label="Close request"
+                        onClick={(e) => { e.stopPropagation(); setExpandedRow(null); }}
+                        style={{ position: "absolute", top: 10, right: 12, width: 26, height: 26, borderRadius: "50%", border: "1px solid rgba(15,17,23,.12)", background: "#fff", color: "var(--ink-faint)", cursor: "pointer", fontSize: 13, lineHeight: 1, fontFamily: "inherit" }}
+                      >
+                        ✕
+                      </button>
                       <div
                         style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "2rem" }}
                       >
@@ -432,10 +481,12 @@ export function RequestTable({
                               { label: "State", value: r.state ?? "—", edit: { seed: r.state ?? "", body: (v) => ({ state: v || null }), patch: (v) => ({ state: v || null }) } },
                               { label: "Topic", value: r.topic, edit: { seed: r.topic, body: (v) => ({ topic: v }), patch: (v) => ({ topic: v }) } },
                               { label: "Audience", value: r.audience_type, edit: { seed: r.audience_type, body: (v) => ({ audience_type: v }), patch: (v) => ({ audience_type: v }) } },
+                              { label: "SPOC", value: `${r.name} (primary contact)` },
                               { label: "Group size", value: r.group_size ?? "—", edit: { seed: r.group_size ?? "", body: (v) => ({ group_size: v || null }), patch: (v) => ({ group_size: v || null }) } },
                               { label: "Min. commitment", value: r.min_commit != null ? `${r.min_commit} participants` : "—", edit: { seed: r.min_commit != null ? String(r.min_commit) : "", type: "number", body: (v) => ({ min_commit: v ? Number(v) : null }), patch: (v) => ({ min_commit: v ? Number(v) : null }) } },
                               { label: "Venue", value: r.venue || "Not specified — pending from SPOC", edit: { seed: r.venue ?? "", body: (v) => ({ venue: v || null }), patch: (v) => ({ venue: v || null }) } },
                               { label: "Preferred dates", value: r.preferred_dates ?? "—" },
+                              { label: "Received", value: new Date(r.created_at).toLocaleDateString("en-IN") },
                             ];
                             return rows.map(({ label, value, edit }) => {
                               const key = `${r.id}:${label}`;
@@ -452,9 +503,9 @@ export function RequestTable({
                                   </span>
                                   {isGlobalAdmin && edit && editing ? (
                                     <span style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
-                                      <input type={edit.type ?? "text"} value={fieldDraft} autoFocus onChange={(e) => setFieldDraft(e.target.value)} style={{ padding: "4px 7px", fontSize: 12, border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, fontFamily: "inherit", background: "var(--input-paper)", outline: "none", minWidth: 120 }} />
+                                      <input type={edit.type ?? "text"} value={fieldDraft} autoFocus onChange={(e) => setFieldDraft(e.target.value)} style={{ padding: "4px 7px", fontSize: 12, border: "1px solid rgba(15,17,23,.18)", borderRadius: 6, fontFamily: "inherit", background: "var(--input-paper)", outline: "none", minWidth: 120 }} />
                                       <button type="button" disabled={fieldSaving} onClick={() => correctRequestField(r.id, edit.body(fieldDraft), edit.patch(fieldDraft))} style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, cursor: fieldSaving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{fieldSaving ? "…" : "Save"}</button>
-                                      <button type="button" onClick={() => setEditingKey(null)} style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 7px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
+                                      <button type="button" onClick={() => setEditingKey(null)} style={{ background: "none", border: "1px solid rgba(15,17,23,.18)", borderRadius: 6, padding: "4px 7px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}>✕</button>
                                     </span>
                                   ) : (
                                     <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13 }}>{value}</span>
@@ -465,118 +516,104 @@ export function RequestTable({
                           })()}
                         </div>
 
-                        {/* Col 2: Available practitioners (read-only once Confirmed — V4) */}
+                        {/* Col 2: Assignment — practitioner-who-agreed + agreed gross payout.
+                            V6: filled after the offline call; no auto-matching, no date here. */}
                         <div>
-                          <SectionLabel>{r.status === "Confirmed" ? "Assignment" : "Available practitioners"}</SectionLabel>
+                          <SectionLabel>Assignment</SectionLabel>
                           {r.status === "Confirmed" ? (
-                            <div style={{ fontSize: 13, color: "#2a6b2a", fontWeight: 500, padding: "0.5rem 0" }}>
+                            <div style={{ fontSize: 13, color: "var(--green)", fontWeight: 500, padding: "0.5rem 0" }}>
                               ✓ Assigned to {r.assigned_practitioner?.name ?? "—"}
                               <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400, marginTop: 3 }}>
-                                → Session {sessionRefById[r.id] ?? "created"} · this request is read-only
+                                → Session {sessionRefById[r.id] ?? "created"} · date scheduled later in Session Details
                               </div>
                             </div>
-                          ) : (() => {
-                            const matching = empanelled.filter((p) =>
-                              (p.modules ?? []).some((m) => m === r.topic)
-                            );
-                            if (matching.length === 0)
-                              return (
-                                <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>
-                                  No empanelled practitioners match this module yet.
-                                </div>
-                              );
-                            return matching.map((p) => (
-                              <div
-                                key={p.id}
-                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0", borderBottom: "1px solid rgba(20,18,12,.07)" }}
-                              >
-                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{p.name}</span>
-                                {!readOnly && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAssignFor({ requestId: r.id, practitionerId: p.id, practitionerName: p.name, venue: r.venue ?? "" });
-                                    setAssignPayout(""); setAssignDate("");
-                                  }}
-                                  style={{ background: "#c9982a", color: "#14161d", border: "none", borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                >
-                                  Assign
-                                </button>
-                                )}
+                          ) : r.status === "Cancelled" ? (
+                            <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>This request was cancelled.</div>
+                          ) : readOnly ? (
+                            <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "0.5rem 0" }}>Not yet assigned.</div>
+                          ) : (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <div style={{ fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.5, marginBottom: "0.65rem" }}>
+                                Fill these in after your call with the practitioner — nothing is matched automatically.
                               </div>
-                            ));
-                          })()}
+                              <label style={assignLabel}>Practitioner who agreed</label>
+                              <select
+                                value={assignSel[r.id] ?? ""}
+                                onChange={(e) => setAssignSel((m) => ({ ...m, [r.id]: e.target.value }))}
+                                style={assignField}
+                              >
+                                <option value="">— Not yet assigned —</option>
+                                {empanelled.map((p) => {
+                                  const avg = practitionerAvg(p);
+                                  return (
+                                    <option key={p.id} value={p.id}>
+                                      {p.name}{avg != null ? ` — ★${avg}` : " — not yet rated"}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              {empanelled.length === 0 && (
+                                <div style={{ fontSize: 11, color: "var(--gold-dark)", marginBottom: "0.65rem" }}>No empanelled practitioners yet.</div>
+                              )}
+                              <label style={assignLabel}>Agreed gross payout (₹)</label>
+                              <input
+                                type="number" min={0} inputMode="numeric"
+                                value={assignPay[r.id] ?? ""}
+                                onChange={(e) => setAssignPay((m) => ({ ...m, [r.id]: e.target.value }))}
+                                placeholder="e.g. 8000"
+                                style={assignField}
+                              />
+                              <div style={{ fontSize: 10.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>
+                                Set the status to &quot;Confirmed&quot; on the right to create the session.
+                              </div>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Col 3: Actions — hidden for the read-only tier */}
+                        {/* Col 3: Status — V6 [New, Confirmed, Cancelled]. Confirmed creates
+                            the session from the Assignment panel; New (from Confirmed) unassigns;
+                            Cancelled (from Confirmed) cascades + emails the client. */}
                         {!readOnly && (
                         <div>
-                          <SectionLabel>Actions</SectionLabel>
+                          <SectionLabel>Status</SectionLabel>
                           <div
                             style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}
                           >
-                            {/* V4: Confirmed is reached only via Assign and is read-only.
-                                Otherwise the request can be left New or Cancelled. */}
-                            {r.status === "Confirmed" ? (
-                              <>
-                                <span style={{ display: "inline-block", fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8, background: "var(--green-light)", color: "var(--green)", textAlign: "center" }}>
-                                  Confirmed — read-only
-                                </span>
-                                {/* V5 P1-2: cancel cascades request + session to Cancelled and notifies the client */}
-                                <button
-                                  disabled={cancelBusyId === r.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmDialog({
-                                      open: true,
-                                      title: `Cancel session for ${r.name}?`,
-                                      description: "This cancels the confirmed request and its linked session, and emails the client to let them know. The session drops out of the consent, photos and payout pipeline.",
-                                      onConfirm: () => { closeConfirm(); cancelRequest(r); },
-                                    });
-                                  }}
-                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--red-border)", background: "#fff", color: "var(--red)", cursor: cancelBusyId === r.id ? "not-allowed" : "pointer", opacity: cancelBusyId === r.id ? 0.6 : 1, fontFamily: "inherit", fontSize: 13 }}
-                                  title={`Cancel session for ${r.name}`}
-                                >
-                                  <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
-                                  {cancelBusyId === r.id ? "Cancelling…" : "Cancel session"}
-                                </button>
-                              </>
-                            ) : (
-                              <select
-                                value={r.status}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  updateStatus(r.id, e.target.value);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  width: "100%",
-                                  padding: "9px 12px",
-                                  borderRadius: 8,
-                                  border: "1px solid rgba(20,18,12,.18)",
-                                  fontFamily: "inherit",
-                                  fontSize: 13,
-                                  color: "var(--ink)",
-                                  background: "#f8f7f4",
-                                  outline: "none",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {["New", "Cancelled"].map((s) => (
-                                  <option key={s} value={s}>{s}</option>
-                                ))}
-                              </select>
+                            <select
+                              value={r.status}
+                              disabled={assignBusy === r.id || cancelBusyId === r.id}
+                              onChange={(e) => { e.stopPropagation(); handleStatusChange(r, e.target.value); }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: "100%",
+                                padding: "9px 12px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(15,17,23,.18)",
+                                fontFamily: "inherit",
+                                fontSize: 13,
+                                color: "var(--ink)",
+                                background: "#f8f7f4",
+                                outline: "none",
+                                cursor: assignBusy === r.id || cancelBusyId === r.id ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {/* Value stays the DB "Confirmed"; label follows the V6 pill wording ("Matched"). */}
+                              {["New", "Confirmed", "Cancelled"].map((s) => (
+                                <option key={s} value={s}>{s === "Confirmed" ? "Matched" : s}</option>
+                              ))}
+                            </select>
+                            {(assignBusy === r.id || cancelBusyId === r.id) && (
+                              <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                                {assignBusy === r.id ? "Creating session…" : "Cancelling…"}
+                              </div>
                             )}
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDraft(r);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); openDraft(r); }}
                               style={{
                                 background: "var(--ink)",
                                 color: "#fff",
                                 border: "none",
-                                borderRadius: 8,
+                                borderRadius: 100,
                                 padding: "10px 14px",
                                 fontSize: 13,
                                 fontWeight: 500,
@@ -584,12 +621,28 @@ export function RequestTable({
                                 fontFamily: "inherit",
                               }}
                             >
-                              Draft follow-up to client
+                              Send follow-up to client
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openCancelDraft(r); }}
+                              style={{
+                                background: "var(--surface)",
+                                border: "1px solid var(--border-strong)",
+                                color: "var(--ink-muted)",
+                                borderRadius: 100,
+                                padding: "9px 14px",
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}
+                            >
+                              Send cancellation message
                             </button>
                             {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
-                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", background: "#fff", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(15,17,23,.18)", background: "#fff", color: "var(--ink-soft)", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
                                 title={`Edit request from ${r.name}`}
                               >
                                 <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -644,6 +697,9 @@ export function RequestTable({
 
       <ContactDraftModal
         open={draft.open}
+        editable
+        sendLabel="Click to send"
+        subtitle="Review or edit, then click Send"
         onClose={() => setDraft({ open: false })}
         title={draft.title}
         subject={draft.subject}
@@ -651,7 +707,19 @@ export function RequestTable({
         waBody={draft.waBody}
         recipientName={draft.recipientName}
         recipientEmail={draft.recipientEmail}
+        onSend={(edited) => {
+          const to = draft.recipientEmail;
+          const name = draft.recipientName;
+          const kind = draft.kind;
+          if (!to) { showToast("No email on file for this requester."); return; }
+          // Follow-up to client is internal (Type A) — fire instantly.
+          sendUndo.send("instant", `Follow-up to ${to}`, async () => {
+            const r = await sendMessageRequest({ to, name, subject: edited.subject, body: edited.emailBody, kind });
+            showToast(r.ok ? `Follow-up sent to ${r.sentTo}` : (r.error ?? "Send failed"));
+          });
+        }}
       />
+      {sendUndo.node}
       <ConfirmDialog
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -660,40 +728,18 @@ export function RequestTable({
         onCancel={closeConfirm}
       />
 
-      {/* Assign dialog (V4 §4.2): payout + session date → creates the session, confirms the request */}
-      {assignFor && (
-        <div
-          onClick={() => !assignBusy && setAssignFor(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(20,18,12,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 420, padding: "1.5rem" }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Assign {assignFor.practitionerName}</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 4, marginBottom: "1.1rem", lineHeight: 1.5 }}>
-              Creates the session and confirms this request. Start time &amp; duration are set later in Session Consent.
-            </div>
-            <label style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>Agreed payout (₹)</label>
-            <input
-              type="number" min={0} value={assignPayout} onChange={(e) => setAssignPayout(e.target.value)}
-              placeholder="e.g. 8000" autoFocus
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, marginBottom: "0.9rem", background: "var(--input-paper)", outline: "none" }}
-            />
-            <label style={{ display: "block", fontSize: 12, color: "var(--ink-soft)", marginBottom: 4 }}>Session date</label>
-            <input
-              type="date" value={assignDate} onChange={(e) => setAssignDate(e.target.value)}
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, marginBottom: "1.25rem", background: "var(--input-paper)", outline: "none" }}
-            />
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setAssignFor(null)} disabled={assignBusy} style={{ background: "#fff", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}>Cancel</button>
-              <button onClick={confirmAssign} disabled={assignBusy} style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: assignBusy ? "not-allowed" : "pointer", opacity: assignBusy ? 0.6 : 1, fontFamily: "inherit" }}>
-                {assignBusy ? "Assigning…" : "Assign & confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+const assignLabel: React.CSSProperties = {
+  display: "block", fontSize: 12, color: "var(--ink-soft)", marginBottom: 4,
+};
+const assignField: React.CSSProperties = {
+  width: "100%", padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(15,17,23,.18)",
+  fontFamily: "inherit", fontSize: 13, marginBottom: "0.75rem", background: "var(--input-paper)",
+  color: "var(--ink)", outline: "none", boxSizing: "border-box",
+};
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

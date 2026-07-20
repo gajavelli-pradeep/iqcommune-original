@@ -42,14 +42,14 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
           <div
             key={i}
             style={{
-              border: "1px solid rgba(20,18,12,0.10)",
+              border: "1px solid rgba(15,17,23,0.10)",
               borderRadius: 12,
               background: "#ffffff",
               marginBottom: "0.75rem",
               overflow: "hidden",
               boxShadow: isOpen
-                ? "0 8px 28px -10px rgba(20,18,12,0.18)"
-                : "0 1px 2px rgba(20,18,12,0.04)",
+                ? "0 8px 28px -10px rgba(15,17,23,0.18)"
+                : "0 1px 2px rgba(15,17,23,0.04)",
               transition: "box-shadow 0.25s ease",
             }}
           >
@@ -116,7 +116,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
                   fontSize: 14,
                   color: "#383b47",
                   lineHeight: 1.7,
-                  borderTop: "1px solid rgba(20,18,12,0.10)",
+                  borderTop: "1px solid rgba(15,17,23,0.10)",
                 }}
               >
                 {faq.a}

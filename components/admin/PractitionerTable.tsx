@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useId, useRef, Fragment } from "react";
+import { useState, useEffect, useId, useRef, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { PipelineStepper } from "@/components/shared/PipelineStepper";
@@ -12,6 +12,8 @@ import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useUndoToast } from "@/components/admin/useUndoToast";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
+import { useSendWithUndo } from "@/components/admin/useSendWithUndo";
+import { sendMessageRequest } from "@/lib/admin/send-message";
 
 type SubsectionAverages = Database["public"]["Views"]["practitioner_subsection_averages"]["Row"];
 type Practitioner = Database["public"]["Tables"]["practitioners"]["Row"] & {
@@ -36,7 +38,7 @@ const filterRowStyle: React.CSSProperties = {
   flexWrap: "wrap",
   alignItems: "center",
   background: "var(--surface)",
-  border: "1px solid rgba(20,18,12,.10)",
+  border: "1px solid rgba(15,17,23,.10)",
   borderBottom: "none",
   borderRadius: "10px 10px 0 0",
   padding: "0.75rem 1.25rem",
@@ -54,7 +56,7 @@ function chipStyle(active: boolean): React.CSSProperties {
     borderRadius: 100,
     fontSize: 12,
     fontWeight: 500,
-    border: `1px solid ${active ? "var(--ink)" : "rgba(20,18,12,.18)"}`,
+    border: `1px solid ${active ? "var(--ink)" : "rgba(15,17,23,.18)"}`,
     background: active ? "var(--ink)" : "var(--surface)",
     color: active ? "var(--surface)" : "var(--ink-soft)",
     cursor: "pointer",
@@ -72,7 +74,11 @@ const SHOW_OFFSPEC_ACTIONS = false;
 // an agreement/empanelment exists. A status in neither set (e.g. Deactivated) shows no
 // destructive control. `readonly string[]` so `.includes(p.status)` accepts a plain string.
 const DELETABLE_STATUSES: readonly string[] = ["Applied", "Screening Done", "Rejected"];
-const DEACTIVATABLE_STATUSES: readonly string[] = ["Agreement Sent", "Empanelled"];
+// V6 pill-shaped ghost action button (mockup `.btn.btn-ghost`).
+const ghostBtn: React.CSSProperties = {
+  background: "var(--surface)", border: "1px solid var(--border-strong)", color: "var(--ink-muted)",
+  borderRadius: 100, padding: "8px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "center",
+};
 
 // ── Draft-message templates (plain text, copy/paste — mirrors RequestTable) ──────
 
@@ -85,6 +91,7 @@ interface DraftState {
   recipientName?: string;
   recipientEmail?: string;
   recipientPhone?: string;
+  kind?: string; // V6 §3: classifies the send for the audit trail
 }
 
 function buildWelcomeEmail(name: string): string {
@@ -149,6 +156,20 @@ function buildGeneralWA(name: string): string {
 
 — The iqcommune Team`;
 }
+
+// V6: single "average across completed sessions" figure for the profile band + row
+// sub-line, derived from the per-section averages view already joined onto the row.
+function avgRating(p: Practitioner): number | null {
+  const s = p.subsection_averages;
+  if (!s || (s.rated_sessions ?? 0) < 1) return null;
+  const parts = [s.content_avg, s.delivery_avg, s.engagement_avg, s.logistics_avg].filter(
+    (x): x is number => x != null,
+  );
+  if (!parts.length) return null;
+  return Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 10) / 10;
+}
+
+const EDITABLE_PR_STATUSES = ["Applied", "Screening Done", "Rejected"];
 
 export function PractitionerTable({
   initialData,
@@ -230,11 +251,12 @@ export function PractitionerTable({
     });
   }
   const [draft, setDraft] = useState<DraftState>({ open: false });
+  const sendUndo = useSendWithUndo();
   // Track which row triggered a modal so focus can be restored on close
   const lastFocusRef = useRef<HTMLElement | null>(null);
 
   // Status-aware draft: welcome on Empanelled, reject on Rejected, neutral otherwise.
-  const openDraft = useCallback((p: Practitioner, statusForDraft: string = p.status) => {
+  const openDraft = (p: Practitioner, statusForDraft: string = p.status) => {
     let title: string, subject: string, emailBody: string, waBody: string;
     if (statusForDraft === "Empanelled") {
       title = `Welcome: ${p.name}`;
@@ -258,6 +280,11 @@ export function PractitionerTable({
       emailBody = buildGeneralEmail(p.name);
       waBody = buildGeneralWA(p.name);
     }
+    const kind =
+      statusForDraft === "Empanelled" ? "welcome-practitioner" :
+      statusForDraft === "Rejected"   ? "reject-practitioner" :
+      statusForDraft === "agreement"  ? "agreement-covering" :
+      "practitioner-message";
     setDraft({
       open: true,
       title,
@@ -267,20 +294,21 @@ export function PractitionerTable({
       recipientName: p.name,
       recipientEmail: p.email,
       recipientPhone: p.phone ?? undefined,
+      kind,
     });
-  }, []);
+  };
 
-  const closeDraft = useCallback(() => {
+  const closeDraft = () => {
     setDraft({ open: false });
     setTimeout(() => lastFocusRef.current?.focus(), 0);
-  }, []);
+  };
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
-  }, []);
+  };
 
-  const updateStatus = useCallback(
+  const updateStatus =
     async (id: string, status: string): Promise<boolean> => {
       let res: Response;
       try {
@@ -310,12 +338,10 @@ export function PractitionerTable({
       }
       showToast("Failed to update status");
       return false;
-    },
-    [showToast, onStatusChange]
-  );
+    };
 
   // V5 P1-3: reversible Danger Zone actions (deactivate / reactivate / revert).
-  const lifecycle = useCallback(
+  const lifecycle =
     async (id: string, action: "deactivate" | "reactivate" | "revert") => {
       let res: Response;
       try {
@@ -348,11 +374,9 @@ export function PractitionerTable({
         const { error } = await res.json().catch(() => ({ error: "" }));
         showToast(error || "Action failed");
       }
-    },
-    [showToast, onStatusChange]
-  );
+    };
 
-  const generateLink = useCallback(
+  const generateLink =
     async (p: Practitioner) => {
       let res: Response;
       try {
@@ -374,31 +398,7 @@ export function PractitionerTable({
       } else {
         showToast("Failed to generate link");
       }
-    },
-    [showToast, onStatusChange]
-  );
-
-  const sendAgreementEmail = useCallback(
-    async (p: Practitioner, url: string) => {
-      const res = await fetch("/api/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "agreement-link",
-          to: p.email,
-          name: p.name,
-          onboardingUrl: url,
-        }),
-      });
-      if (res.ok) {
-        setGenLink(null);
-        showToast("Agreement link sent via email");
-      } else {
-        showToast("Email failed — copy link manually");
-      }
-    },
-    [showToast]
-  );
+    };
 
   function closeGenLink() {
     setGenLink(null);
@@ -467,7 +467,7 @@ export function PractitionerTable({
                 <Fragment key={p.id}>
                   <tr
                     tabIndex={0}
-                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(20,18,12,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
+                    style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(15,17,23,.07)", cursor: "pointer", background: isExpanded ? "#f8f7f4" : undefined }}
                     onClick={() => setExpandedRow(isExpanded ? null : p.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -484,7 +484,12 @@ export function PractitionerTable({
                         </div>
                         <div>
                           <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name}</div>
-                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{p.role}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                            {p.role}{p.org ? ` · ${p.org}` : ""}
+                            {avgRating(p) != null && (
+                              <span style={{ color: "var(--gold-dark)" }}> · ★ {avgRating(p)} avg</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -505,42 +510,68 @@ export function PractitionerTable({
                   </tr>
 
                   {isExpanded && (
-                    <tr style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+                    <tr style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
                       <td colSpan={5} style={{ padding: "0 12px 14px", background: "#f8f7f4" }}>
-                        <div style={{ border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
+                        <div style={{ position: "relative", border: "1px solid rgba(15,17,23,.10)", borderRadius: 8, background: "#fff", padding: "1rem 1.25rem", borderTop: "2px solid #c9982a" }}>
+                          <button
+                            type="button"
+                            aria-label="Close profile"
+                            onClick={(e) => { e.stopPropagation(); setExpandedRow(null); }}
+                            style={{ position: "absolute", top: 10, right: 12, width: 26, height: 26, borderRadius: "50%", border: "1px solid rgba(15,17,23,.12)", background: "#fff", color: "var(--ink-faint)", cursor: "pointer", fontSize: 13, lineHeight: 1, fontFamily: "inherit" }}
+                          >
+                            ✕
+                          </button>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "2rem", alignItems: "start" }}>
                             {/* Col 1: Profile details */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Profile</div>
+                              {/* V6 identity block — 52px avatar + name/role/org */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "0.5rem" }}>
+                                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f5e9c8", color: "#8a6510", fontWeight: 600, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  {initials(p.name)}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>{p.name}</div>
+                                  <div style={{ fontSize: 12.5, color: "var(--ink-muted)" }}>{p.role}</div>
+                                  <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{p.org ?? "Independent"}</div>
+                                </div>
+                              </div>
+                              {/* Avg-rating band */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface-soft)", borderRadius: 8, padding: "8px 12px", marginBottom: "0.85rem" }}>
+                                {avgRating(p) != null ? (
+                                  <>
+                                    <span style={{ color: "var(--gold)", fontSize: 15 }}>★</span>
+                                    <span style={{ fontWeight: 600, color: "var(--ink)", fontSize: 13 }}>{avgRating(p)} average</span>
+                                    <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>across completed sessions</span>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: 12, color: "var(--ink-faint)", fontStyle: "italic" }}>Not yet rated — no completed sessions with a rating</span>
+                                )}
+                              </div>
                               {[
-                                ["Ref", p.ref_code ? `IQC-EMP-${p.ref_code}` : "—"],
-                                ["Email", p.email],
-                                ["Phone", p.phone ?? "—"],
-                                ["Role", p.role],
-                                ["Org", p.org ?? "Independent"],
+                                ["Module", (p.modules ?? []).join(", ") || "—"],
                                 ["City", p.city],
                                 ["State", p.state || "—"],
-                                ["Experience", p.experience ?? "—"],
-                                ["Modules", (p.modules ?? []).join(", ") || "—"],
-                                ["Availability", p.teach_freq ?? "—"],
                                 // V5: welcome-kit intake fields. Legacy records (applied before
                                 // these existed) read "Not provided" — real data state, not a bug.
-                                ["Address", p.communication_address || "Not provided — collected on newer applications"],
+                                ["Communication address", p.communication_address || "Not provided — collected on newer applications"],
                                 ["T-shirt size", p.tshirt_size || "Not provided"],
+                                ["Experience", p.experience ?? "—"],
+                                ["Email", p.email],
+                                ["Phone", p.phone ?? "—"],
+                                ["Applied", p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"],
+                                ["Ref.", p.ref_code ? `IQC-EMP-${p.ref_code}` : "—"],
                               ].map(([label, value]) => (
                                 <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
-                                  <span style={{ color: "var(--ink-faint)", width: 90, flexShrink: 0, fontSize: 12 }}>{label}</span>
+                                  <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>{label}</span>
                                   <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13, minWidth: 0, overflowWrap: "anywhere" }}>{value}</span>
                                 </div>
                               ))}
-                              {p.why && (
-                                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(20,18,12,.07)" }}>
-                                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginBottom: 4 }}>Why teach</div>
-                                  <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink)" }}>{p.why}</div>
-                                </div>
-                              )}
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: "0.45rem" }}>
+                                <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>Status</span>
+                                <StatusPill status={p.status} />
+                              </div>
                               {SHOW_OFFSPEC_ACTIONS && p.subsection_averages && (p.subsection_averages.rated_sessions ?? 0) > 0 && (
-                                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(20,18,12,.07)" }}>
+                                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(15,17,23,.07)" }}>
                                   <div style={{ fontSize: 11, color: "var(--ink-faint)", marginBottom: 6 }}>
                                     Feedback breakdown · {p.subsection_averages.rated_sessions} rated
                                   </div>
@@ -563,7 +594,7 @@ export function PractitionerTable({
 
                             {/* Col 2: Pipeline progress */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline Progress</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>Pipeline progress</div>
                               {/* cap width so the right-aligned date sits near its label, not at the far column edge */}
                               <div style={{ maxWidth: 240 }}>
                                 <PipelineStepper
@@ -580,146 +611,149 @@ export function PractitionerTable({
 
                             {/* Col 3: Actions (read-only tier sees payment details only) */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>{readOnly ? "Details" : "Update Status"}</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginBottom: "0.85rem" }}>{readOnly ? "Details" : "Status"}</div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                                {!readOnly && p.status !== "Deactivated" && (
-                                <select
-                                  value={p.status}
-                                  onChange={(e) => { e.stopPropagation(); updateStatus(p.id, e.target.value); }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(20,18,12,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
-                                >
-                                  {/* Empanelled/Rejected are button-only gates — not forward dropdown choices;
-                                      show them only when they're the current value. A legacy off-pipeline
-                                      status (e.g. "Under Review", removed from STATUSES) is prepended so the
-                                      select displays the real value instead of falling back to the first option. */}
-                                  {((STATUSES as readonly string[]).includes(p.status) ? STATUSES : [p.status, ...STATUSES])
-                                    .filter((s) => (s !== "Empanelled" && s !== "Rejected") || s === p.status)
-                                    .map((s) => (
-                                      <option key={s} value={s}>{s}</option>
-                                    ))}
-                                </select>
-                                )}
+                                {!readOnly && (EDITABLE_PR_STATUSES.includes(p.status) ? (
+                                  <>
+                                    <select
+                                      value={p.status}
+                                      onChange={(e) => { e.stopPropagation(); updateStatus(p.id, e.target.value); }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(15,17,23,.18)", fontFamily: "inherit", fontSize: 13, color: "var(--ink)", background: "#f8f7f4", outline: "none", cursor: "pointer" }}
+                                    >
+                                      {/* V6 §5: only the three judgement-call stages are forward-selectable. */}
+                                      {EDITABLE_PR_STATUSES.map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                      ))}
+                                    </select>
+                                    <div style={{ fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>
+                                      These two stages are your judgement call — the screening call happens offline, so nothing here is automatic.
+                                    </div>
+                                  </>
+                                ) : (
+                                  // V6: Agreement Sent / Empanelled / Deactivated are system-set —
+                                  // a read-only tinted pill in a soft box + an explanation, no select.
+                                  <div style={{ background: "var(--surface-soft)", borderRadius: 8, padding: "10px 12px" }}>
+                                    <StatusPill status={p.status} />
+                                    <div style={{ fontSize: 10.5, color: "var(--ink-faint)", marginTop: 6, lineHeight: 1.5 }}>
+                                      {p.status === "Agreement Sent"
+                                        ? "System-set — waiting on the practitioner to open the link and sign. Updates itself the moment they submit."
+                                        : p.status === "Empanelled"
+                                        ? "System-set — the practitioner's signed agreement came back automatically."
+                                        : "Set manually — pausing this practitioner while keeping their history."}
+                                    </div>
+                                  </div>
+                                ))}
 
-                                {/* Message + Notes */}
                                 {!readOnly && (
-                                <div style={{ display: "flex", gap: 8 }}>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      lastFocusRef.current = e.currentTarget;
-                                      openDraft(p);
-                                    }}
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
-                                  >
-                                    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                    Message
-                                  </button>
-                                  <button
-                                    disabled
-                                    title="Coming soon"
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.10)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "not-allowed", fontFamily: "inherit", color: "var(--ink-faint)", opacity: 0.6 }}
-                                  >
-                                    <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                    Notes
-                                  </button>
-                                </div>
+                                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)", marginTop: 4 }}>Automated actions</div>
                                 )}
 
                                 {!readOnly && p.status === "Screening Done" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 100, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                  >
+                                    <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    Generate &amp; send empanelment agreement
+                                  </button>
+                                )}
+
+                                {/* V6 Agreement Sent: automated (resend / poll) + a de-emphasised
+                                    manual-empanel fallback tucked in a disclosure. */}
+                                {!readOnly && p.status === "Agreement Sent" && (
                                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                    {/* Op-procedure Part 1 steps 3–4: download the prefilled
-                                        agreement (P3) + draft the covering email (P4). The
-                                        e-sign "Generate agreement link" stays as the alternative. */}
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); window.open(`/api/admin/practitioners/${p.id}/agreement-pdf`, "_blank", "noopener,noreferrer"); }}
-                                        style={{ flex: 1, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
-                                      >
-                                        Download agreement (PDF)
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; openDraft(p, "agreement"); }}
-                                        style={{ flex: 1, background: "#f8f7f4", border: "1px solid rgba(20,18,12,.15)", borderRadius: 8, padding: "9px 10px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)" }}
-                                      >
-                                        Draft agreement email
-                                      </button>
-                                    </div>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; generateLink(p); }}
-                                      style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                      style={{ ...ghostBtn, borderRadius: 100 }}
                                     >
-                                      Generate agreement link
+                                      Resend agreement link
                                     </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); router.refresh(); showToast("Checking for a signed agreement…"); }}
+                                      style={{ ...ghostBtn, borderRadius: 100, fontSize: 11, padding: "6px 12px", color: "var(--ink-faint)", alignSelf: "flex-start" }}
+                                    >
+                                      Check for updates now
+                                    </button>
+                                    <details style={{ marginTop: 2 }}>
+                                      <summary style={{ fontSize: 10.5, color: "var(--ink-faint)", cursor: "pointer" }}>Signed copy received some other way?</summary>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          lastFocusRef.current = e.currentTarget;
+                                          openDraft(p, "Empanelled");
+                                          void updateStatus(p.id, "Empanelled").then((ok) => {
+                                            if (ok) undo.show(`${p.name} empanelled`, () => lifecycle(p.id, "revert"));
+                                          });
+                                        }}
+                                        style={{ ...ghostBtn, borderRadius: 100, marginTop: 6, fontSize: 11, padding: "6px 12px" }}
+                                      >
+                                        Mark Empanelled manually
+                                      </button>
+                                    </details>
                                   </div>
                                 )}
 
-                                {/* V4 terminal gates: green Empanel (only at Agreement Sent) + red Reject (any non-terminal).
-                                    Each sets the status and opens the matching welcome / reject draft. */}
-                                {!readOnly && p.status === "Agreement Sent" && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      lastFocusRef.current = e.currentTarget;
-                                      // Keep the pre-written welcome draft instant; offer 9s to Undo
-                                      // (reverses only the status via the lifecycle revert path).
-                                      openDraft(p, "Empanelled");
-                                      void updateStatus(p.id, "Empanelled").then((ok) => {
-                                        if (ok) undo.show(`${p.name} empanelled`, () => lifecycle(p.id, "revert"));
-                                      });
-                                    }}
-                                    style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                  >
-                                    Empanel practitioner
-                                  </button>
+                                {/* Empanelled: welcome (ghost) + deactivation (red ghost). */}
+                                {!readOnly && p.status === "Empanelled" && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; openDraft(p, "Empanelled"); }}
+                                      style={{ ...ghostBtn, borderRadius: 100 }}
+                                    >
+                                      Send welcome message
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmDialog({
+                                          open: true,
+                                          title: `Deactivate ${p.name}`,
+                                          description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
+                                          onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
+                                        });
+                                      }}
+                                      style={{ ...ghostBtn, borderRadius: 100, color: "var(--red)" }}
+                                    >
+                                      Send deactivation message
+                                    </button>
+                                  </>
                                 )}
-                                {!readOnly && p.status !== "Empanelled" && p.status !== "Rejected" && p.status !== "Deactivated" && (
+
+                                {/* Reject — only offered at Screening Done (mockup shows no reject on Applied). */}
+                                {!readOnly && p.status === "Screening Done" && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       lastFocusRef.current = e.currentTarget;
-                                      // Keep the pre-written reject draft instant; offer 9s to Undo
-                                      // (reverses only the status via the lifecycle revert path).
                                       openDraft(p, "Rejected");
                                       void updateStatus(p.id, "Rejected").then((ok) => {
                                         if (ok) undo.show(`${p.name} rejected`, () => lifecycle(p.id, "revert"));
                                       });
                                     }}
-                                    style={{ background: "#fff", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    style={{ ...ghostBtn, borderRadius: 100, color: "var(--red)" }}
                                   >
-                                    Reject
+                                    Send rejection message
                                   </button>
                                 )}
 
-                                {/* V5 P1-3 reversible lifecycle: Reactivate a deactivated practitioner,
-                                    or Revert a one-way Empanel/Reject to its prior status. */}
+                                {/* Deactivated → Reactivate (gold). */}
                                 {!readOnly && p.status === "Deactivated" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); lifecycle(p.id, "reactivate"); }}
-                                    style={{ background: "var(--green)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                                    style={{ background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: 100, padding: "9px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-start" }}
                                   >
-                                    Reactivate practitioner
+                                    Reactivate
                                   </button>
                                 )}
-                                {!readOnly && p.status !== "Deactivated" && p.prev_status && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setConfirmDialog({
-                                        open: true,
-                                        title: `Revert to ${p.prev_status}`,
-                                        description: `Revert this practitioner to ${p.prev_status}?`,
-                                        onConfirm: () => { closeConfirm(); lifecycle(p.id, "revert"); },
-                                      });
-                                    }}
-                                    style={{ background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
-                                  >
-                                    Revert to {p.prev_status}
-                                  </button>
+                                {!readOnly && p.status === "Applied" && (
+                                  <div style={{ fontSize: 11, color: "var(--ink-faint)", lineHeight: 1.5 }}>
+                                    Move to &quot;Screening Done&quot; above once the offline call happens — that unlocks the agreement send.
+                                  </div>
                                 )}
 
                                 {SHOW_OFFSPEC_ACTIONS && (
-                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(20,18,12,.08)" }}>
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(15,17,23,.08)" }}>
                                   <div style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Payment details</div>
                                   {/* No payment_method column — method is derived from which fields are filled.
                                       "Invoice name" is the bank_name (name as per bank account) column. */}
@@ -741,48 +775,59 @@ export function PractitionerTable({
                                 {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); onEdit(p); }}
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff", color: "var(--ink)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff", color: "var(--ink)", border: "1px solid rgba(15,17,23,.18)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
                                   >
                                     <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     Edit details
                                   </button>
                                 )}
 
-                                {/* V5 §3.3/§5 stage-gated Danger Zone — EXACTLY ONE control per stage:
-                                    Deactivate (reversible, keeps history) for Agreement Sent / Empanelled;
-                                    hard Delete (Global-Admin only) for records without history
-                                    (Applied / Screening Done / Rejected). Never both at once. */}
-                                {!readOnly && (DEACTIVATABLE_STATUSES.includes(p.status) || (isGlobalAdmin && DELETABLE_STATUSES.includes(p.status))) && (
-                                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--amber)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--ink-faint)" }}>Danger zone</div>
-                                    {DEACTIVATABLE_STATUSES.includes(p.status) && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setConfirmDialog({
-                                            open: true,
-                                            title: `Deactivate ${p.name}`,
-                                            description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
-                                            onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
-                                          });
-                                        }}
-                                        style={{ width: "100%", background: "var(--amber-light)", color: "var(--amber)", border: "1px solid var(--amber)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                      >
-                                        Deactivate practitioner
-                                      </button>
-                                    )}
-                                    {isGlobalAdmin && DELETABLE_STATUSES.includes(p.status) && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); deletePractitionerWithUndo(p); }}
-                                        style={{ width: "100%", background: "var(--red-light)", color: "var(--red)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                                      >
-                                        Delete practitioner
-                                      </button>
+                                {/* V6 danger zone — delete for judgement-call stages (GA only);
+                                    else a note (history exists → Deactivate instead). */}
+                                {!readOnly && (
+                                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px dashed var(--border-strong)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" as const, color: "var(--ink-faint)" }}>Danger zone</div>
+                                    {DELETABLE_STATUSES.includes(p.status) ? (
+                                      isGlobalAdmin ? (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); deletePractitionerWithUndo(p); }}
+                                          style={{ ...ghostBtn, borderRadius: 100, fontSize: 11, padding: "4px 10px", color: "var(--red)", borderColor: "var(--red-border)", alignSelf: "flex-start" }}
+                                        >
+                                          Delete permanently
+                                        </button>
+                                      ) : (
+                                        <div style={{ fontSize: 10.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>Only a Global Admin can delete a practitioner record.</div>
+                                      )
+                                    ) : (
+                                      <div style={{ fontSize: 10.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>
+                                        Can&apos;t be deleted — agreement/session history exists. Use &quot;Deactivated&quot; instead — it hides them from future matching without losing history.
+                                      </div>
                                     )}
                                   </div>
                                 )}
                               </div>
                             </div>
+
+                            {/* Message / Notes — bottom of the profile card (full width) */}
+                            {!readOnly && (
+                              <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, marginTop: 4 }}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget; openDraft(p); }}
+                                  style={{ ...ghostBtn, borderRadius: 100, display: "inline-flex", alignItems: "center", gap: 6 }}
+                                >
+                                  <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                  Message
+                                </button>
+                                <button
+                                  disabled
+                                  title="Coming soon"
+                                  style={{ ...ghostBtn, borderRadius: 100, display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ink-faint)", opacity: 0.6, cursor: "not-allowed" }}
+                                >
+                                  <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                  Notes
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -799,7 +844,7 @@ export function PractitionerTable({
           <p style={{ fontSize: 13, marginBottom: 12 }}>
             Copy this link and send manually, or click &ldquo;Send via email&rdquo; to deliver automatically.
           </p>
-          <div style={{ background: "#f8f7f4", border: "1px solid rgba(20,18,12,.1)", borderRadius: 8, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 16, color: "var(--ink)", fontFamily: "monospace" }}>
+          <div style={{ background: "#f8f7f4", border: "1px solid rgba(15,17,23,.1)", borderRadius: 8, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 16, color: "var(--ink)", fontFamily: "monospace" }}>
             {genLink.url}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -812,12 +857,27 @@ export function PractitionerTable({
                   showToast("Copy failed — select and copy manually");
                 }
               }}
-              style={btnStyle("rgba(20,18,12,.07)", "var(--ink)")}
+              style={btnStyle("rgba(15,17,23,.07)", "var(--ink)")}
             >
               Copy link
             </button>
             <button
-              onClick={() => sendAgreementEmail(genLink.practitioner, genLink.url)}
+              onClick={() => {
+                const p = genLink.practitioner;
+                const url = genLink.url;
+                setGenLink(null);
+                // V6 §3: open the editable send-preview (agreement is Type B → 15s undo).
+                setDraft({
+                  open: true,
+                  title: `Agreement: ${p.name}`,
+                  subject: "Your iqcommune practitioner agreement — please sign",
+                  emailBody: `Dear ${p.name},\n\nYour iqcommune practitioner agreement is ready. Please review and sign it here:\n${url}\n\nWarm regards,\nThe iqcommune Team`,
+                  waBody: `Hi ${p.name}! 👋 Your iqcommune practitioner agreement is ready to sign:\n${url}`,
+                  recipientName: p.name,
+                  recipientEmail: p.email,
+                  kind: "send-agreement",
+                });
+              }}
               style={btnStyle("#c9982a", "#14161d")}
             >
               Send via email
@@ -857,6 +917,9 @@ export function PractitionerTable({
       />
       <ContactDraftModal
         open={draft.open}
+        editable
+        sendLabel="Click to send"
+        subtitle="Review or edit, then click Send"
         onClose={closeDraft}
         title={draft.title}
         subject={draft.subject}
@@ -865,7 +928,21 @@ export function PractitionerTable({
         recipientName={draft.recipientName}
         recipientEmail={draft.recipientEmail}
         recipientPhone={draft.recipientPhone}
+        onSend={(edited) => {
+          const to = draft.recipientEmail;
+          const kind = draft.kind;
+          const name = draft.recipientName;
+          if (!to) { showToast("No email on file for this practitioner."); return; }
+          // Agreement is an external closed-loop send (Type B) → 15s undo; welcome /
+          // rejection / general are internal (Type A) → fire instantly.
+          const mode = kind === "send-agreement" ? "delayed" : "instant";
+          sendUndo.send(mode, `Message to ${to}`, async () => {
+            const r = await sendMessageRequest({ to, name, subject: edited.subject, body: edited.emailBody, kind });
+            showToast(r.ok ? `Message sent to ${r.sentTo}` : (r.error ?? "Send failed"));
+          });
+        }}
       />
+      {sendUndo.node}
     </div>
   );
 }
@@ -909,7 +986,7 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(20,18,12,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

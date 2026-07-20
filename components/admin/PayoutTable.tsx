@@ -2,8 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { StatusPill, StatusSelect } from "@/components/shared/StatusPill";
-import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
-import { sendReminderRequest } from "@/lib/admin/send-reminder";
 import { formatInr } from "@/lib/tds";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 import { PendingBar } from "@/components/admin/PendingBar";
@@ -38,21 +36,17 @@ interface Payout {
 type EditableField = "pay_to" | "invoice_ref";
 type FieldPatch = { pay_to?: string | null; payment_method?: string | null; invoice_ref?: string };
 
-const PAYMENT_METHODS = ["UPI", "NEFT", "IMPS", "Cheque"] as const;
-// Dropdown adds an "Other" escape → free-text method (client wants a manual field).
-const METHOD_OPTIONS = [...PAYMENT_METHODS, "Other"] as const;
-const isPresetMethod = (m: string): boolean => (PAYMENT_METHODS as readonly string[]).includes(m);
 
 const HEADERS = [
   "Practitioner",
   "Session",
   "Session date",
-  "Payout (₹)",
+  "Gross Payout (₹)",
+  "Net Payout (₹)",
   "Pay to",
-  "Method",
   "Invoice ref.",
-  "Payment status",
   "Actions",
+  "Payment status",
 ];
 
 function fmtSessionDate(d: string | null): string {
@@ -75,12 +69,6 @@ function payToDetail(p: Payout): string {
 // Effective "Pay to" destination: the manual override if set, else the derived value.
 function payToDisplay(p: Payout): string {
   return p.pay_to ?? payToDetail(p);
-}
-
-function paidMethodLabel(p: Payout): string {
-  const method = p.payment_method ?? "—";
-  const dest = payToDisplay(p);
-  return dest ? `${method} — ${dest}` : method;
 }
 
 function fmtPaidAt(d: string | null): string {
@@ -114,21 +102,9 @@ export function PayoutTable({
   if (prevInitial !== initialData) { setPrevInitial(initialData); setData(initialData); }
   const [toast, setToast] = useState("");
   const undo = useUndoToast();
-  // Inline-edit state for the manual fields. `methodSel` holds the dropdown choice
-  // (a preset or "Other"); `methodOther` holds the free-text when "Other"; `edits`
-  // buffers in-progress Pay-to / Invoice-ref text (keyed `${id}:${field}`). All are
-  // lazily sourced from the row's persisted value until the admin touches them.
-  const [methodSel, setMethodSel] = useState<Record<string, string>>({});
-  const [methodOther, setMethodOther] = useState<Record<string, string>>({});
+  // Inline-edit buffer for the Invoice-ref field (keyed `${id}:${field}`),
+  // lazily sourced from the row's persisted value until the admin touches it.
   const [edits, setEdits] = useState<Record<string, string>>({});
-  const [draft, setDraft] = useState<{
-    open: boolean;
-    id?: string;
-    name?: string;
-    invoice?: string;
-    net?: string;
-    module?: string;
-  }>({ open: false });
 
   const payoutDate = (p: Payout) => p.session?.session_date ?? p.paid_at;
   const df = useDateFilter(data.map(payoutDate));
@@ -142,21 +118,6 @@ export function PayoutTable({
     const k = editKey(p.id, field);
     if (k in edits) return edits[k];
     return field === "pay_to" ? payToDisplay(p) : p.invoice_ref;
-  };
-  const methodSelValue = (p: Payout): string => {
-    if (p.id in methodSel) return methodSel[p.id];
-    const pm = p.payment_method;
-    if (!pm) return "UPI";
-    return isPresetMethod(pm) ? pm : "Other";
-  };
-  const methodOtherValue = (p: Payout): string => {
-    if (p.id in methodOther) return methodOther[p.id];
-    const pm = p.payment_method;
-    return pm && !isPresetMethod(pm) ? pm : "";
-  };
-  const effectiveMethod = (p: Payout): string => {
-    const sel = methodSelValue(p);
-    return sel === "Other" ? methodOtherValue(p).trim() || "UPI" : sel;
   };
 
   // Persist a manual field on a Pending row. Optimistic: updates local state + parent
@@ -272,36 +233,6 @@ export function PayoutTable({
     [onRowChange, isGlobalAdmin, undo]
   );
 
-  // V5: persistent Revert on Paid rows (Global-Admin ledger correction). Same
-  // endpoint the post-mark-paid Undo uses, exposed as a standing button too.
-  const revertPayout = useCallback(
-    async (id: string) => {
-      let revert: Response;
-      try {
-        revert = await fetch(`/api/admin/global/payouts/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "Pending", paid_at: null, payment_method: null }),
-        });
-      } catch {
-        setToast("Network error — the payout was not reverted. Please try again.");
-        setTimeout(() => setToast(""), 4000);
-        return;
-      }
-      if (!revert.ok) {
-        setToast("Could not revert — the payout is still marked paid.");
-        setTimeout(() => setToast(""), 4000);
-        return;
-      }
-      setData((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: "Pending", paid_at: null, payment_method: null } : p))
-      );
-      onRowChange?.(id, { status: "Pending", paid_at: "", payment_method: null });
-      setToast("Payout reverted to Pending");
-      setTimeout(() => setToast(""), 3000);
-    },
-    [onRowChange]
-  );
 
   const pending = data.filter((p) => p.status === "Pending");
   const totalPendingGross = pending.reduce((sum, p) => sum + p.gross_amount, 0);
@@ -362,12 +293,11 @@ export function PayoutTable({
       >
         <>
           {visible.map((p) => {
-            const detail = payToDisplay(p);
             const ini = initials(p.practitioner?.name ?? "?");
             // Manual fields are editable while Pending; frozen once Paid / in read-only views.
             const editable = p.status === "Pending" && !readOnly;
             return (
-              <tr key={p.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
+              <tr key={p.id} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
                 {/* Practitioner */}
                 <td style={TD}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -402,80 +332,17 @@ export function PayoutTable({
                 <td style={{ ...TD, fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>
                   {fmtSessionDate(p.session?.session_date ?? null)}
                 </td>
-                {/* Payout (₹) */}
+                {/* Gross Payout (₹) */}
+                <td style={TD}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>{formatInr(p.gross_amount)}</div>
+                </td>
+                {/* Net Payout (₹) */}
                 <td style={TD}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{formatInr(p.net_amount)}</div>
                 </td>
-                {/* Pay to — manual override of the payment destination */}
+                {/* Pay to — V6: read-only payee name only */}
                 <td style={TD}>
                   <div style={{ fontSize: 13 }}>{p.practitioner?.name ?? "—"}</div>
-                  {editable ? (
-                    <input
-                      value={fieldValue(p, "pay_to")}
-                      onChange={(e) => setEdits((m) => ({ ...m, [editKey(p.id, "pay_to")]: e.target.value }))}
-                      onBlur={() => commitText(p, "pay_to")}
-                      placeholder="UPI / bank / payee"
-                      aria-label={`Pay to destination for ${p.invoice_ref}`}
-                      // Floor the width so the column can't collapse (UPI IDs / bank
-                      // strings are long); the table scrolls horizontally, so a wider
-                      // cell is safe. Overrides inlineInput's 180px cap.
-                      style={{ ...inlineInput, fontFamily: "monospace", marginTop: 2, minWidth: 200, maxWidth: 300 }}
-                    />
-                  ) : (
-                    detail && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontFamily: "monospace",
-                          color: "var(--ink-faint)",
-                          marginTop: 1,
-                        }}
-                      >
-                        {detail}
-                      </div>
-                    )
-                  )}
-                </td>
-                {/* Method — preset dropdown + "Other" free-text escape */}
-                <td style={TD}>
-                  {editable ? (
-                    <div>
-                      <select
-                        value={methodSelValue(p)}
-                        onChange={(e) => {
-                          const sel = e.target.value;
-                          setMethodSel((m) => ({ ...m, [p.id]: sel }));
-                          // Persist immediately for a preset; for "Other" wait for the text.
-                          if (sel !== "Other") saveField(p.id, { payment_method: sel });
-                        }}
-                        aria-label={`Payment method for ${p.invoice_ref}`}
-                        style={selectStyle}
-                      >
-                        {METHOD_OPTIONS.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                      {methodSelValue(p) === "Other" && (
-                        <input
-                          value={methodOtherValue(p)}
-                          onChange={(e) => setMethodOther((m) => ({ ...m, [p.id]: e.target.value }))}
-                          onBlur={() => {
-                            const v = methodOtherValue(p).trim();
-                            if (v && v !== p.payment_method) saveField(p.id, { payment_method: v });
-                          }}
-                          placeholder="Method"
-                          aria-label={`Custom payment method for ${p.invoice_ref}`}
-                          style={{ ...inlineInput, marginTop: 4 }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                      {paidMethodLabel(p)}
-                    </span>
-                  )}
                 </td>
                 {/* Invoice ref. — auto-generated prefill, manually overridable */}
                 <td style={TD}>
@@ -493,86 +360,29 @@ export function PayoutTable({
                     </span>
                   )}
                 </td>
-                {/* Payment status */}
-                <td style={TD}>
-                  {p.status === "Paid" ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        background: "#d4edda",
-                        color: "#2a6b2a",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: "3px 10px",
-                        borderRadius: 100,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {fmtPaidAt(p.paid_at)}
-                    </span>
-                  ) : (
-                    <StatusPill status={p.status} />
-                  )}
-                </td>
-                {/* Action */}
+                {/* Actions — V6: before Payment status. Method picker relocated here
+                    (from the dropped Method column) so method is still captured. */}
                 <td style={{ ...TD, whiteSpace: "nowrap" }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {p.status === "Pending" ? (
                       readOnly ? (
                         <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
                       ) : (
-                      <>
-                        {/* Op-procedure Part 7 step 36: set the dropdown to Paid — the final step. */}
-                        <StatusSelect
-                          value={p.status}
-                          options={["Pending", "Paid"]}
-                          ariaLabel={`Set payout status for ${p.invoice_ref}`}
-                          onChange={(next) => { if (next === "Paid") markPaid(p.id, effectiveMethod(p)); }}
-                        />
-                        <button
-                          onClick={() =>
-                            setDraft({
-                              open: true,
-                              id: p.id,
-                              name: p.practitioner?.name ?? "",
-                              invoice: p.invoice_ref,
-                              net: formatInr(p.net_amount),
-                              module: p.session?.module ?? "",
-                            })
-                          }
-                          style={{
-                            background: "rgba(20,18,12,.07)",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "5px 10px",
-                            fontSize: 12,
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                          }}
-                        >
-                          Draft reminder
-                        </button>
-                      </>
+                      // V6: mark-paid dropdown is the only Action (method picker + Draft reminder removed).
+                      <StatusSelect
+                        value={p.status}
+                        options={["Pending", "Paid"]}
+                        ariaLabel={`Set payout status for ${p.invoice_ref}`}
+                        onChange={(next) => { if (next === "Paid") markPaid(p.id, p.payment_method ?? ""); }}
+                      />
                       )
                     ) : (
-                      <>
-                        <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
-                        {isGlobalAdmin && (
-                          <button
-                            onClick={() => revertPayout(p.id)}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--surface)", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-soft)" }}
-                            title="Revert this payout to Pending (record correction)"
-                          >
-                            <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
-                            Revert
-                          </button>
-                        )}
-                      </>
+                      <span style={{ fontSize: 12, color: "#2a6b2a", fontWeight: 500 }}>✓ Done</span>
                     )}
                     {SHOW_OFFSPEC_ACTIONS && isGlobalAdmin && onEdit && (
                       <button
                         onClick={() => onEdit(p.id)}
-                        style={{ background: "none", border: "1px solid rgba(20,18,12,.18)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
+                        style={{ background: "none", border: "1px solid rgba(15,17,23,.18)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--ink-soft)", fontSize: 11, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 3 }}
                         title={`Edit payout ${p.invoice_ref}`}
                       >
                         <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -583,13 +393,23 @@ export function PayoutTable({
                         financial records. Corrections go through Revert (in the edit modal). */}
                   </div>
                 </td>
+                {/* Payment status — V6: last column, after Actions */}
+                <td style={TD}>
+                  {p.status === "Paid" ? (
+                    <span style={{ display: "inline-block", background: "var(--green-light)", color: "var(--green)", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>
+                      {fmtPaidAt(p.paid_at)}
+                    </span>
+                  ) : (
+                    <StatusPill status={p.status} />
+                  )}
+                </td>
               </tr>
             );
           })}
 
           {/* V5-MATCH: totals summary row not in the mockup — gated off. */}
           {SHOW_OFFSPEC_ACTIONS && (
-          <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(20,18,12,.10)" }}>
+          <tr style={{ background: "#f8f7f4", borderTop: "2px solid rgba(15,17,23,.10)" }}>
             <td
               colSpan={3}
               style={{
@@ -605,9 +425,11 @@ export function PayoutTable({
             </td>
             <td style={TD}>
               <div style={{ fontWeight: 500 }}>{formatInr(totalGross)} gross</div>
+            </td>
+            <td style={TD}>
               <div style={{ fontWeight: 600 }}>{formatInr(totalNet)} net</div>
             </td>
-            <td colSpan={5} style={TD} />
+            <td colSpan={4} style={TD} />
           </tr>
           )}
         </>
@@ -632,42 +454,17 @@ export function PayoutTable({
       )}
       {undo.node}
 
-      <ContactDraftModal
-        open={draft.open}
-        onClose={() => setDraft({ open: false })}
-        title={`Payout reminder — ${draft.name}`}
-        subject={`Payout reminder: ${draft.invoice}`}
-        emailBody={`Dear ${draft.name},\n\nThis is a reminder regarding your payout for the ${draft.module} session.\n\nInvoice ref: ${draft.invoice}\nNet payout: ${draft.net}\n\nPlease confirm receipt of this payout or let us know if you have any questions.\n\nWarm regards,\nThe iqcommune Team`}
-        waBody={`Hi ${draft.name}! 👋\n\nJust a quick note from the iqcommune team — your payout for the *${draft.module}* session is ready.\n\nInvoice: *${draft.invoice}*\nNet: *${draft.net}*\n\nLet us know if you have any questions!`}
-        recipientName={draft.name}
-        onSend={draft.id ? () => sendReminderRequest(`/api/admin/payouts/${draft.id}/send-reminder`) : undefined}
-      />
     </div>
   );
 }
 
-const CHEVRON_GOLD =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a6510' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
-
-const selectStyle: React.CSSProperties = {
-  fontSize: 12,
-  padding: "4px 22px 4px 8px",
-  borderRadius: 6,
-  border: "1px solid rgba(20,18,12,.18)",
-  background: `${CHEVRON_GOLD} no-repeat right 7px center, #fcfbf8`,
-  appearance: "none",
-  WebkitAppearance: "none",
-  color: "#14161d",
-  cursor: "pointer",
-  fontFamily: "inherit",
-};
 
 // Inline text-edit affordance for manual Pending-row fields (Pay to / Invoice / Other method).
 const inlineInput: React.CSSProperties = {
   fontSize: 12,
   padding: "4px 8px",
   borderRadius: 6,
-  border: "1px solid rgba(20,18,12,.18)",
+  border: "1px solid rgba(15,17,23,.18)",
   background: "#fcfbf8",
   color: "#14161d",
   fontFamily: "inherit",

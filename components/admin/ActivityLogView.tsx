@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRealtimeChannel } from "@/lib/hooks/use-realtime-list";
-import { isGlobalAdminRole } from "@/lib/supabase/roles";
+import { roleLabel } from "@/lib/supabase/roles";
 import { AdminTable, TD } from "@/components/admin/AdminTable";
 
 interface ActivityRow {
@@ -62,13 +62,6 @@ function label(action: string): string {
   return ACTION_LABEL[action] ?? action.replace(/_/g, " ");
 }
 
-function timeAgo(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-}
 
 // Absolute timestamp for the table's Timestamp column, e.g. "03 Jul 2026, 11:42 AM".
 function formatTs(iso: string): string {
@@ -78,38 +71,7 @@ function formatTs(iso: string): string {
   }).replace(",", "");
 }
 
-function RolePill({ isSA }: { isSA: boolean }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "2px 9px",
-        borderRadius: 100,
-        whiteSpace: "nowrap",
-        background: isSA ? "var(--gold-light)" : "var(--blue-light)",
-        color: isSA ? "var(--gold-dark)" : "var(--blue)",
-      }}
-    >
-      {isSA ? "Global Admin" : "Admin"}
-    </span>
-  );
-}
 
-// Render a compact "before → after" fragment when the snapshot carries one.
-function transition(snapshot: Record<string, unknown> | null): string | null {
-  if (!snapshot) return null;
-  const before = snapshot.before as Record<string, unknown> | undefined;
-  const after = snapshot.after as Record<string, unknown> | undefined;
-  const key = after ? Object.keys(after)[0] : undefined;
-  if (key && after) {
-    const a = String(after[key]);
-    const b = before ? String(before[key] ?? "—") : null;
-    return b ? `${b} → ${a}` : a;
-  }
-  return null;
-}
 
 function detail(snapshot: Record<string, unknown> | null): string | null {
   if (!snapshot) return null;
@@ -125,94 +87,47 @@ function detail(snapshot: Record<string, unknown> | null): string | null {
   );
 }
 
-const ACTIONS = Object.keys(ACTION_LABEL);
-
-const inputStyle: React.CSSProperties = {
-  padding: "7px 10px",
-  border: "1px solid rgba(20,18,12,.18)",
-  borderRadius: 8,
-  fontSize: 12,
-  fontFamily: "inherit",
-  background: "var(--surface)",
-  color: "var(--ink)",
-};
 
 export function ActivityLogView() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [actor, setActor] = useState("");
-  const [action, setAction] = useState("");
-
-  const load = useCallback((reset: boolean, actorF: string, actionF: string, off: number) => {
+  const load = useCallback(() => {
     setLoading(true);
-    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
-    // Feed is scoped to the last 90 days (see tab title). API filters on `created_at >= from`.
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: "0" });
+    // Feed is scoped to the last 90 days (see the retention note). API filters on `created_at >= from`.
     qs.set("from", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
-    if (actorF) qs.set("actor", actorF);
-    if (actionF) qs.set("action", actionF);
     fetch(`/api/admin/global/activity?${qs.toString()}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.error) { setError(j.error); return; }
         setError("");
-        setTotal(j.total ?? 0);
-        setRows((prev) => (reset ? j.data : [...prev, ...j.data]));
+        setRows(j.data);
       })
       .catch(() => setError("Failed to load activity."))
       .finally(() => setLoading(false));
   }, []);
 
-  // Initial load + reload whenever a filter changes (debounced for the text input).
+  // Initial load. The feed is scoped to the last 90 days (see the retention note).
+  // Deferred a tick so the loading setState isn't called synchronously in the effect.
   useEffect(() => {
-    const t = setTimeout(() => { setOffset(0); load(true, actor, action, 0); }, actor ? 300 : 0);
+    const t = setTimeout(load, 0);
     return () => clearTimeout(t);
-  }, [actor, action, load]);
+  }, [load]);
 
-  const loadMore = () => {
-    const next = offset + PAGE;
-    setOffset(next);
-    load(false, actor, action, next);
-  };
-
-  // Live: new audit rows appear at the top as admins act (respects active filters).
+  // Live: new audit rows appear at the top as admins act.
   useRealtimeChannel("admin_audit_log", (payload) => {
     if (payload.eventType !== "INSERT") return;
     const row = payload.new as unknown as ActivityRow;
-    if (action && row.action !== action) return;
-    if (actor && !row.actor_email?.toLowerCase().includes(actor.toLowerCase())) return;
     setRows((prev) => (prev.some((r) => r.id === row.id) ? prev : [row, ...prev]));
-    setTotal((t) => t + 1);
   });
 
   return (
     <div>
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-        <input
-          type="text"
-          value={actor}
-          onChange={(e) => setActor(e.target.value)}
-          placeholder="Filter by admin email…"
-          style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-        />
-        <select value={action} onChange={(e) => setAction(e.target.value)} style={inputStyle}>
-          <option value="">All actions</option>
-          {ACTIONS.map((a) => (
-            <option key={a} value={a}>{label(a)}</option>
-          ))}
-        </select>
-        {(actor || action) && (
-          <button
-            onClick={() => { setActor(""); setAction(""); }}
-            style={{ ...inputStyle, cursor: "pointer", color: "var(--ink-soft)" }}
-          >
-            Clear
-          </button>
-        )}
+      {/* V6: plain-language retention policy note. */}
+      <div style={{ fontSize: 12.5, color: "var(--ink-muted)", background: "var(--surface-sunken)", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8, padding: "8px 11px", marginBottom: 14, lineHeight: 1.55 }}>
+        Entries are kept for 90 days on a rolling basis — once a new entry pushes the log past 90 days old, the oldest entry is automatically removed to make room for it.
       </div>
 
       {error && (
@@ -222,7 +137,7 @@ export function ActivityLogView() {
       )}
 
       {loading && rows.length === 0 ? (
-        <div style={{ background: "var(--surface)", border: "1px solid rgba(20,18,12,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center", fontSize: 13, color: "var(--ink-faint)" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center", fontSize: 13, color: "var(--ink-faint)" }}>
           Loading…
         </div>
       ) : (
@@ -232,36 +147,27 @@ export function ActivityLogView() {
           emptyText="No activity recorded yet."
         >
           {rows.map((r) => {
-            const trans = transition(r.snapshot);
             const det = detail(r.snapshot);
-            const isSA = isGlobalAdminRole(r.actor_role);
             return (
-              <tr key={r.id} style={{ borderBottom: "1px solid rgba(20,18,12,.07)" }}>
-                {/* Timestamp — absolute (V4) with a relative sub-line */}
+              <tr key={r.id} style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}>
+                {/* Timestamp — single absolute line */}
                 <td style={{ ...TD, whiteSpace: "nowrap", verticalAlign: "top" }}>
                   <div style={{ fontSize: 13, color: "var(--ink)" }}>{formatTs(r.created_at)}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{timeAgo(r.created_at)}</div>
                 </td>
-                {/* User */}
+                {/* User — actor_email (no name field exists on admin_audit_log) */}
                 <td style={{ ...TD, verticalAlign: "top" }}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", wordBreak: "break-all" }}>{r.actor_email}</span>
                 </td>
-                {/* Role */}
+                {/* Role — plain text (Global Admin / Admin / User) */}
                 <td style={{ ...TD, verticalAlign: "top" }}>
-                  <RolePill isSA={isSA} />
+                  <span style={{ fontSize: 13, color: "var(--ink)" }}>{roleLabel(r.actor_role)}</span>
                 </td>
-                {/* Action — humanized label + record detail + before→after diff + record table */}
+                {/* Action — single plain sentence (humanized label + record detail) */}
                 <td style={{ ...TD, verticalAlign: "top" }}>
                   <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5 }}>
                     {label(r.action)}
                     {det && <span style={{ color: "var(--ink-soft)" }}> · {det}</span>}
-                    {trans && (
-                      <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: "var(--gold-dark)", background: "var(--gold-light)", borderRadius: 100, padding: "1px 8px", whiteSpace: "nowrap" }}>
-                        {trans}
-                      </span>
-                    )}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 2 }}>{r.record_table}</div>
                 </td>
               </tr>
             );
@@ -269,19 +175,6 @@ export function ActivityLogView() {
         </AdminTable>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-          {loading ? "Loading…" : `Showing ${rows.length} of ${total}`}
-        </span>
-        {rows.length < total && !loading && (
-          <button
-            onClick={loadMore}
-            style={{ ...inputStyle, cursor: "pointer", fontWeight: 600, color: "var(--ink)" }}
-          >
-            Load more
-          </button>
-        )}
-      </div>
     </div>
   );
 }

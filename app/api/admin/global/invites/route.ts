@@ -60,6 +60,9 @@ const INVITE_ROLES = ["admin", "user", "global_admin"] as const;
 const CreateSchema = z.object({
   email: z.string().email(),
   role: z.enum(INVITE_ROLES).default("admin"),
+  // V6 §3: when false, create the invite + return the link WITHOUT emailing, so the
+  // client can show an editable send-preview and email it (with a 15s undo) itself.
+  sendEmail: z.boolean().default(true),
 });
 
 export async function POST(req: NextRequest) {
@@ -175,7 +178,14 @@ export async function POST(req: NextRequest) {
   // asynchronously (delivery webhook) and never appears in this response — so
   // claiming "sent" here would assert a delivery we cannot observe. The copy-link
   // fallback stays the reliable path.
-  let emailStatus: "queued" | "failed" = "failed";
+  // §3: skip the auto-email when the client will send its own edited preview.
+  let emailStatus: "queued" | "failed" | "skipped" = "failed";
+  if (!parsed.data.sendEmail) {
+    return NextResponse.json(
+      { data: data as InviteView, url: inviteUrl, email, emailStatus: "skipped" as const },
+      { status: 201 }
+    );
+  }
   const alreadyQueued = await guardEmailSend("admin_invite", data.id, email);
   if (alreadyQueued) {
     emailStatus = "queued";

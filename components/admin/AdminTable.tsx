@@ -3,14 +3,15 @@
 import React from "react";
 
 interface Props {
-  headers: string[];
+  headers: Array<string | { label: string; width?: number }>;
   isEmpty: boolean;
   emptyText: React.ReactNode;
   /** Constrains table height and enables vertical scroll. Default: 65vh */
   maxHeight?: string;
   /**
-   * true = table connects to a filter bar above it.
-   * Applies border + bottom-only radius so the visual frame continues from the bar.
+   * true = render the table inside its own fully-rounded card frame. V6 shows the
+   * pending/filter bar and the table as two separate cards, so this is a complete
+   * card (full border + radius), not a bottom-only continuation of the bar.
    */
   connected?: boolean;
   children: React.ReactNode;
@@ -30,11 +31,15 @@ export function AdminTable({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {headers.map((h) => (
-                <th key={h} scope="col" style={thStyle}>
-                  {h}
-                </th>
-              ))}
+              {headers.map((h) => {
+                const label = typeof h === "string" ? h : h.label;
+                const width = typeof h === "string" ? undefined : h.width;
+                return (
+                  <th key={label} scope="col" style={width ? { ...thStyle, width } : thStyle}>
+                    {label}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -66,8 +71,9 @@ export function AdminTable({
 export const TD: React.CSSProperties = { padding: "10px 12px", verticalAlign: "middle" };
 
 const connectedFrame: React.CSSProperties = {
-  border: "1px solid rgba(20,18,12,.10)",
-  borderRadius: "0 0 10px 10px",
+  border: "1px solid rgba(15,17,23,.10)",
+  borderRadius: 10,
+  overflow: "hidden", // clip the sticky header background to the rounded corners
 };
 
 const tableStyle: React.CSSProperties = {
@@ -90,7 +96,7 @@ const thStyle: React.CSSProperties = {
   letterSpacing: "0.06em",
   textTransform: "uppercase", // V4 renders column headers uppercase
   color: "var(--ink-faint)",
-  borderBottom: "1px solid rgba(20,18,12,.1)",
+  borderBottom: "1px solid rgba(15,17,23,.1)",
   whiteSpace: "nowrap",
   position: "sticky",
   top: 0,

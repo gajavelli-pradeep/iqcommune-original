@@ -194,7 +194,7 @@ export function AgreementViewer() {
         <div
           style={{
             background: "#fff",
-            border: "1px solid rgba(20,18,12,.1)",
+            border: "1px solid rgba(15,17,23,.1)",
             borderRadius: 12,
             padding: "3rem 2rem",
             textAlign: "center",
@@ -239,7 +239,7 @@ export function AgreementViewer() {
           <div
             style={{
               background: "#f8f7f4",
-              border: "1px solid rgba(20,18,12,.1)",
+              border: "1px solid rgba(15,17,23,.1)",
               borderRadius: 12,
               padding: "1.25rem 1.5rem",
               maxWidth: 480,
@@ -248,7 +248,7 @@ export function AgreementViewer() {
             }}
           >
             {/* Gap 47: remove City row — only 5 rows: Signed by, Agreement ref., Module assigned, Timestamp, Status */}
-            {/* Gap 48: borderBottom rgba(20,18,12,0.10) */}
+            {/* Gap 48: borderBottom rgba(15,17,23,0.10) */}
             {/* Gap 49: both Timestamp and Status values are green */}
             {(
               [
@@ -272,7 +272,7 @@ export function AgreementViewer() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "0.4rem 0",
-                  borderBottom: idx < arr.length - 1 ? "1px solid rgba(20,18,12,0.10)" : "none",
+                  borderBottom: idx < arr.length - 1 ? "1px solid rgba(15,17,23,0.10)" : "none",
                   fontSize: 13,
                 }}
               >
@@ -296,7 +296,7 @@ export function AgreementViewer() {
               margin: "1.5rem auto 0",
               padding: "1rem 1.25rem",
               background: "#f8f7f4",
-              border: "1px solid rgba(20,18,12,0.10)",
+              border: "1px solid rgba(15,17,23,0.10)",
               borderRadius: 10,
               fontSize: 13,
               color: "var(--ink-soft)",
@@ -367,7 +367,7 @@ export function AgreementViewer() {
       <div
         style={{
           background: "#ffffff",
-          border: "1px solid rgba(20,18,12,0.10)",
+          border: "1px solid rgba(15,17,23,0.10)",
           borderRadius: 12,
           padding: "1rem 1.5rem",
           maxWidth: 860,
@@ -384,7 +384,7 @@ export function AgreementViewer() {
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                     ...(step.state === "done"   ? { background: "#2a6b2a", color: "#fff" }
                       : step.state === "active" ? { background: "var(--ink)", color: "#fff" }
-                      : { background: "var(--surface-soft)", border: "1.5px solid rgba(20,18,12,0.20)", color: "var(--ink-faint)" }),
+                      : { background: "var(--surface-soft)", border: "1.5px solid rgba(15,17,23,0.20)", color: "var(--ink-faint)" }),
                   }}
                 >
                   {step.state === "done"
@@ -399,7 +399,7 @@ export function AgreementViewer() {
                 </span>
               </div>
               {i < arr.length - 1 && (
-                <span aria-hidden="true" className="iq-stepper-arrow" style={{ color: "rgba(20,18,12,0.20)", fontSize: 14, flexShrink: 0, userSelect: "none" }}>›</span>
+                <span aria-hidden="true" className="iq-stepper-arrow" style={{ color: "rgba(15,17,23,0.20)", fontSize: 14, flexShrink: 0, userSelect: "none" }}>›</span>
               )}
             </div>
           ))}
@@ -417,7 +417,7 @@ export function AgreementViewer() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid rgba(20,18,12,0.10)",
+          border: "1px solid rgba(15,17,23,0.10)",
           borderRadius: 12,
           padding: "2rem",
           marginBottom: "1.5rem",
@@ -502,7 +502,7 @@ export function AgreementViewer() {
         className="iq-ag-card"
         style={{
           background: "#fff",
-          border: "1px solid rgba(20,18,12,0.10)",
+          border: "1px solid rgba(15,17,23,0.10)",
           borderRadius: 12,
           marginBottom: "1.5rem",
         }}
@@ -516,10 +516,10 @@ export function AgreementViewer() {
           Please read the full agreement below before signing. You must scroll to the end to proceed.
         </p>
 
-        {/* Gap 15: agreement-viewer border 1.5px solid rgba(20,18,12,0.20) */}
+        {/* Gap 15: agreement-viewer border 1.5px solid rgba(15,17,23,0.20) */}
         <div
           style={{
-            border: "1.5px solid rgba(20,18,12,0.20)",
+            border: "1.5px solid rgba(15,17,23,0.20)",
             borderRadius: 12,
             overflow: "hidden",
             marginBottom: "1.5rem",
@@ -649,7 +649,7 @@ export function AgreementViewer() {
                         color: "#8a6510",
                         fontWeight: 600,
                         whiteSpace: "nowrap",
-                        border: "1px solid rgba(20,18,12,0.10)",
+                        border: "1px solid rgba(15,17,23,0.10)",
                         fontSize: 13,
                       }}
                     >
@@ -661,7 +661,7 @@ export function AgreementViewer() {
                         background: "#f8f7f4",
                         color: "var(--ink)",
                         fontWeight: 500,
-                        border: "1px solid rgba(20,18,12,0.10)",
+                        border: "1px solid rgba(15,17,23,0.10)",
                         fontSize: 13,
                         overflowWrap: "break-word",
                         wordBreak: "break-word",
@@ -679,7 +679,7 @@ export function AgreementViewer() {
             <hr
               style={{
                 border: "none",
-                borderTop: "1px solid rgba(20,18,12,0.10)",
+                borderTop: "1px solid rgba(15,17,23,0.10)",
                 margin: "20px 0",
               }}
             />
@@ -968,7 +968,7 @@ export function AgreementViewer() {
             <hr
               style={{
                 border: "none",
-                borderTop: "1px solid rgba(20,18,12,0.10)",
+                borderTop: "1px solid rgba(15,17,23,0.10)",
                 margin: "20px 0",
               }}
             />
@@ -995,7 +995,7 @@ export function AgreementViewer() {
             padding: "0.75rem 1rem",
             borderRadius: 8,
             background: hasScrolled ? "#eef7ee" : "#f8f7f4",
-            border: `1px solid ${hasScrolled ? "var(--green-border)" : "rgba(20,18,12,0.10)"}`,
+            border: `1px solid ${hasScrolled ? "var(--green-border)" : "rgba(15,17,23,0.10)"}`,
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -1050,7 +1050,7 @@ export function AgreementViewer() {
             <div
               style={{
                 background: "#fff",
-                border: "1px solid rgba(20,18,12,0.10)",
+                border: "1px solid rgba(15,17,23,0.10)",
                 borderRadius: 12,
                 padding: "2rem",
               }}
@@ -1089,7 +1089,7 @@ export function AgreementViewer() {
               </div>
 
               {/* Gap 31: label "Full name (as it should appear on the agreement)" */}
-              {/* Gap 34: inputStyle border 1.5px solid rgba(20,18,12,0.20), padding 11px 14px */}
+              {/* Gap 34: inputStyle border 1.5px solid rgba(15,17,23,0.20), padding 11px 14px */}
               <div className="av-grid-2" style={{ marginBottom: "1rem" }}>
                 <div>
                   <label htmlFor="sig-fullname" style={labelStyle}>
@@ -1156,7 +1156,7 @@ export function AgreementViewer() {
                     {/* Gap 37: canvas wrapper border solid (not dashed), background #f8f7f4 */}
                     <div
                       style={{
-                        border: "1.5px solid rgba(20,18,12,0.20)",
+                        border: "1.5px solid rgba(15,17,23,0.20)",
                         borderRadius: 10,
                         overflow: "hidden",
                         background: "#f8f7f4",
@@ -1206,7 +1206,7 @@ export function AgreementViewer() {
                             fontWeight: 500,
                             color: "var(--ink-faint)",
                             background: "#fff",
-                            border: "1px solid rgba(20,18,12,0.20)",
+                            border: "1px solid rgba(15,17,23,0.20)",
                             borderRadius: 100,
                             padding: "3px 10px",
                             cursor: "pointer",
@@ -1223,7 +1223,7 @@ export function AgreementViewer() {
                   /* Gap 39: typed sig — preview in Georgia 28px with borderBottom, input is DM Sans 14px */
                   <div
                     style={{
-                      border: "1.5px solid rgba(20,18,12,0.20)",
+                      border: "1.5px solid rgba(15,17,23,0.20)",
                       borderRadius: 10,
                       overflow: "hidden",
                       background: "#f8f7f4",
@@ -1240,7 +1240,7 @@ export function AgreementViewer() {
                           fontFamily: "Georgia, serif",
                           letterSpacing: "0.02em",
                           minHeight: 52,
-                          borderBottom: "1.5px solid rgba(20,18,12,0.20)",
+                          borderBottom: "1.5px solid rgba(15,17,23,0.20)",
                           paddingBottom: 4,
                         }}
                       >
@@ -1409,11 +1409,11 @@ const checkCircle: React.CSSProperties = {
   color: "#2a6b2a",
 };
 
-// Gap 34: border 1.5px solid rgba(20,18,12,0.20), padding 11px 14px
+// Gap 34: border 1.5px solid rgba(15,17,23,0.20), padding 11px 14px
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "11px 14px",
-  border: "1.5px solid rgba(20,18,12,0.20)",
+  border: "1.5px solid rgba(15,17,23,0.20)",
   borderRadius: 8,
   fontSize: 14,
   fontFamily: "inherit",
@@ -1435,7 +1435,7 @@ function tabBtn(active: boolean): React.CSSProperties {
   return {
     padding: "6px 16px",
     borderRadius: 100,
-    border: active ? "1.5px solid var(--ink)" : "1.5px solid rgba(20,18,12,0.20)",
+    border: active ? "1.5px solid var(--ink)" : "1.5px solid rgba(15,17,23,0.20)",
     background: active ? "var(--ink)" : "#fff",
     color: active ? "#fff" : "var(--ink-soft)",
     fontSize: 13,

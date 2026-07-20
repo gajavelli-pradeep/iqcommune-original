@@ -29,11 +29,25 @@ export interface ContactDraftModalProps {
   /** Modal subtitle, e.g. 'Pre-filled · copy and send via your preferred channel' */
   subtitle?: string;
   /**
-   * Optional automatic send (email only). When provided, a "Send via email"
-   * button appears on the Email tab; Copy / Open-in-mail stay as the manual
-   * fallback. Must resolve — never throw — so failures degrade to manual.
+   * V6 §3: editable send-preview. When true (and `onSend` is set), the subject and
+   * both message bodies become contenteditable and a "Click to send" button reads
+   * the live-edited content at click time. The caller's `onSend` owns what happens
+   * next (instant send, or a 15s-undo delayed send) and closes the modal.
    */
-  onSend?: () => Promise<{ ok: boolean; error?: string }>;
+  editable?: boolean;
+  /** Label for the send button in editable mode (default "Click to send"). */
+  sendLabel?: string;
+  /**
+   * Send action. In read-only mode it's a plain auto-send (email only); in editable
+   * mode it receives the live-edited draft. Must resolve — never throw.
+   */
+  onSend?: (edited: EditedDraft) => Promise<{ ok: boolean; error?: string } | void> | void;
+}
+
+export interface EditedDraft {
+  subject: string;
+  emailBody: string;
+  waBody: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -61,6 +75,8 @@ export function ContactDraftModal({
   reMeta,
   title = "Draft message",
   subtitle = "Pre-filled · copy and send via your preferred channel",
+  editable = false,
+  sendLabel = "Click to send",
   onSend,
 }: ContactDraftModalProps) {
   const [channel, setChannel] = useState<Channel>(defaultChannel);
@@ -68,12 +84,34 @@ export function ContactDraftModal({
   const [sendError, setSendError] = useState("");
   const titleId   = useId();
   const cardRef   = useRef<HTMLDivElement>(null);
+  // Live-edited content refs (editable mode) — read at send/copy/mail time so an
+  // edit made in the modal is never silently discarded (V6 §3 getLiveDraftText).
+  const subjectRef   = useRef<HTMLDivElement>(null);
+  const emailBodyRef = useRef<HTMLDivElement>(null);
+  const waBodyRef    = useRef<HTMLDivElement>(null);
+
+  function getLiveDraft(): EditedDraft {
+    return {
+      subject:   editable ? (subjectRef.current?.textContent ?? initialSubject) : initialSubject,
+      emailBody: editable ? (emailBodyRef.current?.textContent ?? emailBody) : emailBody,
+      waBody:    editable ? (waBodyRef.current?.textContent ?? waBody) : waBody,
+    };
+  }
 
   async function handleSend() {
     if (!onSend || sendState === "sending") return;
+    // Editable mode: hand the live-edited draft to the caller (which schedules the
+    // real send + closes), then close. No "Sent ✓" here — the caller owns feedback.
+    if (editable) {
+      const edited = getLiveDraft();
+      onClose();
+      await onSend(edited);
+      return;
+    }
     setSendState("sending");
     setSendError("");
-    const { ok, error } = await onSend();
+    const res = await onSend(getLiveDraft());
+    const { ok, error } = (res ?? { ok: true }) as { ok: boolean; error?: string };
     setSendState(ok ? "sent" : "idle");
     if (!ok) setSendError(error ?? "Couldn't send. Copy the draft and send it manually instead.");
   }
@@ -121,10 +159,11 @@ export function ContactDraftModal({
   const [copied, setCopied] = useState(false);
 
   async function copyDraft() {
+    const live = getLiveDraft();
     const text =
       channel === "email"
-        ? (initialSubject ? `Subject: ${initialSubject}\n\n` : "") + emailBody
-        : waBody;
+        ? (live.subject ? `Subject: ${live.subject}\n\n` : "") + live.emailBody
+        : live.waBody;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -136,10 +175,11 @@ export function ContactDraftModal({
   }
 
   function openInMail() {
+    const live = getLiveDraft();
     const mailto =
       "mailto:" + (recipientEmail ?? "") +
-      "?subject=" + encodeURIComponent(initialSubject) +
-      "&body=" + encodeURIComponent(emailBody);
+      "?subject=" + encodeURIComponent(live.subject) +
+      "&body=" + encodeURIComponent(live.emailBody);
     window.open(mailto);
   }
 
@@ -245,7 +285,7 @@ export function ContactDraftModal({
         <div
           style={{
             display: "flex",
-            borderBottom: "1px solid rgba(20,18,12,.10)",
+            borderBottom: "1px solid rgba(15,17,23,.10)",
             background: "#f8f7f4",
             flexShrink: 0,
           }}
@@ -302,35 +342,48 @@ export function ContactDraftModal({
           {/* Email panel */}
           {channel === "email" && (
             <div>
-              {/* draft-subject */}
-              {initialSubject && (
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--ink)",
-                    marginBottom: ".75rem",
-                    paddingBottom: ".65rem",
-                    borderBottom: "1px solid rgba(20,18,12,.10)",
-                  }}
-                >
-                  Subject: {initialSubject}
-                </div>
+              {/* draft-subject — editable when in send-preview mode */}
+              {(initialSubject || editable) && (
+                editable ? (
+                  <div style={{ marginBottom: ".75rem" }}>
+                    <div style={editLabelStyle}>Subject</div>
+                    <div
+                      ref={subjectRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      role="textbox"
+                      aria-label="Email subject"
+                      style={editSubjectStyle}
+                    >
+                      {initialSubject}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--ink)",
+                      marginBottom: ".75rem",
+                      paddingBottom: ".65rem",
+                      borderBottom: "1px solid rgba(15,17,23,.10)",
+                    }}
+                  >
+                    Subject: {initialSubject}
+                  </div>
+                )
               )}
-              {/* draft-text read-only */}
+              {editable && <div style={editLabelStyle}>Message</div>}
               <div
-                style={{
-                  fontSize: 13,
-                  color: "var(--ink-soft)",
-                  lineHeight: 1.85,
-                  whiteSpace: "pre-wrap",
-                  background: "#f8f7f4",
-                  borderRadius: 8,
-                  padding: "1rem",
-                  border: "1px solid rgba(20,18,12,.10)",
-                }}
+                ref={emailBodyRef}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                role={editable ? "textbox" : undefined}
+                aria-label={editable ? "Email body" : undefined}
+                aria-multiline={editable ? true : undefined}
+                style={editable ? editBodyStyle : readBodyStyle}
               >
-                {activeEmailBody || "No message drafted yet."}
+                {activeEmailBody || (editable ? "" : "No message drafted yet.")}
               </div>
             </div>
           )}
@@ -338,19 +391,17 @@ export function ContactDraftModal({
           {/* WhatsApp panel */}
           {channel === "whatsapp" && (
             <div>
+              {editable && <div style={editLabelStyle}>WhatsApp message</div>}
               <div
-                style={{
-                  fontSize: 13,
-                  color: "var(--ink-soft)",
-                  lineHeight: 1.85,
-                  whiteSpace: "pre-wrap",
-                  background: "#f8f7f4",
-                  borderRadius: 8,
-                  padding: "1rem",
-                  border: "1px solid rgba(20,18,12,.10)",
-                }}
+                ref={waBodyRef}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                role={editable ? "textbox" : undefined}
+                aria-label={editable ? "WhatsApp body" : undefined}
+                aria-multiline={editable ? true : undefined}
+                style={editable ? editBodyStyle : readBodyStyle}
               >
-                {activeWaBody || "No WhatsApp message drafted yet."}
+                {activeWaBody || (editable ? "" : "No WhatsApp message drafted yet.")}
               </div>
             </div>
           )}
@@ -360,28 +411,33 @@ export function ContactDraftModal({
         <div
           style={{
             padding: "1rem 1.5rem",
-            borderTop: "1px solid rgba(20,18,12,.10)",
+            borderTop: "1px solid rgba(15,17,23,.10)",
             display: "flex",
             alignItems: "center",
             gap: ".65rem",
             flexShrink: 0,
             background: "#fff",
+            // Wrap the button row below the note on narrow modals (≤430px) so no
+            // action is clipped by the card's overflow:hidden (atomic-responsive #2/#3).
+            flexWrap: "wrap",
           }}
         >
           <div
             role={sendError ? "alert" : undefined}
-            style={{ fontSize: 11, color: sendError ? "var(--red)" : "var(--ink-faint)", flex: 1, lineHeight: 1.5 }}
+            style={{ fontSize: 11, color: sendError ? "var(--red)" : "var(--ink-faint)", flex: 1, minWidth: 0, lineHeight: 1.5 }}
           >
             {sendError
               ? sendError
               : sendState === "sent"
                 ? "Sent. You can also copy the draft to send it again."
-                : onSend && channel === "email"
-                  ? "Send directly, or copy to send it your own way."
-                  : "Edit as needed before sending. Nothing is sent automatically."}
+                : editable && onSend
+                  ? "Click into the subject or message to edit, then Send. Nothing sends until you click Send."
+                  : onSend && channel === "email"
+                    ? "Send directly, or copy to send it your own way."
+                    : "Edit as needed before sending. Nothing is sent automatically."}
           </div>
 
-          {/* Send via Brevo — email tab only, opt-in (onSend). Manual buttons remain the fallback. */}
+          {/* Send — email tab only. In editable mode this is the V6 "Click to send". */}
           {onSend && channel === "email" && (
             <button
               type="button"
@@ -404,7 +460,7 @@ export function ContactDraftModal({
                 whiteSpace: "nowrap",
               }}
             >
-              {sendState === "sending" ? "Sending…" : sendState === "sent" ? "Sent ✓" : "Send via email"}
+              {sendState === "sending" ? "Sending…" : sendState === "sent" ? "Sent ✓" : editable ? sendLabel : "Send via email"}
             </button>
           )}
 
@@ -420,7 +476,7 @@ export function ContactDraftModal({
               fontWeight: 500,
               padding: "6px 12px",
               borderRadius: 100,
-              border: `1px solid ${copied ? "var(--green-border)" : "rgba(20,18,12,.18)"}`,
+              border: `1px solid ${copied ? "var(--green-border)" : "rgba(15,17,23,.18)"}`,
               background: copied ? "var(--green-light)" : "#fff",
               color: copied ? "var(--green)" : "var(--ink-soft)",
               cursor: "pointer",
@@ -470,3 +526,48 @@ export function ContactDraftModal({
     document.body
   );
 }
+
+// ── Editable send-preview styles (V6 §3) ────────────────────────────────────────
+const editLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  color: "var(--ink-faint)",
+  marginBottom: 4,
+};
+
+const editSubjectStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--ink)",
+  background: "#fff",
+  border: "1px solid var(--border-input)",
+  borderRadius: 8,
+  padding: "8px 11px",
+  outline: "none",
+};
+
+const editBodyStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: "var(--ink)",
+  lineHeight: 1.85,
+  whiteSpace: "pre-wrap",
+  background: "#fff",
+  borderRadius: 8,
+  padding: "1rem",
+  border: "1px solid var(--border-input)",
+  outline: "none",
+  minHeight: 120,
+};
+
+const readBodyStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: "var(--ink-soft)",
+  lineHeight: 1.85,
+  whiteSpace: "pre-wrap",
+  background: "#f8f7f4",
+  borderRadius: 8,
+  padding: "1rem",
+  border: "1px solid rgba(15,17,23,.10)",
+};

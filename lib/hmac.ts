@@ -135,3 +135,23 @@ export function verifyConsentToken(refCode: string, token: string): boolean {
     return false;
   }
 }
+
+// ── Practitioner-rating links ──────────────────────────────────────────────
+// V6 closed loop: the requestor (client/SPOC) rates the practitioner after a
+// completed session. The session row is the source of truth, so the link only
+// needs to securely identify it: /rate?ref=<session ref_code>&token=<sig>.
+
+export function signRatingUrl(refCode: string, baseUrl?: string): string {
+  const sig  = sign(`rating:${refCode}`);
+  const base = baseUrl ?? getBaseUrl();
+  return `${base}/rate?ref=${encodeURIComponent(refCode)}&token=${sig}`;
+}
+
+export function verifyRatingToken(refCode: string, token: string): boolean {
+  try {
+    const expected = sign(`rating:${refCode}`);
+    return timingSafeEqual(token, expected);
+  } catch {
+    return false;
+  }
+}

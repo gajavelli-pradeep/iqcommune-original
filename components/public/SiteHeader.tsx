@@ -72,7 +72,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
                   lineHeight: 1,
                 }}
               >
-                Where the insight quotient is unleashed
+                Where financial intelligence connects
               </span>
               </span>
             </span>
@@ -81,7 +81,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
               <span
                 className="site-header-badge"
                 style={{
-                  borderLeft: "1px solid rgba(20,18,12,0.18)",
+                  borderLeft: "1px solid rgba(15,17,23,0.18)",
                   paddingLeft: 14,
                   display: "flex",
                   flexDirection: "column",
@@ -112,7 +112,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
               aria-expanded={menuOpen}
               style={{
                 background: "none",
-                border: "1.5px solid rgba(20,18,12,0.15)",
+                border: "1.5px solid rgba(15,17,23,0.15)",
                 borderRadius: 9,
                 padding: "9px 11px",
                 cursor: "pointer",
@@ -152,7 +152,7 @@ export function SiteHeader({ logoHref = "/", badge, right, drawer }: SiteHeaderP
           >
             <div
               style={{
-                borderTop: "1px solid rgba(20,18,12,0.08)",
+                borderTop: "1px solid rgba(15,17,23,0.08)",
                 padding: "1.25rem 1.5rem 1.75rem",
                 display: "flex",
                 flexDirection: "column",

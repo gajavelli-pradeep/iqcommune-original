@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 .env*.local
 screenshots/
+
+# playwright / verification output
+test-results/
+playwright-report/
+v6-shots/
+v6-diff/

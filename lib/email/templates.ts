@@ -105,6 +105,29 @@ export function photoLinkReminderEmail(
   };
 }
 
+export function ratingRequestEmail(
+  requestorName: string,
+  practitionerName: string,
+  ratingUrl: string,
+  sessionRef: string
+): { subject: string; htmlContent: string } {
+  const first = esc(requestorName.split(" ")[0] || "there");
+  const prac = esc(practitionerName || "the practitioner");
+  // ratingUrl is HMAC-signed by the server — safe to embed as href.
+  return {
+    subject: escSubject(`iqcommune — How was your session? (${sessionRef})`),
+    htmlContent: `<div style="${BASE}">
+<p>Hi ${first},</p>
+<p>Thank you for hosting a session with ${prac}. We'd love a quick rating out of 5 — it takes less than a minute and helps us keep sessions high-quality.</p>
+<div style="text-align:center;margin:2rem 0">
+  <a href="${safeHref(ratingUrl)}" style="${GOLD_BTN}">Rate the session →</a>
+</div>
+<p style="font-size:12px;color:#9496a1">This link is personal to this session. If you have any questions, just reply to this email.</p>
+<p>Warm regards,<br/>iqcommune team</p>
+</div>`,
+  };
+}
+
 export function payoutReminderEmail(
   practitionerName: string,
   details: { invoiceRef: string; netAmount: string; module: string }
@@ -147,6 +170,22 @@ export function clientFollowUpEmail(
   };
 }
 
+export function sessionRequestReceivedEmail(
+  clientName: string,
+  topic: string,
+): { subject: string; htmlContent: string } {
+  const first = esc(clientName.split(" ")[0] || "there");
+  return {
+    subject: "iqcommune — your session request has been received",
+    htmlContent: `<div style="${BASE}">
+<p>Hi ${first},</p>
+<p>Thanks for reaching out to iqcommune — we've received your request for a session on <strong>${esc(topic)}</strong>.</p>
+<p>We'll get in touch within 2–3 working days to understand your group's needs a little better and take things forward from there.</p>
+<p>Regards,<br>The iqcommune Team</p>
+</div>`,
+  };
+}
+
 export function sessionCancelledEmail(
   clientName: string,
   session: { topic: string; sessionRef?: string },
@@ -165,7 +204,6 @@ export function sessionCancelledEmail(
 
 export function applicationConfirmation({
   name,
-  ref,
   modules,
   statusUrl,
 }: {
@@ -181,14 +219,14 @@ export function applicationConfirmation({
 </div>`
     : "";
   return {
-    subject: `iqcommune — Application received (${escSubject(ref)})`,
+    subject: "iqcommune — we've received your application",
     htmlContent: `<div style="${BASE}">
 <p>Hi ${first},</p>
-<p>Thank you for applying to become an iqcommune practitioner. We've received your application and will review it shortly.</p>
-<p><strong>Modules applied for:</strong><br>${modules.map(esc).join("<br>")}</p>
+<p>Thanks for applying to join the iqcommune practitioner network — we've received your application.</p>
+<p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.</p>
+<p style="font-size:13px;color:#4a4d5c"><strong>Modules applied for:</strong><br>${modules.map(esc).join("<br>")}</p>
 ${statusBtn}
-<p>We'll be in touch within 3–5 working days. For questions, email <a href="mailto:practitioners@iqcommune.com">practitioners@iqcommune.com</a></p>
-<p>Warm regards,<br>iqcommune team</p>
+<p>Regards,<br>The iqcommune Team</p>
 </div>`,
   };
 }

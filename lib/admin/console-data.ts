@@ -16,8 +16,14 @@ export type PractitionerRow = Database["public"]["Tables"]["practitioners"]["Row
 };
 export type SessionRow = Database["public"]["Tables"]["sessions"]["Row"] & {
   practitioner: { name: string; email: string } | null;
+  // V6 Session Details: the Requestor (SPOC) column + the "Send email" rating
+  // request both come from the linked session_request (sessions.request_id).
+  requestor?: { name: string; email: string; org: string | null } | null;
   session_feedback?: Array<{ id: string; overall_rating: number | null }> | null;
   photos_submitted?: boolean;
+  // V6 §21: Net payout is one number from one source — the Session Consent
+  // (confirmation) record. Null until a confirmation exists for the session.
+  net_payout?: number | null;
   // Derived: the id of this session's payout (payouts.session_id → sessions.id),
   // if one exists — drives the "View payout" cross-link. Null = no payout yet.
   payout_id?: string | null;
@@ -84,10 +90,25 @@ export async function getConsoleData(): Promise<ConsoleData> {
   for (const p of (payouts.data ?? []) as Array<{ id: string; session_id: string | null }>) {
     if (p.session_id) payoutIdBySession[p.session_id] = p.id;
   }
+  // Net payout per session from its confirmation (single source, V6 §21).
+  // confirmations are ordered issued_on desc, so the first seen is the latest.
+  const netBySession: Record<string, number> = {};
+  for (const c of (confirmationsRes.data ?? []) as Array<{ session_id: string | null; net_amount: number }>) {
+    if (c.session_id && !(c.session_id in netBySession)) netBySession[c.session_id] = c.net_amount;
+  }
+  // Requestor (SPOC) per session — joined in JS from the already-fetched requests
+  // (no FK relation exists between sessions.request_id and session_requests, so a
+  // PostgREST embed fails; this mirrors the session_feedback JS-join above).
+  const requestorById: Record<string, { name: string; email: string; org: string | null }> = {};
+  for (const r of (requests.data ?? []) as Array<{ id: string; name: string; email: string; org: string | null }>) {
+    requestorById[r.id] = { name: r.name, email: r.email, org: r.org };
+  }
   const sessionsWithFeedback: SessionRow[] = (sessions.data ?? []).map((s) => ({
     ...s,
     session_feedback: feedbackBySession[s.id] ? [feedbackBySession[s.id]] : [],
     photos_submitted: s.ref_code ? refsWithPhotos.has(s.ref_code) : false,
+    net_payout: netBySession[s.id] ?? null,
+    requestor: s.request_id ? requestorById[s.request_id] ?? null : null,
     payout_id: payoutIdBySession[s.id] ?? null,
   })) as SessionRow[];
 

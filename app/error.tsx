@@ -59,7 +59,7 @@ export default function Error({
           style={{
             background: "var(--surface-soft)",
             color: "var(--ink-soft)",
-            border: "1px solid rgba(20,18,12,.12)",
+            border: "1px solid rgba(15,17,23,.12)",
             borderRadius: 8,
             padding: "10px 20px",
             fontSize: 14,
