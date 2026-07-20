@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ContactDraftModal } from "@/components/admin/ContactDraftModal";
 import { useSendWithUndo } from "@/components/admin/useSendWithUndo";
 import { sendMessageRequest } from "@/lib/admin/send-message";
-import { photoGuideEmailBody, photoGuideWaBody } from "@/lib/photo-guide";
+import { photoGuideEmailBody, photoGuideWaBody, PHOTO_SHOT_LIST } from "@/lib/photo-guide";
 
 interface GuideSession {
   id: string;
@@ -42,6 +42,7 @@ export function PhotoGuideSection({ sessions }: { sessions: GuideSession[] }) {
   const eligible = sessions.filter((s) => s.status === "Upcoming");
   const [sessionId, setSessionId] = useState("");
   const [draftOpen, setDraftOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [toast, setToast] = useState("");
   const sendUndo = useSendWithUndo();
 
@@ -114,7 +115,81 @@ export function PhotoGuideSection({ sessions }: { sessions: GuideSession[] }) {
         >
           Send photo guide email
         </button>
+        <button
+          type="button"
+          style={{ ...btnStyle, opacity: selected ? 1 : 0.5, cursor: selected ? "pointer" : "not-allowed" }}
+          disabled={!selected}
+          onClick={() => setGuideOpen(true)}
+        >
+          Preview photo request guide
+        </button>
       </div>
+
+      {/* Photo request guide — the mockup's preview surface: session details for
+          reference plus the shot guide, with the same two actions in its footer. */}
+      {guideOpen && selected && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo request guide"
+          onClick={() => setGuideOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 12, width: "100%", maxWidth: 560, overflow: "hidden" }}>
+            <div style={{ background: "var(--ink)", color: "#fff", padding: "0.9rem 1.25rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Photo request guide — {selected.ref_code}</div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>Session details + a shot guide to send the practitioner</div>
+              </div>
+              <button type="button" aria-label="Close" onClick={() => setGuideOpen(false)} style={{ background: "none", border: "none", color: "#fff", fontSize: 15, cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ padding: "1.1rem 1.25rem", maxHeight: "70vh", overflowY: "auto" }}>
+              <div style={{ background: "var(--surface-soft)", borderRadius: 8, padding: "12px 14px", marginBottom: 14, fontSize: 12.5 }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink-faint)", fontWeight: 600, marginBottom: 8 }}>
+                  Session details — for reference when you message the practitioner
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
+                  {([
+                    ["Practitioner", name || "—"],
+                    ["Module", selected.module],
+                    ["Session date", selected.session_date ? new Date(selected.session_date).toLocaleDateString("en-IN") : "—"],
+                    ["Venue", selected.venue || "—"],
+                  ] as const).map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ color: "var(--ink-faint)", fontSize: 10.5 }}>{label}</div>
+                      <div style={{ fontWeight: 500, color: "var(--ink)" }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>
+                Shot guide — what to ask the practitioner to capture
+              </div>
+              <ol style={{ margin: 0, paddingLeft: "1.1rem", display: "grid", gap: 6 }}>
+                {PHOTO_SHOT_LIST.map((s) => (
+                  <li key={s.title} style={{ fontSize: 12.5, color: "var(--ink)" }}>
+                    <span style={{ fontWeight: 500 }}>{s.title}</span>
+                    <span style={{ color: "var(--ink-muted)" }}> — {s.hint}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", padding: "0.9rem 1.25rem", borderTop: "1px solid rgba(15,17,23,.10)" }}>
+              <button type="button" style={btnStyle} onClick={() => { setGuideOpen(false); setDraftOpen(true); }}>
+                Draft email with guide
+              </button>
+              <button
+                type="button"
+                style={{ ...btnStyle, background: "var(--ink)", color: "#fff", border: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+                onClick={() => window.open("/api/admin/photo-guide", "_blank", "noopener,noreferrer")}
+              >
+                <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                Download guide (PDF)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ContactDraftModal
         open={draftOpen}

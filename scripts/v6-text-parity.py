@@ -11,30 +11,23 @@ FILES = [(f"{MOCK}/iqcommune-main-landing-page.html","landing"),
 # ── Documented exclusions: strings that SHOULD NOT exist in the codebase ──────────
 # Each is a deliberate divergence or mockup-only content, not an unmet requirement.
 EXCLUDE_SUBSTR = [
-  # 1. Mockup hardcodes a year; the live footer renders it dynamically (copying the
-  #    literal would be a bug that silently goes stale).
+  # 1. The mockup hardcodes the year; the live footer renders it dynamically. The rest
+  #    of the sentence ("iqcommune. All rights reserved.") IS cloned verbatim — copying
+  #    the literal "2025" would be a bug that silently goes stale.
   "2025 iqcommune. All rights reserved",
-  # 2. Mockup seed/demo data, not application copy.
+  # 2. Mockup seed/demo data (a sample practitioner identity line), not app copy. The
+  #    live page renders the same structure from the signed link's params.
   "Equity Analyst", "Kotak Securities",
-  # 3. The landing mockup embeds a post-session photo modal whose openPostSession()
-  #    is never called anywhere in that file (dead there). The live app ships this
-  #    copy as the real /submit-photos page, which is measured separately below.
+  # 3. The landing mockup embeds a post-session photo-upload modal that its own
+  #    openPostSession() never calls — it is dead in the client's prototype. The live app
+  #    ships this entire flow as the real /submit-photos page (measured separately at
+  #    100%), reached by an HMAC-signed link. Cloning the modal onto the public marketing
+  #    page would create a SECOND, unreachable copy AND an unauthenticated upload surface
+  #    (the live submit route requires a signed `sig`). Not cloned for that reason.
   "Candid ", "Front-left corner", "Front-right corner", "Group photo ",
   "From trainer's position", "Share your session photos", "Photos received",
-  "Photos from sessions are displayed", "Date of session", "Organisation / group name",
-  # 4. Mockup surfaces the live app implements differently: a photo *selection* modal
-  #    (live downloads the set directly) and a photo-guide *preview* modal (live uses
-  #    a PDF + an editable email draft).
-  "Select the ones you want to download", "Photo request guide",
-  "Session details + a shot guide", "Session details — for reference",
-  "Shot guide — what to ask", "Draft email with guide",
-  # 5. Decrypted PAN/GST/payment/invoice rows deliberately not surfaced (decision D2).
-  "Not applicable / not provided", "(differs from name)",
-  # 6. Label span belonging to the dead landing photo modal in (3) above.
-  "for tagging",
-  # 7. Footer button of the photo-guide *preview* modal in (4). The picker's own
-  #    "Download photo guide (PDF)" IS implemented and is matched.
-  "Download guide (PDF)",
+  "Photos from sessions are displayed", "Date of session",
+  "Organisation / group name", "for tagging",
 ]
 
 blob=[]

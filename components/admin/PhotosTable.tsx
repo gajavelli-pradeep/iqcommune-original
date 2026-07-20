@@ -8,7 +8,6 @@ import { RowActionsInline } from "@/components/admin/RowActionsInline";
 import { useDateFilter } from "@/lib/admin/use-date-filter";
 import { initials } from "@/lib/format";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { downloadPhotoSet } from "@/lib/download-photos";
 
 interface PhotoSubmission {
   id: string;
@@ -120,12 +119,14 @@ export function PhotosTable({
 }) {
   const [data, setData] = useState(initialData);
   const [toast, setToast] = useState("");
-  const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
+  const [downloadBusyId] = useState<string | null>(null);
   // V6 §10: admin uploads photos directly for a Completed session (co-equal path).
   const [uploadBusyId, setUploadBusyId] = useState<string | null>(null);
   // Emails the practitioner their signed upload link — the entry point for the
   // practitioner-uploads-their-own-photos loop the photo-guide email promises.
   const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
+  const [picker, setPicker] = useState<{ row: PhotoSubmission; urls: string[]; downloadUrls: string[]; loading: boolean } | null>(null);
+  const [chosen, setChosen] = useState<Set<number>>(new Set());
   const uploadTargetRef = useRef<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -218,14 +219,26 @@ export function PhotosTable({
 
   // Download every photo in the set. Reports a partial save rather than letting
   // files go missing quietly — the browser can still refuse a save.
-  async function downloadSet(p: PhotoSubmission) {
-    if (downloadBusyId) return; // guard against a second concurrent request
-    setDownloadBusyId(p.id);
-    setToast("Preparing download…");
-    const { ok, error } = await downloadPhotoSet(p.id);
-    setDownloadBusyId(null);
-    setToast(ok ? "Photos downloaded" : (error ?? "Download failed — please retry."));
-    setTimeout(() => setToast(""), 3500);
+  // V6 photo modal: pick which shots to download rather than always taking the set.
+  async function openPicker(p: PhotoSubmission) {
+    setPicker({ row: p, urls: [], downloadUrls: [], loading: true });
+    try {
+      const res = await fetch(`/api/admin/photos/${p.id}/view`);
+      const body = (await res.json().catch(() => ({}))) as { urls?: string[]; downloadUrls?: string[] };
+      const urls = body.urls ?? [];
+      setPicker({ row: p, urls, downloadUrls: body.downloadUrls ?? urls, loading: false });
+      setChosen(new Set(urls.map((_, i) => i)));   // default: everything selected
+    } catch {
+      setPicker(null);
+      setToast("Could not load the photos — please retry.");
+      setTimeout(() => setToast(""), 3500);
+    }
+  }
+
+  function downloadChosen() {
+    if (!picker) return;
+    picker.downloadUrls.forEach((u, i) => { if (chosen.has(i)) window.open(u, "_blank", "noopener,noreferrer"); });
+    setPicker(null);
   }
 
 
@@ -413,7 +426,7 @@ export function PhotosTable({
               </td>
               {/* Download Photos */}
               <td style={TD}>
-                <button type="button" onClick={() => void downloadSet(p)} disabled={downloadBusyId === p.id} style={{ ...colBtn, opacity: downloadBusyId === p.id ? 0.6 : 1 }}>
+                <button type="button" onClick={() => void openPicker(p)} disabled={downloadBusyId === p.id} style={{ ...colBtn, opacity: downloadBusyId === p.id ? 0.6 : 1 }}>
                   <DownloadIcon />{downloadBusyId === p.id ? "Downloading…" : "Download"}
                 </button>
               </td>
@@ -460,6 +473,64 @@ export function PhotosTable({
           }}
         >
           {toast}
+        </div>
+      )}
+
+      {/* Photo picker — mockup's photo modal: choose which shots to download. */}
+      {picker && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Photos for ${picker.row.session_ref}`}
+          onClick={() => setPicker(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 12, width: "100%", maxWidth: 620, overflow: "hidden" }}>
+            <div style={{ background: "var(--ink)", color: "#fff", padding: "0.9rem 1.25rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{picker.row.practitioner_name} · {picker.row.session_ref}</div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>Select the ones you want to download</div>
+              </div>
+              <button type="button" aria-label="Close" onClick={() => setPicker(null)} style={{ background: "none", border: "none", color: "#fff", fontSize: 15, cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ padding: "1.1rem 1.25rem", maxHeight: "62vh", overflowY: "auto" }}>
+              {picker.loading ? (
+                <div style={{ fontSize: 13, color: "var(--ink-faint)" }}>Loading photos…</div>
+              ) : picker.urls.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--ink-faint)" }}>No photos found for this submission.</div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+                  {picker.urls.map((u, i) => (
+                    <label key={u} style={{ position: "relative", cursor: "pointer", display: "block" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={u} alt={`Photo ${i + 1}`} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, border: chosen.has(i) ? "2px solid var(--gold)" : "1px solid var(--border-strong)", display: "block" }} />
+                      <input
+                        type="checkbox"
+                        checked={chosen.has(i)}
+                        onChange={() => setChosen((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })}
+                        style={{ position: "absolute", top: 6, left: 6, width: 18, height: 18, accentColor: "var(--gold)", cursor: "pointer" }}
+                        aria-label={`Select photo ${i + 1}`}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", padding: "0.9rem 1.25rem", borderTop: "1px solid rgba(15,17,23,.10)" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>{chosen.size} of {picker.urls.length} selected</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" onClick={() => setChosen(new Set(picker.urls.map((_, i) => i)))} style={colBtn}>Select all</button>
+                <button
+                  type="button"
+                  onClick={downloadChosen}
+                  disabled={chosen.size === 0}
+                  style={{ ...colBtn, background: "var(--ink)", color: "#fff", border: "none", opacity: chosen.size === 0 ? 0.5 : 1 }}
+                >
+                  Download selected
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

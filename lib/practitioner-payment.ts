@@ -8,6 +8,10 @@ const ENCRYPTED_PAYMENT_FIELDS = [
   "bank_name",
   "bank_account",
   "ifsc",
+  // Tax identity — the V6 practitioner profile shows PAN / GST / Invoice name, and
+  // Finance needs the plaintext to raise invoices. Server-side + admin-gated, same
+  // as the bank fields above.
+  "pan_gst",
   "family_upi",
   "family_bank",
   "family_ifsc",

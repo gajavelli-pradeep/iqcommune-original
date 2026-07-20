@@ -612,6 +612,40 @@ export function PractitionerTable({
                                   <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 13, minWidth: 0, overflowWrap: "anywhere" }}>{value}</span>
                                 </div>
                               ))}
+                              {/* Tax + payout identity (V6 profile). Admin-gated: these are
+                                  decrypted server-side and Finance needs them to raise invoices. */}
+                              {!readOnly && (() => {
+                                const [pan, gst] = (p.pan_gst ?? "").split("/").map((x) => x.trim());
+                                const invoiceName = p.bank_name || p.name;
+                                const payment = p.upi_id
+                                  ? `UPI: ${p.upi_id}`
+                                  : p.bank_account
+                                  ? `Bank: ${p.bank_account}`
+                                  : "";
+                                const faint: React.CSSProperties = { color: "var(--ink-faint)", fontStyle: "italic" };
+                                return (
+                                  <>
+                                    {([
+                                      ["Payment", payment || <span style={faint}>Not provided</span>],
+                                      ["PAN", pan || <span style={faint}>Not provided</span>],
+                                      ["GST", gst || <span style={faint}>Not applicable / not provided</span>],
+                                      ["Invoice name", (
+                                        <>
+                                          {invoiceName}
+                                          {p.bank_name && p.bank_name !== p.name && (
+                                            <span style={{ color: "var(--gold-dark)", fontSize: 10 }}> (differs from name)</span>
+                                          )}
+                                        </>
+                                      )],
+                                    ] as const).map(([label, value]) => (
+                                      <div key={label} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: "0.45rem" }}>
+                                        <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>{label}</span>
+                                        <span style={{ color: "var(--ink)", fontWeight: 500, fontSize: 12, minWidth: 0, overflowWrap: "anywhere" }}>{value}</span>
+                                      </div>
+                                    ))}
+                                  </>
+                                );
+                              })()}
                               <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: "0.45rem" }}>
                                 <span style={{ color: "var(--ink-faint)", width: 110, flexShrink: 0, fontSize: 12 }}>Status</span>
                                 <StatusPill status={p.status} />
