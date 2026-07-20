@@ -123,8 +123,25 @@ export function PhotosTable({
   const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
   // V6 §10: admin uploads photos directly for a Completed session (co-equal path).
   const [uploadBusyId, setUploadBusyId] = useState<string | null>(null);
+  // Emails the practitioner their signed upload link — the entry point for the
+  // practitioner-uploads-their-own-photos loop the photo-guide email promises.
+  const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
   const uploadTargetRef = useRef<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  async function sendUploadLink(sessionId: string, sessionRef: string) {
+    setLinkBusyId(sessionId);
+    try {
+      const res = await fetch(`/api/admin/sessions/${sessionId}/send-photo-reminder`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      setToast(res.ok ? `Upload link sent for ${sessionRef}` : (body.error ?? "Could not send the upload link."));
+    } catch {
+      setToast("Network error — the upload link was not sent.");
+    } finally {
+      setLinkBusyId(null);
+      setTimeout(() => setToast(""), 4000);
+    }
+  }
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const [internalFilter, setInternalFilter] = useState<StatusFilter>("All");
@@ -322,9 +339,19 @@ export function PhotosTable({
             <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
             {/* Days left */}
             <td style={{ ...TD, color: "var(--ink-faint)" }}>—</td>
-            {/* Actions — V6: pending (no upload) rows show just a dash */}
+            {/* Actions — send the practitioner their signed upload link (the mockup
+                shows a dash here, but without this the practitioner-upload loop has
+                no entry point at all and the photo-guide email promises the link). */}
             <td style={{ ...TD, whiteSpace: "nowrap", textAlign: "right" }}>
-              <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>—</span>
+              <button
+                type="button"
+                onClick={() => sendUploadLink(s.id, s.session_ref)}
+                disabled={linkBusyId === s.id}
+                title="Email this practitioner their photo-upload link"
+                style={{ ...colBtn, opacity: linkBusyId === s.id ? 0.6 : 1 }}
+              >
+                {linkBusyId === s.id ? "Sending…" : "Send link"}
+              </button>
             </td>
           </tr>
         ))}

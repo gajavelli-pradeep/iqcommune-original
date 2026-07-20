@@ -262,7 +262,9 @@ export function SessionTable({
                     : <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>—</span>}
                 </td>
                 <td style={TD}>
-                  {readOnly ? (
+                  {/* A terminal status (e.g. Cancelled) isn't in the forward-only option
+                      list — render it as a pill so the cell can't misreport the DB value. */}
+                  {readOnly || !(SESSION_STATUSES as readonly string[]).includes(s.status) ? (
                     <StatusPill status={s.status} />
                   ) : (
                     <select

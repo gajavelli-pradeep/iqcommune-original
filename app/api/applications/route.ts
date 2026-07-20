@@ -63,7 +63,10 @@ export async function POST(req: NextRequest) {
       teach_freq:       d.teachFreq,
       why:              d.why,
       // payment / tax fields encrypted at rest
-      pan_gst:          encryptOptional(d.panGst),
+      // V6 sends PAN + GST separately; combine into the existing single column.
+      pan_gst:          encryptOptional(
+                          [d.pan?.trim(), d.gst?.trim()].filter(Boolean).join(" / ") || d.panGst,
+                        ),
       upi_id:           encryptOptional(d.upiId),
       bank_name:        encryptOptional(d.bankAccountName),
       bank_account:     encryptOptional(d.bankAccount),

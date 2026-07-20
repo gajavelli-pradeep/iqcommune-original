@@ -3,7 +3,7 @@ import { PhotoSubmissionForm } from "@/components/public/PhotoSubmissionForm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Submit Session Photos",
+  title: { absolute: "iqcommune — Post-Session Photo Submission" },
   robots: { index: false, follow: false },
 };
 

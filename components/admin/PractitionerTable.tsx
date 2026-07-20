@@ -140,6 +140,29 @@ We truly appreciate your interest and wish you the best.
 — The iqcommune Team`;
 }
 
+function buildDeactivationEmail(name: string): string {
+  return `Dear ${name},
+
+We're writing to let you know that your iqcommune practitioner profile has been set to inactive, so you won't be considered for new session matches for now.
+
+Nothing about your completed sessions or records changes, and we can reactivate your profile at any time — just reply to this email if you'd like to pick things back up.
+
+Thank you for the sessions you've delivered with us.
+
+Warm regards,
+The iqcommune Team`;
+}
+
+function buildDeactivationWA(name: string): string {
+  return `Hi ${name},
+
+Your iqcommune practitioner profile has been set to *inactive*, so you won't be matched to new sessions for now. Your past sessions and records are unchanged.
+
+Reply any time if you'd like us to reactivate it.
+
+— The iqcommune Team`;
+}
+
 function buildGeneralEmail(name: string): string {
   return `Dear ${name},
 
@@ -205,7 +228,9 @@ export function PractitionerTable({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<{ url: string; refCode: string; practitioner: Practitioner } | null>(null);
   const [toast, setToast] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  // confirmLabel matters: ConfirmDialog defaults to "Delete", which is plainly wrong
+  // (and alarming) on a reversible action like Deactivate.
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; confirmLabel?: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const undo = useUndoToast();
 
@@ -268,6 +293,11 @@ export function PractitionerTable({
       subject = "Update on your iqcommune practitioner application";
       emailBody = buildRejectEmail(p.name);
       waBody = buildRejectWA(p.name);
+    } else if (statusForDraft === "Deactivated") {
+      title = `Deactivation: ${p.name}`;
+      subject = "Your iqcommune practitioner profile has been set to inactive";
+      emailBody = buildDeactivationEmail(p.name);
+      waBody = buildDeactivationWA(p.name);
     } else if (statusForDraft === "agreement") {
       // Op-procedure Part 1 step 4: send the prefilled agreement for signing.
       title = `Agreement: ${p.name}`;
@@ -281,9 +311,10 @@ export function PractitionerTable({
       waBody = buildGeneralWA(p.name);
     }
     const kind =
-      statusForDraft === "Empanelled" ? "welcome-practitioner" :
-      statusForDraft === "Rejected"   ? "reject-practitioner" :
-      statusForDraft === "agreement"  ? "agreement-covering" :
+      statusForDraft === "Empanelled"  ? "welcome-practitioner" :
+      statusForDraft === "Rejected"    ? "reject-practitioner" :
+      statusForDraft === "Deactivated" ? "deactivate-practitioner" :
+      statusForDraft === "agreement"   ? "agreement-covering" :
       "practitioner-message";
     setDraft({
       open: true,
@@ -706,11 +737,19 @@ export function PractitionerTable({
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        lastFocusRef.current = e.currentTarget;
                                         setConfirmDialog({
                                           open: true,
                                           title: `Deactivate ${p.name}`,
-                                          description: "This parks the practitioner as Deactivated and keeps their full history. You can Reactivate them at any time to restore their current status.",
-                                          onConfirm: () => { closeConfirm(); lifecycle(p.id, "deactivate"); },
+                                          description: "This parks the practitioner as Deactivated and keeps their full history, then opens the deactivation message so you can review and send it. You can Reactivate them at any time.",
+                                          confirmLabel: "Deactivate",
+                                          onConfirm: () => {
+                                            closeConfirm();
+                                            // The label promises a message — open the editable
+                                            // draft as well as flipping the status.
+                                            openDraft(p, "Deactivated");
+                                            void lifecycle(p.id, "deactivate");
+                                          },
                                         });
                                       }}
                                       style={{ ...ghostBtn, borderRadius: 100, color: "var(--red)" }}
@@ -912,6 +951,7 @@ export function PractitionerTable({
         open={confirmDialog.open}
         title={confirmDialog.title}
         description={confirmDialog.description}
+        confirmLabel={confirmDialog.confirmLabel}
         onConfirm={confirmDialog.onConfirm}
         onCancel={closeConfirm}
       />

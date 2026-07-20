@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 
 // Role-neutral: the tab title is static, but the invite may be for any tier.
 export const metadata: Metadata = {
-  title: "Join the console — IQCommune",
+  title: { absolute: "iqcommune — Set Up Your Account" },
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";

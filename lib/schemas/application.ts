@@ -51,7 +51,12 @@ export const ApplicationSchema = z
     consentEmployer: z.literal(true, { message: "Required" }),
     // payment — require either UPI or full bank details (Gap 44)
     // Tax identity for payouts/invoicing: PAN, or GST number if registered.
+    // V6 collects PAN and GST separately; they are persisted into the existing
+    // single encrypted `pan_gst` column (no migration). `panGst` stays for legacy
+    // payloads.
     panGst: z.string().optional(),
+    pan: z.string().optional(),
+    gst: z.string().optional(),
     upiId: z.string().optional(),
     bankAccountName: z.string().optional(),
     bankAccount: z.string().optional(),

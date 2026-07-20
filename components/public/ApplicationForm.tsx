@@ -397,15 +397,6 @@ export function ApplicationForm() {
       <span style={sectionLabelStyle}>Payment preferences</span>
 
       <div style={sectionStyle}>
-        {/* PAN / GST — tax identity for payouts & invoicing (encrypted at rest) */}
-        <Field
-          label="PAN / GST (if applicable)"
-          hint="Your PAN, or GST number if you're GST-registered. Kept strictly confidential."
-          error={errors.panGst?.message}
-        >
-          <input {...register("panGst")} style={inputStyle} placeholder="ABCDE1234F" />
-        </Field>
-
         {/* Gap 40: no introductory paragraph */}
         {/* Gap 32: 'Your UPI ID' with faint qualifier, placeholder 'yourname@upi', hint */}
         <div>
@@ -449,6 +440,25 @@ export function ApplicationForm() {
           </Field>
           <Field label="IFSC code" error={errors.ifsc?.message}>
             <input {...register("ifsc")} style={inputStyle} placeholder="HDFC0001234" />
+          </Field>
+        </div>
+
+        {/* V6: PAN and GST are separate fields, after the bank details (empanelment
+            mockup L1124-1136). Tax identity for payouts & invoicing (encrypted at rest). */}
+        <div style={rowTwo}>
+          <Field label="PAN" hint="Kept strictly confidential." error={errors.pan?.message}>
+            <input
+              {...register("pan")}
+              style={{ ...inputStyle, textTransform: "uppercase" }}
+              placeholder="ABCDE1234F"
+            />
+          </Field>
+          <Field label="GST (if applicable)" error={errors.gst?.message}>
+            <input
+              {...register("gst")}
+              style={{ ...inputStyle, textTransform: "uppercase" }}
+              placeholder="22ABCDE1234F1Z5"
+            />
           </Field>
         </div>
 

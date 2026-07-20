@@ -238,6 +238,25 @@ a {
   }
 }
 
+/* Tap-target floor for compact controls the form-field rule above doesn't reach.
+   (Gallery dots are intentionally 44px tall but narrow — 7 full-width dots cannot
+   fit a 320px row; that trade-off is documented in GallerySection.) */
+@media (any-pointer: coarse) {
+  .nav-hamburger { min-width: 44px; min-height: 44px; }
+  .iq-tap        { min-height: 44px; }
+}
+
+/* 320px hero clipping: `.hero-left` is a grid item, so its default `min-width:auto`
+   sized the track to the h1's min-content (the longest word) — 314px inside a 256px
+   content box, which clipped the heading and sub-copy. Let the track shrink and cap
+   the heading so the words still fit without mid-word breaks. */
+@media (max-width: 380px) {
+  .hero-inner { grid-template-columns: minmax(0, 1fr) !important; }
+  .hero-left  { min-width: 0 !important; }
+  .hero-left h1 { font-size: clamp(1.5rem, 7.4vw, 1.95rem) !important; overflow-wrap: break-word; }
+  .hero-left p  { overflow-wrap: break-word; }
+}
+
 /* SiteHeader lockup: the wordmark tagline + optional badge are the widest items
    in the row and overflow the fixed 68px header below ~600px (the one P1 hitting
    home, practitioners, and status at once). Drop them and let the logo shrink so

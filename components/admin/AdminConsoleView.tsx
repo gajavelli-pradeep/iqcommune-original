@@ -1039,41 +1039,39 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   communication_address: p.communication_address, tshirt_size: p.tshirt_size,
                 }))}
               />
-              {/* Team & Access (V6) — table renders for every role; invite box +
-                  management stay Global-Admin only. Bare on the soft page (no card). */}
+              {/* Team & Access — bare on the soft page (no card). Global-Admin only:
+                  GET /api/admin/global/users is requireGlobalAdmin, so rendering this for
+                  lower roles only yields a 403 "Failed to load team." banner. Showing the
+                  table to Admin/User (as the mockup does) needs an auth-model decision
+                  first — see D11 in V6-FRESH-CLONE-MASTER.md. */}
+              {isGlobalAdmin && (
               <div style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Team &amp; Access</div>
                     <div style={{ fontSize: 12.5, color: "var(--ink-muted)", marginTop: 3, maxWidth: 520, lineHeight: 1.6 }}>
-                      Everyone below can sign in to this console. Their role determines what they can do once inside.
-                      {isGlobalAdmin && (
-                        <>
-                          {" "}
-                          <button
-                            onClick={() => setTeamReloadKey((k) => k + 1)}
-                            style={{ ...ghostBtnStyle, fontSize: 11, padding: "3px 10px", verticalAlign: "middle" }}
-                          >
-                            Check for updates
-                          </button>
-                        </>
-                      )}
+                      Everyone below can sign in to this console. Their role determines what they can do once inside.{" "}
+                      <button
+                        onClick={() => setTeamReloadKey((k) => k + 1)}
+                        style={{ ...ghostBtnStyle, fontSize: 11, padding: "3px 10px", verticalAlign: "middle" }}
+                      >
+                        Check for updates
+                      </button>
                     </div>
                   </div>
-                  {isGlobalAdmin && (
-                    <button
-                      onClick={() => setCredentialsOpen(true)}
-                      style={{ ...primaryBtnStyle, flexShrink: 0 }}
-                      aria-label="Open team and access management"
-                    >
-                      Manage team
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setCredentialsOpen(true)}
+                    style={{ ...primaryBtnStyle, flexShrink: 0 }}
+                    aria-label="Open team and access management"
+                  >
+                    Manage team
+                  </button>
                 </div>
                 <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
                 {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
-                {isGlobalAdmin && <InviteTeamMember />}
+                <InviteTeamMember />
               </div>
+              )}
 
               {/* Roles & Permissions (V6) — Global-Admin only, same as Activity. */}
               {isGlobalAdmin && <RolesPermissions />}

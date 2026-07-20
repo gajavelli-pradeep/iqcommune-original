@@ -148,7 +148,8 @@ export function RequestTable({
   const [draft, setDraft] = useState<DraftState>({ open: false });
   const sendUndo = useSendWithUndo();
   const [deleteFailedId, setDeleteFailedId] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  // confirmLabel matters: ConfirmDialog defaults to "Delete", which misdescribes a cancel.
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; confirmLabel?: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog((d) => ({ ...d, open: false }));
   const undo = useUndoToast();
 
@@ -258,9 +259,10 @@ export function RequestTable({
   // filled after the offline call. Setting the request to Confirmed creates the
   // session from these (no date — scheduled later). sessionRefById holds the ref
   // returned by /assign for the "→ Session" line.
-  const [assignSel, setAssignSel] = useState<Record<string, string>>({}); // requestId -> practitionerId
-  const [assignPay, setAssignPay] = useState<Record<string, string>>({}); // requestId -> gross payout
-  const [assignBusy, setAssignBusy] = useState<string | null>(null);      // requestId being confirmed
+  const [assignSel, setAssignSel] = useState<Record<string, string>>({});  // requestId -> practitionerId
+  const [assignPay, setAssignPay] = useState<Record<string, string>>({});  // requestId -> gross payout
+  const [assignDate, setAssignDate] = useState<Record<string, string>>({}); // requestId -> session date (optional)
+  const [assignBusy, setAssignBusy] = useState<string | null>(null);       // requestId being confirmed
   const [sessionRefById, setSessionRefById] = useState<Record<string, string>>({});
 
   const assignAndConfirm = async (r: SessionRequest): Promise<boolean> => {
@@ -275,7 +277,14 @@ export function RequestTable({
       const res = await fetch(`/api/admin/session-requests/${r.id}/assign`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ practitionerId, payoutAmount: payout, venue: r.venue?.trim() || undefined }),
+        body: JSON.stringify({
+          practitionerId,
+          payoutAmount: payout,
+          // Optional: when blank the server schedules a placeholder date the admin
+          // can correct later, so the real date is never unsettable.
+          ...(/^\d{4}-\d{2}-\d{2}$/.test(assignDate[r.id] ?? "") ? { sessionDate: assignDate[r.id] } : {}),
+          venue: r.venue?.trim() || undefined,
+        }),
       });
       if (res.ok) {
         const { sessionRef } = (await res.json().catch(() => ({}))) as { sessionRef?: string };
@@ -323,6 +332,7 @@ export function RequestTable({
           open: true,
           title: `Cancel session for ${r.name}?`,
           description: "This cancels the confirmed request and its linked session, and emails the client to let them know. The session drops out of the consent, photos and payout pipeline.",
+          confirmLabel: "Cancel session",
           onConfirm: () => { closeConfirm(); cancelRequest(r); },
         });
       } else { void updateStatus(r.id, "Cancelled"); }
@@ -563,8 +573,18 @@ export function RequestTable({
                                 placeholder="e.g. 8000"
                                 style={assignField}
                               />
+                              <label style={assignLabel}>
+                                Session date{" "}
+                                <span style={{ color: "var(--ink-faint)", fontWeight: 400 }}>(optional — can be set later)</span>
+                              </label>
+                              <input
+                                type="date"
+                                value={assignDate[r.id] ?? ""}
+                                onChange={(e) => setAssignDate((m) => ({ ...m, [r.id]: e.target.value }))}
+                                style={assignField}
+                              />
                               <div style={{ fontSize: 10.5, color: "var(--ink-faint)", lineHeight: 1.5 }}>
-                                Set the status to &quot;Confirmed&quot; on the right to create the session.
+                                Set the status to &quot;Matched&quot; on the right to create the session.
                               </div>
                             </div>
                           )}
@@ -724,6 +744,7 @@ export function RequestTable({
         open={confirmDialog.open}
         title={confirmDialog.title}
         description={confirmDialog.description}
+        confirmLabel={confirmDialog.confirmLabel}
         onConfirm={confirmDialog.onConfirm}
         onCancel={closeConfirm}
       />

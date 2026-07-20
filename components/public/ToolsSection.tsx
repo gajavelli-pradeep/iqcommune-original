@@ -562,6 +562,7 @@ function PortfolioScorecard() {
             <button
               key={p.label}
               onClick={() => handleProfile(i)}
+              className="iq-tap"
               style={{
                 fontSize: 10,
                 padding: "3px 9px",

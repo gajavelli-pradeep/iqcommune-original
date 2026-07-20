@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ApplicationForm } from "@/components/public/ApplicationForm";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
+import { PerksList, type Perk } from "@/components/public/PerksList";
 import { PractitionerNav } from "@/components/public/PractitionerNav";
 import { SiteFooter } from "@/components/public/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Join as a Practitioner",
+  title: { absolute: "Teach What You Practice — iqcommune — practitioner network" },
   description:
     "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed. Join the iqcommune practitioner network.",
   openGraph: {
-    title: "Join as a Practitioner",
+    title: { absolute: "Teach What You Practice — iqcommune — practitioner network" },
     description:
       "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed.",
     url: "/practitioners",
@@ -19,20 +20,13 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Join as a Practitioner",
+    title: { absolute: "Teach What You Practice — iqcommune — practitioner network" },
     description:
       "Finance professionals — share what you actually do, for 3–6 hours, with a small group. No slides needed.",
   },
 };
 
 /* ─── Static data ─── */
-
-interface Perk {
-  title: string;
-  sub: React.ReactNode;
-  icon: React.ReactNode;
-  featured?: boolean;
-}
 
 const PERKS: Perk[] = [
   {
@@ -68,6 +62,18 @@ const PERKS: Perk[] = [
     ),
   },
   {
+    title: "No content creation required",
+    sub: "You teach from your own experience. No slides to build, no curriculum to write.",
+    icon: (
+      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+  },
+  // The two below sit behind the "Show more" toggle (mockup `perks-more`).
+  {
     title: "3–6 hours. Your schedule.",
     sub: (
       <>
@@ -90,17 +96,6 @@ const PERKS: Perk[] = [
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    title: "No content creation required",
-    sub: "You teach from your own experience. No slides to build, no curriculum to write.",
-    icon: (
-      <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
       </svg>
     ),
   },
@@ -653,47 +648,7 @@ export default function PractitionersPage() {
             >
               What this means for you
             </div>
-            <div className="iq-perks" style={{ display: "flex", flexDirection: "column" }}>
-              {PERKS.map((perk, i) => (
-                <div
-                  key={perk.title}
-                  className={perk.featured ? "iq-perk iq-perk--featured" : "iq-perk"}
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    alignItems: "flex-start",
-                    paddingTop: "0.85rem",
-                    paddingBottom: "0.85rem",
-                    borderBottom: i < PERKS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
-                  }}
-                >
-                  <div
-                    className="iq-perk-icon"
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      color: "var(--gold)",
-                      marginTop: 1,
-                    }}
-                  >
-                    {perk.icon}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--surface)", marginBottom: 2 }}>
-                      {perk.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-                      {perk.sub}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PerksList perks={PERKS} />
           </div>
         </div>
       </section>

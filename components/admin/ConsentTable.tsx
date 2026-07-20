@@ -124,17 +124,9 @@ export function ConsentTable({
 
 
 
-  if (data.length === 0) {
-    return (
-      <div style={{ background: "var(--surface)", border: "1px solid rgba(15,17,23,.10)", borderRadius: 10, padding: "2.5rem", textAlign: "center" }}>
-        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-muted)", marginBottom: 4 }}>No confirmations generated yet</div>
-        <div style={{ fontSize: 12.5, color: "var(--ink-faint)", maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
-          Select a Matched session above to generate its revenue confirmation.
-        </div>
-      </div>
-    );
-  }
-
+  // NOTE: no early return on an empty list — Part 1 (Generate & Send Consent) lives in
+  // `beforeTable`, so short-circuiting here would make the FIRST confirmation impossible
+  // to create. The empty state renders inside the table instead.
   return (
     <div>
       <PendingBar
@@ -176,7 +168,9 @@ export function ConsentTable({
             {visible.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--ink-faint)", fontSize: 13 }}>
-                  No confirmations match the current filter
+                  {data.length === 0
+                    ? "No confirmations generated yet — pick a Matched session in Part 1 above to generate one."
+                    : "No confirmations match the current filter"}
                 </td>
               </tr>
             )}

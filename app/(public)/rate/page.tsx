@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { RatingForm } from "@/components/public/RatingForm";
 
 export const metadata: Metadata = {
-  title: "Rate your session",
+  title: { absolute: "iqcommune — Rate Your Practitioner" },
   robots: { index: false, follow: false },
 };
 
