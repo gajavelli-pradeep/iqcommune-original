@@ -144,7 +144,11 @@ a {
   transform: translate(-50%, -50%);
 }
 
-@media (max-width: 600px) {
+/* Boundary is 767px, not 600px: the full top nav (console lockup + search + "Viewing
+   as" + bell + avatar) only actually fits from 768px up. Between 601-767px — small
+   tablets and landscape phones — the desktop nav used to render in a space too small
+   for it and its right cluster escaped the viewport. */
+@media (max-width: 767px) {
   .admin-nav-tagline { display: none !important; }
   .admin-nav-label   { display: none !important; }
   /* Free up width so the search field + bell/avatar never clip on a phone:

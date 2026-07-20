@@ -42,7 +42,9 @@ export default function GlobalLoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "2rem",
+        // Gutter shrinks on phones — 2rem each side plus the card's own 2rem left
+        // only ~190px of content at 320px.
+        padding: "2rem clamp(1rem, 5vw, 2rem)",
       }}
     >
       {/* globals.css forces `input:focus/hover { background:#fff !important }` for the
@@ -83,9 +85,12 @@ export default function GlobalLoginPage() {
           background: "#1e2028",
           border: "1px solid rgba(255,255,255,.1)",
           borderRadius: 16,
-          padding: "2.5rem 2rem",
+          padding: "2.5rem clamp(1.25rem, 6vw, 2rem)",
           width: "100%",
           maxWidth: 400,
+          // Flex items default to min-width:auto, so without this the card refuses to
+          // shrink below its header lockup's min-content and pushes the page sideways.
+          minWidth: 0,
           boxShadow: "0 24px 60px rgba(0,0,0,.45)",
         }}
       >
@@ -93,7 +98,7 @@ export default function GlobalLoginPage() {
           <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--surface)" }}>
             iqcommune
           </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
             <ShieldIcon />
             Global Admin — restricted access
           </div>

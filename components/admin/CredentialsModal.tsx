@@ -26,6 +26,14 @@ interface Props {
 }
 
 export function CredentialsModal({ open, onClose, currentEmail }: Props) {
+  // Escape must close the dialog — see TrashModal for the same fix.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -262,6 +270,9 @@ export function CredentialsModal({ open, onClose, currentEmail }: Props) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Team and access management"
         style={{
           background: "var(--surface)",
           borderRadius: 14,

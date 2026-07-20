@@ -17,6 +17,15 @@ interface Props {
 }
 
 export function TrashModal({ open, onClose }: Props) {
+  // Escape must close the dialog — without it the overlay stays up and swallows
+  // every click behind it (and keyboard users have no way out).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -75,7 +84,12 @@ export function TrashModal({ open, onClose }: Props) {
       style={{ position: "fixed", inset: 0, background: "rgba(20,22,29,.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9000, padding: "1rem" }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: "var(--surface)", borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,.18)", overflow: "hidden" }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trash — restore deleted records"
+        style={{ background: "var(--surface)", borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,.18)", overflow: "hidden" }}
+      >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid rgba(15,17,23,.1)" }}>
           <div>
