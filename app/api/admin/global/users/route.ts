@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/supabase/require-admin";
 import { requireGlobalAdmin, getGlobalAdminUser } from "@/lib/supabase/require-global-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
@@ -14,8 +15,12 @@ function normalizeRole(role: unknown): "admin" | "global_admin" | "user" {
   return "admin";
 }
 
+// D11: the roster is READ-able by any signed-in admin so the Team & Access table can
+// render for every role (as the V6 mockup shows). The payload below is already
+// display-only — id/email/role/gallery flag/last-sign-in, no hashes or tokens. Every
+// mutation on this route stays `requireGlobalAdmin`.
 export async function GET() {
-  const denied = await requireGlobalAdmin();
+  const denied = await requireAdmin();
   if (denied) return denied;
 
   const supabase = createAdminClient();

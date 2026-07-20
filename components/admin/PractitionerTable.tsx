@@ -561,7 +561,22 @@ export function PractitionerTable({
                                   {initials(p.name)}
                                 </div>
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>{p.name}</div>
+                                  <div style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)", display: "flex", alignItems: "center", gap: 6 }}>
+                                    {p.name}
+                                    {/* D12: the only reachable way to correct a practitioner
+                                        record (D2's per-field pencils were skipped). GA only. */}
+                                    {isGlobalAdmin && !readOnly && onEdit && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); onEdit(p); }}
+                                        title="Global Admin: correct this practitioner's details"
+                                        aria-label={`Edit ${p.name}`}
+                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold-dark)", display: "inline-flex", lineHeight: 0 }}
+                                      >
+                                        <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                                      </button>
+                                    )}
+                                  </div>
                                   <div style={{ fontSize: 12.5, color: "var(--ink-muted)" }}>{p.role}</div>
                                   <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{p.org ?? "Independent"}</div>
                                 </div>

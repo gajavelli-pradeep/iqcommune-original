@@ -70,16 +70,19 @@ export function SessionTable({
   isGlobalAdmin = false,
   readOnly = false,
   onStatusChange,
+  onEdit,
 }: {
   initialData: Session[];
-  // Retained for call-site compatibility; V6 Session Details has no cross-nav /
-  // edit / delete row actions, so these are accepted but unused.
+  // Retained for call-site compatibility; V6 Session Details has no cross-nav or
+  // delete row actions, so these are accepted but unused.
   onNavigate?: (tab: string) => void;
   statusFilter?: string;
   onStatusFilterChange?: (f: string) => void;
   isGlobalAdmin?: boolean;
   readOnly?: boolean;
   onHardDeleted?: (id: string) => void;
+  // D12: the only reachable way to correct a session's date/time/venue/participants.
+  // Global-Admin only and rendered as a small pencil so the tab still matches V6.
   onEdit?: (id: string) => void;
   onStatusChange?: (id: string, status: string) => void;
 }) {
@@ -200,7 +203,20 @@ export function SessionTable({
                 style={{ borderBottom: "1px solid rgba(15,17,23,.07)" }}
               >
                 <td style={TD}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{s.module}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+                    {s.module}
+                    {isGlobalAdmin && !readOnly && onEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(s.id)}
+                        title="Global Admin: correct this session's date, time, venue or participants"
+                        aria-label={`Edit session ${s.ref_code}`}
+                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold-dark)", display: "inline-flex", lineHeight: 0 }}
+                      >
+                        <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                      </button>
+                    )}
+                  </div>
                   <div style={{ fontFamily: "monospace", fontSize: 11, color: "var(--ink-faint)", whiteSpace: "nowrap", marginTop: 2 }}>
                     {s.ref_code}
                   </div>

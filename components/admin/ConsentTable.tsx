@@ -44,6 +44,10 @@ const th: React.CSSProperties = {
   color: "var(--ink-faint)", padding: "10px 12px", borderBottom: "1px solid rgba(15,17,23,.10)", whiteSpace: "nowrap",
 };
 const td: React.CSSProperties = { fontSize: 13, color: "var(--ink)", padding: "11px 12px", borderBottom: "1px solid rgba(15,17,23,.06)", verticalAlign: "middle" };
+const recoverBtn: React.CSSProperties = {
+  fontSize: 10.5, padding: "4px 9px", borderRadius: 100, border: "1px solid rgba(15,17,23,.18)",
+  background: "var(--surface)", color: "var(--ink-muted)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+};
 
 // V6: gold uppercase section labels that structure the Session Consent tab.
 export const consentPartLabel: React.CSSProperties = {
@@ -58,20 +62,16 @@ export const consentPartLabel: React.CSSProperties = {
 
 export function ConsentTable({
   initialData,
+  isGlobalAdmin = false,
   readOnly = false,
   sessionStatusById = {},
   beforeTable,
 }: {
   initialData: ConfirmationRow[];
-  onRowChange: (id: string, patch: Partial<ConfirmationRow>) => void;
+  // Gates the "Not received?" recovery disclosure (D12) — see below.
   isGlobalAdmin?: boolean;
   // Read-only User tier: view + download (PDF) only, no share/mutation actions.
   readOnly?: boolean;
-  // Sessions still Upcoming — only these have an editable status + Replace action.
-  reassignableSessionIds?: string[];
-  onReassign?: (row: ConfirmationRow) => void;
-  // Global-Admin status override applied; parent reconciles the confirmation + session.
-  onStatusOverridden?: (row: ConfirmationRow, status: string) => void;
   // V6 Session-status column: linked session's status (sessions.id → status),
   // threaded from the parent (kept fresh by the sessions realtime subscription).
   sessionStatusById?: Record<string, string>;
@@ -101,6 +101,29 @@ export function ConsentTable({
       setError("Network error — the session status wasn't changed.");
     }
   }
+  // D12 recovery: if the consent email bounces or the practitioner signs offline, the
+  // confirmation would otherwise sit at "Awaiting consent" forever with its Download
+  // permanently disabled. These two routes are the only way out — kept Global-Admin
+  // only and tucked in a disclosure so the normal surface still matches the mockup.
+  const [recoverBusy, setRecoverBusy] = useState<string | null>(null);
+
+  async function recover(id: string, action: "resend-email" | "mark-received") {
+    setRecoverBusy(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/consent/${id}/${action}`, { method: "POST" });
+      if (res.ok) router.refresh();
+      else {
+        const { error: msg } = await res.json().catch(() => ({ error: "" }));
+        setError(msg || (action === "resend-email" ? "Could not resend the consent email." : "Could not mark it received."));
+      }
+    } catch {
+      setError("Network error — nothing was changed. Please retry.");
+    } finally {
+      setRecoverBusy(null);
+    }
+  }
+
   const df = useDateFilter(data.map((r) => r.issued_on));
   const visible = (filter === "All" ? data : data.filter((r) => r.status === filter))
     .filter((r) => df.matchesDate(r.issued_on));
@@ -184,6 +207,29 @@ export function ConsentTable({
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.net_amount)}</td>
                   <td style={td}>
                     <StatusPill status={row.status} />
+                    {isGlobalAdmin && !readOnly && row.status === "Awaiting consent" && (
+                      <details style={{ marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+                        <summary style={{ fontSize: 10.5, color: "var(--ink-faint)", cursor: "pointer" }}>Not received?</summary>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 5 }}>
+                          <button
+                            type="button"
+                            disabled={recoverBusy === row.id}
+                            onClick={() => recover(row.id, "resend-email")}
+                            style={recoverBtn}
+                          >
+                            {recoverBusy === row.id ? "Working…" : "Resend consent email"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={recoverBusy === row.id}
+                            onClick={() => recover(row.id, "mark-received")}
+                            style={recoverBtn}
+                          >
+                            Mark received (signed offline)
+                          </button>
+                        </div>
+                      </details>
+                    )}
                   </td>
                   {/* Download Signed Consent — own column (mirrors the Agreements tab) */}
                   <td style={td}>

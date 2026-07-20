@@ -62,7 +62,14 @@ function lastActive(ts: string | null): string {
  * in the Credentials modal, surfaced per-row. Self-destructive actions (change
  * own role, remove self) are hidden for the signed-in global admin.
  */
-export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: number; currentEmail?: string }) {
+export function TeamAccessTable({
+  reloadKey = 0,
+  currentEmail,
+  // D11: the roster is readable by any admin, but every control that mutates a
+  // teammate (role, password, gallery access, removal) is Global-Admin only. The
+  // API enforces this too — this just avoids showing controls that would 403.
+  canManage = false,
+}: { reloadKey?: number; currentEmail?: string; canManage?: boolean }) {
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -258,23 +265,33 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                   </td>
                   <td style={{ ...td, color: "var(--ink-muted)" }}>{m.email}</td>
 
-                  {/* Role — inline dropdown per V4 (disabled for self; the API blocks self-demotion) */}
+                  {/* Role — editable dropdown for a Global Admin; a plain label otherwise
+                      (disabled for self; the API blocks self-demotion either way). */}
                   <td style={td}>
-                    <select
-                      value={m.role}
-                      disabled={isSelf || busy}
-                      aria-label={`Role for ${m.email}`}
-                      onChange={(e) => changeRole(m, e.target.value as TeamMember["role"])}
-                      style={{ ...selectStyle, opacity: isSelf || busy ? 0.55 : 1, cursor: isSelf || busy ? "not-allowed" : "pointer" }}
-                    >
-                      {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
+                    {canManage ? (
+                      <select
+                        value={m.role}
+                        disabled={isSelf || busy}
+                        aria-label={`Role for ${m.email}`}
+                        onChange={(e) => changeRole(m, e.target.value as TeamMember["role"])}
+                        style={{ ...selectStyle, opacity: isSelf || busy ? 0.55 : 1, cursor: isSelf || busy ? "not-allowed" : "pointer" }}
+                      >
+                        {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      </select>
+                    ) : (
+                      <span style={{ color: "var(--ink-muted)" }}>
+                        {ROLE_OPTIONS.find((r) => r.value === m.role)?.label ?? m.role}
+                      </span>
+                    )}
                   </td>
 
                   <td style={{ ...td, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>{lastActive(m.last_sign_in_at)}</td>
 
-                  {/* Actions — "⋯" dropdown */}
+                  {/* Actions — "⋯" dropdown, Global-Admin only */}
                   <td style={{ ...td, textAlign: "right", position: "relative" }}>
+                    {!canManage && <span style={{ color: "var(--ink-faint)" }}>—</span>}
+                    {canManage && (
+                    <>
                     <button
                       type="button"
                       aria-label={`Actions for ${m.email}`}
@@ -353,6 +370,8 @@ export function TeamAccessTable({ reloadKey = 0, currentEmail }: { reloadKey?: n
                           )
                         )}
                       </div>
+                    )}
+                    </>
                     )}
                   </td>
                 </tr>

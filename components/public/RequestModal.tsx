@@ -616,8 +616,12 @@ export function RequestModal({ variant = "nav" }: RequestModalProps) {
                   <p
                     style={{ fontSize: 14, color: "#383b47", lineHeight: 1.65 }}
                   >
-                    Thanks — your session request is in. We&apos;ll be in touch
-                    within 2–3 working days.
+                    {/* V6 mockups personalise this line; client_email.txt specifies the
+                        impersonal wording. Use the name when we have one, else the exact
+                        client_email text. */}
+                    {form.firstName.trim()
+                      ? `Thanks, ${form.firstName.trim()} — your session request is in. We'll be in touch within 2–3 working days.`
+                      : "Thanks — your session request is in. We'll be in touch within 2–3 working days."}
                   </p>
                 </div>
               ) : (

@@ -11,15 +11,12 @@ import { PhotosTable } from "@/components/admin/PhotosTable";
 import { ConsentTable, consentPartLabel, type ConfirmationRow } from "@/components/admin/ConsentTable";
 import { ConsentFormModal } from "@/components/admin/ConsentFormModal";
 import { PhotoGuideSection } from "@/components/admin/PhotoGuideSection";
-import { ReassignConsentModal } from "@/components/admin/ReassignConsentModal";
 import { MasterDataTable } from "@/components/admin/MasterDataTable";
 import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { TeamAccessTable } from "@/components/admin/TeamAccessTable";
 import { InviteTeamMember } from "@/components/admin/InviteTeamMember";
 import { SessionFormModal, type NewSession } from "@/components/admin/SessionFormModal";
 import { PractitionerFormModal } from "@/components/admin/PractitionerFormModal";
-import { PayoutFormModal } from "@/components/admin/PayoutFormModal";
-import { RequestFormModal } from "@/components/admin/RequestFormModal";
 import { PayoutEditModal } from "@/components/admin/PayoutEditModal";
 import { AgreementEditModal } from "@/components/admin/AgreementEditModal";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
@@ -429,10 +426,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   // Per-tab table filters driven by clickable stat cards / table chips
 
   // Header-action modals
-  const [sessionModalOpen, setSessionModalOpen] = useState(false);
-  const [practitionerModalOpen, setPractitionerModalOpen] = useState(false);
-  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [teamReloadKey, setTeamReloadKey] = useState(0);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -456,7 +449,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
   // Global-admin edit modals (null = closed)
   const [editingPractitioner, setEditingPractitioner] = useState<PractitionerRow | null>(null);
   const [editingSession, setEditingSession] = useState<NewSession | null>(null);
-  const [editingRequest, setEditingRequest] = useState<RequestRow | null>(null);
   const [editingPayout, setEditingPayout] = useState<PayoutRow | null>(null);
   const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null);
 
@@ -546,40 +538,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
     },
     keep: (r) => !r.deleted_at,
   });
-  const handleConfirmationRowChange = (id: string, patch: Partial<ConfirmationRow>) => {
-    setConfirmationsData((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-  };
   const confirmedSessionIds = confirmationsData.filter((c) => c.status !== "Superseded").map((c) => c.session_id);
-
-  // Global-Admin practitioner replacement on an upcoming session: supersede the old
-  // confirmation locally, prepend the fresh one, and move the session to the new
-  // practitioner (back to Pending consent). Realtime reconciles by id.
-  const [reassigning, setReassigning] = useState<ConfirmationRow | null>(null);
-  const handleReassigned = (newRow: ConfirmationRow, supersededIds: string[], newPractitionerId: string) => {
-    setConfirmationsData((prev) => [
-      newRow,
-      ...prev.map((c) => (supersededIds.includes(c.id) ? { ...c, status: "Superseded" } : c)),
-    ]);
-    setSessionsData((prev) =>
-      prev.map((s) =>
-        s.id === newRow.session_id
-          ? { ...s, practitioner_id: newPractitionerId, consent_status: "Pending consent" }
-          : s
-      )
-    );
-    setReassigning(null);
-  };
-
-  // Global-Admin status override on a confirmation: reflect the new status and keep
-  // the linked session's consent_status in sync (Consent received → Consent given;
-  // Awaiting/Superseded → Pending consent, which re-opens the session for a fresh consent).
-  const handleStatusOverridden = (row: ConfirmationRow, status: string) => {
-    setConfirmationsData((prev) => prev.map((c) => (c.id === row.id ? { ...c, status } : c)));
-    const consentStatus = status === "Consent received" ? "Consent given" : "Pending consent";
-    setSessionsData((prev) =>
-      prev.map((s) => (s.id === row.session_id ? { ...s, consent_status: consentStatus } : s))
-    );
-  };
 
   // Feedback lives inside a session row (rating shown inline), not its own tab —
   // so patch the matching session live when feedback is recorded/updated/removed.
@@ -733,10 +692,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
 
   function handleHeaderAction(label: string) {
     if (label === "Check for updates") router.refresh();
-    else if (label.includes("Create session")) setSessionModalOpen(true);
-    else if (label.includes("Add manually")) setPractitionerModalOpen(true);
-    else if (label.includes("Add request")) setRequestModalOpen(true);
-    else if (label.includes("Create payout")) setPayoutModalOpen(true);
     else if (label === "Trash") setTrashOpen(true);
     else if (label.includes("Credentials") || label.includes("Invite admin")) setCredentialsOpen(true);
     // Both "Export" and Photos/Activity's "Export log" export the active tab;
@@ -881,7 +836,7 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
             <TabHeader tab="requests" onAction={handleHeaderAction} readOnly={readOnly} />
             {/* Gap 7: table content in padded wrapper */}
             <div style={{ padding: "1.5rem 1.75rem" }}>
-              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} onEdit={isGlobalAdmin ? (id) => { const row = requestsData.find((r) => r.id === id); if (row) setEditingRequest(row); } : undefined} />
+              <RequestTable initialData={requestsData} practitioners={practitionersData} onRowChange={handleRequestRowChange} isGlobalAdmin={isGlobalAdmin} readOnly={readOnly} onHardDeleted={(id) => setRequestsData((prev) => prev.filter((r) => r.id !== id))} />
             </div>
           </div>
         )}
@@ -941,12 +896,8 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   the filters render above it. */}
               <ConsentTable
                 initialData={confirmationsData}
-                onRowChange={handleConfirmationRowChange}
                 isGlobalAdmin={isGlobalAdmin}
                 readOnly={readOnly}
-                reassignableSessionIds={upcomingSessions.map((s) => s.id)}
-                onReassign={isGlobalAdmin ? (row) => setReassigning(row) : undefined}
-                onStatusOverridden={isGlobalAdmin ? handleStatusOverridden : undefined}
                 sessionStatusById={Object.fromEntries(sessionsData.map((s) => [s.id, s.status]))}
                 beforeTable={!readOnly && (
                   <>
@@ -1039,12 +990,10 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                   communication_address: p.communication_address, tshirt_size: p.tshirt_size,
                 }))}
               />
-              {/* Team & Access — bare on the soft page (no card). Global-Admin only:
-                  GET /api/admin/global/users is requireGlobalAdmin, so rendering this for
-                  lower roles only yields a 403 "Failed to load team." banner. Showing the
-                  table to Admin/User (as the mockup does) needs an auth-model decision
-                  first — see D11 in V6-FRESH-CLONE-MASTER.md. */}
-              {isGlobalAdmin && (
+              {/* Team & Access — bare on the soft page (no card). D11 resolved: the
+                  roster GET is now requireAdmin (display-only fields), so the table
+                  renders for every role as the mockup shows; the invite box, "Manage
+                  team" and all per-row controls stay Global-Admin only. */}
               <div style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                   <div>
@@ -1059,19 +1008,29 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
                       </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setCredentialsOpen(true)}
-                    style={{ ...primaryBtnStyle, flexShrink: 0 }}
-                    aria-label="Open team and access management"
-                  >
-                    Manage team
-                  </button>
+                  {isGlobalAdmin && (
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setTrashOpen(true)}
+                        style={ghostBtnStyle}
+                        aria-label="Open trash to restore deleted records"
+                      >
+                        Trash
+                      </button>
+                      <button
+                        onClick={() => setCredentialsOpen(true)}
+                        style={primaryBtnStyle}
+                        aria-label="Open team and access management"
+                      >
+                        Manage team
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} />
+                <TeamAccessTable reloadKey={teamReloadKey} currentEmail={email} canManage={isGlobalAdmin} />
                 {/* V5: inline "Invite a new team member" (email + role + Send invite). */}
-                <InviteTeamMember />
+                {isGlobalAdmin && <InviteTeamMember />}
               </div>
-              )}
 
               {/* Roles & Permissions (V6) — Global-Admin only, same as Activity. */}
               {isGlobalAdmin && <RolesPermissions />}
@@ -1083,37 +1042,10 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
 
       </main>
 
-      <SessionFormModal
-        open={sessionModalOpen}
-        onClose={() => setSessionModalOpen(false)}
-        practitioners={practitionersData.map((p) => ({ id: p.id, name: p.name, email: p.email, status: p.status }))}
-        onCreated={(s: NewSession) => { setSessionsData((prev) => [s, ...prev]); }}
-      />
-      <PractitionerFormModal
-        open={practitionerModalOpen}
-        onClose={() => setPractitionerModalOpen(false)}
-        onCreated={(p) => { setPractitionersData((prev) => [p, ...prev]); }}
-      />
-      <PayoutFormModal
-        open={payoutModalOpen}
-        onClose={() => setPayoutModalOpen(false)}
-        onCreated={(p) => { setPayoutsData((prev) => [p, ...prev]); }}
-      />
-      {reassigning && (
-        <ReassignConsentModal
-          key={reassigning.id}
-          open
-          onClose={() => setReassigning(null)}
-          confirmation={reassigning}
-          practitioners={practitionersData.map((p) => ({ id: p.id, name: p.name, email: p.email, status: p.status }))}
-          onReassigned={handleReassigned}
-        />
-      )}
-      <RequestFormModal
-        open={requestModalOpen}
-        onClose={() => setRequestModalOpen(false)}
-        onCreated={(r) => { setRequestsData((prev) => [r, ...prev]); }}
-      />
+      {/* V6 is inbound-only: practitioners and requests arrive from the public forms,
+          sessions are created by matching a request, and payouts are created when a
+          session is marked Completed. The manual "create" modals had no trigger left,
+          so they're gone; the edit modals below stay, reached by a Global-Admin pencil. */}
       {credentialsOpen && (
         <CredentialsModal
           open
@@ -1159,16 +1091,6 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
               )
             )
           }
-        />
-      )}
-      {editingRequest && (
-        <RequestFormModal
-          key={editingRequest.id}
-          open
-          onClose={() => setEditingRequest(null)}
-          initialData={editingRequest}
-          onCreated={() => {}}
-          onUpdated={(r) => setRequestsData((prev) => prev.map((x) => (x.id === r.id ? r : x)))}
         />
       )}
       {editingPayout && (

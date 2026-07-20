@@ -15,6 +15,10 @@ import {
 
 export function ApplicationForm() {
   const [success, setSuccess] = useState(false);
+  // Captured at submit so the confirmation can greet by name — the V6 mockups
+  // personalise this line, while client_email.txt specifies the impersonal wording.
+  // Personalise when we have a first name, fall back to the client_email text when not.
+  const [submittedName, setSubmittedName] = useState("");
   const [serverError, setServerError] = useState("");
 
   const {
@@ -60,6 +64,7 @@ export function ApplicationForm() {
       return;
     }
     if (res.ok) {
+      setSubmittedName(data.firstName?.trim() ?? "");
       setSuccess(true);
     } else {
       const body = await res.json().catch(() => ({}));
@@ -94,7 +99,9 @@ export function ApplicationForm() {
             lineHeight: 1.65,
           }}
         >
-          Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick, informal chat.
+          {submittedName
+            ? `Thanks for applying, ${submittedName} — we'll reach out within 2–3 working days for a quick, informal chat.`
+            : "Thanks for applying — we'll reach out within 2–3 working days for a quick, informal chat."}
         </p>
       </div>
     );
