@@ -60,7 +60,15 @@ export function RequestSessionProvider({ children }: { children: ReactNode }) {
  * project rule in CLAUDE.md. Do not "correct" this back to the spec.
  */
 const VARIANTS = {
-  /** `.btn-gold` — hero and closing CTA. */
+  /**
+   * `.btn-primary` — the hero. Ink with a soft shadow, not gold: the spec uses
+   * a different class here from the closing CTA, and the first clone reused
+   * gold for both. Documenting three variants while shipping two is how that
+   * happened.
+   */
+  primary:
+    "bg-ink text-surface text-lg px-[30px] py-3.5 gap-2.5 shadow-raised hover:opacity-90",
+  /** `.btn-gold` — the closing CTA. */
   gold: "bg-gold text-ink text-xl px-9 py-4 gap-2.5 shadow-gold hover:brightness-110 hover:-translate-y-0.5",
   /** `.btn-nav` — the header. Ink, not gold. */
   nav: "bg-ink text-surface text-md px-[22px] py-2.5 gap-2 hover:opacity-[0.82]",

@@ -43,7 +43,7 @@ export function Hero() {
           </p>
 
           <div className="animate-fade-up animate-fade-up-4 flex flex-wrap items-center gap-5">
-            <RequestSessionButton />
+            <RequestSessionButton variant="primary" />
             <span className="flex items-center gap-1.5 text-base text-ink-faint">
               <ClockIcon />
               We&apos;ll schedule around you

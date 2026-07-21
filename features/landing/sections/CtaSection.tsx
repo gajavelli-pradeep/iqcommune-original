@@ -23,17 +23,17 @@ const REASSURANCES: readonly IconStripEntry[] = [
 
 export function CtaSection() {
   return (
-    <section className="bg-surface-soft px-4 py-16 text-center sm:px-8">
+    <section className="bg-ink px-4 py-[5.5rem] text-center sm:px-8">
       <div className="mx-auto max-w-page">
         <div className="mb-4">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-border bg-gold-light px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-dark">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-tool-chip-edge bg-tool-chip px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-bright">
             Get Started
           </span>
         </div>
-        <h2 className="mb-4 text-[clamp(26px,3.8vw,40px)] font-semibold leading-[1.2] tracking-body text-ink">
+        <h2 className="mb-4 text-[clamp(26px,3.8vw,40px)] font-semibold leading-[1.2] tracking-body text-surface">
           If you are serious to improve your financial literacy
         </h2>
-        <p className="mx-auto mb-8 max-w-[560px] text-xl text-ink-muted">
+        <p className="mx-auto mb-8 max-w-[560px] text-xl text-on-dark-muted">
           Tell us your topic, your group, and a preferred date window. We&apos;ll handle the
           rest offline.
         </p>
@@ -45,8 +45,8 @@ export function CtaSection() {
         <IconStrip
           entries={REASSURANCES}
           listClassName="mx-auto flex max-w-[900px] flex-wrap items-center justify-center gap-x-6 gap-y-2.5"
-          itemClassName="flex items-center gap-2 text-sm text-ink-muted"
-          iconClassName="text-green"
+          itemClassName="flex items-center gap-2 text-base text-on-dark-muted"
+          iconClassName="text-gold"
           iconSize={13}
         />
       </div>

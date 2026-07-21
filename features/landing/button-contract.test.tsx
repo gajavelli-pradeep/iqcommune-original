@@ -43,13 +43,21 @@ describe("Request a Session — control contract", () => {
     expect(header).toHaveClass("text-md");
   });
 
-  it("gives the hero and closing CTA the gold variant, with its glow", () => {
+  it("gives the hero the ink primary variant, not gold", () => {
+    // The spec uses .btn-primary here and .btn-gold only in the closing CTA.
+    // Reusing gold for both was a real defect the fidelity audit caught.
     render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
-    for (const button of requestButtons().slice(1)) {
-      expect(button).toHaveClass("bg-gold");
-      expect(button).toHaveClass("shadow-gold");
-      expect(button).toHaveClass("text-xl");
-    }
+    const hero = requestButtons()[1];
+    expect(hero).toHaveClass("bg-ink");
+    expect(hero).not.toHaveClass("bg-gold");
+  });
+
+  it("gives the closing CTA the gold variant, with its glow", () => {
+    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    const cta = requestButtons()[2];
+    expect(cta).toHaveClass("bg-gold");
+    expect(cta).toHaveClass("shadow-gold");
+    expect(cta).toHaveClass("text-xl");
   });
 
   it("keeps every variant a pill, as the spec's 100px radius requires", () => {
@@ -59,11 +67,12 @@ describe("Request a Session — control contract", () => {
     }
   });
 
-  it("never puts a white label on the gold fill", () => {
+  it("never puts a white label on a gold fill", () => {
     // Deliberate deviation: the spec says #fff, which is 2.3:1 on gold and
     // fails AA. This test exists so the deviation cannot be silently reverted.
+    // It applies to the gold fills only — white on ink is 18:1 and correct.
     render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
-    for (const button of requestButtons().slice(1)) {
+    for (const button of requestButtons().filter((b) => b.classList.contains("bg-gold"))) {
       expect(button).toHaveClass("text-ink");
       expect(button).not.toHaveClass("text-surface");
     }

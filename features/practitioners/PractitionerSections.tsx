@@ -28,17 +28,22 @@ export function PractitionerSections() {
       <SiteHeader
         badge={["Practitioner", "Network"] as const}
         right={
-          /* Hidden below 640px for the reason the strapline is: measured, the
-             wordmark plus this link overflows a 320px header by 4px, and a
-             header that scrolls sideways is a P1 bug. The footer carries a
-             prominent link to the learner site on every page, so nothing
-             becomes unreachable — and the string still renders for the parity
-             gate, which is hidden by CSS rather than removed. */
+          /* The full label overflows a 320px header by 4px, so below 640px the
+             visible text shortens to "For Learners" while the spec's wording
+             stays in the accessible name and in the DOM.
+
+             It is NOT hidden. An earlier version hid it, which left the learner
+             site with no route from this page on a phone — the empanelment spec
+             offers no other path, and this page's footer omits the cross-link.
+             Shortening a label is a compromise; removing the only way out is a
+             defect. */
           <Link
             href="/"
-            className="hidden whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark sm:inline-flex"
+            className="inline-flex whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark"
           >
-            See iqcommune for Learners
+            <span className="sm:hidden">For Learners</span>
+            <span className="hidden sm:inline">See iqcommune for Learners</span>
+            <span className="sr-only sm:hidden">See iqcommune for Learners</span>
           </Link>
         }
       />
