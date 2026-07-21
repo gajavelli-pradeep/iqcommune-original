@@ -63,7 +63,7 @@ interface BaseProps {
 export function TextField({
   type = "text",
   ...props
-}: BaseProps & { type?: "text" | "email" | "tel" | "date" }) {
+}: BaseProps & { type?: "text" | "email" | "tel" | "date" | "password" }) {
   const id = useId();
   return (
     <Shell id={id} label={props.label} hint={props.hint} error={props.error} optional={props.optional}>
