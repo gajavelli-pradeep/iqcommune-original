@@ -137,7 +137,11 @@ export function SignaturePad({
                 event.target.value.trim() ? { mode: "typed", text: event.target.value } : null,
               );
             }}
-            className="w-full rounded-lg border-[1.5px] border-border-strong bg-surface px-4 py-6 text-center text-3xl italic text-ink placeholder:text-lg placeholder:not-italic placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            // Georgia, and not italic. The spec sets a serif face here because a
+            // signature should not read as UI text; the first clone used the
+            // project sans and invented the italic.
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            className="min-h-[52px] w-full border-b-[1.5px] border-border-strong bg-transparent px-4 py-3 text-center text-[28px] tracking-[0.02em] text-ink placeholder:text-lg placeholder:tracking-normal placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
           />
         </>
       )}

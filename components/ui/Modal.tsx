@@ -116,9 +116,9 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[560px] flex-col overflow-hidden rounded-lg bg-surface shadow-modal"
+        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-xl bg-surface shadow-modal"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-10 pb-5 pt-10">
           <div>
             <h2 id={titleId} className="text-2xl font-semibold text-ink">
               {title}
@@ -151,7 +151,7 @@ export function Modal({
         </div>
 
         {/* The panel is height-capped, so this is where the overflow goes. */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-10 py-6">{children}</div>
       </div>
     </div>
   );

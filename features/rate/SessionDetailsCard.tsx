@@ -26,17 +26,14 @@ export function SessionDetailsCard({ session }: { session: RatedSession }) {
         Your feedback helps us maintain quality across our practitioner network — it takes less
         than a minute.
       </p>
-      <dl className="grid gap-0">
-        {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-baseline justify-between gap-4 border-b border-border py-2.5 last:border-b-0"
-          >
-            <dt className="text-sm text-ink-muted">{label}</dt>
-            <dd className="text-right text-base font-medium text-ink">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      <dl className="grid gap-x-6 gap-y-[0.85rem] min-[480px]:grid-cols-2">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt className="mb-0.5 text-xs text-ink-faint">{label}</dt>
+          <dd className="text-md font-medium text-ink">{value}</dd>
+        </div>
+      ))}
+    </dl>
     </section>
   );
 }

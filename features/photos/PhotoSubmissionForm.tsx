@@ -155,10 +155,14 @@ export function PhotoSubmissionForm({
       <div className="mb-4 rounded-lg border border-border bg-surface-soft px-5 py-4">
         <p className="text-md font-semibold text-ink">{session.practitioner}</p>
         <p className="text-sm text-ink-muted">{session.practitionerRole}</p>
-        <p className="mt-1 text-sm text-ink-faint">Ref: {session.practitionerRef}</p>
+        <p className="mt-2">
+          <span className="inline-flex rounded-full border border-gold-border bg-gold-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-gold-dark">
+            Ref: {session.practitionerRef}
+          </span>
+        </p>
       </div>
 
-      <dl className="mb-5 grid gap-4 min-[480px]:grid-cols-2">
+      <dl className="mb-5 grid gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem] min-[480px]:grid-cols-2 min-[600px]:grid-cols-4">
         <Detail label="Session date" value={session.sessionDate} />
         <Detail label="Module" value={session.module} />
         <Detail label="City" value={`${session.city}, ${session.state}`} />

@@ -36,7 +36,7 @@ export function StarRating({
       <div
         role="radiogroup"
         aria-labelledby="rating-prompt"
-        className="flex items-center justify-center gap-1.5"
+        className="flex items-center justify-center gap-2.5"
       >
         {VALUES.map((option) => {
           const selected = value !== null && option <= value;
@@ -73,11 +73,11 @@ export function StarRating({
                   ?.querySelector<HTMLButtonElement>(`[data-value="${next}"]`)
                   ?.focus();
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:scale-100"
+              className="flex h-12 w-12 items-center justify-center rounded-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:scale-100"
             >
               <svg
-                width="30"
-                height="30"
+                width="40"
+                height="40"
                 viewBox="0 0 24 24"
                 fill={selected ? "currentColor" : "none"}
                 stroke="currentColor"

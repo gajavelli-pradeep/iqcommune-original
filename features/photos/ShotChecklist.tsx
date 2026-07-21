@@ -39,7 +39,13 @@ export function ShotChecklist() {
           const ticked = captured.includes(shot.label);
           return (
             <li key={shot.label}>
-              <label className="flex min-h-11 cursor-pointer items-start gap-2.5 rounded-md border border-border bg-surface px-3 py-2.5">
+              <label
+                className={`flex min-h-11 cursor-pointer items-start gap-2.5 rounded-md border-[1.5px] px-3 py-2.5 transition-colors ${
+                  ticked
+                    ? "border-green-light bg-green-light"
+                    : "border-border bg-surface-soft"
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={ticked}
@@ -50,10 +56,12 @@ export function ShotChecklist() {
                         : [...current, shot.label],
                     )
                   }
-                  className="mt-[3px] h-4 w-4 shrink-0 accent-gold"
+                  className="mt-[3px] h-4 w-4 shrink-0 accent-green"
                 />
                 <span>
-                  <span className="block text-base font-medium leading-[1.35] text-ink">
+                  <span
+                    className={`block text-base leading-[1.35] ${ticked ? "font-medium text-green" : "text-ink"}`}
+                  >
                     {shot.label}
                   </span>
                   <span className="block text-sm leading-[1.4] text-ink-muted">{shot.note}</span>

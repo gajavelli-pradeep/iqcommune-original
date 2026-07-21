@@ -24,16 +24,18 @@ export interface ConsentSession {
   grossPayout: string;
 }
 
+/**
+ * The spec's `.kv-grid`: two columns of label-over-value, no rules between
+ * them. An earlier clone rendered a full-width receipt list with dividers,
+ * which reads as a statement rather than as a summary of a session.
+ */
 function Rows({ rows }: { rows: ReadonlyArray<[string, string]> }) {
   return (
-    <dl>
+    <dl className="grid gap-x-6 gap-y-[0.85rem] min-[480px]:grid-cols-2">
       {rows.map(([label, value]) => (
-        <div
-          key={label}
-          className="flex items-baseline justify-between gap-4 border-b border-border py-2.5 last:border-b-0"
-        >
-          <dt className="text-sm text-ink-muted">{label}</dt>
-          <dd className="text-right text-base font-medium text-ink">{value}</dd>
+        <div key={label}>
+          <dt className="mb-0.5 text-xs text-ink-faint">{label}</dt>
+          <dd className="text-md font-medium text-ink">{value}</dd>
         </div>
       ))}
     </dl>
