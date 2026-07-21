@@ -1,97 +1,63 @@
 import { z } from "zod";
 
-export const AUDIENCE_OPTIONS = [
-  "Groups",
-  "Organisations & Institutions",
-  "AMCs & Wealth Firms",
-] as const;
+/**
+ * One schema, used by the modal and by the route that receives it — DoD check 6.
+ *
+ * Two schemas always drift, and the server's copy is the one that matters, so
+ * the client imports this rather than restating the rules in JSX.
+ */
 
-export const GROUP_SIZE_OPTIONS = ["5-8", "9-15", "16-25"] as const;
+export const AUDIENCES = ["individual", "corporate", "finance"] as const;
+export type Audience = (typeof AUDIENCES)[number];
 
-export const MODULES = [
-  "Foundations of Personal Finance",
-  "Retirement & Goal-Based Financial Planning",
-  "Equity Investing Simplified",
-  "Debt & Fixed Income Investing",
-  "Asset Allocation & Portfolio Construction",
-  "Investment Solutions & Portfolio Strategies",
-] as const;
-
-export const BUNDLES = [
-  "Bundle — Foundations of Personal Finance + Retirement & Goal-Based Financial Planning (6 hrs)",
-  "Bundle — Equity Investing Simplified + Debt & Fixed Income Investing (6 hrs)",
-  "Bundle — Asset Allocation & Portfolio Construction + Investment Solutions & Portfolio Strategies (6 hrs)",
-] as const;
-
-// Short display labels for the bundle <select> options. VALUES above stay canonical
-// (they power TOPICS + validation + the persisted `topic`); only the visible text shortens.
-export const BUNDLE_LABELS: Record<(typeof BUNDLES)[number], string> = {
-  "Bundle — Foundations of Personal Finance + Retirement & Goal-Based Financial Planning (6 hrs)":
-    "Foundations + Retirement & Goals",
-  "Bundle — Equity Investing Simplified + Debt & Fixed Income Investing (6 hrs)":
-    "Equity + Debt & Fixed Income",
-  "Bundle — Asset Allocation & Portfolio Construction + Investment Solutions & Portfolio Strategies (6 hrs)":
-    "Asset Allocation + Portfolio Strategies",
+/** Labels are spec copy; the values are what the database stores. */
+export const AUDIENCE_LABELS: Record<Audience, string> = {
+  individual: "Group (register as SPOC)",
+  corporate: "Organisations & Institutions",
+  finance: "AMC / Wealth Firm",
 };
 
-// Flat list used by form <select> and API validation.
-export const TOPICS = [...MODULES, ...BUNDLES, "Not sure — help me choose"] as const;
+const required = (field: string) => z.string().trim().min(1, `${field} is required`);
 
-export const SessionRequestSchema = z
-  .object({
-    firstName:       z.string().min(1, "Required"),
-    lastName:        z.string().optional(),
-    email:           z.string().email("Invalid email"),
-    phone:           z.string().min(6, "Required"),
-    city:            z.string().min(1, "Required"),
-    state:           z.string().min(1, "Required"),
-    audienceType:    z.enum(AUDIENCE_OPTIONS, { message: "Select audience type" }),
-    orgName:         z.string().optional(),
-    topic:           z.enum(TOPICS, { message: "Select a valid topic" }),
-    groupSize:       z.enum(GROUP_SIZE_OPTIONS).optional(),
-    minCommit:       z.number().int().min(1).optional(),
-    venue:           z.string().optional(),
-    preferredDates:  z.string().min(1, "Required"),
-    notes:           z.string().optional(),
-    spocDeclaration: z.literal(true, { message: "SPOC declaration is required" }),
+export const sessionRequestSchema = z.object({
+  audience: z.enum(AUDIENCES, { message: "Select who this is for" }),
+  firstName: required("First name").max(80),
+  lastName: required("Last name").max(80),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+  // Deliberately permissive: Indian numbers arrive with +91, spaces and dashes,
+  // and rejecting a real customer to enforce a format is the worse error.
+  phone: required("Phone number").regex(/^[\d+\-()\s]{7,20}$/, "Enter a valid phone number"),
+  city: required("City").max(80),
+  state: required("State").max(80),
+  organisationName: z.string().trim().max(160).optional(),
+  topic: required("Topic of interest"),
+  groupSize: z.string().trim().max(40).optional(),
+  preferredWindow: z.string().trim().max(160).optional(),
+  venueDetails: z.string().trim().max(500).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  spocConfirmed: z.boolean(),
+});
+
+export type SessionRequestInput = z.infer<typeof sessionRequestSchema>;
+
+/**
+ * Groups register through a single point of contact, so the declaration is
+ * mandatory for that audience and meaningless for the others.
+ */
+export const sessionRequestSubmission = sessionRequestSchema
+  // The declaration is shown for every audience, so it is required for every
+  // audience — the spec only varies its wording.
+  .refine((value) => value.spocConfirmed, {
+    path: ["spocConfirmed"],
+    message: "Please confirm you are registering as the primary contact",
   })
-  .superRefine((data, ctx) => {
-    if (data.audienceType === "Groups" && !data.groupSize) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Group size is required",
-        path: ["groupSize"],
-      });
-    }
-    if (data.audienceType === "Groups" && !data.venue?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Venue is required for group sessions",
-        path: ["venue"],
-      });
-    }
-    if (
-      data.topic.startsWith("Bundle") &&
-      data.audienceType === "Groups" &&
-      data.groupSize === "5-8"
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Bundles require a minimum group of 9–15 participants",
-        path: ["groupSize"],
-      });
-    }
-    if (
-      (data.audienceType === "Organisations & Institutions" ||
-        data.audienceType === "AMCs & Wealth Firms") &&
-      !data.orgName?.trim()
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Organisation/firm name is required",
-        path: ["orgName"],
-      });
-    }
-  });
-
-export type SessionRequest = z.infer<typeof SessionRequestSchema>;
+  // Groups arrange their own venue, so the spec marks this field required for
+  // them and hides it for everyone else.
+  .refine((value) => value.audience !== "individual" || Boolean(value.venueDetails?.trim()), {
+    path: ["venueDetails"],
+    message: "Venue details are required for groups",
+  })
+  .refine(
+    (value) => value.audience === "individual" || Boolean(value.organisationName?.trim()),
+    { path: ["organisationName"], message: "Please tell us the organisation or firm name" },
+  );

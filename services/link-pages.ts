@@ -1,0 +1,264 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { ConsentSession } from "@/features/consent/SessionSummary";
+import type { AdminInvite } from "@/features/join-admin/AccountSetupForm";
+import type { OnboardingPractitioner } from "@/features/onboarding/OnboardingForm";
+import type { PhotoSession } from "@/features/photos/PhotoSubmissionForm";
+import type { RatedSession } from "@/features/rate/SessionDetailsCard";
+
+/**
+ * Loaders for the five tokenised pages.
+ *
+ * Each takes the uuid a verified token carries and returns the page's own
+ * interface, or `null` — which every page renders as its invalid-link state
+ * rather than as an error, because a missing row and a bad link are the same
+ * thing to the person holding it.
+ *
+ * The components format nothing: every field they declare is a `string`, so
+ * dates, amounts and joined "City, State" values are built here. One place.
+ *
+ * Three of these load from `session_practitioners`, not `sessions` — the
+ * correction recorded in ADR 0004. A session with two practitioners makes a
+ * session id ambiguous for a page that names a practitioner or shows a payout.
+ */
+
+const date = (value: string) =>
+  new Date(value).toLocaleDateString("en-IN", { dateStyle: "medium" });
+
+const rupees = (value: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+
+/** Postgres `time` comes back as "10:00:00"; the page wants "10:00 AM". */
+function clockTime(value: string | null): string {
+  if (!value) return "—";
+  const [hours, minutes] = value.split(":").map(Number);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  return `${((hours + 11) % 12) + 1}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+const ASSIGNMENT_SELECT = `
+  id, gross_payout, currency, confirmation_reference, confirmation_issued_on, consent_given_at,
+  practitioners ( reference, full_name, role ),
+  sessions ( reference, module, session_date, start_time, duration_minutes, venue, city, state, audience, participants, spoc_name ),
+  practitioner_agreements ( reference )
+`;
+
+interface AssignmentRow {
+  id: string;
+  gross_payout: number;
+  confirmation_reference: string;
+  confirmation_issued_on: string;
+  consent_given_at: string | null;
+  practitioners: { reference: string; full_name: string; role: string } | null;
+  sessions: {
+    reference: string;
+    module: string;
+    session_date: string;
+    start_time: string | null;
+    duration_minutes: number | null;
+    venue: string | null;
+    city: string;
+    state: string;
+    audience: string;
+    participants: string | null;
+    spoc_name: string;
+  } | null;
+  practitioner_agreements: { reference: string } | null;
+}
+
+async function loadAssignment(assignmentId: string): Promise<AssignmentRow | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("session_practitioners")
+    .select(ASSIGNMENT_SELECT)
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
+  return (data as AssignmentRow | null) ?? null;
+}
+
+export async function getRatedSession(assignmentId: string): Promise<RatedSession | null> {
+  const row = await loadAssignment(assignmentId);
+  if (!row?.practitioners || !row.sessions) return null;
+
+  return {
+    practitioner: row.practitioners.full_name,
+    module: row.sessions.module,
+    sessionDate: date(row.sessions.session_date),
+    city: row.sessions.city,
+    reference: row.sessions.reference,
+    requestedBy: row.sessions.spoc_name,
+  };
+}
+
+export async function getConsentSession(assignmentId: string): Promise<ConsentSession | null> {
+  const row = await loadAssignment(assignmentId);
+  if (!row?.practitioners || !row.sessions) return null;
+
+  return {
+    reference: row.confirmation_reference,
+    agreementReference: row.practitioner_agreements?.reference ?? "—",
+    issuedOn: date(row.confirmation_issued_on),
+    // The spec greets by first name only.
+    firstName: row.practitioners.full_name.split(" ")[0],
+    module: row.sessions.module,
+    date: date(row.sessions.session_date),
+    startTime: clockTime(row.sessions.start_time),
+    duration: row.sessions.duration_minutes ? `${row.sessions.duration_minutes / 60} hours` : "—",
+    venue: row.sessions.venue ?? "—",
+    cityState: `${row.sessions.city}, ${row.sessions.state}`,
+    audience: row.sessions.audience,
+    participants: row.sessions.participants ?? "—",
+    spoc: row.sessions.spoc_name,
+    grossPayout: rupees(row.gross_payout),
+  };
+}
+
+export async function getPhotoSession(assignmentId: string): Promise<PhotoSession | null> {
+  const row = await loadAssignment(assignmentId);
+  if (!row?.practitioners || !row.sessions) return null;
+
+  return {
+    practitioner: row.practitioners.full_name,
+    practitionerRole: row.practitioners.role,
+    practitionerRef: row.practitioners.reference,
+    sessionDate: date(row.sessions.session_date),
+    module: row.sessions.module,
+    city: row.sessions.city,
+    state: row.sessions.state,
+    sessionId: row.sessions.reference,
+  };
+}
+
+/**
+ * Loaded by agreement id, not practitioner id: one practitioner may hold
+ * several agreements over time, so a practitioner id selects an unbounded set.
+ */
+export async function getOnboardingPractitioner(
+  agreementId: string,
+): Promise<OnboardingPractitioner | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("practitioner_agreements")
+    .select("reference, modules, signed_at, practitioners ( full_name, role, organisation, city )")
+    .eq("id", agreementId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`practitioner_agreements read failed: ${error.message}`);
+
+  const row = data as {
+    reference: string;
+    modules: string[];
+    signed_at: string | null;
+    practitioners: { full_name: string; role: string; organisation: string | null; city: string } | null;
+  } | null;
+  if (!row?.practitioners) return null;
+
+  return {
+    name: row.practitioners.full_name,
+    role: row.practitioners.role,
+    organisation: row.practitioners.organisation ?? "Independent",
+    module: row.modules.join(", "),
+    city: row.practitioners.city,
+    agreementReference: row.reference,
+  };
+}
+
+/**
+ * A consumed invite resolves to `null` — the invalid-link state. Single-use
+ * cannot live in the token, which is unrevokable by design, so it lives here.
+ */
+export async function getAdminInvite(inviteId: string): Promise<AdminInvite | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("admin_invites")
+    .select("email, role")
+    .eq("id", inviteId)
+    .is("consumed_at", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`admin_invites read failed: ${error.message}`);
+  if (!data) return null;
+
+  const LABELS: Record<string, string> = {
+    global_admin: "Global Admin",
+    admin: "Admin",
+    user: "User",
+  };
+  // Rendered through a label map so a raw database value can never appear on a
+  // page that grants console access.
+  return { email: data.email, role: LABELS[data.role] ?? data.role };
+}
+
+/**
+ * Who and what a photos token refers to. Separate from `getPhotoSession`, which
+ * returns display strings: this returns the identifiers and raw values the
+ * write needs, so the route never has to re-parse a formatted date.
+ */
+export interface PhotoSubmissionOwnerRow {
+  sessionId: string;
+  practitionerId: string;
+  practitionerName: string;
+  practitionerEmail: string;
+  sessionDate: string;
+  module: string;
+}
+
+export async function getPhotoSubmissionOwner(
+  assignmentId: string,
+): Promise<PhotoSubmissionOwnerRow | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("session_practitioners")
+    .select("session_id, practitioner_id, practitioners ( full_name, email ), sessions ( session_date, module )")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
+
+  const row = data as {
+    session_id: string;
+    practitioner_id: string;
+    practitioners: { full_name: string; email: string } | null;
+    sessions: { session_date: string; module: string } | null;
+  } | null;
+  if (!row?.practitioners || !row.sessions) return null;
+
+  return {
+    sessionId: row.session_id,
+    practitionerId: row.practitioner_id,
+    practitionerName: row.practitioners.full_name,
+    practitionerEmail: row.practitioners.email,
+    sessionDate: row.sessions.session_date,
+    module: row.sessions.module,
+  };
+}
+
+/** The stored role and email behind an open invite, for account creation. */
+export async function getOpenInvite(
+  inviteId: string,
+): Promise<{ email: string; role: string } | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("admin_invites")
+    .select("email, role, expires_at")
+    .eq("id", inviteId)
+    .is("consumed_at", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`admin_invites read failed: ${error.message}`);
+  if (!data) return null;
+  // Expiry is enforced here as well as in the token: an invite row may outlive
+  // or predate the link that points at it.
+  if (new Date(data.expires_at) <= new Date()) return null;
+  return { email: data.email, role: data.role };
+}

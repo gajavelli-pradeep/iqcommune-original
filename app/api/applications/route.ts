@@ -1,147 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ApplicationSchema } from "@/lib/schemas/application";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { clientIp } from "@/lib/ip";
-import { log } from "@/lib/logger";
-import { encryptOptional } from "@/lib/encrypt";
-import { sendEmail } from "@/lib/email/brevo";
-import { applicationConfirmation, newApplicationAdminEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
-import { notifyAdmin } from "@/lib/email/notify-admin";
-import { signStatusUrl } from "@/lib/hmac";
-import { getBaseUrl } from "@/lib/base-url";
+import { fail, ok } from "@/lib/api/response";
+import { log, newTraceId } from "@/lib/logger";
+import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
+// `applicationSchema` directly, with no `applicationSubmission` sibling: unlike
+// the session request, this form has no cross-field rules to refine.
+import { applicationSchema } from "@/lib/schemas/application";
+import { createApplication } from "@/services/applications";
 
-export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
-  const { limited, reset } = await checkRateLimit(ip);
-  if (limited) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(reset) } }
-    );
-  }
+/** Public write. Rate limit, then validate, then hand to the service. */
+export async function POST(request: Request) {
+  const traceId = newTraceId();
 
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    // Its own prefix: sharing one with session-requests would let traffic on
+    // either form exhaust the other's budget.
+    const { allowed, enforced } = await checkRateLimit(`application:${clientIdentifier(request)}`);
+    if (!enforced) log.warn(traceId, "rate limiting not enforced — no Upstash credentials");
+    if (!allowed) {
+      return fail("RATE_LIMITED", "Too many requests. Please try again shortly.", traceId);
+    }
 
-  const parsed = ApplicationSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+    const parsed = applicationSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      const fields: Record<string, string> = {};
+      // Keyed on the first path segment: an array field yields paths like
+      // ["modules", 0], and a joined "modules.0" key matches no error slot in
+      // the form, so the message would be dropped silently.
+      for (const issue of parsed.error.issues) fields[String(issue.path[0])] = issue.message;
+      log.info(traceId, "application rejected by validation", {
+        fieldCount: Object.keys(fields).length,
+      });
+      return fail("VALIDATION_FAILED", "Please check the highlighted fields.", traceId, fields);
+    }
 
-  const d = parsed.data;
-  const supabase = createAdminClient();
-
-  const { data: refCode, error: refErr } = await supabase.rpc("next_practitioner_ref");
-  if (refErr || !refCode) {
-    log.error("Failed to generate practitioner ref code", { error: refErr?.message, ip });
-    return NextResponse.json({ error: "Failed to generate reference code" }, { status: 500 });
-  }
-
-  const { data, error } = await supabase
-    .from("practitioners")
-    .insert({
-      name:             `${d.firstName} ${d.lastName}`,
-      email:            d.email,
-      phone:            d.phone,
-      role:             d.role,
-      org:              d.organisation ?? null,
-      experience:       d.experience,
-      city:             d.city,
-      state:            d.state,
-      communication_address: d.communicationAddress || null,
-      tshirt_size:      d.tshirtSize ?? null,
-      modules:          d.modules,
-      teach_freq:       d.teachFreq,
-      why:              d.why,
-      // payment / tax fields encrypted at rest
-      // V6 sends PAN + GST separately; combine into the existing single column.
-      pan_gst:          encryptOptional(
-                          [d.pan?.trim(), d.gst?.trim()].filter(Boolean).join(" / ") || d.panGst,
-                        ),
-      upi_id:           encryptOptional(d.upiId),
-      bank_name:        encryptOptional(d.bankAccountName),
-      bank_account:     encryptOptional(d.bankAccount),
-      ifsc:             encryptOptional(d.ifsc),
-      pay_to_family:    d.payToFamily,
-      family_name:      d.familyName ?? null,
-      family_relation:  d.familyRelation ?? null,
-      family_upi:       encryptOptional(d.familyUpi),
-      family_bank:      encryptOptional(d.familyBankAccount),
-      family_ifsc:      encryptOptional(d.familyIfsc),
-      ref_code:         refCode as string,
-      status:           "Applied",
-    })
-    .select("id, ref_code")
-    .single();
-
-  if (error) {
-    log.error("Failed to insert practitioner application", {
-      error: error.message,
-      code: error.code,
-      ip,
+    const created = await createApplication(parsed.data);
+    log.info(traceId, "application created", {
+      id: created.id,
+      moduleCount: parsed.data.modules.length,
     });
-    if (error.code === "23505") {
-      return NextResponse.json(
-        { error: "An application with this email already exists" },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
+    return ok(created, 201);
+  } catch (cause) {
+    log.error(traceId, "application failed", { cause: String(cause) });
+    return fail("INTERNAL", "Something went wrong sending your application. Please try again.", traceId);
   }
-
-  const { id, ref_code } = data as { id: string; ref_code: string };
-
-  // Send applicant confirmation (idempotent — safe on retry)
-  const alreadySent = await guardEmailSend("application_received", id, d.email);
-  if (!alreadySent) {
-    try {
-      const { subject, htmlContent } = applicationConfirmation({
-        name:      `${d.firstName} ${d.lastName}`,
-        ref:       ref_code,
-        modules:   [...d.modules],
-        statusUrl: signStatusUrl(ref_code, getBaseUrl(req)),
-      });
-      const { messageId } = await sendEmail({
-        to:          d.email,
-        name:        `${d.firstName} ${d.lastName}`,
-        subject,
-        htmlContent,
-      });
-      await recordEmailMessageId("application_received", id, messageId);
-    } catch (emailErr) {
-      log.error("Application confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), id });
-      await revokeEmailSend("application_received", id);
-    }
-  }
-
-  // Notify the internal team of the new application (best-effort, idempotent).
-  const adminMail = newApplicationAdminEmail({
-    name:       `${d.firstName} ${d.lastName}`,
-    ref:        ref_code,
-    role:       d.role,
-    experience: d.experience,
-    city:       d.city,
-    state:      d.state,
-    modules:    [...d.modules],
-    email:      d.email,
-    phone:      d.phone,
-    consoleUrl: `${getBaseUrl(req)}/console`,
-  });
-  await notifyAdmin({
-    emailType:   "admin_new_application",
-    entityId:    id,
-    subject:     adminMail.subject,
-    htmlContent: adminMail.htmlContent,
-  });
-
-  return NextResponse.json({ id, refCode: ref_code }, { status: 201 });
 }

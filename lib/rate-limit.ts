@@ -1,43 +1,48 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { log } from "@/lib/logger";
-
-// Sliding-window limiter backed by Upstash Redis.
-// Works correctly across all Vercel serverless instances (unlike an in-process Map).
-const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
-const limiter = new Ratelimit({
-  redis,
-  limiter:   Ratelimit.slidingWindow(10, "60 s"),
-  analytics: false,
-});
 
 /**
- * Deliberately FAILS OPEN: if Upstash is unreachable, every caller is allowed through
- * rather than locking legitimate users out of the public forms during an outage we
- * can't control. That is a real tradeoff — while Upstash is down, the six public write
- * endpoints accept unlimited traffic — so the bypass must never be silent.
+ * Rate limiting for public mutations — F2.
  *
- * `rateLimiterBypassed: true` is the field to alert on: it fires only on this path, so
- * a spike means the limiter is off, not that traffic is heavy. If abuse during an
- * outage ever outweighs the lockout risk, flip this to fail-closed here — every caller
- * already handles `limited: true`.
+ * Upstash is optional in development: with no credentials configured every
+ * request is allowed, and that is stated in the log rather than silently
+ * assumed. It is NOT optional in production, where an unlimited public write
+ * endpoint is an invitation.
  */
-export async function checkRateLimit(
-  ip: string
-): Promise<{ limited: boolean; reset: number }> {
-  try {
-    const { success, reset } = await limiter.limit(ip);
-    return { limited: !success, reset };
-  } catch (err) {
-    log.error("Upstash unavailable — rate limiting is OFF, allowing the request", {
-      error: String(err),
-      ip,
-      rateLimiterBypassed: true,
-    });
-    return { limited: false, reset: Date.now() + 60_000 };
+
+const configured =
+  Boolean(process.env.UPSTASH_REDIS_REST_URL) && Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
+
+const limiter = configured
+  ? new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(5, "10 m"),
+      prefix: "iqc:v7",
+    })
+  : undefined;
+
+export interface RateLimitResult {
+  allowed: boolean;
+  /** False when no limiter is configured, so callers can log the gap. */
+  enforced: boolean;
+}
+
+export async function checkRateLimit(identifier: string): Promise<RateLimitResult> {
+  if (!limiter) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "Rate limiting is not configured. Set UPSTASH_REDIS_REST_URL and " +
+          "UPSTASH_REDIS_REST_TOKEN — public mutations must not run unlimited in production.",
+      );
+    }
+    return { allowed: true, enforced: false };
   }
+  const { success } = await limiter.limit(identifier);
+  return { allowed: success, enforced: true };
+}
+
+/** Best-effort client identity for limiting. Proxies vary; order matters. */
+export function clientIdentifier(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  return forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
 }

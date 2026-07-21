@@ -1,44 +1,47 @@
 {
-  "name": "iqcommune",
+  "name": "iqcommune-v7",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --max-warnings 1455",
+    "lint": "eslint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
-    "@hookform/resolvers": "3.9.0",
-    "@supabase/ssr": "^0.12.0",
-    "@supabase/supabase-js": "^2.108.2",
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.38.0",
-    "jspdf": "^4.2.1",
+    "@hookform/resolvers": "^5.1.1",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.58.0",
+    "@upstash/ratelimit": "^2.0.6",
+    "@upstash/redis": "^1.35.5",
+    "jspdf": "^3.0.3",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.79.0",
-    "zod": "^4.4.3"
+    "react-hook-form": "^7.64.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.56.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^5.0.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "jsdom": "^29.1.1",
+    "jsdom": "^27.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^3.2.4"
   }
 }

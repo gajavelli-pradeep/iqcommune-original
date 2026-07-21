@@ -1,0 +1,46 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+
+import { RequestSessionProvider } from "../RequestSession";
+import { CtaSection } from "./CtaSection";
+
+describe("CtaSection", () => {
+  it("renders the headline and its supporting line", () => {
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "If you are serious to improve your financial literacy",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Tell us your topic, your group/)).toBeInTheDocument();
+  });
+
+  it("lists all three reassurances", () => {
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getByText("No fixed slots — we schedule around you")).toBeInTheDocument();
+    expect(screen.getByText("Max 25 participants per session")).toBeInTheDocument();
+    expect(screen.getByText("We'll reach out within 2–3 working days")).toBeInTheDocument();
+  });
+
+  it("opens the request modal from its call to action", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Request a Session/ }));
+    expect(screen.getByRole("dialog", { name: "Request a Session" })).toBeInTheDocument();
+  });
+});

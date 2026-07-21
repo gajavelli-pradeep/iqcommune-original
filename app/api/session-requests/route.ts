@@ -1,109 +1,56 @@
-import { NextRequest, NextResponse } from "next/server";
-import { SessionRequestSchema } from "@/lib/schemas/session-request";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { clientIp } from "@/lib/ip";
-import { log } from "@/lib/logger";
-import { sendEmail } from "@/lib/email/brevo";
-import { sessionRequestReceivedEmail, newSessionRequestAdminEmail } from "@/lib/email/templates";
-import { guardEmailSend, revokeEmailSend, recordEmailMessageId } from "@/lib/email/idempotency";
-import { notifyAdmin } from "@/lib/email/notify-admin";
-import { getBaseUrl } from "@/lib/base-url";
+import { fail, ok } from "@/lib/api/response";
+import { log, newTraceId } from "@/lib/logger";
+import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
+import { sessionRequestSubmission } from "@/lib/schemas/session-request";
+import { sendEmail } from "@/lib/email/send";
+import { newSessionRequestForAdmin, sessionRequestReceived } from "@/lib/email/templates";
+import { createSessionRequest } from "@/services/session-requests";
 
-export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
-  const { limited, reset } = await checkRateLimit(ip);
-  if (limited) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(reset) } }
-    );
-  }
+/**
+ * Public write. Untrusted input, so: rate limit, then validate with the same
+ * schema the form used, then hand to the service. Nothing reaches the database
+ * before all three.
+ */
+export async function POST(request: Request) {
+  const traceId = newTraceId();
 
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const parsed = SessionRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const d = parsed.data;
-  const supabase = createAdminClient();
-
-  const { data, error } = await supabase
-    .from("session_requests")
-    .insert({
-      name:             `${d.firstName} ${d.lastName}`,
-      email:            d.email,
-      phone:            d.phone,
-      city:             d.city,
-      state:            d.state,
-      audience_type:    d.audienceType,
-      org_name:         d.orgName?.trim() || null,
-      topic:            d.topic,
-      group_size:       d.groupSize ?? null,
-      min_commit:       d.minCommit ?? null,
-      venue:            d.audienceType === "Groups" ? (d.venue ?? null) : null,
-      preferred_dates:  d.preferredDates ?? null,
-      notes:            d.notes ?? null,
-      spoc_declaration: true,
-      status:           "New",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    log.error("Failed to save session request", { error: error.message, ip });
-    const msg = process.env.NODE_ENV === "development" ? error.message : "Failed to save request";
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
-
-  const requestId = data.id as string;
-
-  // Send client confirmation (idempotent — safe on retry)
-  const alreadySent = await guardEmailSend("session_request_received", requestId, d.email);
-  if (!alreadySent) {
-    try {
-      const { subject, htmlContent } = sessionRequestReceivedEmail(
-        `${d.firstName} ${d.lastName}`,
-        d.topic,
-      );
-      const { messageId } = await sendEmail({ to: d.email, name: `${d.firstName} ${d.lastName}`, subject, htmlContent });
-      await recordEmailMessageId("session_request_received", requestId, messageId);
-    } catch (emailErr) {
-      log.error("Session request confirmation email failed — revoking sentinel so it can retry", { error: String(emailErr), requestId });
-      await revokeEmailSend("session_request_received", requestId);
+    const { allowed, enforced } = await checkRateLimit(`session-request:${clientIdentifier(request)}`);
+    if (!enforced) log.warn(traceId, "rate limiting not enforced — no Upstash credentials");
+    if (!allowed) {
+      return fail("RATE_LIMITED", "Too many requests. Please try again shortly.", traceId);
     }
+
+    const parsed = sessionRequestSubmission.safeParse(await request.json());
+    if (!parsed.success) {
+      const fields: Record<string, string> = {};
+      for (const issue of parsed.error.issues) fields[issue.path.join(".")] = issue.message;
+      log.info(traceId, "session request rejected by validation", { fieldCount: Object.keys(fields).length });
+      return fail("VALIDATION_FAILED", "Please check the highlighted fields.", traceId, fields);
+    }
+
+    const created = await createSessionRequest(parsed.data);
+    log.info(traceId, "session request created", { id: created.id, audience: parsed.data.audience });
+
+    // After the write, and never awaited into the response path: the request is
+    // already saved, and a slow mail provider must not turn a successful
+    // submission into an error the person sees.
+    void sendEmail(traceId, sessionRequestReceived(parsed.data.email, parsed.data.firstName));
+    const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    if (adminInbox) {
+      void sendEmail(
+        traceId,
+        newSessionRequestForAdmin(
+          adminInbox,
+          `${parsed.data.topic} - ${parsed.data.city}, ${parsed.data.state} (${parsed.data.audience})`,
+        ),
+      );
+    }
+    return ok(created, 201);
+  } catch (cause) {
+    // Never surface the underlying message: it can carry column names and
+    // constraint text. The trace id is what ties this reply to the detail.
+    log.error(traceId, "session request failed", { cause: String(cause) });
+    return fail("INTERNAL", "Something went wrong sending your request. Please try again.", traceId);
   }
-
-  // Notify the internal team of the new request (best-effort, idempotent).
-  const adminMail = newSessionRequestAdminEmail({
-    name:           `${d.firstName} ${d.lastName ?? ""}`.trim(),
-    topic:          d.topic,
-    audienceType:   d.audienceType,
-    groupSize:      d.groupSize ?? "",
-    orgName:        d.orgName?.trim() || undefined,
-    city:           d.city,
-    state:          d.state,
-    preferredDates: d.preferredDates,
-    email:          d.email,
-    phone:          d.phone,
-    consoleUrl:     `${getBaseUrl(req)}/console`,
-  });
-  await notifyAdmin({
-    emailType:   "admin_new_session_request",
-    entityId:    requestId,
-    subject:     adminMail.subject,
-    htmlContent: adminMail.htmlContent,
-  });
-
-  return NextResponse.json({ id: requestId }, { status: 201 });
 }

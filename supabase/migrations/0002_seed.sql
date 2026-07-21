@@ -1,6 +1,0 @@
--- SEED DATA REMOVED from migration sequence.
--- Demo data now lives in supabase/seed.sql (development only).
--- Run: pnpm supabase db seed
---
--- Having test records in the numbered migration chain would insert
--- fake practitioners into any production database that runs migrations.

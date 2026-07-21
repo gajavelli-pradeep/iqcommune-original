@@ -1,812 +1,267 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens — the single source of truth for colour, type, space and motion.
+
+   Every value below is measured from the seven public V7 spec files, not chosen:
+   the `:root` block is byte-identical across all of them, and the scales are
+   derived from actual usage frequency. Raw hex and raw size literals are blocked
+   by eslint (`no-restricted-syntax`, see eslint.config.mjs) — if a value is
+   missing here, add a token rather than inlining one.
+
+   No dark theme. V7 defines none; the light palette is the brand.
+   ──────────────────────────────────────────────────────────────────────────── */
+
 @theme {
-  /* V6 pixel-match: mockup ink tones (--ink #0f1117 / --ink-m #4a4d5c / --ink-f #9496a1). */
-  --color-ink: #0f1117;
-  --color-ink-muted: #4a4d5c;
-  --color-ink-faint: #9496a1;
+  /* ── Colour ──────────────────────────────────────────────────────────────
+     Brand is ink + cream + gold. Semantics are reserved and never reassigned:
+     green = success, gold = brand/primary. Red/blue/amber/purple arrive with
+     the admin console (P8), which is the only surface that uses them. */
+
+  --color-ink: #0f1117;         /* primary text, dark surfaces */
+  --color-ink-muted: #4a4d5c;   /* secondary text */
+  /* Darkened from #9496a1, which measured 2.94:1 on surface and 2.75:1 on
+     surface-soft — both well under AA for normal text, and it is used for
+     hints, notes and placeholders throughout. Now 4.51:1 / 4.83:1. */
+  --color-ink-faint: #6f7180;   /* tertiary text, placeholders */
+
   --color-surface: #ffffff;
-  --color-soft: #f8f7f4;
-  --color-gold: #c9982a;
-  --color-gold-light: #f5e9c8;
-  --color-gold-dark: #8a6510;
-  --color-green: #2a6b2a;
+  --color-surface-soft: #f8f7f4; /* cream — page background, inset panels */
+
+  --color-gold: #c9982a;         /* brand/primary */
+  --color-gold-light: #f5e9c8;   /* tinted fills on light surfaces */
+  /* Darkened from #8a6510: 4.40:1 on gold-light, just under AA, and that is
+     exactly where it is used — every pill and the audience ribbon. Now 5.15:1. */
+  --color-gold-dark: #7d5b0e;    /* gold TEXT on light — #c9982a fails AA */
+  --color-gold-border: #e0c870;  /* outline on gold-light fills (pills) */
+
+  /* Error only — never a routine count or a "needs action" state, which is
+     amber. Reserved semantics, per CLAUDE.md. 5.05:1 on surface. */
+  --color-red: #c0392b;
+  --color-red-light: #fdecea;
+
+  --color-green: #2a6b2a;        /* success only */
   --color-green-light: #eef7ee;
-  --color-red: #a32d2d;
-  --color-red-light: #fdf0f0;
-  --color-blue: #185fa5;
-  --color-blue-light: #e6f1fb;
-  --color-amber: #854f0b;
-  --color-amber-light: #faeeda;
-  --color-purple: #534ab7;
-  --color-purple-light: #eeedfe;
-  --color-teal: #0f7d8c;
-  --color-teal-light: #e2f3f5;
-  --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
-  --radius: 10px;
-  --radius-sm: 6px;
-}
 
-:root {
-  /* V6 pixel-match: mockup ink tones. */
-  --ink: #0f1117;
-  --ink-strong: #0f1117;
-  --ink-body: #4a4d5c;
-  --ink-muted: #4a4d5c;
-  --ink-soft: #5b5e6c;
-  --ink-faint: #9496a1;
-  --eyebrow: #8a6510;
-  --surface: #ffffff;
-  --surface-sunken: #f4f2ec;
-  --surface-soft: #f8f7f4;
-  /* Sticky-nav backdrop: translucent so backdrop-filter has something to blur. */
-  --surface-nav: rgba(255, 255, 255, 0.97);
-  --input-paper: #fcfbf8;
-  --input-hover: #faf8f3;
-  --gold: #c9982a;
-  --gold-light: #f5e9c8;
-  --gold-dark: #8a6510;
-  --green: #2a6b2a;
-  --green-light: #eef7ee;
-  --red: #a32d2d;
-  --red-light: #fdf0f0;
-  --blue: #185fa5;
-  --blue-light: #e6f1fb;
-  --amber: #854f0b;
-  --amber-light: #faeeda;
-  --purple: #534ab7;
-  --purple-light: #eeedfe;
-  /* V6 pixel-match: cool-ink hairlines (mockup --border / --border-s). */
-  --border: rgba(15, 17, 23, 0.10);
-  --border-card: rgba(15, 17, 23, 0.12);
-  --border-input: rgba(15, 17, 23, 0.18);
-  --border-strong: rgba(15, 17, 23, 0.18);
-  --border-gold: rgba(138, 101, 16, 0.28);
-  /* Edge-case tokens — added to kill recurring magic hexes (color audit 2026-06-24). */
-  --gold-border: rgba(138, 101, 16, 0.28); /* pill/badge/ribbon borders (replaces #e0c870) */
-  --gold-on-ink: #f0c84a;                  /* brightened gold for text on ink surfaces */
-  --gold-rule: rgba(201, 152, 42, 0.35);   /* gold underline on ink, resting */
-  --gold-rule-strong: rgba(201, 152, 42, 0.80); /* …and on hover */
-  --green-on-ink: #6fcf6f;                 /* lightened green for checkmarks on ink */
-  --green-border: rgba(42, 107, 42, 0.30); /* success-box borders (replaces #b8d98a) */
-  --red-border: rgba(163, 45, 45, 0.30);   /* error-field borders (replaces #f0b0b0) */
-  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --elev-1: 0 1px 2px rgba(20, 16, 10, 0.05), 0 6px 16px -10px rgba(20, 16, 10, 0.14);
-  --elev-2: 0 2px 4px rgba(20, 16, 10, 0.06), 0 16px 34px -12px rgba(20, 16, 10, 0.20);
-  --elev-3: 0 4px 8px rgba(20, 16, 10, 0.07), 0 28px 56px -14px rgba(20, 16, 10, 0.26);
-  --shadow-focus: 0 0 0 3px rgba(201, 152, 42, 0.16);
-  --admin-nav-h: 64px;
-  --admin-sidebar-w: 220px;
+  /* Modal backdrop. Ink at 55% keeps the page legible behind the dialog while
+     still pushing it back — a pure-black scrim reads as a page change. */
+  --color-scrim: rgba(15, 17, 23, 0.55);
 
-  /* ── Size scale ───────────────────────────────────────────────────────────
-     Colour has had tokens and a lint guard since the 2026-06-24 audit; size and
-     spacing had neither, which is why the repo carries 162 distinct padding
-     literals, 23 font sizes and 13 radii across 1,593 inline style objects.
-     These values are measured, not invented: buttons in the running console fall
-     into three clusters (h25-30 / h34-38 / h41-48) and the dominant button radius
-     is the 100px pill. See PLAN-control-size-system.md. */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
+  --color-border: rgba(15, 17, 23, 0.10);
+  --color-border-strong: rgba(15, 17, 23, 0.20);
 
-  --radius-pill: 100px;
+  /* On dark surfaces (footer, and the dark bands the marketing pages use).
+     Added with the Footer, the first section to need them.
 
-  /* Control heights. --control-h-lg is 44px because that is the coarse-pointer
-     touch floor, so the large size is tappable by construction. */
-  --control-h-sm: 28px;
-  --control-h-md: 36px;
-  --control-h-lg: 44px;
+     One deliberate deviation from the spec: it sets body text on #080a0e to
+     rgba(255,255,255,0.3), which measures 2.60:1 — a WCAG AA failure for text
+     (4.5:1 required). --color-on-dark-muted raises it to 0.5 → 5.31:1. The
+     change is one token and barely perceptible on near-black; the alternative
+     was shipping copyright and tagline text that fails AA. Revert here if the
+     client wants the original value. */
 
+  --color-ink-deep: #080a0e;                          /* footer surface */
+  --color-on-dark-muted: rgba(255, 255, 255, 0.5);    /* body + links — 5.31:1 */
+  --color-on-dark: rgba(255, 255, 255, 0.65);         /* CTA link */
+  --color-on-dark-strong: rgba(255, 255, 255, 0.7);   /* wordmark */
+  --color-on-dark-bright: rgba(255, 255, 255, 0.75);  /* link hover */
+  --color-on-dark-divider: rgba(255, 255, 255, 0.07);
+
+  --color-gold-bright: #f0c84a;                       /* gold hover on dark */
+  --color-gold-rule: rgba(201, 152, 42, 0.35);
+  --color-gold-rule-strong: rgba(201, 152, 42, 0.8);
+
+  /* Tool widgets on the dark calculators band. Added with ToolsCalculators,
+     the first section to need an interactive surface on top of ink. */
+
+  --color-tool-card: rgba(255, 255, 255, 0.05);
+  --color-tool-card-hover: rgba(255, 255, 255, 0.09);
+  --color-tool-edge: rgba(255, 255, 255, 0.1);
+  --color-tool-edge-hover: rgba(201, 152, 42, 0.4);
+  --color-tool-well: rgba(0, 0, 0, 0.25);   /* inset widget panel */
+  --color-tool-box: rgba(0, 0, 0, 0.3);     /* result box inside the panel */
+  --color-tool-seam: rgba(201, 152, 42, 0.18);
+  --color-tool-seam-soft: rgba(201, 152, 42, 0.12);
+  --color-tool-chip: rgba(201, 152, 42, 0.12);
+  --color-tool-chip-edge: rgba(201, 152, 42, 0.3);
+
+  /* Result semantics on dark. Green = good, red = bad, gold = needs attention —
+     the same reservation the light palette uses, retuned for a dark ground. */
+  --color-result-good: #4ec994;
+  --color-result-bad: #e06c75;
+  --color-flag-good: rgba(78, 201, 148, 0.1);
+  --color-flag-good-edge: rgba(78, 201, 148, 0.25);
+  --color-flag-warn: rgba(201, 152, 42, 0.1);
+  --color-flag-warn-edge: rgba(201, 152, 42, 0.25);
+  --color-flag-bad: rgba(224, 108, 117, 0.1);
+  --color-flag-bad-edge: rgba(224, 108, 117, 0.25);
+
+  /* Budget split segments — categorical, not semantic. */
+  --color-seg-needs: #c9982a;
+  --color-seg-wants: #4a7abe;
+  --color-seg-savings: #4ec994;
+
+  /* ── Type ────────────────────────────────────────────────────────────────
+     DM Sans, wired in app/layout.tsx via next/font (self-hosted — no external
+     request, so it survives the CSP and costs no extra round trip).
+
+     Scale derived from frequency across the seven public files. 13px is the
+     body size (58 uses, the most common). The source also authors half-steps
+     (11.5/12.5/13.5/14.5, ~42 uses) — those are authoring drift, not intent:
+     0.5px at this size is sub-pixel. They normalise to the nearest step,
+     ties rounding up (13.5 -> 14), preserving the "slightly larger" intent. */
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-3xs: 9px;    /* result-box labels inside the calculators — the spec's
+                         smallest step; at 10px "SAVINGS (20%)" wraps and the
+                         values in its row stop aligning */
+  --text-2xs: 10px;
   --text-xs: 11px;
   --text-sm: 12px;
-  --text-md: 13px;
+  --text-base: 13px;
+  --text-md: 14px;
   --text-lg: 15px;
-  /* V6 pixel-match: solid mid-tones (mockup uses these as pill borders). */
-  --ink-m: #4a4d5c;
-  --ink-f: #9496a1;
-  --amber-m: #fac775;
-  --amber-f: rgba(201, 152, 42, 0.30);
-  --blue-m: #85b7eb;
-  --purple-m: #afa9ec;
-  --red-m: #f0b0b0;
-  --green-m: #c8e6c8;
+  --text-xl: 16px;
+  --text-lead: 17px;  /* standing paragraph under a headline (hero sub) */
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+  --text-5xl: 24px;
+  --text-6xl: 26px;
+
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Tracking. Display headings pull tight; uppercase eyebrow labels open up. */
+  --tracking-display: -0.04em;
+  --tracking-tight: -0.02em;  /* large numerals — the pool stat figures */
+  --tracking-body: -0.01em;
+  --tracking-label: 0.06em;
+  --tracking-eyebrow: 0.08em;
+  --tracking-caps: 0.1em;
+  --tracking-pill: 0.12em;    /* uppercase badge text */
+
+  /* ── Space ───────────────────────────────────────────────────────────────
+     4px base. The source authors odd values (3/5/7/9px) inconsistently for the
+     same visual gaps; this normalises them. --space-0-5 exists for genuine
+     hairline gaps, which the source does use deliberately. */
+
+  --spacing: 4px;
+
+  /* ── Radius ──────────────────────────────────────────────────────────────
+     12px across all seven public files. The admin console uses 10px/6px — a
+     denser scale for a denser UI — and those steps get added at P8. */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;   /* raised cards — the hero's practitioner-pool panel */
+  --radius-full: 9999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────────
+     Five measured shadows. Never animate blur on hover — animate a
+     pseudo-element's opacity instead (compositor-only). */
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --shadow-card-soft: 0 12px 48px rgba(0, 0, 0, 0.07);
+  --shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.22);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.25);
+  --shadow-gold: 0 6px 24px rgba(201, 152, 42, 0.35); /* primary button lift */
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     Durations only. Motion is opt-in: author the base state motionless and add
+     transitions inside `@media (prefers-reduced-motion: no-preference)`. The
+     blanket `* { animation-duration: 0.01ms }` reset is an anti-pattern. */
+
+  --duration-fast: 0.15s;
+  --duration-base: 0.18s;
+  --duration-slow: 0.2s;
+  --duration-slower: 0.3s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Containers ──────────────────────────────────────────────────────────
+     Measured max-widths. 480 is the narrow token/flow pages (/rate, /consent),
+     1100 the marketing pages. */
+
+  --container-flow: 480px;
+  --container-narrow: 520px;
+  --container-form: 720px;
+  --container-reading: 780px;
+  --container-wide: 860px;
+  --container-page: 1100px;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ─── Base ─────────────────────────────────────────────────────────────────
+   `dvh` over `vh`: 100vh is the *largest* viewport and hides the bottom edge
+   under mobile browser chrome. */
 
 html {
-  -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
-  background: var(--surface-soft);
-  color: var(--ink);
-  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
-  font-size: 16px;
-  line-height: 1.7;
+  min-height: 100dvh;
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-body);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* ── Nav responsive show/hide ─────────────────────────────────────────────── */
-.nav-cta-desktop { display: flex; }
-.nav-hamburger   { display: none !important; }
-
-@media (max-width: 768px) {
-  .nav-cta-desktop { display: none !important; }
-  .nav-hamburger   { display: flex !important; }
-}
-
-/* The nav CTA is 38.67px tall to match the V5 spec, which is under the 44px touch
-   minimum. It only renders above 768px, but touch laptops and tablets land there —
-   so raise the box to 44 where the pointer is actually coarse. */
-@media (any-pointer: coarse) {
-  .nav-cta-desktop button { min-height: 44px; }
-}
-
-/* The hamburger's visual box is ~43×39 — sized to sit beside the logo, which at
-   320px leaves no room to grow. Extend the hit area to 44×44 via a pseudo-element
-   so the touch target meets the minimum without taking any layout space. */
-.nav-hamburger { position: relative; }
-.nav-hamburger::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
-}
-
-/* Boundary is 767px, not 600px: the full top nav (console lockup + search + "Viewing
-   as" + bell + avatar) only actually fits from 768px up. Between 601-767px — small
-   tablets and landscape phones — the desktop nav used to render in a space too small
-   for it and its right cluster escaped the viewport. */
-@media (max-width: 767px) {
-  .admin-nav-tagline { display: none !important; }
-  .admin-nav-label   { display: none !important; }
-  /* Free up width so the search field + bell/avatar never clip on a phone:
-     drop the "Admin Console" lockup label and its divider below 600px. */
-  .admin-nav-console { display: none !important; }
-  /* The search box's flex:1 wrapper stays as a spacer, but the box itself would be
-     crushed to ~0 width on a phone — hide it (search isn't a primary mobile action). */
-  .admin-nav-search { display: none !important; }
-  /* The "Viewing as" role-preview switcher (~180px) is the widest right-cluster
-     item, so it can't stay in the nav on a phone — it moves into the sidebar
-     drawer instead. Hidden here, shown there: relocated, never deleted. A global
-     admin previewing as User needs this control to switch back. */
-  .admin-nav-viewas { display: none !important; }
-  .admin-viewas-drawer { display: block !important; }
-}
-
-/* The drawer copy of "Viewing as" exists only below 768px — above it, the top-nav
-   copy is the one on screen. Exactly one is ever visible. */
-@media (min-width: 768px) {
-  .admin-viewas-drawer { display: none !important; }
-}
-@media (max-width: 480px) {
-  /* Tighten the fixed top nav so its non-shrinkable children fit at 320-430px. */
-  .admin-topnav { gap: 0.55rem !important; padding: 0 0.85rem !important; }
-}
-
-/* Full-height centered screens: use the dynamic viewport unit so vertically-centered
-   content (login CTAs) isn't pushed under mobile browser chrome. !important beats the
-   inline minHeight:100vh these layouts set; the 100vh line is the fallback for browsers
-   without dvh support. */
-.min-h-screen-dvh {
-  min-height: 100vh !important;
-  min-height: 100dvh !important;
-}
-
-/* Rating stars: the 5×40px row overflows a ~216px card at 320px → page h-scroll.
-   Shrink the glyphs + gap on very narrow phones. !important beats the inline
-   fontSize:40 on each star (button + readonly span). */
-@media (max-width: 380px) {
-  .rating-stars { gap: 4px !important; }
-  .rating-stars button,
-  .rating-stars > span { font-size: 30px !important; }
-  .rating-stars button { padding: 3px !important; }
-}
-
-/* ── Admin console mobile drawer ─────────────────────────────────────────────
-   Mockup-safe: every rule here is gated to <768px, and the toggle/backdrop are
-   display:none by default — so the V5 desktop console (≥768px) is pixel-identical.
-   Below 768px the 220px fixed rail (which otherwise eats ~69% of a phone) becomes
-   an off-canvas drawer opened by the top-nav hamburger. */
-.admin-hamburger { display: none; }
-.admin-drawer-backdrop { display: none; }
-@media (max-width: 767px) {
-  .admin-hamburger { display: inline-flex; }
-  .admin-sidebar {
-    position: fixed !important;
-    z-index: 150;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
-  }
-  .admin-sidebar[data-open="true"] { transform: translateX(0); }
-  .admin-drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 64px 0 0 0;
-    background: rgba(15, 17, 23, 0.42);
-    z-index: 140;
-  }
-}
-
-/* ── Mobile foundation (2026-07-18 mobile-UX pass) ───────────────────────────
-   Systemic fixes applied across every public route. Desktop is unaffected: the
-   font-size rule is gated to ≤480px and the touch floor to coarse pointers, and
-   a mouse-driven desktop matches neither — so the admin V5 desktop mockup stays
-   pixel-identical. */
-
-/* iOS force-zooms the viewport when a focused field computes to <16px. Many
-   controls are inline-styled at 14px; normalise them on small screens so
-   focusing an input never triggers the zoom jump. */
-@media (max-width: 480px) {
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
-    /* !important is required: every form control sets an inline fontSize:14,
-       which is more specific than a plain stylesheet rule — without this the
-       zoom fix silently loses to the inline value and iOS still zooms. */
-    font-size: 16px !important;
-  }
-}
-
-/* 44px touch floor for form controls on coarse pointers (phones/tablets). The
-   globals floor above only covered the nav CTA + hamburger; form fields, which
-   are the bulk of touch interaction on the public routes, were left short. */
-@media (any-pointer: coarse) {
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
-    min-height: 44px;
-  }
-}
-
-/* Tap-target floor for compact controls the form-field rule above doesn't reach.
-   (Gallery dots are intentionally 44px tall but narrow — 7 full-width dots cannot
-   fit a 320px row; that trade-off is documented in GallerySection.) */
-@media (any-pointer: coarse) {
-  .nav-hamburger { min-width: 44px; min-height: 44px; }
-  .iq-tap        { min-height: 44px; }
-  /* Every <Button> carries .iq-btn, so a `size="sm"` control is still tappable on
-     a phone without each caller having to remember the floor. !important is
-     required: Button sets minHeight inline from its size token, and an inline
-     style beats a stylesheet rule — measured, sm stayed 28px without it. */
-  .iq-btn        { min-height: 44px !important; }
-}
-
-/* 320px hero clipping: `.hero-left` is a grid item, so its default `min-width:auto`
-   sized the track to the h1's min-content (the longest word) — 314px inside a 256px
-   content box, which clipped the heading and sub-copy. Let the track shrink and cap
-   the heading so the words still fit without mid-word breaks. */
-@media (max-width: 380px) {
-  .hero-inner { grid-template-columns: minmax(0, 1fr) !important; }
-  .hero-left  { min-width: 0 !important; }
-  .hero-left h1 { font-size: clamp(1.5rem, 7.4vw, 1.95rem) !important; overflow-wrap: break-word; }
-  .hero-left p  { overflow-wrap: break-word; }
-}
-
-/* SiteHeader lockup: the wordmark tagline + optional badge are the widest items
-   in the row and overflow the fixed 68px header below ~600px (the one P1 hitting
-   home, practitioners, and status at once). Drop them and let the logo shrink so
-   the header never wraps or clips on a phone. */
-@media (max-width: 600px) {
-  .site-header-tagline,
-  .site-header-badge { display: none !important; }
-  .site-header-logo  { min-width: 0; }
-}
-
-/* RequestModal 2-up field rows. Grid lives in CSS (not inline) so the media query
-   can collapse it — an inline grid-template-columns would out-specify the rule and
-   the row would never stack on a phone. */
-.rm-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-@media (max-width: 480px) {
-  .rm-grid-2 { grid-template-columns: 1fr; }
-}
-
-/* Practitioners hero: drop the hard line breaks on mobile (natural wrap reads
-   cleaner than forced fragments). Padding is class-owned so the media query can
-   trim the application-card gutters on a phone. */
-.p-form-card { padding: 2.5rem; }
-@media (max-width: 480px) {
-  .p-hero-h1 br { display: none; }
-  .p-form-card { padding: 1.25rem; }
-}
-
-/* Status result card: two columns on desktop, stacked on phones (the page had no
-   mobile CSS, so its core card overflowed at 320px). */
-.status-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5rem;
-}
-@media (max-width: 600px) {
-  .status-card { grid-template-columns: 1fr; gap: 1.75rem; }
-}
-
-/* Shared inline-nav helpers for the onboarding / consent / submit-photos sticky
-   headers (each hand-rolls its own <nav> instead of using SiteHeader). Trim the
-   gutter and drop secondary labels on a phone so the row never crowds. */
-@media (max-width: 480px) {
-  .ob-nav { padding-left: 1rem !important; padding-right: 1rem !important; }
-  .ob-hide-mobile { display: none !important; }
-}
-
-/* Consent detail grids (kv-grid-2) + agreement signature fields (av-grid-2):
-   2-up on desktop, stacked on phones. Grid is class-owned so the media query
-   wins — an inline grid-template-columns could not be collapsed. */
-.kv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.5rem; }
-.av-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-@media (max-width: 480px) {
-  .kv-grid-2,
-  .av-grid-2 { grid-template-columns: 1fr; }
-}
-
-/* ── Module-accent card hover interactions ────────────────────────────────── */
-/* Each card sets its own `--accent` inline; one rule lifts + borders in-colour. */
-.topic-card,
-.walkout-card,
-.audience-card-inner,
-.role-card,
-.module-card,
-.tool-card {
-  position: relative;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.22s ease, background 0.22s ease;
-}
-
-/* Resting elevation so cards read as crafted objects, not flat outlines. */
-.topic-card,
-.walkout-card,
-.audience-card-inner,
-.role-card,
-.module-card,
-.tool-card {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 1px 2px rgba(20, 16, 10, 0.05), 0 6px 16px -10px rgba(20, 16, 10, 0.14);
-}
-
-/* Hover elevation lives on a pseudo-element so hover only animates opacity. */
-.topic-card::after,
-.audience-card-inner::after,
-.role-card::after,
-.module-card::after,
-.tool-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: 0 2px 4px rgba(20, 16, 10, 0.06), 0 16px 32px -12px rgba(20, 16, 10, 0.2),
-    0 4px 10px -6px color-mix(in srgb, var(--accent, #c9982a) 22%, transparent);
-  opacity: 0;
-  transition: opacity 0.28s ease;
-  pointer-events: none;
-}
-
-/* ── Crafted icon tile: accent ring at rest, fills with the accent on hover ── */
-.card-icon {
-  position: relative;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #c9982a) 24%, transparent);
-  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease,
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (hover: hover) {
-  .topic-card:hover .card-icon,
-  .audience-card-inner:hover .card-icon,
-  .role-card:hover .card-icon,
-  .module-card:hover .card-icon {
-    background: var(--accent, #c9982a) !important;
-    color: #ffffff !important;
-    box-shadow: inset 0 0 0 1px transparent;
-    transform: scale(1.06);
-  }
-}
-
-@media (hover: hover) {
-  .topic-card:hover,
-  .audience-card-inner:hover,
-  .role-card:hover,
-  .module-card:hover,
-  .walkout-card:hover,
-  .tool-card:hover {
-    /* !important so the lift beats the retained entrance-animation transform
-       (.iq-animate.iq-visible uses fill-mode:both, which otherwise wins). */
-    transform: translateY(-4px) !important;
-    border-color: var(--accent, #c9982a) !important;
-  }
-  .topic-card:hover::after,
-  .audience-card-inner:hover::after,
-  .role-card:hover::after,
-  .module-card:hover::after,
-  .tool-card:hover::after {
-    opacity: 1;
-  }
-}
-
-/* ── Scroll-triggered entrance animation ─────────────────────────────────── */
-@keyframes iq-fade-up {
-  from { opacity: 0; transform: translateY(20px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-.iq-animate {
-  opacity: 0;
-  transform: translateY(20px) scale(0.985);
-}
-.iq-animate.iq-visible {
-  animation: iq-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.iq-animate.iq-visible:nth-child(1) { animation-delay: 0.00s; }
-.iq-animate.iq-visible:nth-child(2) { animation-delay: 0.06s; }
-.iq-animate.iq-visible:nth-child(3) { animation-delay: 0.12s; }
-.iq-animate.iq-visible:nth-child(4) { animation-delay: 0.18s; }
-.iq-animate.iq-visible:nth-child(5) { animation-delay: 0.24s; }
-.iq-animate.iq-visible:nth-child(6) { animation-delay: 0.30s; }
-
-
-button,
-input,
-select,
-textarea {
-  font-family: inherit;
-}
-
-img,
-video {
-  max-width: 100%;
-  height: auto;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-
+/* One visible focus ring everywhere. Removing an outline without replacing it
+   is an a11y failure, so this is defined once rather than per component. */
 :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--color-gold-dark);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
-/* ── ANIMATIONS ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* Entrance motion, opt-in.
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* ── HERO STAGGER ── */
-.hero-stagger > * {
-  animation: fadeUp 0.5s ease both;
-}
-.hero-stagger > *:nth-child(1) { animation-delay: 0.05s; }
-.hero-stagger > *:nth-child(2) { animation-delay: 0.14s; }
-.hero-stagger > *:nth-child(3) { animation-delay: 0.23s; }
-.hero-stagger > *:nth-child(4) { animation-delay: 0.32s; }
-.hero-stagger > *:nth-child(5) { animation-delay: 0.40s; }
-
-/* ── HIDE SECONDARY NAV ON SMALL SCREENS ── */
-@media (max-width: 600px) {
-  .nav-secondary { display: none !important; }
-}
-
-/* ── PREMIUM INTERACTIONS ─────────────────────────────────────────────────── */
-
-/* CTA buttons: lift + brighten + grow shadow, with the arrow nudging forward. */
-.btn-cta {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.22s ease, filter 0.22s ease;
-  will-change: transform;
-}
-.btn-cta .btn-arrow {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (hover: hover) {
-  .btn-cta:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.07);
-    box-shadow: 0 12px 28px -8px rgba(15, 17, 23, 0.4) !important;
-  }
-  .btn-cta:hover .btn-arrow {
-    transform: translateX(4px);
-  }
-}
-.btn-cta:active {
-  transform: translateY(0);
-  filter: brightness(0.98);
-}
-
-/* "How it works" numbered step circles: spring up + accent ring on hover. */
-.step-circle {
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
-}
-@media (hover: hover) {
-  .step:hover .step-circle {
-    transform: translateY(-4px) scale(1.08);
-    box-shadow: 0 12px 26px -8px rgba(15, 17, 23, 0.45);
-  }
-}
-
-/* Inline text links with an arrow: nudge the arrow + reveal the underline. */
-.link-arrow {
-  transition: color 0.18s ease, border-bottom-color 0.18s ease;
-}
-.link-arrow .link-chevron {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (hover: hover) {
-  /* Sits on ink, so hover brightens to --gold-on-ink and strengthens the underline,
-     per the V6 prototype's inline onmouseover. Plain --gold reads muddy on dark.
-     `!important` is required: the link sets its resting colour/border inline, and an
-     inline declaration outranks any class rule without it. */
-  .link-arrow:hover {
-    color: var(--gold-on-ink) !important;
-    border-bottom-color: var(--gold-rule-strong) !important;
-  }
-  .link-arrow:hover .link-chevron {
-    transform: translateX(4px);
-  }
-}
-
-/* Logo: a touch of life on hover. */
-.nav-logo {
-  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (hover: hover) {
-  .nav-logo:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
-  }
-}
-
-/* Audience chips in the request modal: subtle lift on hover. */
-.aud-chip {
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease,
-    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (hover: hover) {
-  .aud-chip:hover:not([aria-pressed="true"]) {
-    transform: translateY(-1px);
-    border-color: var(--gold-dark) !important;
-    background: var(--input-hover) !important;
-    color: var(--gold-dark) !important;
-  }
-}
-
-/* Form fields: tactile paper rest, gold-keyed focus, warm hover. */
-/* Rest-state recessed shadow lives in CSS (not inline) so :focus cascades cleanly. */
-input:not([type="checkbox"]):not([type="radio"]),
-select,
-textarea {
-  box-shadow: inset 0 1px 2px rgba(15, 17, 23, 0.04), 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-input:focus,
-select:focus,
-textarea:focus,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  background-color: #ffffff !important;
-  border-color: var(--gold) !important;
-  box-shadow: 0 0 0 3px rgba(201, 152, 42, 0.16), inset 0 1px 2px rgba(15, 17, 23, 0.05) !important;
-  outline: none;
-}
-@media (hover: hover) {
-  input:hover:not(:focus),
-  select:hover:not(:focus),
-  textarea:hover:not(:focus) {
-    background-color: var(--input-hover, #faf8f3) !important;
-    border-color: rgba(15, 17, 23, 0.34) !important;
-  }
-}
-
-/* Ambient hero glow: a slow, calm breathing pulse behind the headline. */
-@keyframes iq-glow-breathe {
-  0%,
-  100% { opacity: 0.55; transform: scale(1); }
-  50%  { opacity: 1; transform: scale(1.06); }
-}
+   The spec writes `animation: fadeUp .5s ease both` with `from { opacity: 0 }`.
+   With `both`, the element sits at opacity 0 through its delay and stays there
+   if the animation never runs — one blocked stylesheet and the hero is blank.
+   So the base state here is visible, and motion is added only where it is
+   welcome. Reduced-motion users get the content, just without the travel. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero-glow {
-    animation: iq-glow-breathe 7s ease-in-out infinite;
-    transform-origin: center;
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
+
+  .animate-fade-up {
+    animation: fade-up var(--duration-slow) ease both;
+  }
+
+  /* Stagger, matching the spec's 0.05 / 0.14 / 0.23 / 0.32 cascade. */
+  .animate-fade-up-1 { animation-delay: 0.05s; }
+  .animate-fade-up-2 { animation-delay: 0.14s; }
+  .animate-fade-up-3 { animation-delay: 0.23s; }
+  .animate-fade-up-4 { animation-delay: 0.32s; }
+  .animate-fade-up-card { animation-delay: 0.3s; }
 }
 
-/* Table-style rows (comparison, division-of-work, disclosure lists): hover tint. */
-.row-hover {
-  transition: background 0.18s ease;
-}
-@media (hover: hover) {
-  .row-hover:hover {
-    background: rgba(201, 152, 42, 0.07) !important;
+/* Touch targets. Enforced by pointer type, not by breakpoint — a small window
+   on a desktop is still a mouse. */
+@media (any-pointer: coarse) {
+  button,
+  [role="button"],
+  a[href],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-block-size: 44px;
+    min-inline-size: 44px;
   }
 }
-
-/* Trust-bar / ribbon / pool mini items: gentle lift on hover. */
-.hover-lift {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.18s ease,
-    background 0.18s ease, border-color 0.18s ease;
-}
-@media (hover: hover) {
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-}
-
-/* Tool cards already brighten — add a matching lift. */
-@media (hover: hover) {
-  .tool-card:hover {
-    transform: translateY(-4px);
-  }
-}
-
-/* FAQ row hover tint. */
-.faq-row {
-  transition: background 0.15s ease;
-}
-@media (hover: hover) {
-  .faq-row:hover {
-    background: var(--surface-soft) !important;
-  }
-}
-
-/* Footer / muted links shift to gold on hover. */
-.foot-link {
-  transition: color 0.18s ease, border-color 0.18s ease;
-}
-@media (hover: hover) {
-  .foot-link:hover {
-    color: var(--gold) !important;
-  }
-}
-
-/* Route transition — content fades + rises on every navigation. */
-@keyframes iq-page-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .page-transition {
-    animation: iq-page-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-}
-
-/* ── Animated step connector (practitioners §6 — flows colour L→R behind steps) ── */
-.iq-step-connector {
-  position: absolute;
-  top: 26px;
-  left: 12%;
-  right: 12%;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(15, 17, 23, 0.12);
-  overflow: hidden;
-  z-index: 0;
-}
-.iq-step-connector::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--green) 18%,
-    var(--blue) 38%,
-    var(--purple) 58%,
-    var(--gold) 80%,
-    transparent 100%
-  );
-  background-size: 220% 100%;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .iq-step-connector::before {
-    animation: iq-connector-flow 4.5s linear infinite;
-  }
-}
-@keyframes iq-connector-flow {
-  from { background-position: 120% 0; }
-  to   { background-position: -120% 0; }
-}
-@media (max-width: 720px) {
-  .iq-step-connector { display: none; }
-}
-
-/* ── Perk rows: single moving highlight ──────────────────────────────────────
-   The first card carries the gold "active" panel by default; hovering any card
-   moves that highlight to the hovered card — only one is ever lit. Shift-free:
-   every row reserves the 2px accent bar + horizontal padding, so only colour
-   toggles. Icon-fill + a 3px slide reinforce the active card. */
-.iq-perk {
-  border-left: 2px solid transparent;
-  border-radius: 6px;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-  transition: background 0.22s ease, border-color 0.22s ease,
-    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.iq-perk--featured {
-  background: rgba(201, 152, 42, 0.09);
-  border-left-color: var(--gold);
-}
-.iq-perk-icon {
-  background: rgba(201, 152, 42, 0.15);
-  transition: background 0.22s ease, color 0.22s ease,
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.iq-perk--featured .iq-perk-icon {
-  background: rgba(201, 152, 42, 0.28);
-}
-.iq-honest-card,
-.iq-disclosure-card {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease,
-    box-shadow 0.28s ease;
-}
-@media (hover: hover) {
-  .iq-honest-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 255, 255, 0.22) !important;
-    box-shadow: 0 14px 36px -18px rgba(0, 0, 0, 0.7);
-  }
-  .iq-disclosure-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--border-gold, rgba(138, 101, 16, 0.28)) !important;
-    box-shadow: 0 16px 32px -14px rgba(20, 16, 10, 0.18);
-  }
-}
-
-/* ── REDUCED MOTION ── */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  /* Never trap content behind the entrance animation's opacity:0 start state. */
-  .iq-animate {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-}
-
-/* The Topic-of-interest dropdown moved from a native <select> to the branded
-   <SelectField> combobox, so the old `select.topic-select optgroup/option`
-   rules are gone — grouped-option styling now lives in SelectField itself. */
-
-/* build: premium pass v2 */

@@ -1,9 +1,0 @@
-CREATE INDEX practitioners_status_idx     ON practitioners(status);
-CREATE INDEX practitioners_email_idx      ON practitioners(email);
-CREATE INDEX session_requests_status_idx  ON session_requests(status);
-CREATE INDEX sessions_date_idx            ON sessions(session_date);
-CREATE INDEX sessions_practitioner_idx    ON sessions(practitioner_id);
-CREATE INDEX payouts_status_idx           ON payouts(status);
-CREATE INDEX payouts_session_idx          ON payouts(session_id);
-CREATE INDEX agreements_ref_code_idx      ON agreements(ref_code);
-CREATE INDEX agreements_practitioner_idx  ON agreements(practitioner_id);
