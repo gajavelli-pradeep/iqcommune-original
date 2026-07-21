@@ -1,26 +1,163 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens — the single source of truth for colour, type, space and motion.
+
+   Every value below is measured from the seven public V7 spec files, not chosen:
+   the `:root` block is byte-identical across all of them, and the scales are
+   derived from actual usage frequency. Raw hex and raw size literals are blocked
+   by eslint (`no-restricted-syntax`, see eslint.config.mjs) — if a value is
+   missing here, add a token rather than inlining one.
+
+   No dark theme. V7 defines none; the light palette is the brand.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  /* ── Colour ──────────────────────────────────────────────────────────────
+     Brand is ink + cream + gold. Semantics are reserved and never reassigned:
+     green = success, gold = brand/primary. Red/blue/amber/purple arrive with
+     the admin console (P8), which is the only surface that uses them. */
+
+  --color-ink: #0f1117;         /* primary text, dark surfaces */
+  --color-ink-muted: #4a4d5c;   /* secondary text */
+  --color-ink-faint: #9496a1;   /* tertiary text, placeholders */
+
+  --color-surface: #ffffff;
+  --color-surface-soft: #f8f7f4; /* cream — page background, inset panels */
+
+  --color-gold: #c9982a;         /* brand/primary */
+  --color-gold-light: #f5e9c8;   /* tinted fills on light surfaces */
+  --color-gold-dark: #8a6510;    /* gold TEXT on light — #c9982a fails AA */
+
+  --color-green: #2a6b2a;        /* success only */
+  --color-green-light: #eef7ee;
+
+  --color-border: rgba(15, 17, 23, 0.10);
+  --color-border-strong: rgba(15, 17, 23, 0.20);
+
+  /* ── Type ────────────────────────────────────────────────────────────────
+     DM Sans, wired in app/layout.tsx via next/font (self-hosted — no external
+     request, so it survives the CSP and costs no extra round trip).
+
+     Scale derived from frequency across the seven public files. 13px is the
+     body size (58 uses, the most common). The source also authors half-steps
+     (11.5/12.5/13.5/14.5, ~42 uses) — those are authoring drift, not intent:
+     0.5px at this size is sub-pixel. They normalise to the nearest step,
+     ties rounding up (13.5 -> 14), preserving the "slightly larger" intent. */
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+  --text-5xl: 24px;
+  --text-6xl: 26px;
+
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Tracking. Display headings pull tight; uppercase eyebrow labels open up. */
+  --tracking-display: -0.04em;
+  --tracking-body: -0.01em;
+  --tracking-label: 0.06em;
+  --tracking-eyebrow: 0.08em;
+  --tracking-caps: 0.1em;
+
+  /* ── Space ───────────────────────────────────────────────────────────────
+     4px base. The source authors odd values (3/5/7/9px) inconsistently for the
+     same visual gaps; this normalises them. --space-0-5 exists for genuine
+     hairline gaps, which the source does use deliberately. */
+
+  --spacing: 4px;
+
+  /* ── Radius ──────────────────────────────────────────────────────────────
+     12px across all seven public files. The admin console uses 10px/6px — a
+     denser scale for a denser UI — and those steps get added at P8. */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────────
+     Five measured shadows. Never animate blur on hover — animate a
+     pseudo-element's opacity instead (compositor-only). */
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --shadow-card-soft: 0 12px 48px rgba(0, 0, 0, 0.07);
+  --shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.22);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.25);
+  --shadow-gold: 0 6px 24px rgba(201, 152, 42, 0.35); /* primary button lift */
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     Durations only. Motion is opt-in: author the base state motionless and add
+     transitions inside `@media (prefers-reduced-motion: no-preference)`. The
+     blanket `* { animation-duration: 0.01ms }` reset is an anti-pattern. */
+
+  --duration-fast: 0.15s;
+  --duration-base: 0.18s;
+  --duration-slow: 0.2s;
+  --duration-slower: 0.3s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Containers ──────────────────────────────────────────────────────────
+     Measured max-widths. 480 is the narrow token/flow pages (/rate, /consent),
+     1100 the marketing pages. */
+
+  --container-flow: 480px;
+  --container-narrow: 520px;
+  --container-form: 720px;
+  --container-reading: 780px;
+  --container-wide: 860px;
+  --container-page: 1100px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ─── Base ─────────────────────────────────────────────────────────────────
+   `dvh` over `vh`: 100vh is the *largest* viewport and hides the bottom edge
+   under mobile browser chrome. */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One visible focus ring everywhere. Removing an outline without replacing it
+   is an a11y failure, so this is defined once rather than per component. */
+:focus-visible {
+  outline: 2px solid var(--color-gold-dark);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Touch targets. Enforced by pointer type, not by breakpoint — a small window
+   on a desktop is still a mouse. */
+@media (any-pointer: coarse) {
+  button,
+  [role="button"],
+  a[href],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
 }
