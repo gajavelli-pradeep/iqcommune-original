@@ -39,11 +39,17 @@ export function PractitionerSections() {
              defect. */
           <Link
             href="/"
+            // One accessible name at every width. An earlier attempt paired a
+            // short visible label with an sr-only full one, which made a screen
+            // reader announce "For Learners See iqcommune for Learners" — the
+            // visible text is part of the name, not replaced by the hidden one.
+            aria-label="See iqcommune for Learners"
             className="inline-flex whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark"
           >
-            <span className="sm:hidden">For Learners</span>
+            <span aria-hidden className="sm:hidden">
+              For Learners
+            </span>
             <span className="hidden sm:inline">See iqcommune for Learners</span>
-            <span className="sr-only sm:hidden">See iqcommune for Learners</span>
           </Link>
         }
       />
