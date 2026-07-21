@@ -20,12 +20,16 @@ export function SiteFooter() {
           <p className="mb-2 text-sm font-semibold uppercase tracking-caps text-gold">
             Are you a finance professional?
           </p>
+          {/* Inline flow, not inline-flex. As a flex row the text wraps at
+              narrow widths while the arrow stays a sibling item, so it detaches
+              and floats vertically centred beside the block. Inline keeps it
+              trailing the last word at every width. */}
           <Link
             href="/practitioners"
-            className="inline-flex items-center gap-[7px] border-b border-gold-rule pb-[2px] text-md font-medium text-on-dark transition-colors hover:border-gold-rule-strong hover:text-gold-bright focus-visible:border-gold-rule-strong focus-visible:text-gold-bright"
+            className="border-b border-gold-rule pb-[2px] text-md font-medium text-on-dark transition-colors hover:border-gold-rule-strong hover:text-gold-bright focus-visible:border-gold-rule-strong focus-visible:text-gold-bright"
           >
             Teach what you practise — join the iqcommune practitioner network
-            <ArrowRightIcon />
+            <ArrowRightIcon className="ml-[7px] inline-block align-middle" />
           </Link>
         </div>
 

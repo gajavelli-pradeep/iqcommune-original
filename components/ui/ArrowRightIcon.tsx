@@ -4,9 +4,16 @@
  *
  * `stroke="currentColor"` is what lets it inherit the link's hover colour.
  */
-export function ArrowRightIcon({ size = 13 }: { size?: number }) {
+export function ArrowRightIcon({
+  size = 13,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
   return (
     <svg
+      className={className}
       width={size}
       height={size}
       viewBox="0 0 24 24"
