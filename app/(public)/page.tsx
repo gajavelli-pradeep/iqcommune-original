@@ -439,13 +439,13 @@ const HOME_FAQS: FaqItem[] = [
     q: "Can my company book a session for a team?",
     a: (
       <>
-        Yes. Organisational sessions work differently — you bring the group (your team), and we align the right practitioner around your schedule. This covers corporates, educational institutions, hospitals, media &amp; production houses, and any organisation looking to upskill its people. Sessions are tailored to your workforce&apos;s financial literacy level and specific needs. Please note that venue and basic infrastructure are to be arranged by your organisation. Use the &ldquo;Request a Session&rdquo; form and select <strong>Organisations &amp; Institutions</strong> as your audience type — we&apos;ll take it from there.
+        Yes. Organisational sessions work differently — you bring the group (your team), and we align the right practitioner around your schedule. This covers corporates, educational institutions, hospitals, media &amp; production houses, and any organisation looking to upskill its people. Sessions are tailored to your workforce&apos;s financial literacy level and specific needs. Please note that venue and basic infrastructure are to be arranged by your organisation. Use the &quot;Request a Session&quot; form and select <strong>Organisations &amp; Institutions</strong> as your audience type — we&apos;ll take it from there.
       </>
     ),
   },
   {
     q: "Can sessions be bundled into a longer block?",
-    a: "Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement & Goal-Based Financial Planning; Equity Investing Simplified paired with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction paired with Investment Solutions & Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the 'Request a Session' form and we'll confirm bundle availability with you.",
+    a: "Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement & Goal-Based Financial Planning; Equity Investing Simplified paired with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction paired with Investment Solutions & Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the \"Request a Session\" form and we'll confirm bundle availability with you.",
   },
   {
     q: "How is the practitioner chosen for my session?",

@@ -519,8 +519,10 @@ const T5_PROFILES = [
 
 function PortfolioScorecard() {
   const [profile, setProfile] = useState(0);
-  const [eq, setEq] = useState(T5_PROFILES[0].eq);
-  const [de, setDe] = useState(T5_PROFILES[0].de);
+  // Opens slightly off the Conservative target (V6 spec), so the card demonstrates
+  // the rebalancing cue instead of a flat 10/10.
+  const [eq, setEq] = useState(40);
+  const [de, setDe] = useState(45);
 
   const handleProfile = useCallback((p: number) => {
     setProfile(p);

@@ -8,6 +8,36 @@ Earlier work (V5 and before): `CHANGELOG-V5.md`.
 
 ---
 
+## [2026-07-21] Fix — landing-page copy drift vs the V6 prototype
+
+Full text diff of the rendered landing page against
+`../client_requirements/completelyautomatedsetup (V6)/iqcommune-main-landing-page.html`
+(both stripped to visible text, then diffed). Three deviations were real; the rest is
+computed calculator output, which matches the prototype's own JS.
+
+- **Tools & Calculators → Portfolio Balance Scorecard** opened at the Conservative *target*
+  allocation (30% equity / 55% debt), scoring a flat **10.0/10 — "Well-balanced…"**. The
+  prototype opens slightly off-target (**40% / 45%**) so the card actually demonstrates the
+  rebalancing cue: **6.0/10 — "Slightly off-target for Conservative. Target: ~30% equity,
+  ~55% debt."** Seeded the sliders to the spec values (`ToolsSection.tsx`).
+- **FAQ — organisational sessions** used curly quotes (`&ldquo;Request a Session&rdquo;`)
+  where the spec has straight ones.
+- **FAQ — module bundles** used single quotes (`'Request a Session'`) for the same phrase —
+  inconsistent with the answer directly above it as well as with the spec.
+
+Verified in the running app: the scorecard renders 40% / 45% / 6.0/10 with the off-target
+line, and the profile chips still drive it (Moderate → 55/35, 10.0/10, "Well-balanced for a
+Moderate profile"); both FAQ answers render `"Request a Session"`; 0 console errors;
+`tsc` 0 errors in the touched files; `eslint` clean.
+
+Deliberately **not** changed (intentional divergence from the static prototype, not drift):
+dynamic `© <year>` vs the prototype's hard-coded 2025; the footer brand lockup + LinkedIn
+link (`SiteFooter`); hero stat counters animating up from 0 via `CountUp`; the request /
+photo-upload modals, which the prototype ships as always-present markup and the app mounts
+on demand.
+
+---
+
 ## [2026-07-21] Fix — "Why it matters" comparison table had a dead strip under the short column
 
 The landing-page differentiator table (`app/(public)/page.tsx`) was built as two **independent**

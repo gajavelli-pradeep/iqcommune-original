@@ -7,31 +7,6 @@ Source-of-truth spec: `../client_requirements/pleaseusetheseonly (V5)/`. Full ga
 
 ---
 
-## [2026-07-21] Fix — Team & Access table overflowed its card on mobile
-
-Audit of every console table at 320/375/640×320/1440 (CDP emulation): 10 of 11 tables scroll
-correctly inside their card. One did not — **Settings → Team & Access** (`TeamAccessTable`) used
-`overflowX: "visible"` on a 640px-min-width table, so on a phone the rows spilled past the card
-border (P1 by the overflow/reachability rule). `visible` existed only so the "⋯" row menu wasn't
-clipped.
-
-- Wrapper → `overflowX: "auto"`; the row menu is now **portalled to `<body>`** as `position: fixed`,
-  anchored to the trigger's rect (right offset measured off `documentElement.clientWidth`, not
-  `innerWidth`, so the scrollbar doesn't skew it), and flips above the trigger + clamps into the
-  viewport when it would overhang the bottom (landscape phones are ~320px tall).
-- Menu closes on outside click, Escape, scroll (capture) and resize — a fixed menu would otherwise
-  detach from its row. Clicking the trigger while open now actually closes it (the old
-  mousedown-close + click-reopen race made it un-closable).
-- Set-password / reveal-password panel moved out of the right-most Actions cell into its own
-  full-width `colSpan` row, `position: sticky; left: 0` — it previously opened ~330px past the
-  scroll edge, i.e. invisible on a phone.
-
-Verified in the running app: table scrolls inside its card at 320/375; menu fits the viewport for
-every row at 640×320; panel visible at scrollLeft 330; desktop 1440 unchanged (no scroll needed,
-menu anchored ±0.3px); 0 console errors; `eslint app components` clean.
-
----
-
 ## [2026-07-20] V6 fresh clone — exact-text + safe admin polish — SHIPPED (build-verified)
 
 Client replaced admin-console HTML + landing + empanelment + `client_email.txt` (all 13:46).
