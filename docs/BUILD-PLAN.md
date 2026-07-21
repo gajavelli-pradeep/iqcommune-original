@@ -33,7 +33,7 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `TrainerComparison` — 5 tests · 7 viewports · PARITY FIX: spec deletes the left column below 720px; both kept
 - [x] `WhoIsThisFor` — 5 tests · 7 viewports · 3 audience cards + 13 sub-segment tags, data-driven
 - [x] `TrainingTopics` — 4 tests · 7 viewports · 6 modules, 3→2→1 columns at the spec breakpoints
-- [ ] `BundledSessions`
+- [x] `BundledSessions` — 5 tests · 7 viewports · 3 pairings as ordered lists, duration chips never squeezed
 - [ ] `HowItWorks`
 - [ ] `Takeaways`
 - [ ] `Faqs`

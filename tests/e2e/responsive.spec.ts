@@ -188,4 +188,26 @@ for (const tier of TIERS) {
       expect(box.x + box.width, `module ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
     }
   });
+
+  test(`bundles hold at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const section = page.locator("section").filter({ hasText: "Bundled Sessions" });
+    const cards = section.locator("> div > ul > li");
+    expect(await cards.count()).toBe(3);
+
+    // The module row is a flex pair: long name on the left, "3 hrs" chip on the
+    // right. The chip must never be squeezed off or wrapped away.
+    const chips = section.getByText("3 hrs", { exact: true });
+    expect(await chips.count()).toBe(6);
+    for (let i = 0; i < 6; i++) {
+      const box = await chips.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.width, `duration chip ${i} collapsed`).toBeGreaterThan(30);
+      expect(box.x + box.width, `duration chip ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
+    }
+
+    await expect(section.getByText(/minimum of 9 participants/)).toBeVisible();
+  });
 }
