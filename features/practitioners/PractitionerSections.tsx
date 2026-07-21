@@ -43,6 +43,12 @@ export function PractitionerSections() {
             // short visible label with an sr-only full one, which made a screen
             // reader announce "For Learners See iqcommune for Learners" — the
             // visible text is part of the name, not replaced by the hidden one.
+            //
+            // The label shortens below 640px because the full one does not fit
+            // the header's measured 162px right-hand budget. That is a
+            // compromise, not a safety net: the route to the learner site is
+            // the footer link above, which the spec also specifies and which
+            // has no width budget to fit into.
             aria-label="See iqcommune for Learners"
             className="inline-flex whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark"
           >
@@ -65,7 +71,18 @@ export function PractitionerSections() {
         <ApplyCta apply={<ApplyButton label="Apply to join the Network" />} />
         <Faqs />
       </main>
-      <SiteFooter tagline="practitioner network" email="practitioners@iqcommune.com" top={false} />
+      <SiteFooter
+        tagline="practitioner network"
+        email="practitioners@iqcommune.com"
+        top={
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-md border border-on-dark-divider px-4 py-2 text-md font-medium text-on-dark-bright transition-colors hover:border-on-dark-muted hover:text-surface"
+          >
+            See iqcommune for Learners
+          </Link>
+        }
+      />
       </div>
     </ApplyProvider>
   );

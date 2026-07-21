@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ArrowRightIcon } from "@/components/ui/ArrowRightIcon";
 
 /**
@@ -21,14 +22,26 @@ export function SiteFooter({
   tagline?: string;
   /** Public pages and the practitioner site use different inboxes. */
   email?: string;
-  /** The cross-link to the practitioner network, which that page itself omits. */
-  top?: boolean;
+  /**
+   * The footer's call-to-action. `true` renders the learner-site default (join
+   * the practitioner network); a node replaces it; `false` removes it.
+   *
+   * It is a slot rather than a boolean because the practitioner spec puts its
+   * own link here — back to the learner site — and an earlier version passed
+   * `false`, silently dropping a spec element and leaving that page with no
+   * route to the learner site at all below 640px.
+   */
+  top?: boolean | ReactNode;
 } = {}) {
   return (
     <footer className="bg-ink-deep px-8 py-8 text-center text-base text-on-dark-muted">
       <div className="mx-auto max-w-page">
-        {top ? (
+        {top === false ? null : (
         <div className="mb-5 border-b border-on-dark-divider pb-6">
+          {top !== true ? (
+            top
+          ) : (
+          <>
           <p className="mb-2 text-sm font-semibold uppercase tracking-caps text-gold">
             Are you a finance professional?
           </p>
@@ -43,8 +56,10 @@ export function SiteFooter({
             Teach what you practise — join the iqcommune practitioner network
             <ArrowRightIcon className="ml-[7px] inline-block align-middle" />
           </Link>
+          </>
+          )}
         </div>
-        ) : null}
+        )}
 
         <p>
           {/* Explicit string literals, not loose JSX text: JSX strips the space
