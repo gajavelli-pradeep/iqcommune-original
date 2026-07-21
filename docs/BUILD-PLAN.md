@@ -32,7 +32,7 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `PoolStats` — delivered inside `Hero` as `PractitionerPoolCard`; the spec has them in one `<section>`
 - [x] `TrainerComparison` — 5 tests · 7 viewports · PARITY FIX: spec deletes the left column below 720px; both kept
 - [x] `WhoIsThisFor` — 5 tests · 7 viewports · 3 audience cards + 13 sub-segment tags, data-driven
-- [ ] `TrainingTopics`
+- [x] `TrainingTopics` — 4 tests · 7 viewports · 6 modules, 3→2→1 columns at the spec breakpoints
 - [ ] `BundledSessions`
 - [ ] `HowItWorks`
 - [ ] `Takeaways`

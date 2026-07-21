@@ -164,4 +164,28 @@ for (const tier of TIERS) {
 
     await expect(page.getByText(/All sessions capped at 25 participants/)).toBeVisible();
   });
+
+  test(`training topics hold at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const section = page.locator("section").filter({ hasText: "What you'll learn." });
+    const cards = section.locator("> div > ul > li");
+    expect(await cards.count()).toBe(6);
+
+    // 3 columns above 720px, 2 from 480, 1 below — the spec's breakpoints.
+    const expected = tier.w >= 720 ? 3 : tier.w >= 480 ? 2 : 1;
+    const columns = await section
+      .locator("ul")
+      .first()
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+    expect(columns, `expected ${expected} column(s) at ${tier.w}px`).toBe(expected);
+
+    for (let i = 0; i < 6; i++) {
+      const box = await cards.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.x, `module ${i} off-screen left`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `module ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
+    }
+  });
 }

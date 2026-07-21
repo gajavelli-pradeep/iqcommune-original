@@ -2,6 +2,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Hero } from "@/features/landing/sections/Hero";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
+import { TrainingTopics } from "@/features/landing/sections/TrainingTopics";
 import { WhoIsThisFor } from "@/features/landing/sections/WhoIsThisFor";
 
 /**
@@ -20,6 +21,7 @@ export default function HomePage() {
         <Hero />
         <TrainerComparison />
         <WhoIsThisFor />
+        <TrainingTopics />
       </main>
       <SiteFooter />
     </div>
