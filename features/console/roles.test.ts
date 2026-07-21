@@ -22,6 +22,15 @@ describe("console roles", () => {
     expect(can("global_admin", "manageTeam")).toBe(true);
   });
 
+  it("keeps overriding an automated field to the global admin", () => {
+    // The spec hides role-override from body.role-admin as well as
+    // body.role-user. Overriding a system-derived value is not the same
+    // privilege as editing a record, and grouping the two would silently widen
+    // it to every admin.
+    expect(can("admin", "override")).toBe(false);
+    expect(can("global_admin", "override")).toBe(true);
+  });
+
   it("keeps the audit trail and permanent deletion to the global admin", () => {
     expect(can("admin", "viewActivity")).toBe(false);
     expect(can("admin", "purge")).toBe(false);

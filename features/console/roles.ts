@@ -13,8 +13,15 @@
  * role server-side.
  *
  * The spec's own class names map onto these capabilities: `role-edit` →
- * `mutate`, `role-team` → `manageTeam`, `role-override` → `override`, and the
- * activity nav item → `viewActivity`.
+ * `mutate`, `role-team` → `manageTeam`, `role-override` → `override`, and
+ * `role-activity-nav` → `viewActivity`.
+ *
+ * Read the CSS, not the class names, when deciding who holds what. The rules at
+ * lines 49-56 hide `role-override` from `body.role-admin` as well as from
+ * `body.role-user`, so overriding an automated field is Global Admin only —
+ * the same tier as team management, not the same tier as editing. Grouping it
+ * with `mutate` because both look like "editing" would hand every admin the
+ * ability to overwrite a system-derived value.
  */
 
 export const CONSOLE_ROLES = ["user", "admin", "global_admin"] as const;
@@ -50,7 +57,7 @@ const CAPABILITIES: Record<ConsoleRole, readonly Capability[]> = {
   // spec's own description, and a read-only role that can mutate anything is
   // not read-only.
   user: [],
-  admin: ["mutate", "override"],
+  admin: ["mutate"],
   global_admin: ["mutate", "override", "manageTeam", "viewActivity", "purge"],
 };
 
