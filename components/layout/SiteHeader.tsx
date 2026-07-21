@@ -24,8 +24,8 @@ export function SiteHeader({
   badge,
   right,
 }: {
-  /** Two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
-  badge?: readonly [string, string];
+  /** One or two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
+  badge?: readonly string[];
   right?: ReactNode;
 }) {
   return (
