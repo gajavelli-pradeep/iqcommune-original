@@ -27,9 +27,10 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `Footer` *(shared chrome — all 8 pages)* — 5 tests · 320/640×320/1440/1920 clean · AA fix + JSX space defect caught
 - [x] `Nav` → `SiteHeader` *(shared chrome — all 8 pages)* — 5 tests · 7 viewports · strapline dropped <640px to stop a measured overflow · right-slot budget 162px @320px
       - [ ] its "Request a Session" button ships with `RequestModal` (needs the modal it opens)
-- [ ] `Hero`
-- [ ] `PoolStats`
-- [ ] `TrainerComparison`
+- [x] `Hero` — 6 tests · 7 viewports · opt-in motion (spec's `opacity:0` base state would blank the page)
+      - [ ] its "Request a Session" button ships with `RequestModal`
+- [x] `PoolStats` — delivered inside `Hero` as `PractitionerPoolCard`; the spec has them in one `<section>`
+- [x] `TrainerComparison` — 5 tests · 7 viewports · PARITY FIX: spec deletes the left column below 720px; both kept
 - [ ] `WhoIsThisFor`
 - [ ] `TrainingTopics`
 - [ ] `BundledSessions`

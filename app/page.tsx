@@ -1,6 +1,7 @@
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Hero } from "@/features/landing/sections/Hero";
+import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
 
 /**
  * P1 — main landing page. Composition only: this file stays a list of sections
@@ -16,6 +17,7 @@ export default function HomePage() {
       <SiteHeader />
       <main className="flex-1">
         <Hero />
+        <TrainerComparison />
       </main>
       <SiteFooter />
     </div>

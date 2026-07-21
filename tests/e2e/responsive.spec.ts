@@ -117,4 +117,24 @@ for (const tier of TIERS) {
       expect(box.x + box.width, `role card ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
     }
   });
+
+  test(`comparison keeps both columns at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    // Parity guard. The spec hides the "Conventional Trainers" column below
+    // 720px, which deletes half the argument on a phone. Both sides must be
+    // visible at every width — the section only means anything as a contrast.
+    await expect(page.getByRole("heading", { name: "Conventional Trainers" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Our Practitioners" })).toBeVisible();
+
+    // Ten points total, none clipped.
+    const items = page.locator("section ul li");
+    expect(await items.count()).toBe(10);
+    for (let i = 0; i < 10; i++) {
+      const box = await items.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.x + box.width, `point ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
+    }
+  });
 }
