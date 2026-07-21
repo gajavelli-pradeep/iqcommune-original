@@ -25,7 +25,8 @@ by section until then; the only other reason to stop is a genuine problem that n
 **P1 · main-landing-page → `/`**
 
 - [x] `Footer` *(shared chrome — all 8 pages)* — 5 tests · 320/640×320/1440/1920 clean · AA fix + JSX space defect caught
-- [ ] `Nav` *(shared chrome — all 8 pages)*
+- [x] `Nav` → `SiteHeader` *(shared chrome — all 8 pages)* — 5 tests · 7 viewports · strapline dropped <640px to stop a measured overflow · right-slot budget 162px @320px
+      - [ ] its "Request a Session" button ships with `RequestModal` (needs the modal it opens)
 - [ ] `Hero`
 - [ ] `PoolStats`
 - [ ] `TrainerComparison`

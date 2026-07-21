@@ -50,4 +50,38 @@ for (const tier of TIERS) {
     const copyright = page.locator("footer p", { hasText: "All rights reserved" });
     await expect(copyright).toBeInViewport();
   });
+
+  test(`header holds at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const overflow = await noHorizontalOverflow(page);
+    expect(overflow.overflow, `horizontal overflow: ${overflow.scrollWidth} > ${overflow.clientWidth}`).toBe(false);
+
+    // The header row must never wrap to a second line. Its height is the tell:
+    // 68px by spec, plus the 1px bottom border.
+    const header = page.locator("header");
+    const box = await header.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height, "header wrapped to a second line").toBeLessThanOrEqual(70);
+
+    // The wordmark stays inside the viewport at every width.
+    const logo = page.getByRole("link", { name: "iqcommune — home" });
+    const logoBox = await logo.boundingBox();
+    expect(logoBox).not.toBeNull();
+    expect(logoBox!.x).toBeGreaterThanOrEqual(0);
+    expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(tier.w + 1);
+
+    // The strapline is decoration and is dropped below 640px so the header
+    // cannot overflow. It must be present everywhere else.
+    // Scoped to the header: the footer tagline contains the same phrase.
+    const strapline = page
+      .locator("header")
+      .getByText("Where financial intelligence connects");
+    if (tier.w >= 640) {
+      await expect(strapline).toBeVisible();
+    } else {
+      await expect(strapline).toBeHidden();
+    }
+  });
 }
