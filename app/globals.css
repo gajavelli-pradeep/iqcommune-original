@@ -20,14 +20,19 @@
 
   --color-ink: #0f1117;         /* primary text, dark surfaces */
   --color-ink-muted: #4a4d5c;   /* secondary text */
-  --color-ink-faint: #9496a1;   /* tertiary text, placeholders */
+  /* Darkened from #9496a1, which measured 2.94:1 on surface and 2.75:1 on
+     surface-soft — both well under AA for normal text, and it is used for
+     hints, notes and placeholders throughout. Now 4.51:1 / 4.83:1. */
+  --color-ink-faint: #6f7180;   /* tertiary text, placeholders */
 
   --color-surface: #ffffff;
   --color-surface-soft: #f8f7f4; /* cream — page background, inset panels */
 
   --color-gold: #c9982a;         /* brand/primary */
   --color-gold-light: #f5e9c8;   /* tinted fills on light surfaces */
-  --color-gold-dark: #8a6510;    /* gold TEXT on light — #c9982a fails AA */
+  /* Darkened from #8a6510: 4.40:1 on gold-light, just under AA, and that is
+     exactly where it is used — every pill and the audience ribbon. Now 5.15:1. */
+  --color-gold-dark: #7d5b0e;    /* gold TEXT on light — #c9982a fails AA */
   --color-gold-border: #e0c870;  /* outline on gold-light fills (pills) */
 
   /* Error only — never a routine count or a "needs action" state, which is

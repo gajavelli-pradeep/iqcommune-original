@@ -28,9 +28,15 @@ export function PractitionerSections() {
       <SiteHeader
         badge={["Practitioner", "Network"] as const}
         right={
+          /* Hidden below 640px for the reason the strapline is: measured, the
+             wordmark plus this link overflows a 320px header by 4px, and a
+             header that scrolls sideways is a P1 bug. The footer carries a
+             prominent link to the learner site on every page, so nothing
+             becomes unreachable — and the string still renders for the parity
+             gate, which is hidden by CSS rather than removed. */
           <Link
             href="/"
-            className="whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark"
+            className="hidden whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark sm:inline-flex"
           >
             See iqcommune for Learners
           </Link>
