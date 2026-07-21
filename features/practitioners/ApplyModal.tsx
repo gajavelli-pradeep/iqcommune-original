@@ -16,12 +16,12 @@ import {
 /**
  * The empanelment application.
  *
- * Same shape as P1's `RequestModal` — shared `Modal` and `Field` primitives, one
- * Zod schema used here and by the route that will receive it. The route is not
- * built yet: submission is validated and the receipt shown, and the POST lands
- * with F2/F3 wiring. The button is not inert, and nothing here fakes a success
- * the server never confirmed — see the note on `submit`.
+ * Same shape as P1's `RequestModal`: shared `Modal` and `Field` primitives, one
+ * Zod schema used here and by the route that receives it, and the receipt shown
+ * only after the server confirms the write.
  */
+
+type Status = "editing" | "submitting" | "sent";
 
 interface ApplyDialog {
   openApply: () => void;
@@ -101,7 +101,8 @@ export function ApplyButton({ label = "Apply to Join the Network" }: { label?: s
 export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form, setForm] = useState<ApplicationInput>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<Status>("editing");
+  const [submitError, setSubmitError] = useState<string>();
 
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -111,34 +112,59 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
     setTimeout(() => {
       setForm(EMPTY);
       setErrors({});
-      setSent(false);
+      setStatus("editing");
+      setSubmitError(undefined);
     }, 200);
   }
 
-  function submit() {
+  async function submit() {
     const parsed = applicationSchema.safeParse(form);
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) next[issue.path.join(".")] = issue.message;
+      for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
       setErrors(next);
       return;
     }
+
     setErrors({});
-    setSent(true);
+    setStatus("submitting");
+    setSubmitError(undefined);
+
+    try {
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // The Zod output, not the raw form: trimmed, with the email lowercased.
+        body: JSON.stringify(parsed.data),
+      });
+      const body = await response.json();
+
+      if (!response.ok) {
+        if (body?.error?.fields) setErrors(body.error.fields);
+        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        setStatus("editing");
+        return;
+      }
+
+      setStatus("sent");
+    } catch {
+      setSubmitError("We couldn't reach the server. Check your connection and try again.");
+      setStatus("editing");
+    }
   }
 
   return (
     <Modal
       open={open}
       onClose={close}
-      title={sent ? "Application received!" : "About you"}
+      title={status === "sent" ? "Application received!" : "About you"}
       description={
-        sent
+        status === "sent"
           ? undefined
           : "No formal interview, no audition. Just tell us who you are and what you'd teach."
       }
     >
-      {sent ? (
+      {status === "sent" ? (
         <p className="py-6 text-center text-lg text-ink-muted">
           Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick,
           informal chat.
@@ -148,7 +174,7 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            submit();
+            void submit();
           }}
         >
           <div className="grid gap-x-4 sm:grid-cols-2">
@@ -332,11 +358,21 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
             </CheckboxField>
           </fieldset>
 
+          {submitError ? (
+            <p
+              role="alert"
+              className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
+            >
+              {submitError}
+            </p>
+          ) : null}
+
           <button
             type="submit"
-            className="min-h-11 w-full rounded-full bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+            disabled={status === "submitting"}
+            className="min-h-11 w-full rounded-full bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Submit Application
+            {status === "submitting" ? "Sending…" : "Submit Application"}
           </button>
           <p className="mt-2 text-center text-sm text-ink-faint">
             All three consent boxes above must be checked before submitting. Your details are never

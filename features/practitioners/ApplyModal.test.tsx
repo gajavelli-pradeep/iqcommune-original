@@ -1,8 +1,19 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApplyModal } from "./ApplyModal";
+
+/** The component's contract is with the HTTP route, so that is the seam held still. */
+function mockFetch(status: number, body: unknown) {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /**
  * The states the parity gate cannot drive: a rejected form, and the receipt.
@@ -19,6 +30,7 @@ const fill = (label: string | RegExp, value: string) =>
 describe("ApplyModal", () => {
   it("refuses to submit until every consent is given", async () => {
     const user = userEvent.setup();
+    const fetchMock = mockFetch(201, {});
     render(<ApplyModal open onClose={() => {}} />);
 
     await user.click(screen.getByRole("button", { name: "Submit Application" }));
@@ -26,6 +38,7 @@ describe("ApplyModal", () => {
     expect(await screen.findByText("First name is required")).toBeInTheDocument();
     expect(screen.getByText("Please confirm the disclosure terms")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Application received!" })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("ships its consent boxes unticked", () => {
@@ -36,6 +49,7 @@ describe("ApplyModal", () => {
 
   it("shows the receipt once a complete application is submitted", async () => {
     const user = userEvent.setup();
+    const fetchMock = mockFetch(201, { data: { id: "abc", createdAt: "now" }, error: null });
     render(<ApplyModal open onClose={() => {}} />);
 
     fill("First name", "Vikram");
@@ -60,6 +74,7 @@ describe("ApplyModal", () => {
     expect(
       await screen.findByRole("heading", { name: "Application received!" }),
     ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/applications", expect.anything());
     expect(screen.getByText(/we'll reach out within 2–3 working days/)).toBeInTheDocument();
   });
 });
