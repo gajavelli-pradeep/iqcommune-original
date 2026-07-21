@@ -14,16 +14,25 @@ import { SiteHeader } from "./SiteHeader";
  */
 export function LinkPageShell({
   badge,
+  width,
   children,
 }: {
   badge: string | readonly string[];
+  /**
+   * The page's column width. Each spec sets its own — 480px for account setup,
+   * 720 for rating, 760 for consent, 860 for photos and onboarding — and the
+   * header's inner width tracks it so the wordmark aligns with the card.
+   * Collapsing all five into one 520px default was a shared component losing
+   * the variation it existed to carry.
+   */
+  width: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
-      <SiteHeader badge={typeof badge === "string" ? [badge] : badge} />
+      <SiteHeader badge={typeof badge === "string" ? [badge] : badge} width={width} />
       <main className="flex-1 px-4 py-10 sm:px-8">
-        <div className="mx-auto max-w-narrow">
+        <div style={{ maxWidth: width }} className="mx-auto">
           {children}
           <p className="mt-6 text-center text-sm leading-[1.6] text-ink-faint">
             Confidential · Questions? Reply to the email this link was sent from, or write to{" "}

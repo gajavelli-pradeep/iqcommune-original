@@ -65,9 +65,13 @@ const VARIANTS = {
    * a different class here from the closing CTA, and the first clone reused
    * gold for both. Documenting three variants while shipping two is how that
    * happened.
+   *
+   * `shadow-card` is the spec's *resting* elevation. The first correction used
+   * `shadow-raised`, which is its hover value — leaving the button permanently
+   * lifted, and a hover state with nowhere to go.
    */
   primary:
-    "bg-ink text-surface text-lg px-[30px] py-3.5 gap-2.5 shadow-raised hover:opacity-90",
+    "bg-ink text-surface text-lg px-[30px] py-3.5 gap-2.5 shadow-card hover:opacity-90",
   /** `.btn-gold` — the closing CTA. */
   gold: "bg-gold text-ink text-xl px-9 py-4 gap-2.5 shadow-gold hover:brightness-110 hover:-translate-y-0.5",
   /** `.btn-nav` — the header. Ink, not gold. */

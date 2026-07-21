@@ -21,7 +21,7 @@ export function RatePage({
   token?: string;
 }) {
   return (
-    <LinkPageShell badge="Session Feedback">
+    <LinkPageShell width="720px" badge="Session Feedback">
       {session ? <RateForm session={session} token={token ?? ""} /> : <InvalidLink reason={failure ?? "malformed"} />}
     </LinkPageShell>
   );

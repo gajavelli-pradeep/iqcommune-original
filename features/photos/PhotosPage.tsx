@@ -16,7 +16,7 @@ export function PhotosPage({
   token?: string;
 }) {
   return (
-    <LinkPageShell badge={["Practitioner Network", "Post-Session"]}>
+    <LinkPageShell width="860px" badge={["Practitioner Network", "Post-Session"]}>
       {session ? (
         <PhotoSubmissionForm session={session} token={token ?? ""} />
       ) : (

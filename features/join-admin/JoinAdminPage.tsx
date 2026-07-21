@@ -16,7 +16,7 @@ export function JoinAdminPage({
   token?: string;
 }) {
   return (
-    <LinkPageShell badge="Account Setup">
+    <LinkPageShell width="480px" badge="Account Setup">
       {invite ? (
         <AccountSetupForm invite={invite} token={token ?? ""} />
       ) : (

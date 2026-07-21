@@ -17,7 +17,7 @@ export function ConsentPage({
   token?: string;
 }) {
   return (
-    <LinkPageShell badge="Session Consent">
+    <LinkPageShell width="760px" badge="Session Consent">
       {session ? (
         <ConsentForm session={session} token={token ?? ""} />
       ) : (

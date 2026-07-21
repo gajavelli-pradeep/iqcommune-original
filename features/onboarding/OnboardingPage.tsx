@@ -16,7 +16,7 @@ export function OnboardingPage({
   token?: string;
 }) {
   return (
-    <LinkPageShell badge={["Practitioner Network", "Onboarding"]}>
+    <LinkPageShell width="860px" badge={["Practitioner Network", "Onboarding"]}>
       {practitioner ? (
         <OnboardingForm practitioner={practitioner} token={token ?? ""} />
       ) : (

@@ -23,14 +23,24 @@ import type { ReactNode } from "react";
 export function SiteHeader({
   badge,
   right,
+  width = "var(--container-page)",
 }: {
+  /**
+   * Inner width. The public pages are 1100px, but each emailed page sets its
+   * own so the wordmark lines up with the card beneath it — four different
+   * values across the five, which one shared default silently flattened.
+   */
+  width?: string;
   /** One or two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
   badge?: readonly string[];
   right?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-100 border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:px-8">
-      <div className="mx-auto flex h-[68px] max-w-page items-center justify-between gap-3 sm:gap-4">
+      <div
+        style={{ maxWidth: width }}
+        className="mx-auto flex h-[68px] items-center justify-between gap-3 sm:gap-4"
+      >
         <Link
           href="/"
           className="flex shrink-0 flex-col gap-[3px]"
