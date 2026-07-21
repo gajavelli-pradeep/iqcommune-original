@@ -459,7 +459,10 @@ export default function PractitionersPage() {
           .handle-grid { grid-template-rows: none !important; }
           .handle-col { display: block; grid-row: auto !important; grid-template-rows: none !important; }
           .hero-grid { grid-template-columns: 1fr !important; }
-          .hero-right-card { display: none !important; }
+          /* The perks card stacks under the CTA — it must never be hidden. It
+             carries the whole "what you get" pitch, which is exactly what a
+             practitioner reads before applying. */
+          .hero-right-card { margin-top: 2rem; padding: 1.5rem !important; }
           .roles-grid { grid-template-columns: 1fr 1fr !important; }
           .modules-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-row { flex-direction: column !important; align-items: center !important; }

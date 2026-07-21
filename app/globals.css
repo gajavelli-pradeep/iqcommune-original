@@ -159,9 +159,18 @@ a {
   /* The search box's flex:1 wrapper stays as a spacer, but the box itself would be
      crushed to ~0 width on a phone — hide it (search isn't a primary mobile action). */
   .admin-nav-search { display: none !important; }
-  /* The "Viewing as" role-preview switcher (~180px) is the widest right-cluster item
-     and not essential on a phone — hide it so the bell + avatar never clip. */
+  /* The "Viewing as" role-preview switcher (~180px) is the widest right-cluster
+     item, so it can't stay in the nav on a phone — it moves into the sidebar
+     drawer instead. Hidden here, shown there: relocated, never deleted. A global
+     admin previewing as User needs this control to switch back. */
   .admin-nav-viewas { display: none !important; }
+  .admin-viewas-drawer { display: block !important; }
+}
+
+/* The drawer copy of "Viewing as" exists only below 768px — above it, the top-nav
+   copy is the one on screen. Exactly one is ever visible. */
+@media (min-width: 768px) {
+  .admin-viewas-drawer { display: none !important; }
 }
 @media (max-width: 480px) {
   /* Tighten the fixed top nav so its non-shrinkable children fit at 320-430px. */

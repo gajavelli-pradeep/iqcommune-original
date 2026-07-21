@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { ViewAsSelect } from "@/components/admin/ViewAsSelect";
 import { PractitionerTable } from "@/components/admin/PractitionerTable";
 import { SessionTable } from "@/components/admin/SessionTable";
 import { RequestTable } from "@/components/admin/RequestTable";
@@ -411,6 +412,7 @@ function TabHeader({ tab, onAction, extraActions = [], readOnly = false }: { tab
 export function AdminConsoleView({ practitioners, sessions, requests, payouts, agreements, photos, confirmations, email, isGlobalAdmin: realIsGlobalAdmin = false, galleryAdminAccess = true, readOnly: realReadOnly = false }: Props) {
   const { globalSearch, setGlobalSearch, activeTab: rawActiveTab, setActiveTab, viewAs, sidebarOpen, setSidebarOpen } = useAdminUI();
   const router = useRouter();
+  const pathname = usePathname();
 
   // V5 "Viewing as" preview — downgrade-only. Only a real global admin can
   // preview a lower scope; every other tier ignores viewAs, so it can never
@@ -738,6 +740,15 @@ export function AdminConsoleView({ practitioners, sessions, requests, payouts, a
           flexDirection: "column",
         }}
       >
+        {/* "Viewing as" lives in the top nav on desktop, which has no room for it
+            on a phone. Without this copy a global admin who previews as User on a
+            phone has no control left to switch back with. CSS shows exactly one. */}
+        {realIsGlobalAdmin && pathname === "/globaladmin" && (
+          <div className="admin-viewas-drawer" style={{ padding: "1rem 1.25rem 0.25rem" }}>
+            <ViewAsSelect fullWidth />
+          </div>
+        )}
+
         {sections.map((section, si) => (
           <div key={section.heading}>
             {si > 0 && (

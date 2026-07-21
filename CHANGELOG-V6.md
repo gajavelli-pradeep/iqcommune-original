@@ -8,6 +8,46 @@ Earlier work (V5 and before): `CHANGELOG-V5.md`.
 
 ---
 
+## [2026-07-21] Fix — two things desktop showed that a phone did not
+
+Responsive design relocates content; it never deletes it. Nothing enforced that, so two
+affordances were being hidden on a phone with nowhere else to go. New
+`tests/e2e/v6-content-parity.spec.ts` diffs the visible interactive labels + headings at
+1440 against 375 (with the hamburger drawer opened first, so relocated actions count as
+present) and asserts the difference is empty.
+
+- **/practitioners — the entire "What this means for you" perks card** was
+  `display: none !important` below 720px. Six perks, the whole pitch a practitioner reads
+  before applying, gone on phones. It now stacks under the CTA at 1.5rem padding.
+- **Console "Viewing as" switcher** was hidden below 768px and existed nowhere else, so a
+  global admin who previewed as User on a phone had no control left to switch back with.
+  Extracted to `ViewAsSelect` and rendered twice — top nav on desktop, sidebar drawer on a
+  phone — with CSS guaranteeing exactly one is visible at any width.
+
+Third finding was a test bug, not an app bug: the home gallery renders 7 placeholder slides
+until `/api/gallery` resolves to its 1 real photo, so "Go to slide 2-7" looked desktop-only.
+The dot count tracks fetched data, not viewport, so it is excluded by name; "Previous slide",
+"Next slide" and swipe are still compared.
+
+Detector validated against the bug, not just against green: re-adding `display: none` to the
+perks card turns the suite red again. Sweep: 5 public routes + 10 admin tabs, 0 differences.
+
+---
+
+## [2026-07-21] Fix — switching console tabs kept the old scroll position
+
+Tabs swap the page content but not the scroll position, so switching while scrolled left the
+new tab's heading above the fold: from y=180 on Session Requests, Session Details rendered
+with its h2 at **-96px**. You landed on a page whose title you could not see.
+
+`setActiveTab` now scrolls to the top, but only when the tab actually changes — re-clicking
+the tab you are already on keeps your place (verified: y=120 held). Opt-in motion, so the
+glide runs only under `prefers-reduced-motion: no-preference`.
+
+Verified at 375 and 1440: 180 -> 0 with the heading at +84, and 55 -> 0.
+
+---
+
 ## [2026-07-21] Audit — site-wide container overflow, and the test that proves it
 
 The Team & Access defect below is a class the suite could not see: `v6-responsive-full.spec.ts`
