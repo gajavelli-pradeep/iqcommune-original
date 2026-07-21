@@ -35,6 +35,27 @@
   --color-border: rgba(15, 17, 23, 0.10);
   --color-border-strong: rgba(15, 17, 23, 0.20);
 
+  /* On dark surfaces (footer, and the dark bands the marketing pages use).
+     Added with the Footer, the first section to need them.
+
+     One deliberate deviation from the spec: it sets body text on #080a0e to
+     rgba(255,255,255,0.3), which measures 2.60:1 — a WCAG AA failure for text
+     (4.5:1 required). --color-on-dark-muted raises it to 0.5 → 5.31:1. The
+     change is one token and barely perceptible on near-black; the alternative
+     was shipping copyright and tagline text that fails AA. Revert here if the
+     client wants the original value. */
+
+  --color-ink-deep: #080a0e;                          /* footer surface */
+  --color-on-dark-muted: rgba(255, 255, 255, 0.5);    /* body + links — 5.31:1 */
+  --color-on-dark: rgba(255, 255, 255, 0.65);         /* CTA link */
+  --color-on-dark-strong: rgba(255, 255, 255, 0.7);   /* wordmark */
+  --color-on-dark-bright: rgba(255, 255, 255, 0.75);  /* link hover */
+  --color-on-dark-divider: rgba(255, 255, 255, 0.07);
+
+  --color-gold-bright: #f0c84a;                       /* gold hover on dark */
+  --color-gold-rule: rgba(201, 152, 42, 0.35);
+  --color-gold-rule-strong: rgba(201, 152, 42, 0.8);
+
   /* ── Type ────────────────────────────────────────────────────────────────
      DM Sans, wired in app/layout.tsx via next/font (self-hosted — no external
      request, so it survives the CSP and costs no extra round trip).

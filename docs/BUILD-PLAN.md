@@ -1,8 +1,55 @@
 # Build plan — how iqcommune-v7 gets built
 
 **The unit of work is a section inside a page — never a whole page.**
-Smallest first, largest last. One section in flight at a time. Every section passes the same
-eight checks; every page passes the same four. Nothing else to remember.
+Ordered by dependency depth, not line count. One section in flight at a time. Every section passes
+the same eight checks; every page passes the same four. Nothing else to remember.
+
+**Stop condition: all eight V7 pages cloned and passing their page checks.** Work continues section
+by section until then; the only other reason to stop is a genuine problem that needs a decision.
+
+---
+
+## 0. Progress
+
+`[x]` done and verified · `[ ]` pending. Updated as each unit lands.
+
+**Foundation**
+
+- [x] **F0** design tokens + lint guards — `db57978`
+- [x] **F1** app shell: error / global-error / not-found / ErrorBoundary — `e3f7b39`
+- [ ] **F2** data layer — built when `Gallery` needs an API read
+- [ ] **F3** database + schema — built when `RequestModal` needs a write
+- [ ] **F4** content-parity gate — built once P1 has routes to diff
+- [ ] **auth** — built at P7, when `/join-admin` needs it
+
+**P1 · main-landing-page → `/`**
+
+- [x] `Footer` *(shared chrome — all 8 pages)* — 5 tests · 320/640×320/1440/1920 clean · AA fix + JSX space defect caught
+- [ ] `Nav` *(shared chrome — all 8 pages)*
+- [ ] `Hero`
+- [ ] `PoolStats`
+- [ ] `TrainerComparison`
+- [ ] `WhoIsThisFor`
+- [ ] `TrainingTopics`
+- [ ] `BundledSessions`
+- [ ] `HowItWorks`
+- [ ] `Takeaways`
+- [ ] `Faqs`
+- [ ] `ToolsCalculators`
+- [ ] `Gallery` *(drives F2)*
+- [ ] `RequestModal` *(drives F3)*
+- [ ] **page checks** — parity · functional completeness · e2e + metadata · `pnpm verify`
+
+**P2 · empanelment → `/practitioners`** — not started (13 sections)
+**P3 · practitioner-rating → `/rate`** — not started (7 sections)
+**P4 · session-consent → `/consent`** — not started (8 sections)
+**P5 · postsession-photos → `/submit-photos`** — not started (10 sections)
+**P6 · onboarding → `/onboarding`** — not started (7 sections)
+**P7 · user-setup → `/join-admin`** — not started (5 sections + auth)
+**P8 · admin-console → `/console` `/globaladmin` `/user`** — not started (4 sub-phases)
+
+**Hardening** — H1 security · H2 performance · H3 SEO+a11y · H4 operate. All pending; they run
+after the last page.
 
 ---
 
