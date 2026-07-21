@@ -37,6 +37,12 @@ const ALLOWED_DESKTOP_ONLY = [
   // measure parity. The paging affordances that DO matter — "Previous slide",
   // "Next slide", and touch swipe — are compared and present at both widths.
   /^Go to slide \d+$/,
+  // Header brand strapline. Judgment call, deliberately narrow: it is decoration
+  // inside the logo lockup, not an affordance or information the reader needs, and
+  // it is hidden below 600px precisely to stop the header overflowing — which was
+  // itself a P1. Trading a readable header for a strapline is the wrong trade.
+  // Scoped to this exact string so any OTHER hidden copy still fails.
+  /^Where financial intelligence connects$/,
 ];
 
 async function loginGlobalAdmin(page: Page) {
@@ -82,19 +88,58 @@ async function affordances(page: Page): Promise<string[]> {
   return collect(page);
 }
 
+/**
+ * Everything a viewer can read or act on: interactive labels, headings, AND prose.
+ *
+ * Prose matters. An earlier version compared only controls and headings, and when
+ * the /practitioners perks card was re-hidden to test the detector, the only thing
+ * it could name was the "Show more" button — it caught that card by luck, because
+ * the card happened to contain a control. A hidden block of pure copy or images
+ * would have passed silently, which is the exact defect this file exists to catch.
+ */
 function collect(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const label = (el: Element) =>
-      (el.getAttribute("aria-label") || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 60);
+    const normalise = (s: string) => s.trim().replace(/\s+/g, " ");
     const visible = (el: Element) => {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
       return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.opacity !== "0";
     };
-    const nodes = Array.from(
-      document.querySelectorAll("button, a[href], select, input:not([type=hidden]), h1, h2, h3, [role=button], [role=tab]")
+
+    const out: string[] = [];
+
+    const controls = document.querySelectorAll(
+      "button, a[href], select, input:not([type=hidden]), h1, h2, h3, [role=button], [role=tab]"
     );
-    return Array.from(new Set(nodes.filter(visible).map(label).filter(Boolean)));
+    for (const el of Array.from(controls)) {
+      if (!visible(el)) continue;
+      const text = normalise(el.getAttribute("aria-label") || el.textContent || "");
+      if (text) out.push(text.slice(0, 60));
+    }
+
+    // Prose: elements carrying their own text, not just inherited from children,
+    // so a section counts once rather than at every level of its wrapper chain.
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (!visible(el)) continue;
+      const own = normalise(
+        Array.from(el.childNodes)
+          .filter((n) => n.nodeType === Node.TEXT_NODE)
+          .map((n) => n.textContent ?? "")
+          .join(" ")
+      );
+      // Under ~15 chars is noise: counts, currency, dates, single glyphs — all of
+      // which legitimately differ between two independently rendered viewports.
+      if (own.length >= 15) out.push(own.slice(0, 60));
+    }
+
+    // Alt text is content too — an image dropped on mobile is content deleted.
+    for (const img of Array.from(document.querySelectorAll("img[alt]"))) {
+      if (!visible(img)) continue;
+      const alt = normalise(img.getAttribute("alt") || "");
+      if (alt) out.push(`[img] ${alt}`.slice(0, 60));
+    }
+
+    return Array.from(new Set(out));
   });
 }
 

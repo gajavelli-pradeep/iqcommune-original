@@ -8,6 +8,34 @@ Earlier work (V5 and before): `CHANGELOG-V5.md`.
 
 ---
 
+## [2026-07-21] Fix — the comparison table lost half the comparison on a phone
+
+Found by strengthening the parity test rather than by looking. The first version compared
+only interactive labels and headings, so when the /practitioners perks card was re-hidden to
+validate it, the single thing it could name was the "Show more" button — it had caught that
+card by luck, because the card happened to contain a control. A hidden block of pure copy
+would have passed silently, which is the exact defect the file exists to catch.
+
+`collect()` now also compares **visible prose** (elements carrying their own text, >=15 chars,
+so a section counts once rather than at every wrapper level) and **image alt text**. Proof the
+strengthening worked: re-hiding the perks card used to report 1 signal; it now reports 10,
+naming the perk copy itself.
+
+That immediately surfaced a real one on the landing page: `.diff-col-them { display: none }`
+below 720px deleted the **entire "Conventional Trainers" column** — a comparison table with
+one side removed is not a comparison, it is a list of claims. Both columns now stay on a
+phone with tighter padding and 12.5px type; paired cells still share a grid row (verified
+aligned at 320 and 375, desktop untouched at 28px/14px).
+
+Two exclusions, both narrow and reasoned: gallery paging dots (count tracks fetched data,
+not viewport) and the header brand strapline (decoration inside the logo lockup, hidden
+below 600px precisely to stop the header overflowing — which was itself a P1). Scoped to
+exact strings so any other hidden copy still fails.
+
+Sweep: 5 public routes + 10 admin tabs, 0 differences under the stricter comparison.
+
+---
+
 ## [2026-07-21] Fix — two things desktop showed that a phone did not
 
 Responsive design relocates content; it never deletes it. Nothing enforced that, so two

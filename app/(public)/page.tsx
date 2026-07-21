@@ -570,8 +570,15 @@ export default function HomePage() {
         @media (max-width: 720px) {
           .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
           .hero-before { display: none; }
-          .diff-grid-inner { grid-template-columns: 1fr !important; }
-          .diff-col-them { display: none !important; }
+          /* A comparison table with one side removed is not a comparison. Both
+             columns stay on a phone; they get tighter padding and type instead,
+             and the paired cells keep sharing a grid row. !important beats the
+             inline cell styles. */
+          .diff-grid-inner > * {
+            padding: 0.75rem 0.7rem !important;
+            font-size: 12.5px !important;
+            gap: 8px !important;
+          }
           .topics-grid { grid-template-columns: 1fr 1fr !important; }
           .audience-grid { gap: 1rem !important; }
           .walkout-grid { grid-template-columns: 1fr 1fr !important; }
