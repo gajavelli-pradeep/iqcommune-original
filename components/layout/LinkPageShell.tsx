@@ -12,10 +12,16 @@ import { SiteHeader } from "./SiteHeader";
  * carries the footer's cross-site call to action: a practitioner arriving from
  * an email to confirm one session is not being recruited.
  */
-export function LinkPageShell({ badge, children }: { badge: string; children: ReactNode }) {
+export function LinkPageShell({
+  badge,
+  children,
+}: {
+  badge: string | readonly string[];
+  children: ReactNode;
+}) {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
-      <SiteHeader badge={[badge]} />
+      <SiteHeader badge={typeof badge === "string" ? [badge] : badge} />
       <main className="flex-1 px-4 py-10 sm:px-8">
         <div className="mx-auto max-w-narrow">
           {children}
