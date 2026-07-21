@@ -1,6 +1,7 @@
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { HowItWorks } from "@/features/landing/sections/HowItWorks";
+import { Faqs } from "@/features/landing/sections/Faqs";
 import { Hero } from "@/features/landing/sections/Hero";
 import { Takeaways } from "@/features/landing/sections/Takeaways";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
@@ -28,6 +29,7 @@ export default function HomePage() {
         <BundledSessions />
         <HowItWorks />
         <Takeaways />
+        <Faqs />
       </main>
       <SiteFooter />
     </div>

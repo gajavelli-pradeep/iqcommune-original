@@ -236,4 +236,34 @@ for (const tier of TIERS) {
       expect(Math.round(box.height), `circle ${i} height`).toBe(52);
     }
   });
+
+  test(`faqs open and stay reachable at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const section = page.locator("section").filter({ hasText: "Things people ask" });
+    const questions = section.getByRole("button");
+    expect(await questions.count()).toBe(9);
+
+    // Operable by keyboard alone, not just by mouse.
+    const first = questions.first();
+    await first.focus();
+    await page.keyboard.press("Enter");
+    await expect(first).toHaveAttribute("aria-expanded", "true");
+
+    // The opened answer must be reachable and inside the viewport horizontally.
+    const panelId = await first.getAttribute("aria-controls");
+    const panel = page.locator(`#${panelId}`);
+    await panel.scrollIntoViewIfNeeded();
+    await expect(panel).toBeVisible();
+    const box = await panel.boundingBox();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(tier.w + 1);
+    }
+
+    // Single-open: opening the second closes the first.
+    await questions.nth(1).click();
+    await expect(first).toHaveAttribute("aria-expanded", "false");
+  });
 }
