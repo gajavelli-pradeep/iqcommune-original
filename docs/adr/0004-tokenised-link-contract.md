@@ -80,6 +80,34 @@ into the address bar.
 - One verifier to audit rather than five, before P8's authorization work begins.
 - The pages can be cloned now against this shape and wired later without touching their markup.
 
+## Correction — 2026-07-21, before any link was minted
+
+The table above says `/rate`, `/consent` and `/submit-photos` each identify **a session**. That is
+wrong, and an audit of what those pages actually render caught it:
+
+- `/rate` shows the practitioner being rated.
+- `/consent` shows a **gross payout**, which is per-practitioner-per-session, not a session-level
+  number at all.
+- `/submit-photos` shows the practitioner's own reference.
+
+A session with two practitioners makes a session uuid ambiguous for all three. **Those tokens must
+be minted against the session-practitioner assignment row, not the session.** No change to the token
+format — only to which table the uuid points at.
+
+`/onboarding` has the same shape of error: it is described as identifying a practitioner, but it
+displays and signs against an `agreementReference`. One practitioner may hold several agreements
+over time, so a practitioner uuid selects an unbounded set. **Mint against the agreement row** — an
+agreement always resolves to exactly one practitioner; the reverse does not hold.
+
+This is exactly the rework the ADR was written to prevent, caught before a single link existed.
+Nothing emailed is affected because nothing has been emailed.
+
+**`/join-admin` also forces the revocation question early.** The Alternatives section rejected
+stored tokens and accepted "tokens cannot be revoked before `exp`". For an invite that is
+load-bearing: an un-revocable link could activate an account twice. Single-use cannot live in the
+token, so `admin_invites.consumed_at` is mandatory and the loader must treat a consumed invite as an
+invalid link.
+
 ## Follow-through
 
 1. `lib/tokens.ts` — `mintToken(kind, id, ttl)` / `verifyToken(kind, t)` — lands with the first
