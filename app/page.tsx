@@ -1,5 +1,6 @@
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { Hero } from "@/features/landing/sections/Hero";
 
 /**
  * P1 — main landing page. Composition only: this file stays a list of sections
@@ -13,7 +14,9 @@ export default function HomePage() {
       {/* The header's "Request a Session" button ships with RequestModal — it
           opens that modal, and a button wired to nothing is not worth shipping. */}
       <SiteHeader />
-      <main className="flex-1">{/* sections land here */}</main>
+      <main className="flex-1">
+        <Hero />
+      </main>
       <SiteFooter />
     </div>
   );

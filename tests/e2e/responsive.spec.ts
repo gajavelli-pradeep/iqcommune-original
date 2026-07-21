@@ -46,8 +46,11 @@ for (const tier of TIERS) {
       expect(box.x + box.width, `link ${i} runs past the right edge`).toBeLessThanOrEqual(tier.w + 1);
     }
 
-    // The last line must be reachable — the check 640x320 exists for.
+    // The last line must be *reachable* — not necessarily on screen at load.
+    // Once the page is taller than the viewport the footer sits below the fold,
+    // which is correct; what matters is that scrolling gets you to it.
     const copyright = page.locator("footer p", { hasText: "All rights reserved" });
+    await copyright.scrollIntoViewIfNeeded();
     await expect(copyright).toBeInViewport();
   });
 
@@ -82,6 +85,36 @@ for (const tier of TIERS) {
       await expect(strapline).toBeVisible();
     } else {
       await expect(strapline).toBeHidden();
+    }
+  });
+
+  test(`hero holds at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const overflow = await noHorizontalOverflow(page);
+    expect(overflow.overflow, `horizontal overflow: ${overflow.scrollWidth} > ${overflow.clientWidth}`).toBe(false);
+
+    const headline = page.getByRole("heading", { level: 1 });
+    await expect(headline).toBeVisible();
+    await expect(headline).toContainText("Real financial insights from active professionals");
+
+    // Two columns above 720px, stacked below — the spec's own breakpoint.
+    const grid = page.locator("section > div.grid").first();
+    const columns = await grid.evaluate(
+      (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+    );
+    expect(columns, `expected ${tier.w >= 720 ? 2 : 1} column(s)`).toBe(tier.w >= 720 ? 2 : 1);
+
+    // Every role card stays inside the viewport.
+    const cards = page.locator("section .rounded-md");
+    const cardCount = await cards.count();
+    expect(cardCount).toBe(4);
+    for (let i = 0; i < cardCount; i++) {
+      const box = await cards.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.x, `role card ${i} off-screen left`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `role card ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
     }
   });
 }

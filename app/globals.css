@@ -28,6 +28,7 @@
   --color-gold: #c9982a;         /* brand/primary */
   --color-gold-light: #f5e9c8;   /* tinted fills on light surfaces */
   --color-gold-dark: #8a6510;    /* gold TEXT on light — #c9982a fails AA */
+  --color-gold-border: #e0c870;  /* outline on gold-light fills (pills) */
 
   --color-green: #2a6b2a;        /* success only */
   --color-green-light: #eef7ee;
@@ -76,6 +77,7 @@
   --text-md: 14px;
   --text-lg: 15px;
   --text-xl: 16px;
+  --text-lead: 17px;  /* standing paragraph under a headline (hero sub) */
   --text-2xl: 18px;
   --text-3xl: 20px;
   --text-4xl: 22px;
@@ -90,10 +92,12 @@
 
   /* Tracking. Display headings pull tight; uppercase eyebrow labels open up. */
   --tracking-display: -0.04em;
+  --tracking-tight: -0.02em;  /* large numerals — the pool stat figures */
   --tracking-body: -0.01em;
   --tracking-label: 0.06em;
   --tracking-eyebrow: 0.08em;
   --tracking-caps: 0.1em;
+  --tracking-pill: 0.12em;    /* uppercase badge text */
 
   /* ── Space ───────────────────────────────────────────────────────────────
      4px base. The source authors odd values (3/5/7/9px) inconsistently for the
@@ -109,6 +113,7 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 12px;
+  --radius-xl: 20px;   /* raised cards — the hero's practitioner-pool panel */
   --radius-full: 9999px;
 
   /* ── Elevation ───────────────────────────────────────────────────────────
@@ -168,6 +173,37 @@ body {
   outline: 2px solid var(--color-gold-dark);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Entrance motion, opt-in.
+
+   The spec writes `animation: fadeUp .5s ease both` with `from { opacity: 0 }`.
+   With `both`, the element sits at opacity 0 through its delay and stays there
+   if the animation never runs — one blocked stylesheet and the hero is blank.
+   So the base state here is visible, and motion is added only where it is
+   welcome. Reduced-motion users get the content, just without the travel. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fade-up var(--duration-slow) ease both;
+  }
+
+  /* Stagger, matching the spec's 0.05 / 0.14 / 0.23 / 0.32 cascade. */
+  .animate-fade-up-1 { animation-delay: 0.05s; }
+  .animate-fade-up-2 { animation-delay: 0.14s; }
+  .animate-fade-up-3 { animation-delay: 0.23s; }
+  .animate-fade-up-4 { animation-delay: 0.32s; }
+  .animate-fade-up-card { animation-delay: 0.3s; }
 }
 
 /* Touch targets. Enforced by pointer type, not by breakpoint — a small window
