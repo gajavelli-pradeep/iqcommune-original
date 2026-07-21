@@ -62,27 +62,51 @@ simpler pages have proven the pattern — it is the highest-risk piece and shoul
 
 ---
 
-## 4. Phase P — Pages, smallest first
+## 4. Phase P — Pages, ordered by dependency depth
 
-Ordered by **total work** (lines × dependencies), not line count alone. `user-setup` is the smallest
-file but needs auth, so it waits; `landing` is the second-largest file but is nearly all static
-content, so it comes late without risk.
+**Not by line count.** Once the unit of work is a section, page size stops mattering — a
+2,242-line page is fourteen small sections, and roughly 440 of those lines are content arrays,
+which is transcription rather than logic. What actually decides the order is **how much invisible
+foundation a page needs before it can render at all.**
 
-| # | Page | Lines | Route | Sections (the actual units of work) |
+On that axis the landing page is the *shallowest* page in the spec and the token flow pages are the
+deepest:
+
+| Page | Lines | Needs before it can run |
+|---|---|---|
+| landing | 2,242 | F0 + F1. That is all, for eleven of its fourteen sections |
+| `/rate` | 227 | F0 + F1 + **F2 data layer** + **F3 schema** + HMAC token verification |
+| `/consent` | 205 | all of the above + signature capture + PDF |
+
+Starting with `/rate` because it is "small" really means *building the entire data layer and
+database schema first, before anything visible exists* — a lot of invisible work for a 227-line
+payoff. Starting with the landing page inverts that: visible progress immediately, and each
+foundation piece gets built at the moment a section genuinely demands it.
+
+| # | Page | Lines | Route | Sections, ordered simple → complex within the page |
 |---|---|---|---|---|
-| **P1** | practitioner-rating | 227 | `/rate` | `Nav` · `SessionDetailsCard` · `StarRating` · `Comments` · `SubmitBar` · `SuccessReceipt` · `AlreadyRated` · `InvalidLink` · `Footer` |
-| **P2** | session-consent | 205 | `/consent` | `Nav` · `Header` · `RefBlock` · `SessionDetails` · `PayoutBlock` *(gross only)* · `ConsentChecklist` *(3 items)* · `SignBar` · `SuccessCard` · `InvalidLink` · `Footer` |
-| **P3** | postsession-photos | 385 | `/submit-photos` | `Nav` · `Stepper` · `Intro` · `IdentityStrip` · `SessionBand` · `StoragePolicy` · `ShotChecklist` · `Uploader` · `ConsentBox` · `SubmitBar` · `SuccessReceipt` · `Footer` |
-| **P4** | user-setup | 159 | `/join-admin` | **+ auth foundation** · `Nav` · `ReadOnlyIdentity` · `PasswordForm` · `SubmitBar` · `SuccessCard` · `InviteUnavailable` · `Footer` |
-| **P5** | onboarding | 709 | `/onboarding` | `Nav` · `Stepper` · `DetailsSummary` · `AgreementBody` *(clauses 1–13, incl. rewritten 3(a)–(d) and 4A)* · `SignChecklist` · `SignaturePad` *(draw/type)* · `SubmitBar` · `SuccessReceipt` · `Footer` |
-| **P6** | empanelment | 1,343 | `/practitioners` | `Nav` · `Hero` · `PerksCard` · `TrustBar` · `RolesGrid` · `ProcessSteps` · `DivisionOfWork` · `ModulesGrid` · `BundleNudge` · `FitLists` · `DisclosureCards` · `ApplyCta` *(3 bullets + button)* · **`ApplyModal`** · `Faqs` · `Footer` |
-| **P7** | main-landing-page | 2,242 | `/` | `Nav` · `Hero` · `PoolStats` · `TrainerComparison` · `WhoIsThisFor` · `TrainingTopics` · `BundledSessions` · `HowItWorks` · `Takeaways` · `Faqs` · `ToolsCalculators` · `Gallery` · `RequestModal` · `Footer` |
+| **P1** | main-landing-page | 2,242 | `/` | **`Footer`** · **`Nav`** · `Hero` · `PoolStats` · `TrainerComparison` · `WhoIsThisFor` · `TrainingTopics` · `BundledSessions` · `HowItWorks` · `Takeaways` · `Faqs` · `ToolsCalculators` · `Gallery` *(drives F2)* · `RequestModal` *(drives F3)* |
+| **P2** | empanelment | 1,343 | `/practitioners` | `Hero` · `PerksCard` · `TrustBar` · `RolesGrid` · `ProcessSteps` · `DivisionOfWork` · `ModulesGrid` · `BundleNudge` · `FitLists` · `DisclosureCards` · `ApplyCta` *(3 bullets + button)* · **`ApplyModal`** · `Faqs` |
+| **P3** | practitioner-rating | 227 | `/rate` | `SessionDetailsCard` · `StarRating` · `Comments` · `SubmitBar` · `SuccessReceipt` · `AlreadyRated` · `InvalidLink` |
+| **P4** | session-consent | 205 | `/consent` | `Header` · `RefBlock` · `SessionDetails` · `PayoutBlock` *(gross only)* · `ConsentChecklist` *(3 items)* · `SignBar` · `SuccessCard` · `InvalidLink` |
+| **P5** | postsession-photos | 385 | `/submit-photos` | `Stepper` · `Intro` · `IdentityStrip` · `SessionBand` · `StoragePolicy` · `ShotChecklist` · `Uploader` · `ConsentBox` · `SubmitBar` · `SuccessReceipt` |
+| **P6** | onboarding | 709 | `/onboarding` | `Stepper` · `DetailsSummary` · `AgreementBody` *(clauses 1–13, incl. rewritten 3(a)–(d) and 4A)* · `SignChecklist` · `SignaturePad` *(draw/type)* · `SubmitBar` · `SuccessReceipt` |
+| **P7** | user-setup | 159 | `/join-admin` | **+ auth foundation** · `ReadOnlyIdentity` · `PasswordForm` · `SubmitBar` · `SuccessCard` · `InviteUnavailable` |
 | **P8** | admin-console | 3,761 | `/console` `/globaladmin` `/user` | **P8a** shell + nav + tabs + login · **P8b** Practitioners + Requests · **P8c** Sessions + Consent/Confirmations · **P8d** Payouts + Agreements + Gallery + Activity |
 
-**P1 is the teacher.** At 227 lines it is the smallest *complete* journey — token link → read a
-record → fill a form → validate → write → success → already-submitted. Every check gets exercised
-end to end on a page small enough to hold in your head. By P8 the process is muscle memory and the
-primitives already exist.
+`Nav` and `Footer` appear only in P1 because they are **shared chrome used by all eight pages** —
+built once, inherited free by everything after. That makes `Footer` the highest-leverage first
+section in the project, and it is also the smallest.
+
+**Foundation arrives on demand, not up front.** `Gallery` is the first section needing an API read,
+so it drives F2. `RequestModal` is the first needing validation and a database write, so it drives
+F3. `/join-admin` is the first needing auth, so it drives that — which is why it sits at P7, once
+the pattern is established, rather than being written first.
+
+**The trade being accepted:** the first complete end-to-end database journey now lands at the *end*
+of P1 (`RequestModal`) rather than on day one. That is acceptable because the schema is not a guess
+— it is carried forward from a system running in production today. The real unknowns are in the UI,
+and P1 attacks those immediately.
 
 ---
 
