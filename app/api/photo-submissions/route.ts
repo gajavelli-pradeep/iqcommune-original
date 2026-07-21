@@ -2,6 +2,8 @@ import { fail, ok } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { photoSubmissionSchema, validatePhotos } from "@/lib/schemas/photo-submission";
+import { verifyToken } from "@/lib/tokens";
+import { getPhotoSubmissionOwner } from "@/services/link-pages";
 import { createPhotoSubmission } from "@/services/photo-submissions";
 
 /** Public multipart write: photos plus the consent that permits publishing them. */
@@ -16,14 +18,43 @@ export async function POST(request: Request) {
     }
 
     const form = await request.formData();
-    const parsed = photoSubmissionSchema.safeParse({
-      submitterName: form.get("submitterName"),
-      submitterEmail: form.get("submitterEmail"),
-      organisationName: form.get("organisationName") || undefined,
-      sessionDate: form.get("sessionDate"),
-      moduleTaught: form.get("moduleTaught"),
-      participantConsent: form.get("participantConsent") === "true",
-    });
+
+    // Two callers: the public landing-page modal, where a stranger types their
+    // own details, and the tokenised page, where the link already names the
+    // practitioner and session. In the second case nothing about the owner is
+    // read from the body — that is the whole point of the link.
+    const token = form.get("t");
+    const owner =
+      typeof token === "string" && token
+        ? await (async () => {
+            const verified = verifyToken("photos", token);
+            if (!verified.ok) return null;
+            return getPhotoSubmissionOwner(verified.payload.id);
+          })()
+        : undefined;
+
+    if (owner === null) {
+      return fail("FORBIDDEN", "This link is no longer valid.", traceId);
+    }
+    const parsed = photoSubmissionSchema.safeParse(
+      owner
+        ? {
+            submitterName: owner.practitionerName,
+            submitterEmail: owner.practitionerEmail,
+            organisationName: form.get("organisationName") || undefined,
+            sessionDate: owner.sessionDate,
+            moduleTaught: owner.module,
+            participantConsent: true,
+          }
+        : {
+            submitterName: form.get("submitterName"),
+            submitterEmail: form.get("submitterEmail"),
+            organisationName: form.get("organisationName") || undefined,
+            sessionDate: form.get("sessionDate"),
+            moduleTaught: form.get("moduleTaught"),
+            participantConsent: form.get("participantConsent") === "true",
+          },
+    );
     if (!parsed.success) {
       const fields: Record<string, string> = {};
       for (const issue of parsed.error.issues) fields[issue.path.join(".")] = issue.message;
@@ -38,7 +69,11 @@ export async function POST(request: Request) {
       return fail("VALIDATION_FAILED", photoProblem, traceId, { photos: photoProblem });
     }
 
-    const created = await createPhotoSubmission(parsed.data, photos);
+    const created = await createPhotoSubmission(
+      parsed.data,
+      photos,
+      owner ? { sessionId: owner.sessionId, practitionerId: owner.practitionerId } : undefined,
+    );
     log.info(traceId, "photo submission created", { id: created.id, photoCount: created.photoCount });
     return ok(created, 201);
   } catch (cause) {

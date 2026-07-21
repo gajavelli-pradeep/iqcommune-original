@@ -196,3 +196,48 @@ export async function getAdminInvite(inviteId: string): Promise<AdminInvite | nu
   // page that grants console access.
   return { email: data.email, role: LABELS[data.role] ?? data.role };
 }
+
+/**
+ * Who and what a photos token refers to. Separate from `getPhotoSession`, which
+ * returns display strings: this returns the identifiers and raw values the
+ * write needs, so the route never has to re-parse a formatted date.
+ */
+export interface PhotoSubmissionOwnerRow {
+  sessionId: string;
+  practitionerId: string;
+  practitionerName: string;
+  practitionerEmail: string;
+  sessionDate: string;
+  module: string;
+}
+
+export async function getPhotoSubmissionOwner(
+  assignmentId: string,
+): Promise<PhotoSubmissionOwnerRow | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("session_practitioners")
+    .select("session_id, practitioner_id, practitioners ( full_name, email ), sessions ( session_date, module )")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
+
+  const row = data as {
+    session_id: string;
+    practitioner_id: string;
+    practitioners: { full_name: string; email: string } | null;
+    sessions: { session_date: string; module: string } | null;
+  } | null;
+  if (!row?.practitioners || !row.sessions) return null;
+
+  return {
+    sessionId: row.session_id,
+    practitionerId: row.practitioner_id,
+    practitionerName: row.practitioners.full_name,
+    practitionerEmail: row.practitioners.email,
+    sessionDate: row.sessions.session_date,
+    module: row.sessions.module,
+  };
+}

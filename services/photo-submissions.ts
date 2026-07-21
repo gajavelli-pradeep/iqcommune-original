@@ -8,11 +8,21 @@ const BUCKET = process.env.SUPABASE_PHOTOS_BUCKET || "session-photos";
 export interface CreatedPhotoSubmission {
   id: string;
   photoCount: number;
+  /** From the row, not the browser — the receipt must match what was stored. */
+  submittedAt: string;
+  expiryDate: string;
+}
+
+/** Set when the submission came from a tokenised link rather than the public modal. */
+export interface PhotoSubmissionOwner {
+  sessionId: string;
+  practitionerId: string;
 }
 
 export async function createPhotoSubmission(
   input: PhotoSubmissionInput,
   photos: File[],
+  owner?: PhotoSubmissionOwner,
 ): Promise<CreatedPhotoSubmission> {
   const supabase = createAdminClient();
   const submissionId = crypto.randomUUID();
@@ -39,8 +49,11 @@ export async function createPhotoSubmission(
       module_taught: input.moduleTaught,
       storage_keys: storageKeys,
       participant_consent: input.participantConsent,
+      // Never from the body: the token decides which session these belong to.
+      session_id: owner?.sessionId ?? null,
+      practitioner_id: owner?.practitionerId ?? null,
     })
-    .select("id")
+    .select("id, created_at, expiry_date")
     .single();
 
   if (error) {
@@ -50,5 +63,10 @@ export async function createPhotoSubmission(
     throw new Error(`photo_submissions insert failed: ${error.message}`);
   }
 
-  return { id: data.id, photoCount: storageKeys.length };
+  return {
+    id: data.id,
+    photoCount: storageKeys.length,
+    submittedAt: data.created_at,
+    expiryDate: data.expiry_date,
+  };
 }
