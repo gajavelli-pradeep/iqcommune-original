@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface TeamMember {
@@ -74,6 +75,23 @@ export function TeamAccessTable({
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // The table card scrolls horizontally, which would clip an absolutely-positioned
+  // menu — so the menu is portalled to <body> and positioned from the trigger's
+  // viewport rect instead.
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number; triggerTop: number } | null>(null);
+
+  // Measures the portalled menu on mount and flips it above the trigger when it
+  // would run past the bottom edge — a fixed element can't be scrolled to, so an
+  // overhanging menu is unreachable (landscape phones are ~320px tall).
+  const placeMenu = (node: HTMLDivElement | null) => {
+    menuRef.current = node;
+    if (!node || !menuPos) return;
+    const h = node.offsetHeight;
+    const vh = document.documentElement.clientHeight;
+    const below = menuPos.top;
+    const desired = below + h <= vh - 8 ? below : menuPos.triggerTop - h - 4; // flip above
+    node.style.top = `${Math.min(Math.max(8, desired), Math.max(8, vh - h - 8))}px`;
+  };
   const [pwEditId, setPwEditId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -96,14 +114,27 @@ export function TeamAccessTable({
     return () => { live = false; };
   }, [reloadKey]);
 
-  // Close the actions menu on outside click.
+  // Close the actions menu on outside click, Escape, or any scroll/resize — a
+  // fixed-positioned menu would otherwise detach from its row once things move.
   useEffect(() => {
     if (!openMenuId) return;
+    const close = () => { setOpenMenuId(null); setMenuPos(null); };
     function onDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+      const t = e.target as HTMLElement;
+      if (t.closest("[data-team-menu-trigger]")) return; // let the trigger toggle itself
+      if (menuRef.current && !menuRef.current.contains(t)) close();
     }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") close(); }
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [openMenuId]);
 
   async function changeRole(m: TeamMember, nextRole: TeamMember["role"]) {
@@ -236,7 +267,9 @@ export function TeamAccessTable({
         </div>
       )}
 
-      <div style={{ overflowX: "visible", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8 }}>
+      {/* overflowX:auto — the 640px table must scroll inside its card on a phone,
+          not spill past the border. The row menu is portalled so it isn't clipped. */}
+      <div style={{ overflowX: "auto", border: "1px solid rgba(15,17,23,.08)", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
           <thead>
             <tr>
@@ -258,7 +291,8 @@ export function TeamAccessTable({
               const revealOpen = m.id in revealed;
               const rev = revealed[m.id];
               return (
-                <tr key={m.id}>
+                <Fragment key={m.id}>
+                <tr>
                   <td style={{ ...td, fontWeight: 500 }}>
                     {nameFromEmail(m.email)}
                     {isSelf && <span style={{ fontSize: 11, color: "var(--ink-faint)", fontWeight: 400 }}> · you</span>}
@@ -288,58 +322,75 @@ export function TeamAccessTable({
                   <td style={{ ...td, color: "var(--ink-faint)", whiteSpace: "nowrap" }}>{lastActive(m.last_sign_in_at)}</td>
 
                   {/* Actions — "⋯" dropdown, Global-Admin only */}
-                  <td style={{ ...td, textAlign: "right", position: "relative" }}>
+                  <td style={{ ...td, textAlign: "right" }}>
                     {!canManage && <span style={{ color: "var(--ink-faint)" }}>—</span>}
                     {canManage && (
-                    <>
                     <button
                       type="button"
+                      data-team-menu-trigger
                       aria-label={`Actions for ${m.email}`}
                       aria-haspopup="menu"
                       aria-expanded={openMenuId === m.id}
                       disabled={busy}
-                      onClick={() => setOpenMenuId((id) => (id === m.id ? null : m.id))}
+                      onClick={(e) => {
+                        if (openMenuId === m.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                        const r = e.currentTarget.getBoundingClientRect();
+                        // clientWidth, not innerWidth — a fixed element's `right` is
+                        // measured from the viewport excluding the scrollbar.
+                        const vw = document.documentElement.clientWidth;
+                        setMenuPos({ top: r.bottom + 4, right: Math.max(8, vw - r.right), triggerTop: r.top });
+                        setOpenMenuId(m.id);
+                      }}
                       style={{ ...smallBtn, padding: "4px 10px", opacity: busy ? 0.6 : 1 }}
                     >
                       ⋯
                     </button>
-                    {openMenuId === m.id && (
+                    )}
+                    {openMenuId === m.id && menuPos && createPortal(
                       <div
-                        ref={menuRef}
+                        ref={placeMenu}
                         role="menu"
                         style={{
-                          position: "absolute", top: "calc(100% - 2px)", right: 8, zIndex: 60, minWidth: 190,
+                          position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9500, minWidth: 190,
+                          maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflowY: "auto",
                           background: "var(--surface)", border: "1px solid rgba(15,17,23,.12)", borderRadius: 10,
                           boxShadow: "0 14px 36px -14px rgba(20,16,10,0.28), 0 2px 6px rgba(20,16,10,0.06)",
                           padding: 4, textAlign: "left",
                         }}
                       >
                         <button type="button" role="menuitem" style={menuItemStyle}
-                          onClick={() => { setOpenMenuId(null); setPwEditId(m.id); setPwValue(""); setShowPw(false); }}>
+                          onClick={() => { setOpenMenuId(null); setMenuPos(null); setPwEditId(m.id); setPwValue(""); setShowPw(false); }}>
                           Set password
                         </button>
                         <button type="button" role="menuitem" style={menuItemStyle}
-                          onClick={() => { setOpenMenuId(null); revealPassword(m); }}>
+                          onClick={() => { setOpenMenuId(null); setMenuPos(null); revealPassword(m); }}>
                           {revealOpen ? "Hide password" : "Reveal password"}
                         </button>
                         {m.role === "admin" && (
                           <button type="button" role="menuitem" style={menuItemStyle}
-                            onClick={() => { setOpenMenuId(null); toggleGallery(m); }}>
+                            onClick={() => { setOpenMenuId(null); setMenuPos(null); toggleGallery(m); }}>
                             {m.gallery_access ? "Revoke gallery access" : "Grant gallery access"}
                           </button>
                         )}
                         {!isSelf && (
                           <button type="button" role="menuitem" style={{ ...menuItemStyle, color: "var(--red)" }}
-                            onClick={() => { setOpenMenuId(null); askRemove(m); }}>
+                            onClick={() => { setOpenMenuId(null); setMenuPos(null); askRemove(m); }}>
                             Remove
                           </button>
                         )}
-                      </div>
+                      </div>,
+                      document.body
                     )}
+                  </td>
+                </tr>
 
-                    {/* Inline panels: set-password / revealed password (below the actions cell, full width) */}
-                    {(pwEditId === m.id || revealOpen) && (
-                      <div style={{ marginTop: 8, textAlign: "left", display: "grid", gap: 8 }}>
+                {/* Set-password / revealed-password panel — its own full-width row.
+                    Inside the Actions cell it sat past the 640px scroll edge, so on a
+                    phone the panel opened off-screen. */}
+                {canManage && (pwEditId === m.id || revealOpen) && (
+                  <tr>
+                    <td colSpan={5} style={{ ...td, background: "var(--surface-soft)" }}>
+                      <div style={{ display: "grid", gap: 8, position: "sticky", left: 0, width: "min(100%, calc(100vw - 3rem))" }}>
                         {pwEditId === m.id && (
                           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                             <input
@@ -370,11 +421,10 @@ export function TeamAccessTable({
                           )
                         )}
                       </div>
-                    )}
-                    </>
-                    )}
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
