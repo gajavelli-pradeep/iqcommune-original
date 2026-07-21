@@ -21,6 +21,7 @@ export default defineConfig({
      */
     include: [
       "tests/unit/**/*.{test,spec}.{ts,tsx}",
+      "tests/parity/**/*.{test,spec}.{ts,tsx}",
       "{app,components,features,lib,services,hooks,utils}/**/*.{test,spec}.{ts,tsx}",
     ],
     /** Green until the first section lands a test; every section adds one. */

@@ -5,6 +5,7 @@ import { Faqs } from "@/features/landing/sections/Faqs";
 import { Hero } from "@/features/landing/sections/Hero";
 import { Takeaways } from "@/features/landing/sections/Takeaways";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
+import { AudienceRibbon, TrustBar } from "@/features/landing/sections/TrustStrips";
 import { BundledSessions } from "@/features/landing/sections/BundledSessions";
 import { ToolsCalculators } from "@/features/landing/sections/ToolsCalculators";
 import { TrainingTopics } from "@/features/landing/sections/TrainingTopics";
@@ -24,6 +25,8 @@ export default function HomePage() {
       <SiteHeader />
       <main className="flex-1">
         <Hero />
+        <TrustBar />
+        <AudienceRibbon />
         <TrainerComparison />
         <WhoIsThisFor />
         <TrainingTopics />
