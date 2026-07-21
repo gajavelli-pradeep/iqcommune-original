@@ -37,7 +37,14 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `HowItWorks` — 4 tests · 7 viewports · ordered list, 52px numeral circles hold shape
 - [x] `Takeaways` — 4 tests · 6 cards × 4 deliverables · shortened titles preserved as written
 - [x] `Faqs` — 7 tests · 7 viewports · single-open accordion, keyboard-operable, aria-expanded/controls
-- [ ] `ToolsCalculators`
+- [ ] `ToolsCalculators` — **6 sub-units**, spec extracted to `docs/spec/tools-calculators.md`
+      - [ ] shared widget chrome (`ToolCard`, `Slider`, `ResultBox`, `SegmentBar`)
+      - [ ] 1 · 50/30/20 Budget Checker
+      - [ ] 2 · Retirement Corpus Calculator
+      - [ ] 3 · P/E Valuation Quick-Check
+      - [ ] 4 · Post-Tax Return Comparator
+      - [ ] 5 · Portfolio Balance Scorecard
+      - [ ] 6 · SIP Growth Visualiser
 - [ ] `Gallery` *(drives F2)*
 - [ ] `RequestModal` *(drives F3)*
 - [ ] **page checks** — parity · functional completeness · e2e + metadata · `pnpm verify`
