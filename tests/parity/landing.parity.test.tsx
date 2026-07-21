@@ -6,8 +6,8 @@ import { Gallery } from "@/features/landing/sections/Gallery";
 import { PostSessionModal } from "@/features/landing/sections/PostSessionModal";
 import { RequestModal } from "@/features/landing/sections/RequestModal";
 
-import { extractSpecStrings, readSpec, renderedHaystack } from "./extract";
-import { LANDING_PENDING, type PendingUnit } from "./pending";
+import { extractSpecEntries, readSpec, renderedHaystack } from "./extract";
+import { claims, LANDING_PENDING, type PendingUnit } from "./pending";
 
 /**
  * F4 content-parity gate for P1 `/`.
@@ -30,7 +30,7 @@ function report(label: string, items: readonly string[]): string {
 }
 
 describe("content parity — P1 `/` against iqcommune-main-landing-page.html", () => {
-  const specStrings = extractSpecStrings(readSpec("iqcommune-main-landing-page.html"));
+  const specStrings = extractSpecEntries(readSpec("iqcommune-main-landing-page.html"));
   const { container } = render(
     <LandingSections gallery={<Gallery photos={[]} failed={false} />} />,
   );
@@ -59,10 +59,10 @@ describe("content parity — P1 `/` against iqcommune-main-landing-page.html", (
 
   const haystack = `${renderedHaystack(container)} ${dialogText}`;
 
-  const missing = specStrings.filter((text) => !haystack.includes(text));
+  const missing = specStrings.filter((entry) => !haystack.includes(entry.text));
   const claimed = new Set<PendingUnit>();
-  const undeclared = missing.filter((text) => {
-    const owner = LANDING_PENDING.find((unit) => unit.matches(text));
+  const undeclared = missing.filter(({ text, line }) => {
+    const owner = LANDING_PENDING.find((unit) => claims(unit, text, line));
     if (owner) claimed.add(owner);
     return owner === undefined;
   });
@@ -75,7 +75,7 @@ describe("content parity — P1 `/` against iqcommune-main-landing-page.html", (
   });
 
   it("renders every V7 string whose section has been built", () => {
-    expect(undeclared, report("V7 copy missing and undeclared", undeclared)).toEqual([]);
+    expect(undeclared.map((e) => e.text), report("V7 copy missing and undeclared", undeclared.map((e) => e.text))).toEqual([]);
   });
 
   it("has no stale pending declarations", () => {

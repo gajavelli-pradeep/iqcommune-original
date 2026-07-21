@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { TickIcon } from "@/components/ui/icons";
 
 /**
  * What a participant leaves each module with — six cards, four deliverables each.
@@ -99,22 +100,6 @@ const TAKEAWAYS: ReadonlyArray<{ title: string; icon: ReactNode; items: readonly
   },
 ];
 
-function TickIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      aria-hidden="true"
-      className="mt-[3px] shrink-0 text-gold"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 export function Takeaways() {
   return (

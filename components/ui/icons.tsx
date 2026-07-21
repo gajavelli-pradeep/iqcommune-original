@@ -44,3 +44,21 @@ export function InfoCircleIcon({ size = 13, className }: IconProps) {
     </svg>
   );
 }
+
+/** Confirmation tick beside a list item. Extracted at its second use. */
+export function TickIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      aria-hidden="true"
+      className="mt-[3px] shrink-0 text-gold"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}

@@ -28,7 +28,19 @@ export interface PendingUnit {
    *               just a `pending` in disguise.
    */
   kind: "pending" | "deviation" | "state";
-  matches: (text: string) => boolean;
+  /**
+   * Either a predicate on the string, or the spec region that owns it. A range
+   * is preferred: it cannot drift out of date the way a keyword list does.
+   */
+  matches?: (text: string) => boolean;
+  /** Inclusive [start, end] line range in the spec file. */
+  lines?: readonly [number, number];
+}
+
+/** True when this unit claims the given spec string. */
+export function claims(unit: PendingUnit, text: string, line: number): boolean {
+  if (unit.lines && line >= unit.lines[0] && line <= unit.lines[1]) return true;
+  return unit.matches?.(text) ?? false;
 }
 
 const containing =

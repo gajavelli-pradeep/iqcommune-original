@@ -80,6 +80,57 @@ function isMeaningful(value: string): boolean {
  * extractor and is handled by declaring it in `pending.ts`, never by silently
  * missing it.
  */
+export interface SpecString {
+  text: string;
+  /** 1-based line in the spec file where this string first appears. */
+  line: number;
+}
+
+/**
+ * Same extraction, but each string keeps the line it came from — which lets a
+ * pending declaration name a *region of the spec* ("the modules section, lines
+ * 802-859") instead of a hand-maintained list of keywords. Keyword lists go
+ * stale silently; a line range does not.
+ */
+export function extractSpecEntries(html: string): SpecString[] {
+  // Script, style and comment bodies are blanked *in place* — every character
+  // except newlines becomes a space — so line numbers still match the file on
+  // disk. Deleting them outright would shift every range.
+  const blank = (match: string) => match.replace(/[^\n]/g, " ");
+  const withoutCode = html
+    .replace(/<!--[\s\S]*?-->/g, blank)
+    .replace(/<script\b[\s\S]*?<\/script>/gi, blank)
+    .replace(/<style\b[\s\S]*?<\/style>/gi, blank);
+
+  const found = new Map<string, number>();
+  const remember = (raw: string, line: number) => {
+    const text = normalize(raw);
+    if (isMeaningful(text) && !found.has(text)) found.set(text, line);
+  };
+
+  // Attributes are read before tags are removed, and per line, since an
+  // attribute and its value sit on one line even when the tag does not.
+  withoutCode.split("\n").forEach((rawLine, index) => {
+    for (const attribute of TEXT_ATTRIBUTES) {
+      const pattern = new RegExp(`\\b${attribute}\\s*=\\s*"([^"]*)"`, "gi");
+      for (const [, value] of rawLine.matchAll(pattern)) remember(value, index + 1);
+    }
+  });
+
+  // A tag broken across lines would survive line-by-line stripping and be
+  // reported as missing copy, so those are blanked first — in place, keeping
+  // their newlines, so no line number moves. Single-line tags are then removed
+  // per line, where they also serve as the separator between text nodes.
+  const masked = withoutCode.replace(/<[^>]*\n[^>]*>/g, blank);
+  masked.split("\n").forEach((rawLine, index) => {
+    for (const piece of rawLine.replace(/<[^>]*>/g, "\n").split("\n")) {
+      remember(piece, index + 1);
+    }
+  });
+
+  return [...found].map(([text, line]) => ({ text, line }));
+}
+
 export function extractSpecStrings(html: string): string[] {
   const withoutCode = html
     .replace(/<!--[\s\S]*?-->/g, " ")

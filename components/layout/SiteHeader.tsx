@@ -20,7 +20,14 @@ import type { ReactNode } from "react";
  * element holds a wordmark and one call-to-action — it is not a set of
  * navigation links, and announcing it as navigation misleads screen readers.
  */
-export function SiteHeader({ right }: { right?: ReactNode }) {
+export function SiteHeader({
+  badge,
+  right,
+}: {
+  /** Two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
+  badge?: readonly [string, string];
+  right?: ReactNode;
+}) {
   return (
     <header className="sticky top-0 z-100 border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:px-8">
       <div className="mx-auto flex h-[68px] max-w-page items-center justify-between gap-3 sm:gap-4">
@@ -45,6 +52,22 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
             Where financial intelligence connects
           </span>
         </Link>
+
+        {/* Hidden below 640px for the same measured reason as the strapline: the
+            wordmark, this badge and the right slot together overflow 320px.
+            Which sub-site you are on is also carried by the page's own h1. */}
+        {badge ? (
+          <span className="hidden shrink-0 flex-col gap-0.5 border-l border-border-strong pl-3.5 sm:flex">
+            {badge.map((line) => (
+              <span
+                key={line}
+                className="text-2xs font-semibold uppercase leading-none tracking-caps text-gold-dark"
+              >
+                {line}
+              </span>
+            ))}
+          </span>
+        ) : null}
 
         {right && (
           <div className="flex min-w-0 items-center gap-[0.6rem]">{right}</div>
