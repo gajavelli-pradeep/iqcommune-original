@@ -61,10 +61,10 @@ it compiles · the page renders · the section is "basically done" · an agent r
 Completion is a claim about evidence. Where the evidence was not produced, the unit is not done —
 regardless of how finished it looks.
 
-**The `Live` rung currently has no plan.** Nothing in §3–§6 covers the Vercel project and env vars,
-the domain repoint, migrating live rows out of the production system this schema is carried forward
-from, purging the superseded versions and rules the client asked for, or rollback. That work is
-real and unwritten; it needs an ADR before P8 lands, not after.
+**The `Live` rung is planned in `docs/adr/0003-cutover-and-data-migration.md`** — share the existing
+Supabase project, migrate no data, keep rollback a domain switch. Two things in it are still open and
+both need the owner: the ADR is `Proposed` rather than accepted, and **no domain is confirmed as
+owned**, which is the one step that cannot be scheduled without an answer.
 
 ---
 
@@ -99,16 +99,21 @@ real and unwritten; it needs an ADR before P8 lands, not after.
 - [x] `HowItWorks` — 4 tests · 7 viewports · ordered list, 52px numeral circles hold shape
 - [x] `Takeaways` — 4 tests · 6 cards × 4 deliverables · shortened titles preserved as written
 - [x] `Faqs` — 7 tests · 7 viewports · single-open accordion, keyboard-operable, aria-expanded/controls
-- [ ] `ToolsCalculators` — **6 sub-units**, spec extracted to `docs/spec/tools-calculators.md`
+- [x] `ToolsCalculators` — **6 sub-units**, spec extracted to `docs/spec/tools-calculators.md`
       - [x] shared widget chrome — `ToolCard` · `ToolPanel` · `ToolSlider` · `ResultBox` · `SegmentBar` · `ToolFlag` + `format.ts`
       - [x] 1 · 50/30/20 Budget Checker — 7 format tests · 7 viewports · keyboard-drivable slider
-      - [ ] 2 · Retirement Corpus Calculator
-      - [ ] 3 · P/E Valuation Quick-Check
-      - [ ] 4 · Post-Tax Return Comparator
-      - [ ] 5 · Portfolio Balance Scorecard
-      - [ ] 6 · SIP Growth Visualiser
-- [ ] `CtaSection` — **found by F4** (spec line 1487). "If you are serious to improve your financial
-      literacy" + 3 reassurance items. Static; buildable now
+      - 11 tests across 2-6 · runtime-verified at 1440/320/640×320 · 3 new shared primitives
+        (`ToolNote` · `ToolChips` · `ToolBars`) · **AA fix: `text-on-dark-faint` was never a token,
+        so 3 label styles rendered invisible dark-on-dark — now `on-dark-muted`, guarded by
+        `tests/unit/design-tokens.test.ts`** · `--text-3xs` added so box labels stop wrapping ·
+        chip tap area raised to 44px under coarse pointers
+      - [x] 2 · Retirement Corpus Calculator
+      - [x] 3 · P/E Valuation Quick-Check
+      - [x] 4 · Post-Tax Return Comparator
+      - [x] 5 · Portfolio Balance Scorecard
+      - [x] 6 · SIP Growth Visualiser
+- [x] `CtaSection` — **found by F4** (spec line 1487). 3 tests · reuses the extracted `IconStrip`
+      primitive · its "Request a Session" button ships with `RequestModal`
 - [ ] `Gallery` *(drives F2)*
 - [ ] `RequestModal` *(drives F3)*
 - [ ] `PostSessionModal` — **found by F4** (spec line 1768). Shot checklist + uploader + consent,

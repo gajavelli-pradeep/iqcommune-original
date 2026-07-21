@@ -7,6 +7,7 @@ import { Takeaways } from "@/features/landing/sections/Takeaways";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
 import { AudienceRibbon, TrustBar } from "@/features/landing/sections/TrustStrips";
 import { BundledSessions } from "@/features/landing/sections/BundledSessions";
+import { CtaSection } from "@/features/landing/sections/CtaSection";
 import { ToolsCalculators } from "@/features/landing/sections/ToolsCalculators";
 import { TrainingTopics } from "@/features/landing/sections/TrainingTopics";
 import { WhoIsThisFor } from "@/features/landing/sections/WhoIsThisFor";
@@ -35,6 +36,7 @@ export default function HomePage() {
         <Takeaways />
         <Faqs />
         <ToolsCalculators />
+        <CtaSection />
       </main>
       <SiteFooter />
     </div>

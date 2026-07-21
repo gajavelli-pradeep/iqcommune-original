@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { IconStrip, type IconStripEntry } from "@/components/ui/IconStrip";
 
 /**
  * The two full-width strips the spec places between the hero and the
@@ -11,9 +11,7 @@ import type { ReactNode } from "react";
  * they render through one `IconStrip` rather than as two hand-built rows.
  */
 
-type StripEntry = { label: string; icon: ReactNode };
-
-const TRUST: readonly StripEntry[] = [
+const TRUST: readonly IconStripEntry[] = [
   {
     label: "All practitioners currently active in that specific domain",
     icon: (
@@ -45,7 +43,7 @@ const TRUST: readonly StripEntry[] = [
   },
 ];
 
-const AUDIENCES: readonly StripEntry[] = [
+const AUDIENCES: readonly IconStripEntry[] = [
   {
     label: "Groups",
     icon: (
@@ -75,49 +73,15 @@ const AUDIENCES: readonly StripEntry[] = [
   },
 ];
 
-function IconStrip({
-  entries,
-  className,
-  itemClassName,
-  iconClassName,
-}: {
-  entries: readonly StripEntry[];
-  className: string;
-  itemClassName: string;
-  iconClassName?: string;
-}) {
-  return (
-    <div className={className}>
-      {/* Gaps collapse from 3rem to 1.25rem below the spec's tablet breakpoint;
-          without it three long labels wrap into an unreadable stack at 320px. */}
-      <ul className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-12">
-        {entries.map((entry) => (
-          <li key={entry.label} className={itemClassName}>
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-              focusable="false"
-              className={`shrink-0 ${iconClassName ?? ""}`}
-            >
-              {entry.icon}
-            </svg>
-            {entry.label}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+/** Gaps collapse below the spec's tablet breakpoint; without it three long
+ *  labels wrap into an unreadable stack at 320px. */
+const LIST = "mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-12";
 
 export function TrustBar() {
   return (
     <IconStrip
       entries={TRUST}
+      listClassName={LIST}
       // Spec uses rgba(255,255,255,.82); --color-on-dark-bright (.75) is the
       // nearest token and already clears AA on ink. No new literal.
       className="bg-ink px-8 py-[0.9rem] text-on-dark-bright"
@@ -131,6 +95,7 @@ export function AudienceRibbon() {
   return (
     <IconStrip
       entries={AUDIENCES}
+      listClassName={LIST}
       className="border-y border-gold-border bg-gold-light px-8 py-[0.85rem]"
       itemClassName="flex items-center gap-2 text-[13px] font-medium text-gold-dark"
     />

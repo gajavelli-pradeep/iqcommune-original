@@ -75,7 +75,7 @@ export function ToolSlider({
     <div className="mb-[9px]">
       <label
         htmlFor={id}
-        className="mb-[3px] flex items-center justify-between text-2xs uppercase tracking-label text-on-dark-faint"
+        className="mb-[3px] flex items-center justify-between text-2xs uppercase tracking-label text-on-dark-muted"
       >
         {label}
         <output htmlFor={id} aria-live="polite" className="text-xs font-medium tracking-normal normal-case text-on-dark-bright">
@@ -113,7 +113,7 @@ export function ResultBox({
   }[tone];
   return (
     <div className="rounded-sm bg-tool-box px-[9px] py-[7px]">
-      <div className="mb-0.5 text-2xs uppercase tracking-label text-on-dark-faint">
+      <div className="mb-0.5 text-3xs uppercase tracking-label text-on-dark-muted">
         {label}
       </div>
       <div className={`text-base font-medium tabular-nums ${toneClass}`}>{value}</div>
@@ -143,6 +143,88 @@ export function SegmentBar({
           key={segment.label}
           className="h-full transition-[width] duration-300"
           style={{ width: `${segment.percent}%`, background: segment.color }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Neutral standing note — an assumption or a disclaimer. Distinct from
+ * `ToolFlag`, which reacts to the user's input and therefore announces itself.
+ * This one never changes, so it stays out of the live region.
+ */
+export function ToolNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-2 text-2xs leading-[1.45] text-on-dark-muted">{children}</p>
+  );
+}
+
+/**
+ * Mutually exclusive presets. Toggle buttons rather than a `<select>` because
+ * all options stay visible, and `aria-pressed` gives a screen reader the state
+ * the spec conveyed with a CSS class alone.
+ */
+export function ToolChips<T extends string>({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: readonly T[];
+  selected: T;
+  onSelect: (option: T) => void;
+}) {
+  return (
+    <div className="mb-2.5 flex flex-wrap gap-1" role="group" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={option === selected}
+          onClick={() => onSelect(option)}
+          /**
+           * The pseudo-element grows the tap area to 44px on touch without
+           * changing the chip's drawn size — the spec's 22px pill is well under
+           * the coarse-pointer minimum, and enlarging it visually would break
+           * the row.
+           */
+          className={`relative rounded-full border-[0.5px] px-[9px] py-[3px] text-2xs transition-colors duration-150 [@media(any-pointer:coarse)]:after:absolute [@media(any-pointer:coarse)]:after:inset-x-0 [@media(any-pointer:coarse)]:after:top-1/2 [@media(any-pointer:coarse)]:after:h-11 [@media(any-pointer:coarse)]:after:-translate-y-1/2 [@media(any-pointer:coarse)]:after:content-[''] ${
+            option === selected
+              ? "border-tool-chip-edge bg-tool-chip text-gold"
+              : "border-tool-edge text-on-dark-muted hover:border-tool-edge-hover hover:text-on-dark-bright"
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Sparkline of a growing balance. Decorative — every figure it depicts is also
+ * stated in the result boxes above it, so it is hidden from assistive tech
+ * rather than given a description no one asked for.
+ */
+export function ToolBars({
+  bars,
+}: {
+  bars: ReadonlyArray<{ key: string; heightPercent: number; title: string }>;
+}) {
+  return (
+    <div className="mt-2.5 flex h-9 items-end gap-[3px]" aria-hidden="true">
+      {bars.map((bar, index) => (
+        <div
+          key={bar.key}
+          title={bar.title}
+          className="flex-1 rounded-t-[1px] transition-[height] duration-300"
+          style={{
+            height: `${bar.heightPercent}%`,
+            background:
+              index === bars.length - 1 ? "var(--color-gold)" : "var(--color-gold-rule)",
+          }}
         />
       ))}
     </div>

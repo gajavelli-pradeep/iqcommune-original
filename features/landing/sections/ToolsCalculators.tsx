@@ -1,4 +1,9 @@
 import { BudgetChecker } from "../tools/BudgetChecker";
+import { DebtComparator } from "../tools/DebtComparator";
+import { PortfolioScorecard } from "../tools/PortfolioScorecard";
+import { RetirementCorpus } from "../tools/RetirementCorpus";
+import { SipGrowth } from "../tools/SipGrowth";
+import { ValuationCheck } from "../tools/ValuationCheck";
 
 /**
  * The dark calculators band — six live tools, one per module.
@@ -28,6 +33,11 @@ export function ToolsCalculators() {
 
         <ul className="mt-8 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 min-[720px]:grid-cols-3">
           <BudgetChecker />
+          <RetirementCorpus />
+          <ValuationCheck />
+          <DebtComparator />
+          <PortfolioScorecard />
+          <SipGrowth />
         </ul>
       </div>
     </section>

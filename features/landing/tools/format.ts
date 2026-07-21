@@ -12,6 +12,16 @@ export function formatInr(value: number): string {
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
 }
 
+/**
+ * Full en-IN grouping, uncompressed — `₹5,000`, not `₹5K`.
+ *
+ * The valuation check shows a share price, where the compressed form loses the
+ * precision the number exists to convey.
+ */
+export function formatInrExact(value: number): string {
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+}
+
 /** Whole numbers stay whole; everything else gets one decimal by default. */
 export function formatNumber(value: number, decimals = 1): string {
   return value % 1 === 0 ? value.toFixed(0) : value.toFixed(decimals);
