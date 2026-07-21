@@ -8,6 +8,53 @@ Earlier work (V5 and before): `CHANGELOG-V5.md`.
 
 ---
 
+## [2026-07-21] Audit — site-wide container overflow, and the test that proves it
+
+The Team & Access defect below is a class the suite could not see: `v6-responsive-full.spec.ts`
+only checks whether content escapes the **viewport**, and it `console.log`s "FAIL" without ever
+asserting — so a green run there is not evidence. Content escaping its own **card** while the page
+stays 375px wide went unmeasured.
+
+- New `tests/e2e/v6-container-overflow.spec.ts` — flags any box extending past the padding box of
+  its nearest width-constrained ancestor when nothing in between scrolls (`overflow-x: auto|scroll`)
+  or clips it (`hidden|clip`), and only against ancestors that read as a surface (border, own
+  background, or radius) so ordinary flow isn't reported. It **asserts**, so a regression turns the
+  suite red.
+- **Detector validated against the known bug**, not just against green: re-setting the Team & Access
+  wrapper to `overflow-x: visible` in the live page raises 12 offenders (`table overhangs div by
+  350px` …); with the fix in place, 0. A pass now means something.
+
+Result — 10 public routes x 10 admin tabs at 320 / 375 / 768 / 1440 / 640x320:
+**0 container-level offenders, 0 viewport-level offenders, 0 body horizontal scroll.**
+Modals re-checked at 320x700 and 640x320: all fit, first and last control reachable.
+
+---
+
+## [2026-07-21] Fix — Team & Access table overflowed its card on mobile
+
+Audit of every console table at 320/375/640×320/1440 (CDP emulation): 10 of 11 tables scroll
+correctly inside their card. One did not — **Settings → Team & Access** (`TeamAccessTable`) used
+`overflowX: "visible"` on a 640px-min-width table, so on a phone the rows spilled past the card
+border (P1 by the overflow/reachability rule). `visible` existed only so the "⋯" row menu wasn't
+clipped.
+
+- Wrapper → `overflowX: "auto"`; the row menu is now **portalled to `<body>`** as `position: fixed`,
+  anchored to the trigger's rect (right offset measured off `documentElement.clientWidth`, not
+  `innerWidth`, so the scrollbar doesn't skew it), and flips above the trigger + clamps into the
+  viewport when it would overhang the bottom (landscape phones are ~320px tall).
+- Menu closes on outside click, Escape, scroll (capture) and resize — a fixed menu would otherwise
+  detach from its row. Clicking the trigger while open now actually closes it (the old
+  mousedown-close + click-reopen race made it un-closable).
+- Set-password / reveal-password panel moved out of the right-most Actions cell into its own
+  full-width `colSpan` row, `position: sticky; left: 0` — it previously opened ~330px past the
+  scroll edge, i.e. invisible on a phone.
+
+Verified in the running app: table scrolls inside its card at 320/375; menu fits the viewport for
+every row at 640×320; panel visible at scrollLeft 330; desktop 1440 unchanged (no scroll needed,
+menu anchored ±0.3px); 0 console errors; `eslint app components` clean.
+
+---
+
 ## [2026-07-21] Fix — landing-page copy drift vs the V6 prototype
 
 Full text diff of the rendered landing page against
