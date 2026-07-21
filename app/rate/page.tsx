@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { RatePage } from "@/features/rate/RatePage";
 import { verifyToken } from "@/lib/tokens";
+import { getRatedSession } from "@/services/link-pages";
 
 /** Rating links must never be indexed — they identify a specific session. */
 export const metadata: Metadata = {
@@ -19,8 +20,11 @@ export default async function Rate({
 
   if (!result.ok) return <RatePage failure={result.reason} />;
 
-  // The session is loaded from the row the token names — never from the URL.
-  // Until the data layer is wired the page renders its invalid-link state
-  // rather than inventing a session, which is the honest half-built state.
-  return <RatePage failure="malformed" />;
+  // Loaded from the row the token names. A missing or already-consumed row is
+  // the same thing as a bad link to the person holding it, so it renders the
+  // same state rather than a second error design.
+  const session = await getRatedSession(result.payload.id);
+  if (!session) return <RatePage failure="malformed" />;
+
+  return <RatePage session={session} token={t} />;
 }

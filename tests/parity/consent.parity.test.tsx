@@ -33,7 +33,7 @@ function report(label: string, items: readonly string[]): string {
 
 describe("content parity — P4 `/consent` against iqcommune-session-consent.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-session-consent.html"));
-  const { container } = render(<ConsentPage session={SESSION} />);
+  const { container } = render(<ConsentPage session={SESSION} token="test-token" />);
   const haystack = renderedHaystack(container);
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));

@@ -23,11 +23,39 @@ export interface AdminInvite {
 
 const MINIMUM_LENGTH = 8;
 
-export function AccountSetupForm({ invite }: { invite: AdminInvite }) {
+export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token: string }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string>();
   const [activated, setActivated] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
+
+  /** Posts to the route, which re-verifies the token before writing. */
+  async function send(endpoint: string, payload: Record<string, unknown>) {
+    setBusy(true);
+    setSubmitError(undefined);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ t: token, ...payload }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        return null;
+      }
+      // The receipt timestamp comes back from the server, not from this clock.
+      return body.data as { at: string };
+    } catch {
+      setSubmitError("We could not reach the server. Check your connection and try again.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
 
   if (activated) {
     return (
@@ -82,7 +110,7 @@ export function AccountSetupForm({ invite }: { invite: AdminInvite }) {
 
       <form
         noValidate
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (password.length < MINIMUM_LENGTH) {
             return setError(`Password must be at least ${MINIMUM_LENGTH} characters.`);
@@ -91,7 +119,8 @@ export function AccountSetupForm({ invite }: { invite: AdminInvite }) {
             return setError("Passwords don't match — check and try again.");
           }
           setError(undefined);
-          setActivated(true);
+          const receipt = await send("/api/invites", { password });
+          if (receipt) setActivated(true);
         }}
       >
         <TextField
@@ -110,11 +139,18 @@ export function AccountSetupForm({ invite }: { invite: AdminInvite }) {
           error={error}
         />
 
+        {submitError ? (
+          <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
+            {submitError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
+          disabled={busy}
           className="min-h-11 w-full rounded-md bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
-          Activate account
+          {busy ? "Activating…" : "Activate account"}
         </button>
       </form>
     </section>

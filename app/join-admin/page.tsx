@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { JoinAdminPage } from "@/features/join-admin/JoinAdminPage";
 import { verifyToken } from "@/lib/tokens";
+import { getAdminInvite } from "@/services/link-pages";
 
 /** Invite links create console access. Never indexable. */
 export const metadata: Metadata = {
@@ -19,13 +20,11 @@ export default async function JoinAdmin({
 
   if (!result.ok) return <JoinAdminPage failure={result.reason} />;
 
-  // The invited email and role come from the invite row the token names — never
-  // from the URL. This is the sharpest case of that rule in the product: a role
-  // read from a query parameter would let anyone grant themselves admin.
-  //
-  // Single-use enforcement (marking the invite consumed) and account creation
-  // belong to the auth foundation, which is not built. Until then this renders
-  // the invalid-link state rather than a form that appears to create an account
-  // and does not.
-  return <JoinAdminPage failure="malformed" />;
+  // Loaded from the row the token names. A missing or already-consumed row is
+  // the same thing as a bad link to the person holding it, so it renders the
+  // same state rather than a second error design.
+  const invite = await getAdminInvite(result.payload.id);
+  if (!invite) return <JoinAdminPage failure="malformed" />;
+
+  return <JoinAdminPage invite={invite} token={t} />;
 }

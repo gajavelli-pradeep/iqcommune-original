@@ -8,14 +8,17 @@ import { OnboardingForm, type OnboardingPractitioner } from "./OnboardingForm";
 export function OnboardingPage({
   practitioner,
   failure,
+  token,
 }: {
   practitioner?: OnboardingPractitioner;
   failure?: TokenFailure;
+  /** Forwarded to the write route, which re-verifies it server-side. */
+  token?: string;
 }) {
   return (
     <LinkPageShell badge={["Practitioner Network", "Onboarding"]}>
       {practitioner ? (
-        <OnboardingForm practitioner={practitioner} />
+        <OnboardingForm practitioner={practitioner} token={token ?? ""} />
       ) : (
         <InvalidLink reason={failure ?? "malformed"} />
       )}

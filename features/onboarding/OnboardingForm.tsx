@@ -60,13 +60,47 @@ function Stepper({ current }: { current: number }) {
   );
 }
 
-export function OnboardingForm({ practitioner }: { practitioner: OnboardingPractitioner }) {
+export function OnboardingForm({
+  practitioner,
+  token,
+}: {
+  practitioner: OnboardingPractitioner;
+  token: string;
+}) {
   const [readToEnd, setReadToEnd] = useState(false);
   const [fullName, setFullName] = useState(practitioner.name);
   const [designation, setDesignation] = useState(practitioner.role);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
+
+  /** Posts to the route, which re-verifies the token before writing. */
+  async function send(endpoint: string, payload: Record<string, unknown>) {
+    setBusy(true);
+    setSubmitError(undefined);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ t: token, ...payload }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        return null;
+      }
+      // The receipt timestamp comes back from the server, not from this clock.
+      return body.data as { at: string };
+    } catch {
+      setSubmitError("We could not reach the server. Check your connection and try again.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const agreementRef = useRef<HTMLDivElement>(null);
   const agreementDate = new Date().toLocaleDateString("en-IN", { dateStyle: "long" });
 
@@ -251,15 +285,26 @@ export function OnboardingForm({ practitioner }: { practitioner: OnboardingPract
 
       <form
         className="mt-4 rounded-lg border border-border bg-surface p-6"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (!readToEnd) return setError("Please read the full agreement before signing.");
           if (!fullName.trim()) return setError("Your full name is required.");
           if (!signature) return setError("Please draw or type your signature.");
           setError(undefined);
-          setSignedAt(
-            new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
-          );
+          const receipt = await send("/api/agreements", {
+            fullName,
+            designation,
+            signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
+            signatureMode: signature.mode,
+          });
+          if (receipt) {
+            setSignedAt(
+              new Date(receipt.at).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            );
+          }
         }}
       >
         <h2 className="mb-3 text-md font-semibold text-ink">By signing below, you confirm that:</h2>
@@ -301,12 +346,18 @@ export function OnboardingForm({ practitioner }: { practitioner: OnboardingPract
           </p>
         ) : null}
 
+        {submitError ? (
+          <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
+            {submitError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
-          disabled={!readToEnd}
+          disabled={!readToEnd || busy}
           className="min-h-11 w-full rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
         >
-          I agree — sign & complete onboarding
+          {busy ? "Signing…" : "I agree — sign & complete onboarding"}
         </button>
         <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
           This action is irreversible. A copy of the signed agreement will be sent to your

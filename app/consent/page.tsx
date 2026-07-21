@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ConsentPage } from "@/features/consent/ConsentPage";
 import { verifyToken } from "@/lib/tokens";
+import { getConsentSession } from "@/services/link-pages";
 
 /** Consent links identify a specific session and must never be indexed. */
 export const metadata: Metadata = {
@@ -19,8 +20,11 @@ export default async function Consent({
 
   if (!result.ok) return <ConsentPage failure={result.reason} />;
 
-  // Loaded from the row the token names once the data layer lands — never from
-  // the URL. A payout figure taken from a query parameter would let anyone
-  // display any amount on an iqcommune-branded consent page.
-  return <ConsentPage failure="malformed" />;
+  // Loaded from the row the token names. A missing or already-consumed row is
+  // the same thing as a bad link to the person holding it, so it renders the
+  // same state rather than a second error design.
+  const session = await getConsentSession(result.payload.id);
+  if (!session) return <ConsentPage failure="malformed" />;
+
+  return <ConsentPage session={session} token={t} />;
 }

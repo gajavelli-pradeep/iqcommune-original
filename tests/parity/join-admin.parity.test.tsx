@@ -21,7 +21,7 @@ function report(label: string, items: readonly string[]): string {
 
 describe("content parity — P7 `/join-admin` against iqcommune-user-setup.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-user-setup.html"));
-  const { container } = render(<JoinAdminPage invite={INVITE} />);
+  const { container } = render(<JoinAdminPage invite={INVITE} token="test-token" />);
   const haystack = renderedHaystack(container);
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));

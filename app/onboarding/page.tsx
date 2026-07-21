@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { OnboardingPage } from "@/features/onboarding/OnboardingPage";
 import { verifyToken } from "@/lib/tokens";
+import { getOnboardingPractitioner } from "@/services/link-pages";
 
 /** Onboarding links carry an identified practitioner; never indexable. */
 export const metadata: Metadata = {
@@ -19,9 +20,11 @@ export default async function Onboarding({
 
   if (!result.ok) return <OnboardingPage failure={result.reason} />;
 
-  // The practitioner is read from the row the token names once the data layer
-  // lands. This is the page where that matters most: the details shown are the
-  // details being signed for, and taking them from the URL would let anyone
-  // generate an agreement naming anyone.
-  return <OnboardingPage failure="malformed" />;
+  // Loaded from the row the token names. A missing or already-consumed row is
+  // the same thing as a bad link to the person holding it, so it renders the
+  // same state rather than a second error design.
+  const practitioner = await getOnboardingPractitioner(result.payload.id);
+  if (!practitioner) return <OnboardingPage failure="malformed" />;
+
+  return <OnboardingPage practitioner={practitioner} token={t} />;
 }

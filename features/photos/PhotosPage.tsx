@@ -8,14 +8,17 @@ import { PhotoSubmissionForm, type PhotoSession } from "./PhotoSubmissionForm";
 export function PhotosPage({
   session,
   failure,
+  token,
 }: {
   session?: PhotoSession;
   failure?: TokenFailure;
+  /** Forwarded to the write route, which re-verifies it server-side. */
+  token?: string;
 }) {
   return (
     <LinkPageShell badge={["Practitioner Network", "Post-Session"]}>
       {session ? (
-        <PhotoSubmissionForm session={session} />
+        <PhotoSubmissionForm session={session} token={token ?? ""} />
       ) : (
         <InvalidLink reason={failure ?? "malformed"} />
       )}

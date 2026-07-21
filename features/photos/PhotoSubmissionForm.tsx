@@ -73,12 +73,20 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PhotoSubmissionForm({ session }: { session: PhotoSession }) {
+export function PhotoSubmissionForm({
+  session,
+  token,
+}: {
+  session: PhotoSession;
+  token: string;
+}) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [consented, setConsented] = useState(false);
   const [errors, setErrors] = useState<{ photos?: string; consent?: string }>({});
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   if (submittedAt) {
     const expiry = new Date();
@@ -166,7 +174,7 @@ export function PhotoSubmissionForm({ session }: { session: PhotoSession }) {
 
       <form
         noValidate
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           const photoProblem = validatePhotos(photos);
           const next = {
@@ -178,9 +186,30 @@ export function PhotoSubmissionForm({ session }: { session: PhotoSession }) {
             return;
           }
           setErrors({});
-          setSubmittedAt(
-            new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
-          );
+          setBusy(true);
+          setSubmitError(undefined);
+          try {
+            const body = new FormData();
+            body.append("t", token);
+            for (const photo of photos) body.append("photos", photo);
+
+            const response = await fetch("/api/photo-submissions", { method: "POST", body });
+            const result = await response.json();
+            if (!response.ok) {
+              setSubmitError(result?.error?.message ?? "Something went wrong. Please try again.");
+              return;
+            }
+            setSubmittedAt(
+              new Date(result.data.submittedAt).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            );
+          } catch {
+            setSubmitError("We could not reach the server. Check your connection and try again.");
+          } finally {
+            setBusy(false);
+          }
         }}
       >
         <ShotChecklist />
@@ -225,11 +254,18 @@ export function PhotoSubmissionForm({ session }: { session: PhotoSession }) {
           and take responsibility for any tagging or attribution requests related to these photos.
         </CheckboxField>
 
+        {submitError ? (
+          <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
+            {submitError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
+          disabled={busy}
           className="min-h-11 w-full rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
-          Submit photos for review
+          {busy ? "Submitting…" : "Submit photos for review"}
         </button>
         <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
           Nothing is published automatically. Every photo is reviewed by iqcommune before appearing

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConsentForm } from "./ConsentForm";
 import type { ConsentSession } from "./SessionSummary";
@@ -22,9 +22,23 @@ const SESSION: ConsentSession = {
   grossPayout: "₹12,000",
 };
 
+/**
+ * These forms now post to a route, so `fetch` is the seam. The receipt
+ * timestamp comes back from the server, which is the point of the change.
+ */
+function mockFetch(status: number, body: unknown) {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: status < 400, status, json: async () => body });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("ConsentForm", () => {
   it("cannot record consent until the box is ticked", () => {
-    render(<ConsentForm session={SESSION} />);
+    render(<ConsentForm session={SESSION} token="test-token" />);
     expect(screen.getByRole("button", { name: "Provide consent" })).toBeDisabled();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
   });
@@ -32,14 +46,14 @@ describe("ConsentForm", () => {
   it("states the payout as gross, and says the rest is handled elsewhere", () => {
     // The figure is the thing being consented to, so it must be unambiguous
     // about what it does and does not include.
-    render(<ConsentForm session={SESSION} />);
+    render(<ConsentForm session={SESSION} token="test-token" />);
     expect(screen.getByText("Gross payout amount")).toBeInTheDocument();
     expect(screen.getByText("₹12,000")).toBeInTheDocument();
     expect(screen.getByText(/TDS, GST, and net calculations are handled separately/)).toBeInTheDocument();
   });
 
   it("shows all three declarations before asking for consent", () => {
-    render(<ConsentForm session={SESSION} />);
+    render(<ConsentForm session={SESSION} token="test-token" />);
     expect(screen.getByText(/I have reviewed all session details/)).toBeInTheDocument();
     expect(screen.getByText(/I agree to deliver the session as described/)).toBeInTheDocument();
     expect(screen.getByText(/does not alter my empanelment agreement/)).toBeInTheDocument();
@@ -47,7 +61,8 @@ describe("ConsentForm", () => {
 
   it("records consent with a timestamp", async () => {
     const user = userEvent.setup();
-    render(<ConsentForm session={SESSION} />);
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    render(<ConsentForm session={SESSION} token="test-token" />);
 
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: "Provide consent" }));

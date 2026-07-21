@@ -25,7 +25,7 @@ function report(label: string, items: readonly string[]): string {
 
 describe("content parity — P6 `/onboarding` against iqcommune-onboarding.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-onboarding.html"));
-  const { container } = render(<OnboardingPage practitioner={PRACTITIONER} />);
+  const { container } = render(<OnboardingPage practitioner={PRACTITIONER} token="test-token" />);
   const haystack = renderedHaystack(container);
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));

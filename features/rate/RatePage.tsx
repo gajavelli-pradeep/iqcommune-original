@@ -13,13 +13,16 @@ import type { RatedSession } from "./SessionDetailsCard";
 export function RatePage({
   session,
   failure,
+  token,
 }: {
   session?: RatedSession;
   failure?: TokenFailure;
+  /** Forwarded to the write route, which re-verifies it server-side. */
+  token?: string;
 }) {
   return (
     <LinkPageShell badge="Session Feedback">
-      {session ? <RateForm session={session} /> : <InvalidLink reason={failure ?? "malformed"} />}
+      {session ? <RateForm session={session} token={token ?? ""} /> : <InvalidLink reason={failure ?? "malformed"} />}
     </LinkPageShell>
   );
 }

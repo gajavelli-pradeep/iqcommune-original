@@ -27,7 +27,7 @@ function report(label: string, items: readonly string[]): string {
 
 describe("content parity — P5 `/submit-photos` against iqcommune-postsession-photos.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-postsession-photos.html"));
-  const { container } = render(<PhotosPage session={SESSION} />);
+  const { container } = render(<PhotosPage session={SESSION} token="test-token" />);
   const haystack = renderedHaystack(container);
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));

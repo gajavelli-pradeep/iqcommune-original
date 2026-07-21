@@ -14,9 +14,37 @@ const DECLARATIONS = [
   "I understand this confirmation is specific to this session only and does not alter my empanelment agreement.",
 ] as const;
 
-export function ConsentForm({ session }: { session: ConsentSession }) {
+export function ConsentForm({ session, token }: { session: ConsentSession; token: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [recordedAt, setRecordedAt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
+
+  /** Posts to the route, which re-verifies the token before writing. */
+  async function send(endpoint: string, payload: Record<string, unknown>) {
+    setBusy(true);
+    setSubmitError(undefined);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ t: token, ...payload }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        return null;
+      }
+      // The receipt timestamp comes back from the server, not from this clock.
+      return body.data as { at: string };
+    } catch {
+      setSubmitError("We couldn't reach the server. Check your connection and try again.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
 
   if (recordedAt) {
     return (
@@ -50,12 +78,18 @@ export function ConsentForm({ session }: { session: ConsentSession }) {
 
       <form
         className="mt-4 rounded-lg border border-border bg-surface p-6"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (!confirmed) return;
-          setRecordedAt(
-            new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
-          );
+          const receipt = await send("/api/consents", {});
+          if (receipt) {
+            setRecordedAt(
+              new Date(receipt.at).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            );
+          }
         }}
       >
         <div className="mb-5 rounded-lg border border-border bg-surface-soft px-5 py-4">
@@ -79,12 +113,21 @@ export function ConsentForm({ session }: { session: ConsentSession }) {
           I confirm the above and provide my digital consent to this session.
         </CheckboxField>
 
+        {submitError ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
+          >
+            {submitError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
-          disabled={!confirmed}
+          disabled={!confirmed || busy}
           className="min-h-11 w-full rounded-md bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Provide consent
+          {busy ? "Recording…" : "Provide consent"}
         </button>
       </form>
     </>

@@ -9,14 +9,17 @@ import type { ConsentSession } from "./SessionSummary";
 export function ConsentPage({
   session,
   failure,
+  token,
 }: {
   session?: ConsentSession;
   failure?: TokenFailure;
+  /** Forwarded to the write route, which re-verifies it server-side. */
+  token?: string;
 }) {
   return (
     <LinkPageShell badge="Session Consent">
       {session ? (
-        <ConsentForm session={session} />
+        <ConsentForm session={session} token={token ?? ""} />
       ) : (
         <InvalidLink reason={failure ?? "malformed"} />
       )}

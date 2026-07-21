@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PhotosPage } from "@/features/photos/PhotosPage";
 import { verifyToken } from "@/lib/tokens";
+import { getPhotoSession } from "@/services/link-pages";
 
 /** Photo links identify a specific session and must never be indexed. */
 export const metadata: Metadata = {
@@ -19,8 +20,11 @@ export default async function SubmitPhotos({
 
   if (!result.ok) return <PhotosPage failure={result.reason} />;
 
-  // The practitioner and session are read from the row the token names once the
-  // data layer lands. The spec fills them from query params, which would let
-  // anyone put any practitioner's name on an iqcommune page.
-  return <PhotosPage failure="malformed" />;
+  // Loaded from the row the token names. A missing or already-consumed row is
+  // the same thing as a bad link to the person holding it, so it renders the
+  // same state rather than a second error design.
+  const session = await getPhotoSession(result.payload.id);
+  if (!session) return <PhotosPage failure="malformed" />;
+
+  return <PhotosPage session={session} token={t} />;
 }

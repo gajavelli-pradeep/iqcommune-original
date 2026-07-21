@@ -8,14 +8,17 @@ import { AccountSetupForm, type AdminInvite } from "./AccountSetupForm";
 export function JoinAdminPage({
   invite,
   failure,
+  token,
 }: {
   invite?: AdminInvite;
   failure?: TokenFailure;
+  /** Forwarded to the write route, which re-verifies it server-side. */
+  token?: string;
 }) {
   return (
     <LinkPageShell badge="Account Setup">
       {invite ? (
-        <AccountSetupForm invite={invite} />
+        <AccountSetupForm invite={invite} token={token ?? ""} />
       ) : (
         <InvalidLink reason={failure ?? "malformed"} />
       )}
