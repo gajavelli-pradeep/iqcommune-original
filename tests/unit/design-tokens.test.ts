@@ -51,6 +51,8 @@ const BUILT_IN = new Set([
   "left", "right", "center", "justify", "start", "end", "top", "bottom",
   "wrap", "nowrap", "balance", "pretty", "clip", "ellipsis",
   "solid", "dashed", "dotted", "double", "hidden", "visible", "scroll",
+  // Table border model, not a colour: border-collapse / border-separate.
+  "collapse", "separate",
   "x", "y", "t", "b", "l", "r", "s", "e", "px", "0",
   "xs", "sm", "base", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "2xs", "3xs",
   "normal", "tight", "tighter", "wide", "wider", "widest", "snug", "relaxed", "loose",
