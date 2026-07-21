@@ -1,11 +1,17 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import { RequestSessionProvider } from "../RequestSession";
 import { CtaSection } from "./CtaSection";
 
 describe("CtaSection", () => {
   it("renders the headline and its supporting line", () => {
-    render(<CtaSection />);
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
     expect(
       screen.getByRole("heading", {
         name: "If you are serious to improve your financial literacy",
@@ -15,17 +21,26 @@ describe("CtaSection", () => {
   });
 
   it("lists all three reassurances", () => {
-    render(<CtaSection />);
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(screen.getByText("No fixed slots — we schedule around you")).toBeInTheDocument();
     expect(screen.getByText("Max 25 participants per session")).toBeInTheDocument();
     expect(screen.getByText("We'll reach out within 2–3 working days")).toBeInTheDocument();
   });
 
-  it("ships no inert call-to-action button", () => {
-    // The spec's button opens RequestModal. Until that exists, rendering it
-    // would put a dead control on the page — a P1 defect, not a placeholder.
-    render(<CtaSection />);
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  it("opens the request modal from its call to action", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestSessionProvider>
+        <CtaSection />
+      </RequestSessionProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Request a Session/ }));
+    expect(screen.getByRole("dialog", { name: "Request a Session" })).toBeInTheDocument();
   });
 });

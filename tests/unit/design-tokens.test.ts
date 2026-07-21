@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Every colour class must resolve to a real token.
+ * Every design-token utility must resolve to a token that exists.
  *
  * `text-on-dark-faint` shipped in the widget kit and rendered *nothing* —
  * Tailwind emits no rule for an undefined token, so the text silently fell back
@@ -12,90 +12,101 @@ import { describe, expect, it } from "vitest";
  * Lint could not catch it: the ESLint guard bans raw hex, and a phantom token
  * contains no hex. Typecheck could not catch it: it is a string.
  *
- * This closes that gap. A colour utility naming a token that `globals.css` does
- * not define fails the build.
+ * The first version of this test only checked colours whose names began with a
+ * known prefix, and promptly missed `bg-scrim` and `shadow-lift` on the very
+ * next component. So it now works the other way round: each utility namespace is
+ * checked against the CSS variable namespace it actually reads from, and
+ * anything unrecognised must be explicitly known-good rather than assumed so.
  */
 
 const SOURCE_DIRS = ["app", "components", "features", "hooks", "lib", "services", "utils"];
 
-/** Utilities whose value is a colour token, e.g. `text-`, `bg-`, `border-`. */
-const COLOUR_UTILITIES = ["text", "bg", "border", "fill", "stroke", "accent", "ring", "outline"];
+/** Utility prefix → the `--<namespace>-*` variables Tailwind resolves it against. */
+const NAMESPACES: Record<string, string[]> = {
+  bg: ["color"],
+  text: ["color", "text"],
+  border: ["color"],
+  fill: ["color"],
+  stroke: ["color"],
+  accent: ["color"],
+  ring: ["color"],
+  outline: ["color"],
+  shadow: ["shadow"],
+  tracking: ["tracking"],
+  "max-w": ["container"],
+};
 
-/** Tailwind ships these; they are not project tokens and are always valid. */
+/**
+ * `border-l-gold` and `border-b-0` are the same utility with a side inserted.
+ * Strip the side so the token itself is what gets checked.
+ */
+const SIDES = /^(t|b|l|r|x|y|s|e)-/;
+
+/**
+ * Values Tailwind provides itself, or that belong to a numeric/keyword scale
+ * rather than a project token. Anything not here and not a token fails.
+ */
 const BUILT_IN = new Set([
-  "transparent",
-  "current",
-  "inherit",
-  "black",
-  "white",
-  "left",
-  "right",
-  "center",
-  "justify",
-  "start",
-  "end",
-  "wrap",
-  "nowrap",
-  "balance",
-  "pretty",
-  "clip",
-  "ellipsis",
-  "none",
-  "auto",
-  "solid",
-  "dashed",
-  "dotted",
-  "hidden",
-  "visible",
-  "scroll",
-  "y",
-  "x",
-  "t",
-  "b",
-  "l",
-  "r",
+  "transparent", "current", "inherit", "black", "white", "none", "auto", "full",
+  "left", "right", "center", "justify", "start", "end", "top", "bottom",
+  "wrap", "nowrap", "balance", "pretty", "clip", "ellipsis",
+  "solid", "dashed", "dotted", "double", "hidden", "visible", "scroll",
+  "x", "y", "t", "b", "l", "r", "s", "e", "px", "0",
+  "xs", "sm", "base", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "2xs", "3xs",
+  "normal", "tight", "tighter", "wide", "wider", "widest", "snug", "relaxed", "loose",
+  // Appears inside arbitrary values such as transition-[background,border-color].
+  "color",
 ]);
 
 function sourceFiles(dir: string): string[] {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  return entries.flatMap((entry) => {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
     return /\.tsx?$/.test(entry.name) ? [path] : [];
   });
 }
 
-function definedTokens(): Set<string> {
+function definedVariables(): Set<string> {
   const css = readFileSync("app/globals.css", "utf8");
-  return new Set([...css.matchAll(/--color-([a-z0-9-]+)\s*:/g)].map((match) => match[1]));
+  return new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/g)].map((match) => match[1]));
 }
 
 describe("design tokens", () => {
-  const tokens = definedTokens();
+  const variables = definedVariables();
 
-  it("defines the tokens globals.css is expected to carry", () => {
+  it("reads a plausible number of variables from globals.css", () => {
     // Guards the guard: a regex that stopped matching would make this vacuous.
-    expect(tokens.size).toBeGreaterThan(20);
-    expect(tokens.has("gold")).toBe(true);
+    expect(variables.size).toBeGreaterThan(40);
+    expect(variables.has("color-gold")).toBe(true);
+    expect(variables.has("shadow-modal")).toBe(true);
+    expect(variables.has("container-page")).toBe(true);
   });
 
-  it("has no colour utility pointing at an undefined token", () => {
-    const pattern = new RegExp(`\\b(?:${COLOUR_UTILITIES.join("|")})-([a-z][a-z0-9-]*)\\b`, "g");
+  it("has no utility pointing at a token that does not exist", () => {
+    const prefixes = Object.keys(NAMESPACES).join("|");
+    const pattern = new RegExp(`\\b(${prefixes})-([a-z][a-z0-9-]*)\\b`, "g");
     const offences: string[] = [];
 
     for (const dir of SOURCE_DIRS) {
       for (const file of sourceFiles(dir)) {
-        const source = readFileSync(file, "utf8");
-        for (const [utility, token] of source.matchAll(pattern)) {
-          if (BUILT_IN.has(token) || tokens.has(token)) continue;
-          // Only flag names that look like this project's palette; Tailwind's
-          // own scales (border-2, text-sm) and layout words are not tokens.
-          if (!/^(ink|gold|surface|on-dark|tool|flag|result|seg|green|border)/.test(token)) continue;
-          offences.push(`${file}: ${utility} → --color-${token} is not defined`);
+        // Comments discuss CSS properties in prose ("border-radius: 100px");
+        // only real class lists are being checked here.
+        const source = readFileSync(file, "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, " ")
+          .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+        for (const [, prefix, raw] of source.matchAll(pattern)) {
+          const value = prefix === "border" || prefix === "outline" ? raw.replace(SIDES, "") : raw;
+          // Numeric utilities are Tailwind's own scale (border-2, outline-offset-2).
+          if (BUILT_IN.has(value) || /^\d/.test(value) || value.startsWith("offset-")) continue;
+          if (NAMESPACES[prefix].some((namespace) => variables.has(`${namespace}-${value}`))) {
+            continue;
+          }
+          offences.push(`${file}: ${prefix}-${raw} → no --{${NAMESPACES[prefix]}}-${value}`);
         }
       }
     }
 
-    expect(offences, offences.join("\n")).toEqual([]);
+    expect(offences, [...new Set(offences)].join("\n")).toEqual([]);
   });
 });

@@ -1,7 +1,10 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import HomePage from "@/app/page";
+import { LandingSections } from "@/features/landing/LandingSections";
+import { Gallery } from "@/features/landing/sections/Gallery";
+import { PostSessionModal } from "@/features/landing/sections/PostSessionModal";
+import { RequestModal } from "@/features/landing/sections/RequestModal";
 
 import { extractSpecStrings, readSpec, renderedHaystack } from "./extract";
 import { LANDING_PENDING, type PendingUnit } from "./pending";
@@ -28,8 +31,33 @@ function report(label: string, items: readonly string[]): string {
 
 describe("content parity — P1 `/` against iqcommune-main-landing-page.html", () => {
   const specStrings = extractSpecStrings(readSpec("iqcommune-main-landing-page.html"));
-  const { container } = render(<HomePage />);
-  const haystack = renderedHaystack(container);
+  const { container } = render(
+    <LandingSections gallery={<Gallery photos={[]} failed={false} />} />,
+  );
+  // Copy inside a dialog exists in the product but not in a closed one, and
+  // several blocks appear only for a given audience. The gate opens the dialogs
+  // and walks those branches rather than declaring the copy "pending" — it has
+  // shipped, so it must be checked.
+  const dialogs = render(
+    <>
+      <RequestModal open onClose={() => {}} />
+      <PostSessionModal open onClose={() => {}} />
+    </>,
+  );
+
+  let dialogText = renderedHaystack(dialogs.container);
+  for (const audience of ["Group (register as SPOC)", "Organisations & Institutions", "AMC / Wealth Firm"]) {
+    fireEvent.click(screen.getByRole("button", { name: audience }));
+    dialogText += ` ${renderedHaystack(dialogs.container)}`;
+  }
+  // The minimum-commitment callout needs Groups plus a chosen size.
+  fireEvent.click(screen.getByRole("button", { name: "Group (register as SPOC)" }));
+  for (const size of ["5-8", "9-15", "16-25"]) {
+    fireEvent.change(screen.getByLabelText("Group size"), { target: { value: size } });
+    dialogText += ` ${renderedHaystack(dialogs.container)}`;
+  }
+
+  const haystack = `${renderedHaystack(container)} ${dialogText}`;
 
   const missing = specStrings.filter((text) => !haystack.includes(text));
   const claimed = new Set<PendingUnit>();

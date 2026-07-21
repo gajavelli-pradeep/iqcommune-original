@@ -1,14 +1,14 @@
 import { IconStrip, type IconStripEntry } from "@/components/ui/IconStrip";
+import { RequestSessionButton } from "../RequestSession";
 
 /**
  * The closing call to action.
  *
  * Found by the F4 parity gate, not by the section list — spec line 1487.
  *
- * Its "Request a Session" button ships with `RequestModal`, the thing it opens.
- * The same rule already defers the header and hero buttons: a control that
- * renders a pointer cursor and does nothing is a P1 defect, and three of them
- * would be three.
+ * Its "Request a Session" button opens `RequestModal` through the landing
+ * page's dialog provider — the same button, and the same state, as the header
+ * and hero.
  */
 
 const TICK = (
@@ -37,6 +37,10 @@ export function CtaSection() {
           Tell us your topic, your group, and a preferred date window. We&apos;ll handle the
           rest offline.
         </p>
+
+        <div className="mb-8">
+          <RequestSessionButton />
+        </div>
 
         <IconStrip
           entries={REASSURANCES}

@@ -30,8 +30,17 @@
   --color-gold-dark: #8a6510;    /* gold TEXT on light — #c9982a fails AA */
   --color-gold-border: #e0c870;  /* outline on gold-light fills (pills) */
 
+  /* Error only — never a routine count or a "needs action" state, which is
+     amber. Reserved semantics, per CLAUDE.md. 5.05:1 on surface. */
+  --color-red: #c0392b;
+  --color-red-light: #fdecea;
+
   --color-green: #2a6b2a;        /* success only */
   --color-green-light: #eef7ee;
+
+  /* Modal backdrop. Ink at 55% keeps the page legible behind the dialog while
+     still pushing it back — a pure-black scrim reads as a page change. */
+  --color-scrim: rgba(15, 17, 23, 0.55);
 
   --color-border: rgba(15, 17, 23, 0.10);
   --color-border-strong: rgba(15, 17, 23, 0.20);

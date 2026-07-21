@@ -1,3 +1,4 @@
+import { RequestSessionButton } from "../RequestSession";
 import { Pill } from "@/components/ui/Pill";
 import { ClockIcon, StarIcon } from "@/components/ui/icons";
 import { PractitionerPoolCard } from "../components/PractitionerPoolCard";
@@ -9,8 +10,8 @@ import { PractitionerPoolCard } from "../components/PractitionerPoolCard";
  * decorative gold glow is dropped on small screens for the same reason the spec
  * drops it: at 560px across it swamps a phone.
  *
- * The "Request a Session" button belongs in the CTA group below and ships with
- * RequestModal, which it opens. A button wired to nothing is not worth shipping.
+ * Its "Request a Session" button opens `RequestModal` via the landing page's
+ * dialog provider.
  */
 export function Hero() {
   return (
@@ -42,6 +43,7 @@ export function Hero() {
           </p>
 
           <div className="animate-fade-up animate-fade-up-4 flex flex-wrap items-center gap-5">
+            <RequestSessionButton />
             <span className="flex items-center gap-1.5 text-base text-ink-faint">
               <ClockIcon />
               We&apos;ll schedule around you

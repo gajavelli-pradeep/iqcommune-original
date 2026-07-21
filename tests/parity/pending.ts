@@ -20,18 +20,16 @@ export interface PendingUnit {
   /** Why it is not rendered. */
   reason: string;
   /**
-   * `pending` — will be built. `deviation` — deliberately never rendered as
-   * written, and therefore permanent. Kept separate so the count of real
-   * outstanding work is never inflated by decisions already made.
+   * `pending`   — not built yet.
+   * `deviation` — deliberately never rendered as written; permanent.
+   * `state`     — shipped, but only reachable in a state this static gate
+   *               cannot drive (a successful POST). Every `state` entry must
+   *               name the test that proves the copy actually renders, or it is
+   *               just a `pending` in disguise.
    */
-  kind: "pending" | "deviation";
+  kind: "pending" | "deviation" | "state";
   matches: (text: string) => boolean;
 }
-
-const exactly = (...strings: string[]) => {
-  const set = new Set(strings);
-  return (text: string) => set.has(text);
-};
 
 const containing =
   (...needles: string[]) =>
@@ -40,127 +38,30 @@ const containing =
     return needles.some((needle) => haystack.includes(needle.toLowerCase()));
   };
 
-const either =
-  (...predicates: Array<(text: string) => boolean>) =>
-  (text: string) =>
-    predicates.some((predicate) => predicate(text));
-
 export const LANDING_PENDING: PendingUnit[] = [
   {
-    unit: "P1 · Gallery",
-    reason: "not built — drives F2, the first section needing an API read",
-    kind: "pending",
-    matches: either(
-      exactly(
-        "Sessions in the room",
-        "Where it actually happens.",
-        "Photos from sessions conducted across India - real rooms, real conversations.",
-        "Deep in a foundations session",
-        "Full house for equity investing",
-        "Wrapping up on a high note",
-        "Building out a portfolio, live",
-        "Working through a retirement plan",
-        "Great question from the back row",
-        "Foundations, session two",
-        "Mumbai",
-        "Bengaluru",
-        "Pune",
-        "Delhi",
-        "- we feature the best ones here.",
-      ),
-      containing("Attended a session? Share it on social media"),
+    unit: "State · submission receipts",
+    reason:
+      "Renders only after a successful POST, which this gate cannot perform. Proven to render " +
+      "by features/landing/sections/modals.test.tsx — 'shows the receipt after a successful " +
+      "submission', for both dialogs.",
+    kind: "state",
+    matches: containing(
+      "Request received!",
+      "your session request is in",
+      "Photos received - thank you.",
+      "We'll process and add them to the gallery within a few days",
     ),
   },
   {
-    unit: "P1 · RequestModal",
-    reason: "not built — drives F3, the first section needing a database write",
-    kind: "pending",
-    matches: either(
-      exactly(
-        "Rohan",
-        "Mehta",
-        "rohan@example.com",
-        "e.g. Mumbai",
-        "e.g. Maharashtra",
-        "e.g. July last week",
-        "Close",
-        "Who is this for?",
-        "Group (register as SPOC)",
-        "AMC / Wealth Firm",
-        "First name",
-        "Last name",
-        "Email address",
-        "Phone number",
-        "City",
-        "State",
-        "Topic of interest",
-        "Select a training topic…",
-        "Not sure - help me choose",
-        "Group size",
-        "Select…",
-        "5 - 8 people",
-        "9 - 15 people",
-        "16 - 25 people",
-        "Your venue details",
-        "Minimum attendance commitment",
-        "Anything else?",
-        "(optional)",
-        "Send Request",
-        "Request a Session",
-        "Request received!",
-        "I confirm I am registering as the",
-        "Organisation name",
-        "Preferred date window",
-      ),
-      containing(
-        "Tell us your topic, your group, and a preferred date window",
-        "Tell us a bit about what you need",
-        "e.g. Society clubhouse",
-        "e.g. specific focus areas",
-        "e.g. HDFC Securities",
-        "Bundle - ",
-        "Bundled (6-hour) sessions are open to all audiences",
-        "Sessions are capped at 25 participants",
-        "Rough window is fine",
-        "Venue booking is your group's responsibility",
-        "and will coordinate internally on session logistics",
-        "No spam. We'll only reach out about your session request",
-        "your session request is in",
-        "Select an audience type above",
-      ),
-    ),
-  },
-  {
-    unit: "P1 · PostSessionModal",
-    reason: "found by this gate — absent from the P1 section list, spec line 1768",
-    kind: "pending",
-    matches: either(
-      exactly(
-        "Session details",
-        "Date of session",
-        "Module taught",
-        "Select module…",
-        "(optional - for tagging)",
-        "Upload photos",
-        "Tap to upload photos",
-        "Submit photos",
-        "Photos received - thank you.",
-        "Share your session photos",
-        "Organisation / group name",
-      ),
-      containing(
-        "Photos from sessions are displayed on this page",
-        "We'll process and add them to the gallery within a few days",
-        "Shot checklist",
-        "Back of room",
-        "From trainer's position",
-        "Front-left corner",
-        "Front-right corner",
-        "Candid - ",
-        "Group photo - trainer and all participants",
-        "JPEG or PNG",
-        "All participants were informed that photos would be taken",
-      ),
+    unit: "Deviation · unreachable default declaration text",
+    reason:
+      "The spec's static SPOC sentence is overwritten by its own script the moment an audience " +
+      "is chosen, and the declaration is hidden until one is. It is therefore copy no visitor " +
+      "can ever read; the three audience-specific versions are shipped instead.",
+    kind: "deviation",
+    matches: containing(
+      "and will coordinate internally on session logistics and participant attendance.",
     ),
   },
   {
