@@ -20,7 +20,7 @@ export function SessionDetailsCard({ session }: { session: RatedSession }) {
   ];
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
+    <section className="rounded-lg border border-border bg-surface px-9 py-8">
       <h1 className="mb-1 text-3xl font-semibold text-ink">How was your session?</h1>
       <p className="mb-5 text-base leading-[1.6] text-ink-muted">
         Your feedback helps us maintain quality across our practitioner network — it takes less

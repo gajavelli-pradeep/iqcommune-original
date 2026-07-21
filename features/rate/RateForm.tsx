@@ -102,7 +102,7 @@ export function RateForm({ session, token }: { session: RatedSession; token: str
       <SessionDetailsCard session={session} />
 
       <form
-        className="mt-4 rounded-lg border border-border bg-surface p-6"
+        className="mt-4 rounded-lg border border-border bg-surface px-9 py-8"
         onSubmit={async (event) => {
           event.preventDefault();
           if (rating === null) return;

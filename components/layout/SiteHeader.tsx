@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
  */
 export function SiteHeader({
   badge,
+  badgeStyle = "lockup",
   right,
   width = "var(--container-page)",
 }: {
@@ -33,6 +34,13 @@ export function SiteHeader({
   width?: string;
   /** One or two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
   badge?: readonly string[];
+  /**
+   * How the badge is drawn. The specs disagree deliberately: the emailed pages
+   * render a gold pill (`.nav-badge`, radius 100px, 11px, 0.06em) while the
+   * practitioner site uses an inline lockup separated by a rule. One component
+   * serving both needs the variant, not a winner.
+   */
+  badgeStyle?: "pill" | "lockup";
   right?: ReactNode;
 }) {
   return (
@@ -66,7 +74,13 @@ export function SiteHeader({
         {/* Hidden below 640px for the same measured reason as the strapline: the
             wordmark, this badge and the right slot together overflow 320px.
             Which sub-site you are on is also carried by the page's own h1. */}
-        {badge ? (
+        {badge && badgeStyle === "pill" ? (
+          <span className="hidden shrink-0 rounded-full border border-gold-border bg-gold-light px-2.5 py-[3px] text-xs font-semibold uppercase tracking-[0.06em] text-gold-dark sm:inline-flex">
+            {badge.join(" ")}
+          </span>
+        ) : null}
+
+        {badge && badgeStyle === "lockup" ? (
           <span className="hidden shrink-0 flex-col gap-0.5 border-l border-border-strong pl-3.5 sm:flex">
             {badge.map((line) => (
               <span

@@ -84,7 +84,7 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
+    <section className="rounded-lg border border-border bg-surface px-9 py-8">
       <h1 className="mb-1 text-3xl font-semibold text-ink">Set up your account</h1>
       <p className="mb-5 text-base leading-[1.6] text-ink-muted">
         You&apos;ve been invited to the iqcommune admin console. Confirm your details and choose a

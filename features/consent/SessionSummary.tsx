@@ -42,7 +42,7 @@ function Rows({ rows }: { rows: ReadonlyArray<[string, string]> }) {
 
 export function SessionSummary({ session }: { session: ConsentSession }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
+    <section className="rounded-lg border border-border bg-surface px-9 py-8">
       <h1 className="mb-1 text-3xl font-semibold text-ink">Confirm your session details</h1>
       <p className="mb-5 text-base leading-[1.6] text-ink-muted">
         Please review everything below carefully. Your consent confirms acceptance of this session
@@ -80,15 +80,20 @@ export function SessionSummary({ session }: { session: ConsentSession }) {
       <h2 className="mb-3 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
         Payout confirmation
       </h2>
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-gold-border bg-gold-light px-5 py-4">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-green-light px-5 py-4">
         <div>
-          <p className="mb-1 text-md font-semibold text-ink">Gross payout amount</p>
-          <p className="text-sm leading-[1.55] text-gold-dark">
+          {/* Green, not gold: the spec treats a confirmed payout as a settled
+              fact rather than a brand accent, and green is this product's
+              success semantic. */}
+          <p className="mb-1 text-xs font-semibold uppercase tracking-caps text-green">
+            Gross payout amount
+          </p>
+          <p className="text-sm leading-[1.55] text-ink-muted">
             This amount is pre-tax. TDS, GST, and net calculations are handled separately by
             iqcommune&apos;s finance team — not shown here.
           </p>
         </div>
-        <p className="shrink-0 text-4xl font-semibold tabular-nums text-ink">
+        <p className="shrink-0 text-5xl font-semibold tabular-nums text-green">
           {session.grossPayout}
         </p>
       </div>

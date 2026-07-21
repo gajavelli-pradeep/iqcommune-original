@@ -141,7 +141,7 @@ export function PhotoSubmissionForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
+    <section className="rounded-lg border border-border bg-surface p-8">
       <Stepper current={1} />
 
       <h1 className="mb-1 text-3xl font-semibold text-ink">Your session photo link</h1>

@@ -153,7 +153,7 @@ export function OnboardingForm({
 
   return (
     <>
-      <section className="rounded-lg border border-border bg-surface p-6">
+      <section className="rounded-lg border border-border bg-surface p-8">
         <Stepper current={2} />
         <p className="mb-1 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
           Step 2 of 2
@@ -189,7 +189,7 @@ export function OnboardingForm({
         </p>
       </section>
 
-      <section className="mt-4 rounded-lg border border-border bg-surface p-6">
+      <section className="mt-4 rounded-lg border border-border bg-surface p-8">
         <h2 className="mb-1 text-2xl font-semibold text-ink">
           iqcommune — Practitioner Empanelment Agreement
         </h2>
@@ -284,7 +284,7 @@ export function OnboardingForm({
       </section>
 
       <form
-        className="mt-4 rounded-lg border border-border bg-surface p-6"
+        className="mt-4 rounded-lg border border-border bg-surface p-8"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!readToEnd) return setError("Please read the full agreement before signing.");

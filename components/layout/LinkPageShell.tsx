@@ -30,7 +30,11 @@ export function LinkPageShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
-      <SiteHeader badge={typeof badge === "string" ? [badge] : badge} width={width} />
+      <SiteHeader
+        badge={typeof badge === "string" ? [badge] : badge}
+        badgeStyle="pill"
+        width={width}
+      />
       <main className="flex-1 px-4 py-10 sm:px-8">
         <div style={{ maxWidth: width }} className="mx-auto">
           {children}
