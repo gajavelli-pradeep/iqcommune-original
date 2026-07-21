@@ -1,4 +1,5 @@
-﻿import type { Metadata } from "next";
+﻿import { Fragment, type CSSProperties } from "react";
+import type { Metadata } from "next";
 import { RequestModal } from "@/components/public/RequestModal";
 import { FaqAccordion, type FaqItem } from "@/components/public/FaqAccordion";
 import { NavBar } from "@/components/public/NavBar";
@@ -150,6 +151,29 @@ const DIFF_US = [
   "They manage money the same way they teach you to",
   "You step out with a clear plan of action with real numbers",
 ] as const;
+
+/* Comparison table cells are laid out as one flat grid (them-cell, us-cell, them-cell…)
+   so paired cells share a grid row and stretch to equal height — a per-column layout
+   leaves dead space under the shorter column where the row tint/divider stop. */
+const DIFF_HEADER_CELL: CSSProperties = {
+  padding: "1.1rem 1.75rem",
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  borderBottom: "1px solid rgba(15,17,23,0.18)",
+};
+
+const DIFF_ITEM_CELL: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  padding: "1rem 1.75rem",
+  fontSize: 14,
+};
+
+const DIFF_DIVIDER = "1px solid rgba(15,17,23,0.18)";
+const DIFF_ROW_RULE = "1px solid rgba(15,17,23,0.10)";
 
 const TOPICS = [
   {
@@ -845,86 +869,59 @@ export default function HomePage() {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              border: "1px solid rgba(15,17,23,0.18)",
+              border: DIFF_DIVIDER,
               borderRadius: 12,
               overflow: "hidden",
               maxWidth: 900,
               margin: "0 auto",
             }}
           >
-            {/* Left col — Them */}
-            <div className="diff-col-them">
-              <div
-                style={{
-                  padding: "1.1rem 1.75rem",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  background: "#f8f7f4",
-                  color: "#71717f",
-                  borderBottom: "1px solid rgba(15,17,23,0.18)",
-                }}
-              >
-                Conventional Trainers
-              </div>
-              {DIFF_THEM.map((text, i) => (
-                <div
-                  key={text}
-                  className="row-hover"
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_THEM.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
-                    fontSize: 14,
-                    color: "#383b47",
-                    borderRight: "1px solid rgba(15,17,23,0.18)",
-                  }}
-                >
-                  <CrossSvg />
-                  {text}
-                </div>
-              ))}
+            <div
+              className="diff-col-them"
+              style={{
+                ...DIFF_HEADER_CELL,
+                background: "#f8f7f4",
+                color: "#71717f",
+                borderRight: DIFF_DIVIDER,
+              }}
+            >
+              Conventional Trainers
+            </div>
+            <div style={{ ...DIFF_HEADER_CELL, background: "#14161d", color: "#ffffff" }}>
+              Our Practitioners
             </div>
 
-            {/* Right col — Us */}
-            <div>
-              <div
-                style={{
-                  padding: "1.1rem 1.75rem",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  background: "#14161d",
-                  color: "#ffffff",
-                  borderBottom: "1px solid rgba(15,17,23,0.18)",
-                }}
-              >
-                Our Practitioners
-              </div>
-              {DIFF_US.map((text, i) => (
-                <div
-                  key={text}
-                  className="row-hover"
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    padding: "1rem 1.75rem",
-                    borderBottom: i < DIFF_US.length - 1 ? "1px solid rgba(15,17,23,0.10)" : undefined,
-                    fontSize: 14,
-                    color: "#14161d",
-                    fontWeight: 500,
-                  }}
-                >
-                  <CheckmarkSvg color="#c9982a" />
-                  {text}
-                </div>
-              ))}
-            </div>
+            {DIFF_THEM.map((them, i) => {
+              const rule = i < DIFF_THEM.length - 1 ? DIFF_ROW_RULE : undefined;
+              return (
+                <Fragment key={them}>
+                  <div
+                    className="row-hover diff-col-them"
+                    style={{
+                      ...DIFF_ITEM_CELL,
+                      color: "#383b47",
+                      borderRight: DIFF_DIVIDER,
+                      borderBottom: rule,
+                    }}
+                  >
+                    <CrossSvg />
+                    {them}
+                  </div>
+                  <div
+                    className="row-hover"
+                    style={{
+                      ...DIFF_ITEM_CELL,
+                      color: "#14161d",
+                      fontWeight: 500,
+                      borderBottom: rule,
+                    }}
+                  >
+                    <CheckmarkSvg color="#c9982a" />
+                    {DIFF_US[i]}
+                  </div>
+                </Fragment>
+              );
+            })}
           </div>
         </div>
       </section>
