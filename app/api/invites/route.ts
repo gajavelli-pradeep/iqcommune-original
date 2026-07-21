@@ -4,6 +4,8 @@ import { fail, ok } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { verifyToken } from "@/lib/tokens";
+import { createInvitedAccount, type AdminRole } from "@/services/auth";
+import { getOpenInvite } from "@/services/link-pages";
 import { AlreadyRecordedError, consumeInvite } from "@/services/link-writes";
 
 /**
@@ -41,7 +43,22 @@ export async function POST(request: Request) {
       return fail("FORBIDDEN", "This link is no longer valid.", traceId);
     }
 
+    const invite = await getOpenInvite(token.payload.id);
+    if (!invite) {
+      return fail("CONFLICT", "This invite has already been used or has expired.", traceId);
+    }
+
+    // Account first, invite second. If consuming failed after the account was
+    // made, the invite stays open and a retry hits the duplicate-email guard,
+    // which is a conflict the person can understand. The other order would burn
+    // the invite and leave them with no account and no way back.
+    const account = await createInvitedAccount(
+      invite.email,
+      parsed.data.password,
+      invite.role as AdminRole,
+    );
     const receipt = await consumeInvite(token.payload.id);
+    log.info(traceId, "invited account created", { userId: account.userId, role: invite.role });
     log.info(traceId, "invite recorded", { id: token.payload.id });
     return ok(receipt, 201);
   } catch (cause) {

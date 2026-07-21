@@ -11,10 +11,12 @@
 -- ── PRACTITIONER APPLICATIONS ───────────────────────────────────────────────
 -- Written by the public "Apply to Join the Network" modal (P2).
 
-create type practitioner_application_status as enum
-  ('New', 'Screening', 'Empanelled', 'Declined', 'Withdrawn');
+do $$ begin
+  create type practitioner_application_status as enum ('New', 'Screening', 'Empanelled', 'Declined', 'Withdrawn');
+exception when duplicate_object then null;
+end $$;
 
-create table practitioner_applications (
+create table if not exists practitioner_applications (
   id                    uuid primary key default gen_random_uuid(),
   status                practitioner_application_status not null default 'New',
 
@@ -54,24 +56,27 @@ create table practitioner_applications (
   deleted_at            timestamptz
 );
 
-create trigger practitioner_applications_updated_at
+create or replace trigger practitioner_applications_updated_at
   before update on practitioner_applications
   for each row execute function set_updated_at();
 
-create index practitioner_applications_triage_idx
+create index if not exists practitioner_applications_triage_idx
   on practitioner_applications (status, created_at desc)
   where deleted_at is null;
 
 -- Applying twice is a duplicate to spot, not an error to reject, so this is an
 -- index rather than a unique constraint.
-create index practitioner_applications_email_idx
+create index if not exists practitioner_applications_email_idx
   on practitioner_applications (lower(email));
 
 -- ── PRACTITIONERS ───────────────────────────────────────────────────────────
 
-create type practitioner_status as enum ('Empanelled', 'Paused', 'Deactivated');
+do $$ begin
+  create type practitioner_status as enum ('Empanelled', 'Paused', 'Deactivated');
+exception when duplicate_object then null;
+end $$;
 
-create table practitioners (
+create table if not exists practitioners (
   id           uuid primary key default gen_random_uuid(),
   status       practitioner_status not null default 'Empanelled',
   -- Human-readable reference shown on the photo page (IQC-EMP-0042). Unique so
@@ -88,18 +93,18 @@ create table practitioners (
   deleted_at   timestamptz
 );
 
-create trigger practitioners_updated_at
+create or replace trigger practitioners_updated_at
   before update on practitioners
   for each row execute function set_updated_at();
 
-create index practitioners_email_idx on practitioners (lower(email));
+create index if not exists practitioners_email_idx on practitioners (lower(email));
 
 -- ── AGREEMENTS ──────────────────────────────────────────────────────────────
 -- One practitioner may hold several over time (renewal, revised terms), which
 -- is why the /onboarding token names an agreement and not a practitioner: an
 -- agreement resolves to exactly one practitioner, the reverse does not hold.
 
-create table practitioner_agreements (
+create table if not exists practitioner_agreements (
   id                 uuid primary key default gen_random_uuid(),
   practitioner_id    uuid not null references practitioners (id),
   reference          text not null unique,
@@ -122,19 +127,22 @@ create table practitioner_agreements (
   deleted_at         timestamptz
 );
 
-create trigger practitioner_agreements_updated_at
+create or replace trigger practitioner_agreements_updated_at
   before update on practitioner_agreements
   for each row execute function set_updated_at();
 
-create index practitioner_agreements_practitioner_idx
+create index if not exists practitioner_agreements_practitioner_idx
   on practitioner_agreements (practitioner_id, issued_on desc)
   where deleted_at is null;
 
 -- ── SESSIONS ────────────────────────────────────────────────────────────────
 
-create type session_status as enum ('Scheduled', 'Delivered', 'Cancelled');
+do $$ begin
+  create type session_status as enum ('Scheduled', 'Delivered', 'Cancelled');
+exception when duplicate_object then null;
+end $$;
 
-create table sessions (
+create table if not exists sessions (
   id                 uuid primary key default gen_random_uuid(),
   status             session_status not null default 'Scheduled',
   reference          text not null unique,
@@ -161,11 +169,11 @@ create table sessions (
   deleted_at         timestamptz
 );
 
-create trigger sessions_updated_at
+create or replace trigger sessions_updated_at
   before update on sessions
   for each row execute function set_updated_at();
 
-create index sessions_schedule_idx
+create index if not exists sessions_schedule_idx
   on sessions (session_date desc, status)
   where deleted_at is null;
 
@@ -175,7 +183,7 @@ create index sessions_schedule_idx
 -- so neither can live on `sessions`, and a session with two practitioners makes
 -- a session id ambiguous for all three pages.
 
-create table session_practitioners (
+create table if not exists session_practitioners (
   id                  uuid primary key default gen_random_uuid(),
   session_id          uuid not null references sessions (id),
   practitioner_id     uuid not null references practitioners (id),
@@ -198,11 +206,11 @@ create table session_practitioners (
   unique (session_id, practitioner_id)
 );
 
-create trigger session_practitioners_updated_at
+create or replace trigger session_practitioners_updated_at
   before update on session_practitioners
   for each row execute function set_updated_at();
 
-create index session_practitioners_practitioner_idx
+create index if not exists session_practitioners_practitioner_idx
   on session_practitioners (practitioner_id)
   where deleted_at is null;
 
@@ -210,7 +218,7 @@ create index session_practitioners_practitioner_idx
 -- Its own row rather than columns on the assignment: a rating is a submission
 -- with its own timestamp and its own audit trail.
 
-create table session_ratings (
+create table if not exists session_ratings (
   id                      uuid primary key default gen_random_uuid(),
   session_practitioner_id uuid not null unique references session_practitioners (id),
   rating                  smallint not null check (rating between 1 and 5),
@@ -221,9 +229,12 @@ create table session_ratings (
 
 -- ── ADMIN INVITES ───────────────────────────────────────────────────────────
 
-create type admin_role as enum ('global_admin', 'admin', 'user');
+do $$ begin
+  create type admin_role as enum ('global_admin', 'admin', 'user');
+exception when duplicate_object then null;
+end $$;
 
-create table admin_invites (
+create table if not exists admin_invites (
   id          uuid primary key default gen_random_uuid(),
   email       text not null,
   role        admin_role not null default 'admin',
@@ -239,11 +250,11 @@ create table admin_invites (
   deleted_at  timestamptz
 );
 
-create trigger admin_invites_updated_at
+create or replace trigger admin_invites_updated_at
   before update on admin_invites
   for each row execute function set_updated_at();
 
-create index admin_invites_open_idx
+create index if not exists admin_invites_open_idx
   on admin_invites (email)
   where consumed_at is null and deleted_at is null;
 
@@ -252,8 +263,8 @@ create index admin_invites_open_idx
 -- and email, while the tokenised page fills the references instead.
 
 alter table photo_submissions
-  add column session_id      uuid references sessions (id),
-  add column practitioner_id uuid references practitioners (id);
+  add column if not exists session_id      uuid references sessions (id),
+  add column if not exists practitioner_id uuid references practitioners (id);
 
 -- ── ROW LEVEL SECURITY ──────────────────────────────────────────────────────
 -- Deny-by-default on every new table, as in 0001. No anon policies at all:

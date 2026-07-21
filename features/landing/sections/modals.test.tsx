@@ -28,17 +28,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * Text is filled with change events rather than `user.type`. Typing character
+ * by character through a twelve-field form pushed this past the 5s limit under
+ * full-suite load; the assertions here are about the receipt and the error
+ * path, and keystroke handling is covered by the shorter tests.
+ */
 async function fillRequestForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Organisations & Institutions" }));
-  // Filled first: choosing an audience inserts this field between State and
-  // Topic, and React reuses the sibling TextField instances when it does.
-  await user.type(screen.getByLabelText("Organisation name"), "TechCorp India");
-  await user.type(screen.getByLabelText("First name"), "Rohan");
-  await user.type(screen.getByLabelText("Last name"), "Mehta");
-  await user.type(screen.getByLabelText("Email address"), "rohan@example.com");
-  await user.type(screen.getByLabelText("Phone number"), "+91 98765 43210");
-  await user.type(screen.getByLabelText("City"), "Mumbai");
-  await user.type(screen.getByLabelText("State"), "Maharashtra");
+
+  const fill = (label: string, value: string) =>
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
+  fill("Organisation name", "TechCorp India");
+  fill("First name", "Rohan");
+  fill("Last name", "Mehta");
+  fill("Email address", "rohan@example.com");
+  fill("Phone number", "+91 98765 43210");
+  fill("City", "Mumbai");
+  fill("State", "Maharashtra");
+
   await user.selectOptions(screen.getByLabelText("Topic of interest"), "Equity Investing Simplified");
   await user.click(screen.getByRole("checkbox"));
 }

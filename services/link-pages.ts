@@ -241,3 +241,24 @@ export async function getPhotoSubmissionOwner(
     module: row.sessions.module,
   };
 }
+
+/** The stored role and email behind an open invite, for account creation. */
+export async function getOpenInvite(
+  inviteId: string,
+): Promise<{ email: string; role: string } | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("admin_invites")
+    .select("email, role, expires_at")
+    .eq("id", inviteId)
+    .is("consumed_at", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`admin_invites read failed: ${error.message}`);
+  if (!data) return null;
+  // Expiry is enforced here as well as in the token: an invite row may outlive
+  // or predate the link that points at it.
+  if (new Date(data.expires_at) <= new Date()) return null;
+  return { email: data.email, role: data.role };
+}

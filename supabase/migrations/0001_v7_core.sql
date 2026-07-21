@@ -26,10 +26,16 @@ $$;
 -- ── SESSION REQUESTS ────────────────────────────────────────────────────────
 -- Written by the public "Request a Session" modal.
 
-create type session_request_status as enum ('New', 'Contacted', 'Scheduled', 'Closed', 'Cancelled');
-create type audience_type as enum ('individual', 'corporate', 'finance');
+do $$ begin
+  create type session_request_status as enum ('New', 'Contacted', 'Scheduled', 'Closed', 'Cancelled');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create type audience_type as enum ('individual', 'corporate', 'finance');
+exception when duplicate_object then null;
+end $$;
 
-create table session_requests (
+create table if not exists session_requests (
   id                uuid primary key default gen_random_uuid(),
   status            session_request_status not null default 'New',
 
@@ -57,20 +63,20 @@ create table session_requests (
   deleted_at        timestamptz
 );
 
-create trigger session_requests_updated_at
+create or replace trigger session_requests_updated_at
   before update on session_requests
   for each row execute function set_updated_at();
 
 -- Reads are "newest open requests first", so the index matches the query.
-create index session_requests_triage_idx
+create index if not exists session_requests_triage_idx
   on session_requests (status, created_at desc)
   where deleted_at is null;
-create index session_requests_email_idx on session_requests (lower(email));
+create index if not exists session_requests_email_idx on session_requests (lower(email));
 
 -- ── GALLERY ─────────────────────────────────────────────────────────────────
 -- Read by the public landing page; published from the admin console (P8).
 
-create table gallery_photos (
+create table if not exists gallery_photos (
   id           uuid primary key default gen_random_uuid(),
   storage_path text not null,
   caption      text not null,
@@ -82,20 +88,23 @@ create table gallery_photos (
   deleted_at   timestamptz
 );
 
-create trigger gallery_photos_updated_at
+create or replace trigger gallery_photos_updated_at
   before update on gallery_photos
   for each row execute function set_updated_at();
 
-create index gallery_photos_public_idx
+create index if not exists gallery_photos_public_idx
   on gallery_photos (sort_order, created_at desc)
   where published and deleted_at is null;
 
 -- ── PHOTO SUBMISSIONS ───────────────────────────────────────────────────────
 -- Written by the public post-session photo modal.
 
-create type photo_submission_status as enum ('Pending', 'Approved', 'Rejected', 'Expired');
+do $$ begin
+  create type photo_submission_status as enum ('Pending', 'Approved', 'Rejected', 'Expired');
+exception when duplicate_object then null;
+end $$;
 
-create table photo_submissions (
+create table if not exists photo_submissions (
   id                  uuid primary key default gen_random_uuid(),
   status              photo_submission_status not null default 'Pending',
 
@@ -121,11 +130,11 @@ create table photo_submissions (
   deleted_at          timestamptz
 );
 
-create trigger photo_submissions_updated_at
+create or replace trigger photo_submissions_updated_at
   before update on photo_submissions
   for each row execute function set_updated_at();
 
-create index photo_submissions_review_idx
+create index if not exists photo_submissions_review_idx
   on photo_submissions (status, created_at desc)
   where deleted_at is null;
 
@@ -139,6 +148,7 @@ alter table gallery_photos    enable row level security;
 alter table photo_submissions enable row level security;
 
 -- The public site reads published gallery photos and nothing else.
+drop policy if exists gallery_photos_public_read on gallery_photos;
 create policy gallery_photos_public_read on gallery_photos
   for select
   to anon, authenticated
