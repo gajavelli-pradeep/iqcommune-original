@@ -55,6 +55,29 @@ menu anchored ±0.3px); 0 console errors; `eslint app components` clean.
 
 ---
 
+## [2026-07-21] Fix — footer practitioner-CTA hover didn't match the prototype
+
+`Teach what you practise — join the iqcommune practitioner network` hovered to plain
+`--gold` (#c9982a) and left its underline flat. The prototype's inline `onmouseover`
+brightens the text to `#f0c84a` **and** strengthens the gold rule to `rgba(201,152,42,0.8)`
+— on an ink footer, plain gold reads muddy, which is why the prototype uses the brighter
+value there.
+
+- `.link-arrow:hover` → `--gold-on-ink` + `--gold-rule-strong`, with `border-bottom-color`
+  added to the transition so the rule fades rather than snaps.
+- New tokens `--gold-rule` / `--gold-rule-strong` (0.35 / 0.80 gold) replace the hand-typed
+  `rgba(201,152,42,0.35)` on the link.
+- **`!important` is load-bearing here, not lazy.** The link declares its resting colour and
+  border inline, and an inline declaration outranks any class rule without it — the first
+  attempt (colours in CSS, inline props removed) is the "correct" fix but silently dropped
+  the underline while the dev server served a stale bundle. Matches the existing
+  `.row-hover` precedent in this file.
+
+Verified on hover in the running app: `rgb(240,200,74)` text, `rgba(201,152,42,0.8)` rule,
+chevron nudge intact; resting state unchanged at `rgba(255,255,255,0.65)` + 0.35 gold rule.
+
+---
+
 ## [2026-07-21] Audit — Tools & Calculators, live-state parity with the V6 prototype
 
 Ran the prototype from a local server alongside the app and read both widgets' rendered

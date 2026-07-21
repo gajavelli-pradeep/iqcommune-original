@@ -65,6 +65,8 @@
   /* Edge-case tokens — added to kill recurring magic hexes (color audit 2026-06-24). */
   --gold-border: rgba(138, 101, 16, 0.28); /* pill/badge/ribbon borders (replaces #e0c870) */
   --gold-on-ink: #f0c84a;                  /* brightened gold for text on ink surfaces */
+  --gold-rule: rgba(201, 152, 42, 0.35);   /* gold underline on ink, resting */
+  --gold-rule-strong: rgba(201, 152, 42, 0.80); /* …and on hover */
   --green-on-ink: #6fcf6f;                 /* lightened green for checkmarks on ink */
   --green-border: rgba(42, 107, 42, 0.30); /* success-box borders (replaces #b8d98a) */
   --red-border: rgba(163, 45, 45, 0.30);   /* error-field borders (replaces #f0b0b0) */
@@ -520,14 +522,19 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Inline text links with an arrow: nudge the arrow + reveal the underline. */
 .link-arrow {
-  transition: color 0.18s ease;
+  transition: color 0.18s ease, border-bottom-color 0.18s ease;
 }
 .link-arrow .link-chevron {
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @media (hover: hover) {
+  /* Sits on ink, so hover brightens to --gold-on-ink and strengthens the underline,
+     per the V6 prototype's inline onmouseover. Plain --gold reads muddy on dark.
+     `!important` is required: the link sets its resting colour/border inline, and an
+     inline declaration outranks any class rule without it. */
   .link-arrow:hover {
-    color: var(--gold);
+    color: var(--gold-on-ink) !important;
+    border-bottom-color: var(--gold-rule-strong) !important;
   }
   .link-arrow:hover .link-chevron {
     transform: translateX(4px);

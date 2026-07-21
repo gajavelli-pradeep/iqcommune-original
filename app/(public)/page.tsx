@@ -1572,7 +1572,7 @@ export default function HomePage() {
                 fontWeight: 500,
                 color: "rgba(255,255,255,0.65)",
                 textDecoration: "none",
-                borderBottom: "1px solid rgba(201,152,42,0.35)",
+                borderBottom: "1px solid var(--gold-rule)",
                 paddingBottom: 2,
               }}
             >
