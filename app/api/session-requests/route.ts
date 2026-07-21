@@ -2,6 +2,8 @@ import { fail, ok } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { sessionRequestSubmission } from "@/lib/schemas/session-request";
+import { sendEmail } from "@/lib/email/send";
+import { newSessionRequestForAdmin, sessionRequestReceived } from "@/lib/email/templates";
 import { createSessionRequest } from "@/services/session-requests";
 
 /**
@@ -29,6 +31,21 @@ export async function POST(request: Request) {
 
     const created = await createSessionRequest(parsed.data);
     log.info(traceId, "session request created", { id: created.id, audience: parsed.data.audience });
+
+    // After the write, and never awaited into the response path: the request is
+    // already saved, and a slow mail provider must not turn a successful
+    // submission into an error the person sees.
+    void sendEmail(traceId, sessionRequestReceived(parsed.data.email, parsed.data.firstName));
+    const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    if (adminInbox) {
+      void sendEmail(
+        traceId,
+        newSessionRequestForAdmin(
+          adminInbox,
+          `${parsed.data.topic} - ${parsed.data.city}, ${parsed.data.state} (${parsed.data.audience})`,
+        ),
+      );
+    }
     return ok(created, 201);
   } catch (cause) {
     // Never surface the underlying message: it can carry column names and
