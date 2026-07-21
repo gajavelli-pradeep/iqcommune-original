@@ -71,8 +71,9 @@ Three deviations found:
   the 10 bars, so hovering reads the corpus at that year. The app rendered bare divs.
   Restored — the 10 titles now match the prototype's exactly.
 
-Kept **deliberately different** (both are corrections, not drift — reverting either is a
-one-line change if the client wants byte-parity with the prototype):
+Kept **deliberately different** (both are corrections, not drift). **Confirmed 2026-07-21:
+keep the corrected math** — the divergence is now pinned with a `DELIBERATE DIVERGENCE`
+comment at the formula so a later parity pass doesn't reintroduce the prototype's bug:
 
 - **Retirement Corpus — the prototype's formula is wrong.** It raises the *annual* rate ratio
   to a *monthly* exponent — `Math.pow(1.07/1.06, -240)` — then divides by 12 to compensate.

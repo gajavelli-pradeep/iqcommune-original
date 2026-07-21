@@ -282,7 +282,15 @@ function RetirementCorpus() {
   const yearsLeft = 60 - age;
   const monthlyExpense = sav * 0.7;
   const futureMonthly = monthlyExpense * Math.pow(1.06, yearsLeft);
-  // Growing annuity PV — fully monthly: nm=240 months, gm=0.5%/mo, rm=0.583%/mo
+  // Growing annuity PV — fully monthly: nm=240 months, gm=0.5%/mo, rm=0.583%/mo.
+  //
+  // DELIBERATE DIVERGENCE FROM THE V6 PROTOTYPE — do not "restore parity" here.
+  // The prototype raises the *annual* rate ratio to a *monthly* exponent
+  // (`Math.pow(1.07/1.06, -240)`) and divides by 12 to compensate, which
+  // under-states the corpus ~2.4x: ₹64.0L instead of ₹1.5Cr on the default
+  // inputs, against its own stated ₹71.5K/month spend over a 20-year window
+  // — barely 7 years of funding. Client sign-off: keep the correct math
+  // (CHANGELOG-V6.md, 2026-07-21).
   const rm = 0.07 / 12,
     gm = 0.06 / 12,
     nm = 20 * 12;
