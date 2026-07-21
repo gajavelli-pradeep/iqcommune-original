@@ -1,7 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+# Not `/node_modules` — this is a pnpm workspace, so nested package dirs get
+# their own, and an anchored rule leaves those tracked.
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -22,19 +24,37 @@
 
 # misc
 .DS_Store
-*.pem
+Thumbs.db
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# secrets — this repo is pushed to a public remote
+#
+# `.env*` catches .env, .env.local, .env.production, .env.staging and anything
+# else added later. No negation, deliberately: this repo's .env.example has not
+# been read and verified value-free, and `git add -A` would publish it. Re-add
+# `!.env.example` only after confirming it carries names and no values.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.json
+service-account*.json
+secrets.*
+*.secret
 
-# vercel
+# vercel / supabase local state
 .vercel
+supabase/.branches/
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
@@ -46,3 +66,11 @@ next-env.d.ts
 # Playwright
 test-results/
 playwright-report/
+blob-report/
+.cache/
+
+# editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
