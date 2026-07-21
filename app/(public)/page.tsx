@@ -539,6 +539,10 @@ export default function HomePage() {
           max-width: 1100px; margin: 0 auto;
           display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
         }
+        /* Mockup renders this icon inline in a 1.7 line box; Tailwind preflight's
+           svg{display:block} collapses it and eats the gap above the title. */
+        .pool-role-icon { line-height: 1.7; }
+        .pool-role-icon svg { display: inline-block; vertical-align: baseline; }
         @media (max-width: 720px) {
           .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
           .hero-before { display: none; }
@@ -715,7 +719,7 @@ export default function HomePage() {
                   className="hover-lift"
                   style={{ background: "#f8f7f4", borderRadius: 10, padding: "0.75rem 0.9rem" }}
                 >
-                  <div style={{ color: "#8a6510", marginBottom: 5 }}>{role.icon}</div>
+                  <div className="pool-role-icon" style={{ color: "#8a6510", marginBottom: 5 }}>{role.icon}</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#14161d", marginBottom: 2 }}>
                     {role.title}
                   </div>
