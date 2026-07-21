@@ -93,7 +93,13 @@ export function StarRating({
         })}
       </div>
 
-      <p aria-live="polite" className="mt-2 text-base text-ink-muted">
+      {/* Two states, as the spec has: faint until a rating is chosen, gold
+          once it is. One colour for both loses the feedback the colour exists
+          to give. */}
+      <p
+        aria-live="polite"
+        className={`mt-2 text-base ${value === null ? "text-ink-faint" : "font-medium text-gold-dark"}`}
+      >
         {value === null ? "Tap a star to rate" : `${value} — ${RATING_LABELS[value]}`}
       </p>
     </div>

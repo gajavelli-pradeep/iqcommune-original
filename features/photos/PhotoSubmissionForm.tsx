@@ -100,11 +100,11 @@ export function PhotoSubmissionForm({
       ["Status", "✓ Received — pending review"],
     ];
     return (
-      <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-light text-green">
+      <section className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
+        <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-green-light text-green">
           <svg
-            width="24"
-            height="24"
+            width="34"
+            height="34"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

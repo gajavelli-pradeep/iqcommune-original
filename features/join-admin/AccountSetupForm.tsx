@@ -60,10 +60,10 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
   if (activated) {
     return (
       <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-light text-green">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-light text-green">
           <svg
-            width="24"
-            height="24"
+            width="26"
+            height="26"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

@@ -49,10 +49,10 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
   if (recordedAt) {
     return (
       <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-light text-green">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-light text-green">
           <svg
-            width="24"
-            height="24"
+            width="26"
+            height="26"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -125,7 +125,7 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
         <button
           type="submit"
           disabled={!confirmed || busy}
-          className="min-h-11 w-full rounded-md bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 w-full rounded-md bg-ink px-5 py-3.5 text-lg font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Recording…" : "Provide consent"}
         </button>
