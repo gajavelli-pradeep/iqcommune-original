@@ -1,0 +1,318 @@
+"use client";
+
+import { useRef, useState } from "react";
+
+import { TextField } from "@/components/ui/Field";
+
+import { AGREEMENT_CLAUSES } from "./agreement";
+import { SignaturePad, type Signature } from "./SignaturePad";
+
+/** P6 — review and sign the empanelment agreement. */
+
+export interface OnboardingPractitioner {
+  name: string;
+  role: string;
+  organisation: string;
+  module: string;
+  city: string;
+  agreementReference: string;
+}
+
+const STEPS = [
+  "Application submitted",
+  "Screening call done",
+  "Review & sign agreement",
+  "Empanelment confirmed",
+] as const;
+
+const CONFIRMATIONS = [
+  "You have read and understood the full Practitioner Empanelment Agreement above.",
+  "You agree to the terms as stated, including Clause 5 (in-session conduct) and Clause 4 (disclosure tiers).",
+  "You confirm that your details shown above are accurate.",
+  "You understand this agreement is legally binding and digitally timestamped.",
+] as const;
+
+function Stepper({ current }: { current: number }) {
+  return (
+    <ol className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
+      {STEPS.map((step, index) => (
+        <li key={step} className="flex items-center gap-2">
+          <span
+            className={`flex items-center gap-1.5 text-sm ${
+              index <= current ? "font-medium text-gold-dark" : "text-ink-faint"
+            }`}
+          >
+            {index < current ? (
+              <span aria-hidden>✓</span>
+            ) : (
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
+            )}
+            {step}
+          </span>
+          {index < STEPS.length - 1 ? (
+            <span aria-hidden className="text-ink-faint">
+              ›
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function OnboardingForm({ practitioner }: { practitioner: OnboardingPractitioner }) {
+  const [readToEnd, setReadToEnd] = useState(false);
+  const [fullName, setFullName] = useState(practitioner.name);
+  const [designation, setDesignation] = useState(practitioner.role);
+  const [signature, setSignature] = useState<Signature | null>(null);
+  const [signedAt, setSignedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string>();
+  const agreementRef = useRef<HTMLDivElement>(null);
+  const agreementDate = new Date().toLocaleDateString("en-IN", { dateStyle: "long" });
+
+  if (signedAt) {
+    return (
+      <section className="rounded-lg border border-border bg-surface p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-light text-green">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            aria-hidden
+            focusable="false"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <h1 className="mb-1 text-2xl font-semibold text-ink">
+          Agreement signed. Welcome to iqcommune.
+        </h1>
+        <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+          Your empanelment is confirmed. We&apos;ll be in touch with your first session details
+          within 2–3 working days. Keep an eye on your inbox.
+        </p>
+        <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
+          {(
+            [
+              ["Signed by", fullName],
+              ["Designation", designation],
+              ["Agreement ref.", practitioner.agreementReference],
+              ["Timestamp", signedAt],
+              ["Status", "✓ Digitally signed"],
+            ] as ReadonlyArray<[string, string]>
+          ).map(([label, value]) => (
+            <div
+              key={label}
+              className="flex items-baseline justify-between gap-4 border-b border-border py-2 last:border-b-0"
+            >
+              <dt className="text-sm text-ink-muted">{label}</dt>
+              <dd className="text-right text-base font-medium text-ink">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="rounded-lg border border-border bg-surface p-6">
+        <Stepper current={2} />
+        <p className="mb-1 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
+          Step 2 of 2
+        </p>
+        <h1 className="mb-2 text-3xl font-semibold text-ink">
+          Welcome to the iqcommune practitioner network.
+        </h1>
+        <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+          Your application has been reviewed and we&apos;d love to have you on board. Please review
+          your details below, read through the empanelment agreement carefully, and provide your
+          digital signature to complete the onboarding.
+        </p>
+        <dl className="grid gap-3 min-[480px]:grid-cols-2">
+          {(
+            [
+              ["Name", practitioner.name],
+              ["Current role", practitioner.role],
+              ["Organisation", practitioner.organisation],
+              ["Module assigned", practitioner.module],
+              ["City", practitioner.city],
+              ["Agreement reference", practitioner.agreementReference],
+            ] as ReadonlyArray<[string, string]>
+          ).map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-2xs uppercase tracking-caps text-ink-faint">{label}</dt>
+              <dd className="text-base font-medium text-ink">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-4 text-sm leading-[1.55] text-ink-faint">
+          If any detail above is incorrect, please reply to the email you received this link from
+          before proceeding.
+        </p>
+      </section>
+
+      <section className="mt-4 rounded-lg border border-border bg-surface p-6">
+        <h2 className="mb-1 text-2xl font-semibold text-ink">
+          iqcommune — Practitioner Empanelment Agreement
+        </h2>
+        <p className="mb-4 text-base text-ink-muted">
+          Please read the full agreement below before signing. You must scroll to the end to
+          proceed.
+        </p>
+
+        {/*
+          The agreement scrolls inside its own panel. `overscroll-contain` stops
+          a flick at the bottom from scrolling the page instead — on a phone that
+          is how someone skips the last clause without meaning to.
+        */}
+        <div
+          ref={agreementRef}
+          tabIndex={0}
+          aria-label="Practitioner Empanelment Agreement"
+          onScroll={(event) => {
+            const el = event.currentTarget;
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setReadToEnd(true);
+          }}
+          className="max-h-[420px] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface-soft px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+        >
+          {/* Literal capitals, not `uppercase`: the spec's own text is capitalised
+              and the parity gate compares characters, not rendered casing. */}
+          <p className="text-md font-semibold tracking-caps text-ink">
+            PRACTITIONER EMPANELMENT AGREEMENT
+          </p>
+          <p className="mb-4 text-sm text-ink-faint">Non-Exclusive · Confidential · India</p>
+
+          <dl className="mb-4 overflow-hidden rounded-md border border-border">
+            {(
+              [
+                ["Agreement Date", agreementDate],
+                ["Platform", "InvestQ Commune, operating as iqcommune (\"the Platform\")"],
+                ["Practitioner", practitioner.name],
+                ["Module(s)", practitioner.module],
+              ] as ReadonlyArray<[string, string]>
+            ).map(([label, value]) => (
+              <div key={label} className="flex border-b border-border last:border-b-0">
+                <dt className="w-[38%] shrink-0 bg-gold-light px-3 py-2 text-sm font-semibold text-gold-dark">
+                  {label}
+                </dt>
+                <dd className="flex-1 bg-surface px-3 py-2 text-sm font-medium text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mb-4 text-sm leading-[1.7] text-ink-muted">
+            This Agreement is entered into between the Platform and the Practitioner (individually
+            a &quot;Party&quot;, collectively the &quot;Parties&quot;). Together they agree to the
+            following terms governing the Practitioner&apos;s empanelment and participation in
+            iqcommune sessions.
+          </p>
+
+          {AGREEMENT_CLAUSES.map((clause) => (
+            <section key={clause.title}>
+              <h3 className="mb-2 mt-6 text-md font-semibold text-ink">{clause.title}</h3>
+              {clause.paragraphs.map((paragraph) => (
+                <p key={paragraph} className="mb-2 text-sm leading-[1.7] text-ink-muted">
+                  {paragraph}
+                </p>
+              ))}
+              {clause.highlights?.map((highlight) => (
+                <p
+                  key={highlight}
+                  className="my-3 rounded-r-md border-l-[3px] border-l-gold bg-gold-light px-4 py-3 text-sm leading-[1.65] text-gold-dark"
+                >
+                  {highlight}
+                </p>
+              ))}
+              {clause.subClauses?.map((sub) => (
+                <p key={sub} className="mb-1.5 pl-5 text-sm leading-[1.7] text-ink-muted">
+                  {sub}
+                </p>
+              ))}
+            </section>
+          ))}
+          <p className="mt-6 border-t border-border pt-4 text-center text-sm text-ink-faint">
+            — End of Agreement — · iqcommune (InvestQ Commune) · hello@iqcommune.com
+          </p>
+        </div>
+
+        <p className="mt-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint">
+          Scroll to read
+        </p>
+        <p aria-live="polite" className="mt-1 text-sm font-medium text-gold-dark">
+          {readToEnd
+            ? "✓ Agreement read. Please complete your signature below."
+            : "Please scroll through and read the full agreement above before you can proceed to sign."}
+        </p>
+      </section>
+
+      <form
+        className="mt-4 rounded-lg border border-border bg-surface p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!readToEnd) return setError("Please read the full agreement before signing.");
+          if (!fullName.trim()) return setError("Your full name is required.");
+          if (!signature) return setError("Please draw or type your signature.");
+          setError(undefined);
+          setSignedAt(
+            new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+          );
+        }}
+      >
+        <h2 className="mb-3 text-md font-semibold text-ink">By signing below, you confirm that:</h2>
+        <ul className="mb-5">
+          {CONFIRMATIONS.map((item) => (
+            <li
+              key={item}
+              className="mb-2 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
+            >
+              <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <TextField
+          label="Full name (as it should appear on the agreement)"
+          placeholder="Your full legal name"
+          value={fullName}
+          onChange={setFullName}
+        />
+        <TextField
+          label="Designation"
+          placeholder="e.g. Equity Analyst"
+          value={designation}
+          onChange={setDesignation}
+          hint="As per your current employment."
+        />
+
+        <SignaturePad fullName={fullName} onChange={setSignature} />
+
+        <p className="mb-4 text-sm text-ink-faint">
+          Digital timestamp: Auto-captured at submission
+        </p>
+
+        {error ? (
+          <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={!readToEnd}
+          className="min-h-11 w-full rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          I agree — sign & complete onboarding
+        </button>
+        <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
+          This action is irreversible. A copy of the signed agreement will be sent to your
+          registered email.
+        </p>
+      </form>
+    </>
+  );
+}
