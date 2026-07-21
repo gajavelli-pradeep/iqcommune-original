@@ -33,6 +33,17 @@ const KNOWN_TABS = [
 ];
 const DEFAULT_TAB = "practitioners";
 
+/**
+ * Tabs swap the page content but not the scroll position, so switching while
+ * scrolled left the new tab's heading above the viewport (measured: -96px from
+ * y=180). Opt-in motion — the glide only runs when the viewer hasn't asked for
+ * reduced motion; everyone else jumps.
+ */
+function scrollToTop() {
+  const glide = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+  window.scrollTo({ top: 0, behavior: glide ? "smooth" : "auto" });
+}
+
 export function AdminUIProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -54,13 +65,16 @@ export function AdminUIProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveTab = useCallback(
     (v: string) => {
-      setActiveTabState(v);
+      if (v !== activeTab) {
+        setActiveTabState(v);
+        scrollToTop();
+      }
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("tab", v);
       // Shallow URL update — no scroll jump, no server round-trip.
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams, activeTab]
   );
 
   const value = useMemo(
