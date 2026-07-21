@@ -57,6 +57,36 @@
   --color-gold-rule: rgba(201, 152, 42, 0.35);
   --color-gold-rule-strong: rgba(201, 152, 42, 0.8);
 
+  /* Tool widgets on the dark calculators band. Added with ToolsCalculators,
+     the first section to need an interactive surface on top of ink. */
+
+  --color-tool-card: rgba(255, 255, 255, 0.05);
+  --color-tool-card-hover: rgba(255, 255, 255, 0.09);
+  --color-tool-edge: rgba(255, 255, 255, 0.1);
+  --color-tool-edge-hover: rgba(201, 152, 42, 0.4);
+  --color-tool-well: rgba(0, 0, 0, 0.25);   /* inset widget panel */
+  --color-tool-box: rgba(0, 0, 0, 0.3);     /* result box inside the panel */
+  --color-tool-seam: rgba(201, 152, 42, 0.18);
+  --color-tool-seam-soft: rgba(201, 152, 42, 0.12);
+  --color-tool-chip: rgba(201, 152, 42, 0.12);
+  --color-tool-chip-edge: rgba(201, 152, 42, 0.3);
+
+  /* Result semantics on dark. Green = good, red = bad, gold = needs attention —
+     the same reservation the light palette uses, retuned for a dark ground. */
+  --color-result-good: #4ec994;
+  --color-result-bad: #e06c75;
+  --color-flag-good: rgba(78, 201, 148, 0.1);
+  --color-flag-good-edge: rgba(78, 201, 148, 0.25);
+  --color-flag-warn: rgba(201, 152, 42, 0.1);
+  --color-flag-warn-edge: rgba(201, 152, 42, 0.25);
+  --color-flag-bad: rgba(224, 108, 117, 0.1);
+  --color-flag-bad-edge: rgba(224, 108, 117, 0.25);
+
+  /* Budget split segments — categorical, not semantic. */
+  --color-seg-needs: #c9982a;
+  --color-seg-wants: #4a7abe;
+  --color-seg-savings: #4ec994;
+
   /* ── Type ────────────────────────────────────────────────────────────────
      DM Sans, wired in app/layout.tsx via next/font (self-hosted — no external
      request, so it survives the CSP and costs no extra round trip).

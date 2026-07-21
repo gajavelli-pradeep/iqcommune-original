@@ -6,6 +6,7 @@ import { Hero } from "@/features/landing/sections/Hero";
 import { Takeaways } from "@/features/landing/sections/Takeaways";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
 import { BundledSessions } from "@/features/landing/sections/BundledSessions";
+import { ToolsCalculators } from "@/features/landing/sections/ToolsCalculators";
 import { TrainingTopics } from "@/features/landing/sections/TrainingTopics";
 import { WhoIsThisFor } from "@/features/landing/sections/WhoIsThisFor";
 
@@ -30,6 +31,7 @@ export default function HomePage() {
         <HowItWorks />
         <Takeaways />
         <Faqs />
+        <ToolsCalculators />
       </main>
       <SiteFooter />
     </div>

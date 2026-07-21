@@ -266,4 +266,33 @@ for (const tier of TIERS) {
     await questions.nth(1).click();
     await expect(first).toHaveAttribute("aria-expanded", "false");
   });
+
+  test(`budget checker computes at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const card = page.locator("li").filter({ hasText: "50/30/20 Budget Checker" });
+    const slider = card.locator("input[type=range]");
+    await expect(slider).toHaveValue("60000");
+
+    // 50/30/20 of the default ₹60,000.
+    await expect(card.getByText("₹30K")).toBeVisible();
+    await expect(card.getByText("₹18K")).toBeVisible();
+    await expect(card.getByText("₹12K")).toBeVisible();
+
+    // Drivable from the keyboard, not just by dragging.
+    await slider.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(slider).toHaveValue("65000");
+    // ₹32,500 renders as ₹33K — the spec's formatter carries no decimals in the
+    // thousands range, only in lakhs and crores.
+    await expect(card.getByText("₹33K")).toBeVisible();
+
+    // The panel must not spill out of a narrow card.
+    const box = await card.boundingBox();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(tier.w + 1);
+    }
+  });
 }
