@@ -99,15 +99,19 @@ for (const tier of TIERS) {
     await expect(headline).toBeVisible();
     await expect(headline).toContainText("Real financial insights from active professionals");
 
+    // Scoped to the hero: every locator below must not drift onto later
+    // sections as the page grows.
+    const hero = page.locator("section").first();
+
     // Two columns above 720px, stacked below — the spec's own breakpoint.
-    const grid = page.locator("section > div.grid").first();
+    const grid = hero.locator("> div.grid").first();
     const columns = await grid.evaluate(
       (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
     );
     expect(columns, `expected ${tier.w >= 720 ? 2 : 1} column(s)`).toBe(tier.w >= 720 ? 2 : 1);
 
     // Every role card stays inside the viewport.
-    const cards = page.locator("section .rounded-md");
+    const cards = hero.locator(".rounded-md");
     const cardCount = await cards.count();
     expect(cardCount).toBe(4);
     for (let i = 0; i < cardCount; i++) {
@@ -129,12 +133,35 @@ for (const tier of TIERS) {
     await expect(page.getByRole("heading", { name: "Our Practitioners" })).toBeVisible();
 
     // Ten points total, none clipped.
-    const items = page.locator("section ul li");
+    const section = page.locator("section").filter({ hasText: "A practitioner is not a trainer" });
+    const items = section.locator("li");
     expect(await items.count()).toBe(10);
     for (let i = 0; i < 10; i++) {
       const box = await items.nth(i).boundingBox();
       if (!box) continue;
       expect(box.x + box.width, `point ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
     }
+  });
+
+  test(`audiences hold at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    for (const name of ["Groups", "Organisations & Institutions", "AMCs & Wealth Firms"]) {
+      await expect(page.getByRole("heading", { name })).toBeVisible();
+    }
+
+    // Every card and every sub-segment tag stays inside the viewport. Tags wrap
+    // freely, so this is where a long label would push the layout out.
+    const section = page.locator("section").filter({ hasText: "Who is this for" });
+    const items = section.locator("li");
+    for (let i = 0; i < (await items.count()); i++) {
+      const box = await items.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.x, `item ${i} off-screen left`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `item ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
+    }
+
+    await expect(page.getByText(/All sessions capped at 25 participants/)).toBeVisible();
   });
 }

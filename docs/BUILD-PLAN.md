@@ -31,7 +31,7 @@ by section until then; the only other reason to stop is a genuine problem that n
       - [ ] its "Request a Session" button ships with `RequestModal`
 - [x] `PoolStats` — delivered inside `Hero` as `PractitionerPoolCard`; the spec has them in one `<section>`
 - [x] `TrainerComparison` — 5 tests · 7 viewports · PARITY FIX: spec deletes the left column below 720px; both kept
-- [ ] `WhoIsThisFor`
+- [x] `WhoIsThisFor` — 5 tests · 7 viewports · 3 audience cards + 13 sub-segment tags, data-driven
 - [ ] `TrainingTopics`
 - [ ] `BundledSessions`
 - [ ] `HowItWorks`
