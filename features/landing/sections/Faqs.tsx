@@ -1,7 +1,4 @@
-"use client";
-
-import { useId, useState } from "react";
-import type { ReactNode } from "react";
+import { FaqAccordion, type Faq } from "@/components/ui/FaqAccordion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
 /**
@@ -16,7 +13,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
  * disclosure, not deletion — the parity gate must still find every word.
  */
 
-const FAQS: ReadonlyArray<{ question: string; answer: ReactNode }> = [
+const FAQS: ReadonlyArray<Faq> = [
   {
     question: "How do I register if I have a group?",
     answer:
@@ -99,29 +96,8 @@ const FAQS: ReadonlyArray<{ question: string; answer: ReactNode }> = [
   },
 ];
 
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      aria-hidden="true"
-      className={`shrink-0 text-ink-faint transition-transform duration-200 ${
-        open ? "rotate-180" : ""
-      }`}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
 
 export function Faqs() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const baseId = useId();
-
   return (
     <section className="bg-surface-soft px-4 py-20 sm:px-8">
       <div className="mx-auto max-w-page">
@@ -130,45 +106,7 @@ export function Faqs() {
           headline="Things people ask before they sign up."
           sub="Honest answers — no fine print."
         />
-
-        <ul className="mx-auto max-w-[780px]">
-          {FAQS.map((faq, index) => {
-            const open = openIndex === index;
-            const buttonId = `${baseId}-q${index}`;
-            const panelId = `${baseId}-a${index}`;
-            return (
-              <li
-                key={faq.question}
-                className="mb-3 overflow-hidden rounded-lg border border-border bg-surface"
-              >
-                <h3>
-                  <button
-                    type="button"
-                    id={buttonId}
-                    aria-expanded={open}
-                    aria-controls={panelId}
-                    onClick={() => setOpenIndex(open ? null : index)}
-                    className={`flex w-full items-center justify-between gap-4 px-[1.4rem] py-[1.1rem] text-left text-lg font-medium text-ink transition-colors hover:bg-surface-soft ${
-                      open ? "bg-surface-soft" : ""
-                    }`}
-                  >
-                    {faq.question}
-                    <ChevronIcon open={open} />
-                  </button>
-                </h3>
-                <div
-                  id={panelId}
-                  role="region"
-                  aria-labelledby={buttonId}
-                  hidden={!open}
-                  className="border-t border-border px-[1.4rem] pt-4 pb-[1.1rem] text-md leading-[1.7] text-ink-muted"
-                >
-                  {faq.answer}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <FaqAccordion faqs={FAQS} />
       </div>
     </section>
   );

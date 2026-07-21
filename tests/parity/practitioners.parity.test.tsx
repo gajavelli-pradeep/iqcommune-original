@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { ApplyModal } from "@/features/practitioners/ApplyModal";
 import { PractitionerSections } from "@/features/practitioners/PractitionerSections";
 
 import { extractSpecEntries, readSpec, renderedHaystack } from "./extract";
@@ -28,7 +29,10 @@ function report(label: string, items: readonly string[]): string {
 describe("content parity — P2 `/practitioners` against iqcommune-empanelment.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-empanelment.html"));
   const { container } = render(<PractitionerSections />);
-  const haystack = renderedHaystack(container);
+  // The application form only exists once its dialog is open, so the gate opens
+  // it rather than declaring the whole form "pending" — it has shipped.
+  const dialog = render(<ApplyModal open onClose={() => {}} />);
+  const haystack = `${renderedHaystack(container)} ${renderedHaystack(dialog.container)}`;
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));
   const claimed = new Set<PendingUnit>();

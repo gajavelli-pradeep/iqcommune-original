@@ -3,8 +3,14 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
-import { ApplyButton } from "./ApplyButton";
+import { ApplyButton, ApplyProvider } from "./ApplyModal";
+import { ApplyCta } from "./sections/ApplyCta";
+import { DisclosureCards } from "./sections/DisclosureCards";
 import { DivisionOfWork } from "./sections/DivisionOfWork";
+import { Faqs } from "./sections/Faqs";
+import { FitLists } from "./sections/FitLists";
+import { ModulesGrid } from "./sections/ModulesGrid";
+import { TrustBar } from "./sections/TrustBar";
 import { Hero } from "./sections/Hero";
 import { ProcessSteps } from "./sections/ProcessSteps";
 import { RolesGrid } from "./sections/RolesGrid";
@@ -17,7 +23,8 @@ import { RolesGrid } from "./sections/RolesGrid";
  */
 export function PractitionerSections() {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <ApplyProvider>
+      <div className="flex min-h-dvh flex-col">
       <SiteHeader
         badge={["Practitioner", "Network"] as const}
         right={
@@ -31,11 +38,18 @@ export function PractitionerSections() {
       />
       <main className="flex-1">
         <Hero apply={<ApplyButton />} />
+        <TrustBar />
         <RolesGrid />
         <ProcessSteps />
         <DivisionOfWork />
+        <ModulesGrid />
+        <FitLists />
+        <DisclosureCards />
+        <ApplyCta apply={<ApplyButton label="Apply to join the Network" />} />
+        <Faqs />
       </main>
       <SiteFooter tagline="practitioner network" email="practitioners@iqcommune.com" top={false} />
-    </div>
+      </div>
+    </ApplyProvider>
   );
 }
