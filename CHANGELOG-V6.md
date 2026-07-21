@@ -55,6 +55,38 @@ menu anchored ±0.3px); 0 console errors; `eslint app components` clean.
 
 ---
 
+## [2026-07-21] Audit — Tools & Calculators, live-state parity with the V6 prototype
+
+Ran the prototype from a local server alongside the app and read both widgets' rendered
+output (`t1`–`t6` DOM ids vs `ToolsSection.tsx`), rather than only diffing static markup —
+most of this section's text is generated at runtime and is invisible to a source diff.
+All six seeds, every label, every insight sentence and the P/E verdict thresholds match.
+Three deviations found:
+
+- **P/E Quick-Check dropped the whole-number case.** The prototype's `fmtN` prints `20×`
+  when the ratio lands on an integer and `20.5×` otherwise; the app used `toFixed(1)`
+  unconditionally, so it read **`20.0×`** in both the box and the sentence ("P/E of 20.0× is
+  in line with market…"). Ported `fmtN`.
+- **SIP Growth bars lost their tooltips.** The prototype sets `title="₹2.7L"` … on each of
+  the 10 bars, so hovering reads the corpus at that year. The app rendered bare divs.
+  Restored — the 10 titles now match the prototype's exactly.
+
+Kept **deliberately different** (both are corrections, not drift — reverting either is a
+one-line change if the client wants byte-parity with the prototype):
+
+- **Retirement Corpus — the prototype's formula is wrong.** It raises the *annual* rate ratio
+  to a *monthly* exponent — `Math.pow(1.07/1.06, -240)` — then divides by 12 to compensate.
+  The app uses the growing-annuity PV with all three terms monthly. On the default inputs the
+  prototype shows **₹64.0L corpus / ₹2K SIP**; the app shows **₹1.5Cr / ₹6K**. Sanity check:
+  the assumed spend at retirement is ₹71.5K/month for a 20-year window — ₹64L funds barely
+  7 years of it, so the prototype under-states the corpus ~2.4×. A calculator on a financial-
+  literacy site that under-states a retirement target is a client-facing correctness problem,
+  so the corrected math stays.
+- **"an Aggressive profile".** The prototype interpolates `a ${label}` and renders "a
+  Aggressive profile"; the app special-cases the article.
+
+---
+
 ## [2026-07-21] Fix — landing-page copy drift vs the V6 prototype
 
 Full text diff of the rendered landing page against

@@ -10,6 +10,11 @@ function fmt(n: number): string {
   return "₹" + Math.round(n).toLocaleString("en-IN");
 }
 
+/** Ratios drop the decimal when they land on a whole number: 20×, not 20.0×. */
+function fmtN(n: number, dec = 1): string {
+  return n % 1 === 0 ? n.toFixed(0) : n.toFixed(dec);
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const WIDGET_BG = "rgba(0,0,0,0.25)";
@@ -361,10 +366,10 @@ function PEValuation() {
     pe === null
       ? ""
       : pe < 15
-        ? `P/E of ${pe.toFixed(1)}× is below 15 — trading at a discount to the market. Worth investigating why.`
+        ? `P/E of ${fmtN(pe)}× is below 15 — trading at a discount to the market. Worth investigating why.`
         : pe <= 28
-          ? `P/E of ${pe.toFixed(1)}× is in line with market. Valuation is not the edge here — earnings quality is.`
-          : `P/E of ${pe.toFixed(1)}× is above 28 — priced for significant growth. Any miss will be punished.`;
+          ? `P/E of ${fmtN(pe)}× is in line with market. Valuation is not the edge here — earnings quality is.`
+          : `P/E of ${fmtN(pe)}× is above 28 — priced for significant growth. Any miss will be punished.`;
   return (
     <div
       style={{
@@ -404,7 +409,7 @@ function PEValuation() {
         >
           <Box
             label="P/E Ratio"
-            value={pe !== null ? pe.toFixed(1) + "×" : "N/A"}
+            value={pe !== null ? fmtN(pe) + "×" : "N/A"}
           />
           <Box label="Market avg" value="22×" />
           <div
@@ -628,21 +633,17 @@ function SipVisualiser() {
   const gains = corpus - invested;
 
   const steps = Math.min(yrs, 10);
-  const bars: { h: number; isLast: boolean }[] = [];
-  let maxVal = 0;
   const vals: number[] = [];
   for (let y = 1; y <= steps; y++) {
     const ny = Math.round((y * yrs) / steps) * 12;
-    const c = sip * ((Math.pow(1 + r, ny) - 1) / r) * (1 + r);
-    vals.push(c);
-    if (c > maxVal) maxVal = c;
+    vals.push(sip * ((Math.pow(1 + r, ny) - 1) / r) * (1 + r));
   }
-  vals.forEach((v, i) =>
-    bars.push({
-      h: Math.max(4, Math.round((v / maxVal) * 36)),
-      isLast: i === vals.length - 1,
-    }),
-  );
+  const maxVal = Math.max(...vals);
+  const bars = vals.map((v, i) => ({
+    h: Math.max(4, Math.round((v / maxVal) * 36)),
+    isLast: i === vals.length - 1,
+    label: fmt(v),
+  }));
 
   return (
     <div
@@ -706,6 +707,7 @@ function SipVisualiser() {
           {bars.map((b, i) => (
             <div
               key={i}
+              title={b.label}
               style={{
                 flex: 1,
                 height: b.h,
