@@ -35,7 +35,7 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `TrainingTopics` — 4 tests · 7 viewports · 6 modules, 3→2→1 columns at the spec breakpoints
 - [x] `BundledSessions` — 5 tests · 7 viewports · 3 pairings as ordered lists, duration chips never squeezed
 - [x] `HowItWorks` — 4 tests · 7 viewports · ordered list, 52px numeral circles hold shape
-- [ ] `Takeaways`
+- [x] `Takeaways` — 4 tests · 6 cards × 4 deliverables · shortened titles preserved as written
 - [ ] `Faqs`
 - [ ] `ToolsCalculators`
 - [ ] `Gallery` *(drives F2)*
