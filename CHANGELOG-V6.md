@@ -8,6 +8,48 @@ Earlier work (V5 and before): `CHANGELOG-V5.md`.
 
 ---
 
+## [2026-07-21] Size system — tokens, one Button, and a warning ratchet
+
+Buttons were inconsistent because nothing made them consistent. Colour has had tokens **and**
+an ESLint guard since the 2026-06-24 audit; size and spacing had neither, so the repo carried
+**1,593 inline style objects, 162 distinct padding literals**, 23 font sizes, 13 radii, and
+**5 distinct button variants on a single console tab** — including a 32px and a 34px pill
+nobody chose. Fixed the system, not the buttons.
+
+- **Tokens** (`globals.css` `:root`): `--space-1..6`, `--radius-pill`, `--control-h-sm|md|lg`,
+  `--text-xs|sm|md|lg`. Measured, not invented: console buttons cluster at h25–30 / h34–38 /
+  h41–48 and the dominant button radius is the 100px pill. `--control-h-lg` is 44px so the
+  large size is tappable by construction.
+- **`components/shared/Button.tsx`** — `size` (sm/md/lg) × `variant` (solid/brand/ghost/danger).
+  Variants are named for appearance, not importance, so they don't collide with
+  `RowActionsInline`'s existing `primary`(=gold) vocabulary. `brand` keeps the ink label on
+  gold — white on gold fails AA.
+- **Gate**: a scoped custom rule `iq/no-size-literals` warns on raw
+  `padding`/`fontSize`/`borderRadius` inside a JSX `style={{}}`. It is its own rule name, not a
+  second `no-restricted-syntax` block — flat config is last-one-wins per rule, so reusing that
+  key would have **silently disabled the colour guard**. Verified: a banned hex still errors.
+- **Ratchet**: `lint` pins `--max-warnings 1455` (the measured baseline), so the count can only
+  go down. Verified both directions — one new raw literal turns lint red, reverting turns it
+  green. New code uses `<Button>` or a token; old code converts when touched. No bulk migration:
+  a PR touching 66 files could not be reviewed.
+
+Also fixed a pre-existing lint **error** (`const module` shadowing in
+`scripts/seed-agreements-confirmations.mjs`) that had been keeping `npm run lint` red — a gate
+that can never go green enforces nothing.
+
+Runtime-verified across all 14 size × variant combinations: heights land exactly on the tokens
+(28/36/44, distinct on a fine pointer), pill radius, disabled at 0.55 + `not-allowed`, `block`
+fills its container, and **every button meets the 44px floor under `any-pointer: coarse`**.
+
+That floor needed `!important`: `Button` sets `minHeight` inline from its size token and an
+inline style beats a stylesheet rule — measured, `sm` stayed 28px without it. Worth recording
+how it was nearly missed: the fix looked broken for three reloads because Turbopack served a
+**stale CSS chunk that survived a full dev-server restart**; only `rm -rf .next` picked it up.
+A CSS change that "doesn't work" in dev is worth re-checking against a cold cache before
+believing it.
+
+---
+
 ## [2026-07-21] Fix — the comparison table lost half the comparison on a phone
 
 Found by strengthening the parity test rather than by looking. The first version compared

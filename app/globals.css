@@ -77,6 +77,33 @@
   --shadow-focus: 0 0 0 3px rgba(201, 152, 42, 0.16);
   --admin-nav-h: 64px;
   --admin-sidebar-w: 220px;
+
+  /* ── Size scale ───────────────────────────────────────────────────────────
+     Colour has had tokens and a lint guard since the 2026-06-24 audit; size and
+     spacing had neither, which is why the repo carries 162 distinct padding
+     literals, 23 font sizes and 13 radii across 1,593 inline style objects.
+     These values are measured, not invented: buttons in the running console fall
+     into three clusters (h25-30 / h34-38 / h41-48) and the dominant button radius
+     is the 100px pill. See PLAN-control-size-system.md. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  --radius-pill: 100px;
+
+  /* Control heights. --control-h-lg is 44px because that is the coarse-pointer
+     touch floor, so the large size is tappable by construction. */
+  --control-h-sm: 28px;
+  --control-h-md: 36px;
+  --control-h-lg: 44px;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
   /* V6 pixel-match: solid mid-tones (mockup uses these as pill borders). */
   --ink-m: #4a4d5c;
   --ink-f: #9496a1;
@@ -259,6 +286,11 @@ a {
 @media (any-pointer: coarse) {
   .nav-hamburger { min-width: 44px; min-height: 44px; }
   .iq-tap        { min-height: 44px; }
+  /* Every <Button> carries .iq-btn, so a `size="sm"` control is still tappable on
+     a phone without each caller having to remember the floor. !important is
+     required: Button sets minHeight inline from its size token, and an inline
+     style beats a stylesheet rule — measured, sm stayed 28px without it. */
+  .iq-btn        { min-height: 44px !important; }
 }
 
 /* 320px hero clipping: `.hero-left` is a grid item, so its default `min-width:auto`

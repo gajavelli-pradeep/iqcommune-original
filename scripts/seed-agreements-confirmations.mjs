@@ -36,10 +36,10 @@ for (let i = 0; i < Math.min(3, pracs.length); i++) {
   const ref = `IQC-EMP-90${String(i + 1).padStart(2, "0")}`;
   const { data: existing } = await db.from("agreements").select("id").eq("ref_code", ref).maybeSingle();
   if (existing) { console.log(`agreement ${ref}: exists, skip`); continue; }
-  const module = (p.modules && p.modules[0]) || "Personal Finance";
+  const moduleName = (p.modules && p.modules[0]) || "Personal Finance";
   const path = `${ref}.pdf`;
   const bytes = pdfBytes("Empanelment Agreement", [
-    `Practitioner: ${p.name}`, `Reference: ${ref}`, `Module: ${module}`,
+    `Practitioner: ${p.name}`, `Reference: ${ref}`, `Module: ${moduleName}`,
     `Signed on: 12 Jun 2026`, `Method: typed`, `Status: Active`,
   ]);
   const up = await db.storage.from("agreements").upload(path, bytes, { contentType: "application/pdf", upsert: true });
