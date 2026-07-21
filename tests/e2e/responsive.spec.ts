@@ -210,4 +210,30 @@ for (const tier of TIERS) {
 
     await expect(section.getByText(/minimum of 9 participants/)).toBeVisible();
   });
+
+  test(`process steps hold at ${tier.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: tier.w, height: tier.h });
+    await page.goto("/");
+
+    const section = page.locator("section").filter({ hasText: "How it works." });
+    const steps = section.locator("ol > li");
+    expect(await steps.count()).toBe(4);
+
+    for (let i = 0; i < 4; i++) {
+      const box = await steps.nth(i).boundingBox();
+      if (!box) continue;
+      expect(box.x, `step ${i} off-screen left`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `step ${i} past right edge`).toBeLessThanOrEqual(tier.w + 1);
+    }
+
+    // The numeral circles are fixed 52px and must never be squashed into
+    // ellipses by a narrow column.
+    const circles = section.locator("ol > li > span");
+    for (let i = 0; i < 4; i++) {
+      const box = await circles.nth(i).boundingBox();
+      if (!box) continue;
+      expect(Math.round(box.width), `circle ${i} width`).toBe(52);
+      expect(Math.round(box.height), `circle ${i} height`).toBe(52);
+    }
+  });
 }

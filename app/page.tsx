@@ -1,5 +1,6 @@
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { HowItWorks } from "@/features/landing/sections/HowItWorks";
 import { Hero } from "@/features/landing/sections/Hero";
 import { TrainerComparison } from "@/features/landing/sections/TrainerComparison";
 import { BundledSessions } from "@/features/landing/sections/BundledSessions";
@@ -24,6 +25,7 @@ export default function HomePage() {
         <WhoIsThisFor />
         <TrainingTopics />
         <BundledSessions />
+        <HowItWorks />
       </main>
       <SiteFooter />
     </div>

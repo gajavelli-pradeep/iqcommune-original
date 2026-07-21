@@ -34,7 +34,7 @@ by section until then; the only other reason to stop is a genuine problem that n
 - [x] `WhoIsThisFor` — 5 tests · 7 viewports · 3 audience cards + 13 sub-segment tags, data-driven
 - [x] `TrainingTopics` — 4 tests · 7 viewports · 6 modules, 3→2→1 columns at the spec breakpoints
 - [x] `BundledSessions` — 5 tests · 7 viewports · 3 pairings as ordered lists, duration chips never squeezed
-- [ ] `HowItWorks`
+- [x] `HowItWorks` — 4 tests · 7 viewports · ordered list, 52px numeral circles hold shape
 - [ ] `Takeaways`
 - [ ] `Faqs`
 - [ ] `ToolsCalculators`
