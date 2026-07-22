@@ -73,6 +73,7 @@
   --color-on-dark-strong: rgba(255, 255, 255, 0.7);   /* wordmark */
   --color-on-dark-bright: rgba(255, 255, 255, 0.75);  /* link hover */
   --color-on-dark-divider: rgba(255, 255, 255, 0.07);
+  --color-on-dark-edge: rgba(255, 255, 255, 0.25);   /* outlined controls on ink (footer pill) */
 
   --color-gold-bright: #f0c84a;                       /* gold hover on dark */
   --color-gold-rule: rgba(201, 152, 42, 0.35);

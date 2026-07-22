@@ -36,12 +36,12 @@ export function SiteFooter({
   return (
     <footer className="bg-ink-deep px-8 py-8 text-center text-base text-on-dark-muted">
       <div className="mx-auto max-w-page">
-        {top === false ? null : (
+        {top === false ? null : top !== true ? (
+          /* A custom CTA (the practitioner site's "See iqcommune for Learners"
+             pill). V7 centres it with a small gap and no divider. */
+          <div className="mb-3 flex justify-center">{top}</div>
+        ) : (
         <div className="mb-5 border-b border-on-dark-divider pb-6">
-          {top !== true ? (
-            top
-          ) : (
-          <>
           <p className="mb-2 text-sm font-semibold uppercase tracking-caps text-gold">
             Are you a finance professional?
           </p>
@@ -56,8 +56,6 @@ export function SiteFooter({
             Teach what you practise — join the iqcommune practitioner network
             <ArrowRightIcon className="ml-[7px] inline-block align-middle" />
           </Link>
-          </>
-          )}
         </div>
         )}
 

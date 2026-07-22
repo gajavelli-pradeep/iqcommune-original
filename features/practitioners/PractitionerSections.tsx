@@ -78,7 +78,8 @@ export function PractitionerSections() {
         top={
           <Link
             href="/"
-            className="inline-flex items-center rounded-md border border-on-dark-divider px-4 py-2 text-md font-medium text-on-dark-bright transition-colors hover:border-on-dark-muted hover:text-surface"
+            // V7 .footer-btn: outlined white pill on the dark footer.
+            className="inline-flex items-center rounded-full border border-on-dark-edge px-5 py-[9px] text-base font-medium text-on-dark-bright transition-[background-color,border-color,color] hover:border-on-dark-muted hover:bg-tool-card-hover hover:text-surface"
           >
             See iqcommune for Learners
           </Link>
