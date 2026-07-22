@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { dispatchEmail } from "@/lib/email/dispatch";
 import {
+  adminInvite,
   applicationRejected,
   consentRequest,
   onboardingLink,
@@ -20,6 +21,7 @@ import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
 import { requireCapability } from "./requireRole";
+import { toConsoleRole } from "./roles";
 
 /**
  * Console mutations (audit C6). Every one:
@@ -930,6 +932,139 @@ export async function recordRatingManually(
     entityType: "assignment",
     entityRef: assignmentId,
     detail: `${rating}/5, from a verbal report.`,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
+// ── Team & access (V7 tab 9) ────────────────────────────────────────────────
+
+/** How long an invite link stays usable. */
+const INVITE_TTL_HOURS = 72;
+
+/**
+ * Invites someone into the console.
+ *
+ * `manageTeam`, not `mutate`: handing out console access is a different power
+ * from progressing records, and V7 marks the whole invite box `role-team` for
+ * the same reason. A Global Admin is the only role that can widen the set of
+ * people who can see this data.
+ *
+ * The invite is a row plus a signed link. The row is what makes it single-use —
+ * a token cannot be revoked before it expires (ADR 0004), so consumption has to
+ * be recorded somewhere the loader checks.
+ */
+export async function inviteTeamMember(email: string, role: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("manageTeam");
+
+  const address = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+    return { ok: false, message: "Enter a valid email address." };
+  }
+
+  const consoleRole = toConsoleRole(role);
+  if (!consoleRole) return { ok: false, message: `Unknown role: ${role}.` };
+
+  const supabase = createAdminClient();
+
+  // An address that already has an account does not need an invite, and
+  // sending one would imply it worked.
+  const { data: accounts } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (accounts?.users.some((user) => user.email?.toLowerCase() === address)) {
+    return { ok: false, message: `${address} already has a console account.` };
+  }
+
+  const { data: open } = await supabase
+    .from("admin_invites")
+    .select("id")
+    .eq("email", address)
+    .is("consumed_at", null)
+    .is("deleted_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (open) {
+    return { ok: false, message: `${address} already has an invite waiting.` };
+  }
+
+  const expiresAt = new Date(Date.now() + INVITE_TTL_HOURS * 3600_000).toISOString();
+  const { data: invite, error } = await supabase
+    .from("admin_invites")
+    .insert({ email: address, role: consoleRole, invited_by: actor ?? null, expires_at: expiresAt })
+    .select("id")
+    .single();
+  if (error) throw new Error(`invite failed: ${error.message}`);
+
+  dispatchEmail(newTraceId(), adminInvite(address, invite.id as string));
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "team.invited",
+    entityType: "invite",
+    entityRef: invite.id as string,
+    detail: `${address} invited as ${consoleRole}.`,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
+/**
+ * Removes a console account, or withdraws an invite that has not been used.
+ *
+ * The last Global Admin cannot be removed: an account nobody can administer is
+ * unrecoverable without going round the app to the service key, and this
+ * control is one mis-click away from that.
+ */
+export async function removeTeamMember(id: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("manageTeam");
+  const supabase = createAdminClient();
+
+  if (id.startsWith("invite:")) {
+    const inviteId = id.slice("invite:".length);
+    const { error } = await supabase
+      .from("admin_invites")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", inviteId)
+      .is("deleted_at", null);
+    if (error) throw new Error(`withdrawing the invite failed: ${error.message}`);
+
+    await recordActivity({
+      actorEmail: actor,
+      action: "team.invite_withdrawn",
+      entityType: "invite",
+      entityRef: inviteId,
+    });
+    revalidateConsole();
+    return { ok: true };
+  }
+
+  const { data: accounts, error: listError } = await supabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+  if (listError) throw new Error(`team read failed: ${listError.message}`);
+
+  const target = accounts?.users.find((user) => user.id === id);
+  if (!target) return { ok: false, message: "That account no longer exists." };
+
+  const globalAdmins = (accounts?.users ?? []).filter(
+    (user) => toConsoleRole(user.app_metadata?.role) === "global_admin",
+  );
+  if (globalAdmins.length <= 1 && toConsoleRole(target.app_metadata?.role) === "global_admin") {
+    return {
+      ok: false,
+      message: "This is the only Global Admin — promote someone else before removing them.",
+    };
+  }
+
+  const { error } = await supabase.auth.admin.deleteUser(id);
+  if (error) throw new Error(`removing the account failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "team.removed",
+    entityType: "account",
+    entityRef: id,
+    detail: target.email ?? undefined,
   });
   revalidateConsole();
   return { ok: true };

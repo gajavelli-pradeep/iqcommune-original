@@ -10,11 +10,13 @@ import {
   listConsents,
   listGallery,
   listPayouts,
+  listMasterData,
   listPhotoGuideSessions,
   listPhotoSubmissions,
   listPractitioners,
   listSessionRequests,
   listSessions,
+  listTeam,
 } from "@/services/console";
 
 import { can, type ConsoleRole } from "../roles";
@@ -79,10 +81,14 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
   // Read once here rather than per row, and degrade to an empty list rather
   // than failing the panel — an admin with no select is still better than a
   // panel that will not load.
-  const [assignable, confirmable, photoGuideSessions] = await Promise.all([
+  const [assignable, confirmable, photoGuideSessions, team, masterData] = await Promise.all([
     listAssignablePractitioners().catch(() => []),
     listConfirmableSessions().catch(() => []),
     listPhotoGuideSessions().catch(() => []),
+    // Team is a privileged read (it lists every console account), so only a
+    // role that can manage the team triggers it.
+    can(role, "manageTeam") ? listTeam().catch(() => []) : Promise.resolve([]),
+    listMasterData().catch(() => []),
   ]);
 
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
@@ -118,7 +124,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     photos: photos.node,
     payouts: payouts.node,
     gallery: gallery.node,
-    settings: <SettingsPanel />,
+    settings: <SettingsPanel role={role} team={team} masterData={masterData} />,
   };
   const counts: Record<string, number> = {
     practitioners: practitioners.count,

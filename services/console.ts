@@ -1,5 +1,6 @@
 import "server-only";
 
+import { toConsoleRole, type ConsoleRole } from "@/constants/roles";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -851,6 +852,119 @@ const money = (amount: number, currency: string) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     amount,
   );
+
+// ── Team & access (V7 tab 9) ────────────────────────────────────────────────
+
+/**
+ * One row of the Team & Access table.
+ *
+ * Two kinds of person live here: accounts that exist, and invites that have
+ * been sent and not yet used. V7 lists both, and it should — an invite nobody
+ * accepted is the reason a colleague "can't get in", and a table that only
+ * showed real accounts would make that invisible.
+ */
+export interface TeamMemberRow {
+  id: string;
+  name: string;
+  email: string;
+  role: ConsoleRole;
+  roleLabel: string;
+  lastActive: string;
+  /** A sent invite rather than an account. */
+  pending: boolean;
+  /** A pending invite past its expiry — the link no longer works. */
+  expired: boolean;
+}
+
+const ROLE_LABEL: Record<ConsoleRole, string> = {
+  global_admin: "Global Admin",
+  admin: "Admin",
+  user: "User",
+};
+
+export async function listTeam(): Promise<TeamMemberRow[]> {
+  const supabase = createAdminClient();
+
+  const [accounts, invites] = await Promise.all([
+    supabase.auth.admin.listUsers({ page: 1, perPage: 200 }),
+    supabase
+      .from("admin_invites")
+      .select("id, email, role, expires_at, consumed_at, created_at")
+      .is("deleted_at", null)
+      .is("consumed_at", null)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .limit(200),
+  ]);
+
+  if (accounts.error) throw new Error(`team read failed: ${accounts.error.message}`);
+
+  const rows: TeamMemberRow[] = [];
+
+  for (const user of accounts.data?.users ?? []) {
+    // Only accounts with a console role belong here. `app_metadata` is the
+    // only trustworthy source — `user_metadata` is writable by the account it
+    // describes.
+    const role = toConsoleRole(user.app_metadata?.role);
+    if (!role) continue;
+
+    rows.push({
+      id: user.id,
+      name: (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "—",
+      email: user.email ?? "—",
+      role,
+      roleLabel: ROLE_LABEL[role],
+      lastActive: user.last_sign_in_at ? dateTime(user.last_sign_in_at) : "Never signed in",
+      pending: false,
+      expired: false,
+    });
+  }
+
+  const now = Date.now();
+  for (const invite of invites.data ?? []) {
+    const role = toConsoleRole(invite.role) ?? "user";
+    rows.push({
+      id: `invite:${invite.id}`,
+      name: "—",
+      email: invite.email,
+      role,
+      roleLabel: ROLE_LABEL[role],
+      lastActive: "—",
+      pending: true,
+      expired: new Date(invite.expires_at).getTime() < now,
+    });
+  }
+
+  return rows.sort((a, b) => a.email.localeCompare(b.email));
+}
+
+/**
+ * Practitioner master data — V7's "quick reference for offline contact".
+ *
+ * Deliberately five fields and no more. V7 says why in its own subtitle: full
+ * profiles live under Practitioners, and this exists to be searched, sorted and
+ * exported when someone needs to phone a practitioner.
+ */
+export interface MasterDataRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  state: string;
+}
+
+export async function listMasterData(): Promise<MasterDataRow[]> {
+  const practitioners = await listPractitioners();
+  return practitioners.map((row) => ({
+    id: row.id,
+    name: row.name,
+    phone: row.phone ?? "—",
+    email: row.email,
+    city: row.city,
+    state: row.state ?? "—",
+  }));
+}
 
 // ── Activity log (audit M9) ─────────────────────────────────────────────────
 
