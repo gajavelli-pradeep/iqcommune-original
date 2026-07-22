@@ -67,6 +67,8 @@
      client wants the original value. */
 
   --color-ink-deep: #080a0e;                          /* footer surface */
+  --color-gallery-bg: #0a0a0a;                        /* gallery section + nav (near-black, distinct from ink) */
+  --color-gallery-slide: #1a1a1a;                     /* gallery slide well + caption chip base */
   --color-on-dark-faint: rgba(255, 255, 255, 0.35);   /* decorative hero note / eyebrow on ink — not body copy */
   --color-on-dark-muted: rgba(255, 255, 255, 0.5);    /* body + links — 5.31:1 */
   --color-on-dark: rgba(255, 255, 255, 0.65);         /* CTA link */

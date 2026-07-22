@@ -1,13 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { RequestSessionProvider } from "../RequestSession";
 import { Gallery } from "./Gallery";
 
-// Gallery embeds a <SubmitPhotosButton>, which reads the landing dialog context.
-const withProvider = (ui: ReactNode) =>
-  render(<RequestSessionProvider>{ui}</RequestSessionProvider>);
+// Gallery renders a self-contained carousel (GalleryCarousel) — no dialog context.
+const withProvider = (ui: React.ReactNode) => render(ui);
 
 /**
  * The gallery distinguishes an outage from an empty database on purpose: a
