@@ -74,7 +74,7 @@ export function RolesGrid() {
           }
           sub="We don't shortlist by credentials alone. What qualifies you is that you're actively doing the work — right now."
         />
-        <ul className="mt-8 grid grid-cols-2 gap-4 min-[720px]:grid-cols-3">
+        <ul className="mt-8 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 min-[720px]:grid-cols-3">
           {ROLES.map((role) => (
             <li
               key={role.title}
