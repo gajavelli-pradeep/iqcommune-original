@@ -401,35 +401,89 @@ export async function listAgreements(): Promise<AgreementRow[]> {
 
 // ── Sessions ────────────────────────────────────────────────────────────────
 
+/**
+ * One row of the Session Details dashboard.
+ *
+ * V7 shows only Confirmed and Completed sessions here — a session that is still
+ * Pending has no delivery to report on, and this tab is the delivery view.
+ */
 export interface SessionRow {
   id: string;
+  /** The assignment, which is what a rating and a payout hang off. */
+  assignmentId: string | null;
   reference: string;
   module: string;
   sessionDate: string;
-  location: string;
-  spoc: string;
+  requester: string;
+  requesterOrganisation: string | null;
+  practitioner: string;
+  audience: string;
+  participants: string | null;
+  grossPayout: string | null;
   status: string;
+  /** 1–5 once the requestor has rated it, else `null`. */
+  rating: number | null;
+  /** Set when an admin keyed the rating in from a verbal report. */
+  ratingRecordedBy: string | null;
 }
 
 export async function listSessions(): Promise<SessionRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("sessions")
-    .select("id, reference, module, session_date, city, state, spoc_name, status")
+    .select(
+      "id, reference, module, session_date, city, state, spoc_name, audience, participants, status, session_requests ( first_name, last_name, organisation_name ), session_practitioners ( id, gross_payout, currency, deleted_at, practitioners ( full_name ), session_ratings ( rating, recorded_by ) )",
+    )
     .is("deleted_at", null)
-    .order("session_date", { ascending: false });
+    // The delivery view: a Pending session has nothing to report yet.
+    .in("status", ["Confirmed", "Completed", "Delivered", "Scheduled"])
+    .order("session_date", { ascending: false, nullsFirst: false })
+    .limit(500);
 
   if (error) throw new Error(`sessions read failed: ${error.message}`);
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    reference: row.reference,
-    module: row.module,
-    sessionDate: date(row.session_date),
-    location: [row.city, row.state].filter(Boolean).join(", "),
-    spoc: row.spoc_name,
-    status: row.status,
-  }));
+  return (data ?? []).map((row) => {
+    const request = one<{
+      first_name: string;
+      last_name: string;
+      organisation_name: string | null;
+    }>(row.session_requests);
+
+    const assignments = ((row.session_practitioners ?? []) as Array<{
+      id: string;
+      gross_payout: number;
+      currency: string;
+      deleted_at: string | null;
+      practitioners: unknown;
+      session_ratings: unknown;
+    }>).filter((assignment) => !assignment.deleted_at);
+
+    const assignment = assignments[0];
+    const practitioner = assignment ? one<{ full_name: string }>(assignment.practitioners) : null;
+    const rating = assignment
+      ? one<{ rating: number; recorded_by: string | null }>(assignment.session_ratings)
+      : null;
+
+    return {
+      id: row.id,
+      assignmentId: assignment?.id ?? null,
+      reference: row.reference,
+      module: row.module,
+      sessionDate: date(row.session_date),
+      // The SPOC is denormalised onto the session precisely because a session
+      // may have no originating request; the request is the richer source when
+      // there is one.
+      requester: request ? `${request.first_name} ${request.last_name}` : row.spoc_name,
+      requesterOrganisation: request?.organisation_name ?? null,
+      practitioner: practitioner?.full_name ?? "—",
+      audience: AUDIENCE_LABELS[row.audience as Audience] ?? row.audience,
+      participants: row.participants,
+      grossPayout: assignment ? money(assignment.gross_payout, assignment.currency) : null,
+      status: row.status,
+      rating: rating?.rating ?? null,
+      ratingRecordedBy: rating?.recorded_by ?? null,
+    };
+  });
 }
 
 // ── Session consent (per assignment) ────────────────────────────────────────
@@ -437,6 +491,8 @@ export async function listSessions(): Promise<SessionRow[]> {
 /** A generated confirmation, as V7's "Part 2 — Track Status" table shows it. */
 export interface ConsentRow {
   id: string;
+  /** The session itself — Part 2's status control writes to it, not to the row. */
+  sessionId: string;
   reference: string;
   session: string;
   sessionDate: string;
@@ -449,7 +505,7 @@ export interface ConsentRow {
 }
 
 const CONSENT_SELECT =
-  "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status )";
+  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status )";
 
 export async function listConsents(): Promise<ConsentRow[]> {
   const supabase = createAdminClient();
@@ -471,6 +527,7 @@ export async function listConsents(): Promise<ConsentRow[]> {
     const session = one<{ reference: string; session_date: string | null; status: string }>(row.sessions);
     return {
       id: row.id,
+      sessionId: row.session_id,
       reference: row.confirmation_reference,
       session: session?.reference ?? "—",
       sessionDate: date(session?.session_date ?? null),
@@ -617,7 +674,7 @@ export async function listPayouts(): Promise<PayoutRow[]> {
       session: session?.reference ?? "—",
       grossPayout: money(row.gross_payout, row.currency),
       // Paid state (invoice_reference/paid_on) is not in the schema yet — every
-      // payout reads Pending until that column lands (audit M10).
+      // payout reads Pending until that column lands (audit M10). Tab 7.
       status: "Pending",
     };
   });

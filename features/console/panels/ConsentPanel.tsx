@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { generateConfirmation, sendConsentRequest, sendPhotoGuide } from "../actions";
+import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
 import { RowAction } from "../RowAction";
-import { CONSENT_STATUS, SESSION_STATUS, StatusPill } from "../StatusPill";
+import { CONSENT_STATUS, StatusPill } from "../StatusPill";
 import { can, type ConsoleRole } from "../roles";
 import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
@@ -44,6 +44,51 @@ function AutoField({ label, value }: { label: string; value: string }) {
       <div className="text-3xs uppercase tracking-caps text-ink-faint">{label}</div>
       <div className="mt-px font-medium text-ink">{value}</div>
     </div>
+  );
+}
+
+/**
+ * Part 2's Session status cell — a control, not a label (V7 `.status-sel
+ * .role-edit`).
+ *
+ * The options are Pending / Confirmed / Cancelled, which is not the same set
+ * the Session Details tab offers: this is the issuing view, and cancelling is
+ * what happens here when a session falls through. Completed is deliberately
+ * absent, so a session already delivered displays as Confirmed — V7 does the
+ * same rather than showing a value the select cannot represent.
+ */
+function SessionStatusSelect({ row }: { row: ConsentRow }) {
+  const [status, setStatus] = useState(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+  const [pending, start] = useTransition();
+
+  return (
+    <>
+      <label className="sr-only" htmlFor={`${row.id}-session-status`}>
+        Session status for {row.session}
+      </label>
+      <select
+        id={`${row.id}-session-status`}
+        value={["Pending", "Confirmed", "Cancelled"].includes(status) ? status : "Pending"}
+        disabled={pending}
+        onChange={(event) => {
+          const next = event.target.value;
+          setStatus(next);
+          start(async () => {
+            await setSessionStatus(row.sessionId, next);
+          });
+        }}
+        className="w-full min-w-[110px] cursor-pointer rounded-lg border border-border-strong bg-surface-soft px-2.5 py-1.5 text-xs text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60"
+      >
+        {["Pending", "Confirmed", "Cancelled"].map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      {row.sessionStatus === "Completed" ? (
+        <span className="mt-0.5 block text-3xs text-ink-faint">Delivered</span>
+      ) : null}
+    </>
   );
 }
 
@@ -92,10 +137,8 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
   {
     key: "sessionStatus",
     header: "Session status",
-    render: (row) => {
-      const meta = SESSION_STATUS[row.sessionStatus as keyof typeof SESSION_STATUS];
-      return meta ? <StatusPill {...meta} /> : <StatusPill label={row.sessionStatus} tone="neutral" />;
-    },
+    requires: "mutate",
+    render: (row) => <SessionStatusSelect row={row} />,
   },
 ];
 

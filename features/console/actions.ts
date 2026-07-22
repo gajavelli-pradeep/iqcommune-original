@@ -830,6 +830,110 @@ export async function overridePractitionerField(
   revalidateConsole();
 }
 
+// ── Sessions ────────────────────────────────────────────────────────────────
+
+/**
+ * Every state a session may legally be set to by hand.
+ *
+ * Two panels drive this and they offer different subsets, exactly as V7 does:
+ * Session Details offers Confirmed/Completed (it is the delivery view, and
+ * marking delivery is its job), while the Session Consent tab's Part 2 offers
+ * Pending/Confirmed/Cancelled (it is the issuing view, and cancelling is what
+ * happens there when a session falls through). The union is validated here so
+ * neither panel is the guard.
+ */
+const SESSION_STAGES = new Set(["Pending", "Confirmed", "Completed", "Cancelled"]);
+
+const SESSION_STAGE_ACTIONS: Record<string, string> = {
+  Pending: "session.reopened",
+  Confirmed: "session.confirmed",
+  Completed: "session.completed",
+  Cancelled: "session.cancelled",
+};
+
+/**
+ * Marking a session Completed is what opens the rating and the payout — the
+ * rating link is only sendable afterwards, and Payouts reads delivered work.
+ * Cancelling it tells the client, because a session that quietly disappears
+ * from the console has not been cancelled from their side.
+ */
+export async function setSessionStatus(sessionId: string, status: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  if (!SESSION_STAGES.has(status)) throw new Error(`unknown session status: ${status}`);
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sessions")
+    .update({ status })
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .select("reference, session_request_id")
+    .maybeSingle();
+  if (error) throw new Error(`session status update failed: ${error.message}`);
+
+  if (status === "Cancelled" && data?.session_request_id) {
+    const { data: request } = await supabase
+      .from("session_requests")
+      .select("first_name, email")
+      .eq("id", data.session_request_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (request) {
+      dispatchEmail(
+        newTraceId(),
+        sessionRequestCancelled(request.email as string, request.first_name as string),
+      );
+    }
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: SESSION_STAGE_ACTIONS[status] ?? "session.status_set",
+    entityType: "session",
+    entityRef: sessionId,
+    detail: data?.reference ? `${data.reference} → ${status}.` : undefined,
+  });
+  revalidateConsole();
+}
+
+/**
+ * "Got it verbally? — Record manually." A Global Admin keying in a rating the
+ * requestor gave on the phone.
+ *
+ * Global Admin only, and stamped with who recorded it: a rating entered by an
+ * admin is not the same evidence as one the requestor submitted through their
+ * own link, and a practitioner's average is built from these. Storing them
+ * identically would quietly launder the difference away.
+ */
+export async function recordRatingManually(
+  assignmentId: string,
+  rating: number,
+): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("override");
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return { ok: false, message: "A rating must be a whole number from 1 to 5." };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("session_ratings")
+    .upsert(
+      { session_practitioner_id: assignmentId, rating, recorded_by: actor ?? "admin" },
+      { onConflict: "session_practitioner_id" },
+    );
+  if (error) throw new Error(`recording the rating failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "rating.recorded_manually",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `${rating}/5, from a verbal report.`,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
 // ── Outbound link emails (the external, 15s-held sends) ──────────────────────
 
 async function assignmentContact(id: string): Promise<{ email: string; firstName: string } | null> {

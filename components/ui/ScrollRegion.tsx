@@ -11,6 +11,15 @@ import { forwardRef, type ReactNode, type UIEvent } from "react";
  * `role="region"` + `tabIndex={0}` + `aria-label` make the overflow reachable
  * and scrollable by keyboard alone (audit A11Y-3). `overscroll-contain` stops a
  * flick at the end from scrolling the page behind it.
+ *
+ * `relative` is load-bearing, not decoration. `overflow` only clips descendants
+ * whose containing block is inside the scroller; an absolutely positioned one
+ * with no positioned ancestor resolves against the initial containing block and
+ * escapes the clip entirely. Tailwind's `sr-only` is `position: absolute`, so a
+ * single visually-hidden label inside a wide table — the accessible name on a
+ * cell's `<select>`, say — sat at x≈900 and dragged the whole PAGE into
+ * horizontal scroll at 320px, while the table itself scrolled correctly. Making
+ * this a containing block is what keeps that contained.
  */
 
 // A flick rarely lands on the exact last pixel, and sub-pixel rounding means
@@ -48,7 +57,7 @@ export const ScrollRegion = forwardRef<
       onScroll={handleScroll}
       className={`${
         axis === "y" ? "overflow-y-auto" : "overflow-x-auto"
-      } overscroll-contain rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
+      } relative overscroll-contain rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
         className ? ` ${className}` : ""
       }`}
     >

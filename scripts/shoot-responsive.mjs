@@ -50,9 +50,13 @@ for (const width of WIDTHS) {
   });
 
   await page.screenshot({ path: `_parity/resp-${width}.png`, fullPage: true });
+  // `tiny-controls` is advisory here: this pass runs with a FINE pointer, so
+  // the coarse-pointer hit-area expanders are inactive and a deliberately small
+  // control (the field-override pencils) reads as a failure. `check-touch.mjs`
+  // is the one that decides — it emulates touch, where those rules apply.
   console.log(
     `${String(width).padStart(4)}px  page-h-scroll=${report.pageScrolls ? "YES ✗" : "no"}  tiny-controls=${report.smallCount}${
-      report.smallCount ? ` → ${report.small.join(", ")}` : ""
+      report.smallCount ? ` → ${report.small.join(", ")} (advisory — see check-touch.mjs)` : ""
     }`,
   );
   await page.close();
