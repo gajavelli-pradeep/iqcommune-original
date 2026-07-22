@@ -23,17 +23,33 @@ const WE_HANDLE = [
   "Fee collection and revenue share payout",
 ] as const;
 
-function Column({ title, items }: { title: string; items: readonly string[] }) {
+function Column({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: readonly string[];
+  tone: "you" | "we";
+}) {
+  const isWe = tone === "we";
   return (
-    <div className="rounded-lg border border-border bg-surface p-6">
-      <h3 className="mb-4 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
+    <div className="bg-surface">
+      {/* The "We Handle" header is a dark ink bar; "You Bring" is a cream bar. */}
+      <div
+        className={`border-b border-border-strong px-7 py-[1.1rem] text-2xs font-semibold uppercase tracking-eyebrow ${
+          isWe ? "bg-ink text-surface" : "bg-surface-soft text-ink-faint"
+        }`}
+      >
         {title}
-      </h3>
+      </div>
       <ul>
         {items.map((item) => (
           <li
             key={item}
-            className="mb-2.5 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
+            className={`flex items-start gap-3 border-b border-border px-7 py-4 text-md leading-[1.55] last:border-b-0 ${
+              isWe ? "font-medium text-ink" : "text-ink-muted"
+            }`}
           >
             <TickIcon />
             {item}
@@ -59,9 +75,10 @@ export function DivisionOfWork() {
           }
           sub="We've built the platform so you never have to do the work you didn't sign up for."
         />
-        <div className="mt-10 grid gap-4 min-[720px]:grid-cols-2">
-          <Column title="You Bring" items={YOU_BRING} />
-          <Column title="We Handle" items={WE_HANDLE} />
+        {/* One bordered box split into two columns, not two cards (V7 .handle-grid). */}
+        <div className="mx-auto mt-10 grid max-w-[900px] grid-cols-1 overflow-hidden rounded-lg border border-border-strong min-[720px]:grid-cols-2">
+          <Column title="You Bring" items={YOU_BRING} tone="you" />
+          <Column title="We Handle" items={WE_HANDLE} tone="we" />
         </div>
       </div>
     </section>
