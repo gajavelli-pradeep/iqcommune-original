@@ -1,34 +1,44 @@
 /**
  * The numbered progress rail shown atop the onboarding and photo pages — byte
- * identical in both (audit M3). Steps before `current` render a tick, `current`
- * and earlier are gold, later steps are faint, and a `›` separates each pair.
+ * identical in both (audit M3). V7 `.stepper`: a bordered card of 28px circles
+ * — done is a green tick, `current` is a dark-ink number, later steps are a
+ * faint bordered number — separated by `›`.
  *
  * `current` is a zero-based index into `steps`.
  */
 export function Stepper({ steps, current }: { steps: readonly string[]; current: number }) {
   return (
-    <ol className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
-      {steps.map((step, index) => (
-        <li key={step} className="flex items-center gap-2">
-          <span
-            className={`flex items-center gap-1.5 text-sm ${
-              index <= current ? "font-medium text-gold-dark" : "text-ink-faint"
-            }`}
-          >
-            {index < current ? (
-              <span aria-hidden>✓</span>
-            ) : (
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-            )}
-            {step}
-          </span>
-          {index < steps.length - 1 ? (
-            <span aria-hidden className="text-ink-faint">
-              ›
+    <ol className="mb-8 flex items-center gap-0 overflow-x-auto rounded-[12px] border border-border bg-surface px-6 py-4">
+      {steps.map((step, index) => {
+        const state = index < current ? "done" : index === current ? "active" : "pending";
+        return (
+          <li key={step} className="flex shrink-0 items-center gap-2">
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                state === "done"
+                  ? "bg-green text-surface"
+                  : state === "active"
+                    ? "bg-ink text-surface"
+                    : "border-[1.5px] border-border-strong bg-surface-soft text-ink-faint"
+              }`}
+            >
+              {state === "done" ? <span aria-hidden>✓</span> : index + 1}
             </span>
-          ) : null}
-        </li>
-      ))}
+            <span
+              className={`text-base font-medium ${
+                state === "done" ? "text-green" : state === "active" ? "text-ink" : "text-ink-faint"
+              }`}
+            >
+              {step}
+            </span>
+            {index < steps.length - 1 ? (
+              <span aria-hidden className="mx-3 shrink-0 text-base text-border-strong">
+                ›
+              </span>
+            ) : null}
+          </li>
+        );
+      })}
     </ol>
   );
 }

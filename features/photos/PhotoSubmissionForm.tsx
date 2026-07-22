@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 
-import { Callout } from "@/components/ui/Callout";
 import { CheckboxField } from "@/components/ui/Field";
 import { Stepper } from "@/components/ui/Stepper";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
@@ -117,7 +116,7 @@ export function PhotoSubmissionForm({
     <section className="rounded-lg border border-border bg-surface p-8">
       <Stepper steps={STEPS} current={1} />
 
-      <h1 className="mb-1 text-3xl font-semibold text-ink">Your session photo link</h1>
+      <h1 className="mb-1.5 text-2xl font-semibold text-ink">Your session photo link</h1>
       <p className="mb-5 text-base leading-[1.6] text-ink-muted">
         Bookmark or save this page — come back to it during your session or right after to submit
         your photos. Eight standard angles, all on your phone. Once submitted, your photos sit in
@@ -125,31 +124,49 @@ export function PhotoSubmissionForm({
         selected is automatically deleted after 30 days.
       </p>
 
-      <div className="mb-4 rounded-lg border border-border bg-surface-soft px-5 py-4">
-        <p className="text-md font-semibold text-ink">{session.practitioner}</p>
-        <p className="text-sm text-ink-muted">{session.practitionerRole}</p>
-        <p className="mt-2">
-          <span className="inline-flex rounded-full border border-gold-border bg-gold-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-gold-dark">
-            Ref: {session.practitionerRef}
-          </span>
-        </p>
+      {/* V7 .prac-strip: name+meta left, ref badge right, one row. */}
+      <div className="mb-5 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem]">
+        <div className="min-w-0">
+          <p className="text-lg font-semibold text-ink">{session.practitioner}</p>
+          <p className="text-sm text-ink-muted">
+            {session.practitionerRole} · {session.city}
+          </p>
+        </div>
+        <span className="inline-flex shrink-0 rounded-full border border-gold-border bg-gold-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-gold-dark">
+          Ref: {session.practitionerRef}
+        </span>
       </div>
 
-      <dl className="mb-5 grid gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem] min-[480px]:grid-cols-2 min-[600px]:grid-cols-4">
+      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem] min-[600px]:grid-cols-4">
         <Detail label="Session date" value={session.sessionDate} />
         <Detail label="Module" value={session.module} />
         <Detail label="City" value={`${session.city}, ${session.state}`} />
         <Detail label="Session ID" value={session.sessionId} />
       </dl>
 
-      <div className="mb-6">
-        <Callout>
+      {/* V7 .storage-notice: left-gold-border box (no full border) with an info icon. */}
+      <p className="mb-6 flex items-start gap-[9px] rounded-r-[8px] border-l-[3px] border-l-gold bg-gold-light px-4 py-[0.85rem] text-base leading-[1.6] text-gold-dark">
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+          focusable="false"
+          className="mt-[2px] shrink-0"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+        <span>
           <strong className="font-semibold">Storage policy:</strong> All photos are stored securely
           for 30 days from the date of submission. Anything not approved for publication within that
           window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No
           action needed from you after submission.
-        </Callout>
-      </div>
+        </span>
+      </p>
 
       <form
         noValidate
@@ -190,16 +207,37 @@ export function PhotoSubmissionForm({
         <ShotChecklist />
 
         <div className="mb-5">
+          {/* V7 .upload-area: gold dashed border, upload icon + title + hint inside. */}
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            className={`min-h-11 w-full rounded-lg border-[1.5px] border-dashed px-4 py-8 text-center text-base transition-colors hover:border-gold ${
-              errors.photos ? "border-red text-red" : "border-border-strong text-ink-muted"
+            className={`min-h-11 w-full rounded-md border-[1.5px] border-dashed bg-surface-soft p-8 text-center transition-colors hover:border-gold hover:bg-gold-light ${
+              errors.photos ? "border-red" : "border-gold/40"
             }`}
           >
-            {photos.length > 0
-              ? `${photos.length} photo${photos.length > 1 ? "s" : ""} selected`
-              : "Tap to upload photos"}
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden
+              focusable="false"
+              className="mx-auto mb-2 text-gold-dark"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span className="block text-md font-medium text-ink">
+              {photos.length > 0
+                ? `${photos.length} photo${photos.length > 1 ? "s" : ""} selected`
+                : "Tap to upload photos"}
+            </span>
+            <span className="mt-1 block text-sm text-ink-faint">
+              JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
+            </span>
           </button>
           <input
             ref={fileInput}
@@ -213,9 +251,6 @@ export function PhotoSubmissionForm({
               setErrors((current) => ({ ...current, photos: undefined }));
             }}
           />
-          <p className="mt-1.5 text-center text-sm text-ink-faint">
-            JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
-          </p>
           {errors.photos ? (
             <p role="alert" className="mt-1 text-center text-sm text-red">
               {errors.photos}
@@ -238,8 +273,24 @@ export function PhotoSubmissionForm({
         <button
           type="submit"
           disabled={busy}
-          className="min-h-11 w-full rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
+          {!busy ? (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+              focusable="false"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          ) : null}
           {busy ? "Submitting…" : "Submit photos for review"}
         </button>
         <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
