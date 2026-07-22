@@ -33,7 +33,7 @@ export function CtaSection() {
         <h2 className="mb-4 text-[clamp(26px,3.8vw,40px)] font-semibold leading-[1.2] tracking-body text-surface">
           If you are serious to improve your financial literacy
         </h2>
-        <p className="mx-auto mb-8 max-w-[560px] text-xl text-on-dark-muted">
+        <p className="mx-auto mb-8 max-w-[520px] text-xl text-on-dark-muted">
           Tell us your topic, your group, and a preferred date window. We&apos;ll handle the
           rest offline.
         </p>
@@ -44,7 +44,7 @@ export function CtaSection() {
 
         <IconStrip
           entries={REASSURANCES}
-          listClassName="mx-auto flex max-w-[900px] flex-wrap items-center justify-center gap-x-6 gap-y-2.5"
+          listClassName="mx-auto flex max-w-[900px] flex-wrap items-center justify-center gap-x-8 gap-y-2.5"
           itemClassName="flex items-center gap-2 text-base text-on-dark-muted"
           iconClassName="text-gold"
           iconSize={13}

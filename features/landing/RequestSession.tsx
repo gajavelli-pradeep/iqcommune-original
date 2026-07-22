@@ -80,8 +80,9 @@ const VARIANTS = {
    */
   primary:
     "bg-ink text-surface text-lg px-[30px] py-3.5 gap-2.5 shadow-card hover:opacity-90",
-  /** `.btn-gold` — the closing CTA. */
-  gold: "bg-gold text-ink text-xl px-9 py-4 gap-2.5 shadow-gold hover:brightness-110 hover:-translate-y-0.5",
+  /** `.btn-gold` — the closing CTA. White label on gold, matching V7 exactly
+   *  (client requires the visual match over the prior AA-contrast note). */
+  gold: "bg-gold text-surface text-xl px-9 py-4 gap-2.5 shadow-gold hover:brightness-110 hover:-translate-y-0.5",
   /** `.btn-nav` — the header. Ink, not gold. */
   nav: "bg-ink text-surface text-md px-[22px] py-2.5 gap-2 hover:opacity-[0.82]",
   /** `.btn-nav-ghost` — secondary header action. */
