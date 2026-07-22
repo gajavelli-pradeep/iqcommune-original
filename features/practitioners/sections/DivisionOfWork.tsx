@@ -1,5 +1,4 @@
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { TickIcon } from "@/components/ui/icons";
 
 /**
  * Two columns of commitments. Both are kept at every width: the whole point of
@@ -37,7 +36,7 @@ function Column({
     <div className="bg-surface">
       {/* The "We Handle" header is a dark ink bar; "You Bring" is a cream bar. */}
       <div
-        className={`border-b border-border-strong px-7 py-[1.1rem] text-2xs font-semibold uppercase tracking-eyebrow ${
+        className={`border-b border-border-strong px-7 py-[1.1rem] text-sm font-semibold uppercase tracking-eyebrow ${
           isWe ? "bg-ink text-surface" : "bg-surface-soft text-ink-faint"
         }`}
       >
@@ -47,11 +46,24 @@ function Column({
         {items.map((item) => (
           <li
             key={item}
-            className={`flex items-start gap-3 border-b border-border px-7 py-4 text-md leading-[1.55] last:border-b-0 ${
-              isWe ? "font-medium text-ink" : "text-ink-muted"
+            className={`flex items-start gap-3 border-b border-border py-4 text-md leading-[1.55] last:border-b-0 ${
+              isWe ? "pr-7 pl-2 font-medium text-ink" : "px-7 text-ink-muted"
             }`}
           >
-            <TickIcon />
+            {/* V7 .handle-icon: 15px ink-faint check for both columns, never the item colour. */}
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+              focusable="false"
+              className="mt-[3px] shrink-0 text-ink-faint"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
             {item}
           </li>
         ))}
@@ -76,7 +88,7 @@ export function DivisionOfWork() {
           sub="We've built the platform so you never have to do the work you didn't sign up for."
         />
         {/* One bordered box split into two columns, not two cards (V7 .handle-grid). */}
-        <div className="mx-auto mt-10 grid max-w-[900px] grid-cols-1 overflow-hidden rounded-lg border border-border-strong min-[720px]:grid-cols-2">
+        <div className="mx-auto mt-10 grid max-w-[900px] grid-cols-1 overflow-hidden rounded-[12px] border border-border-strong min-[720px]:grid-cols-2">
           <Column title="You Bring" items={YOU_BRING} tone="you" />
           <Column title="We Handle" items={WE_HANDLE} tone="we" />
         </div>
