@@ -812,8 +812,9 @@ export async function listPhotoSubmissions(): Promise<PhotoRow[]> {
 
 export interface GalleryRow {
   id: string;
-  caption: string;
-  city: string;
+  url: string;
+  caption: string | null;
+  city: string | null;
   sortOrder: number;
   status: "Published" | "Draft";
   addedOn: string;
@@ -823,15 +824,21 @@ export async function listGallery(): Promise<GalleryRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("gallery_photos")
-    .select("id, caption, city, sort_order, published, created_at")
+    .select("id, storage_path, caption, city, sort_order, published, created_at")
     .is("deleted_at", null)
-    .order("sort_order", { ascending: true })
-    .order("id");
+    // Oldest first: the panel shows which photo is next to be evicted, and
+    // that only reads correctly if the eviction order is the display order.
+    .order("created_at", { ascending: true })
+    .order("id")
+    .limit(200);
 
   if (error) throw new Error(`gallery_photos read failed: ${error.message}`);
 
   return (data ?? []).map((row) => ({
     id: row.id,
+    // The gallery bucket is public by necessity — the landing page serves these
+    // directly — so a public URL is the right shape here, unlike session photos.
+    url: supabase.storage.from("gallery").getPublicUrl(row.storage_path).data.publicUrl,
     caption: row.caption,
     city: row.city,
     sortOrder: row.sort_order,

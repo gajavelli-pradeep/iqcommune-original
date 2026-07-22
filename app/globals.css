@@ -84,6 +84,12 @@
      still pushing it back — a pure-black scrim reads as a page change. */
   --color-scrim: rgba(15, 17, 23, 0.55);
 
+  /* The caption wash over a photo (console gallery, V7's
+     `linear-gradient(transparent, rgba(0,0,0,.65))`). Black rather than ink
+     here on purpose: this sits over an arbitrary photograph, and a tinted
+     scrim shifts the colours underneath it. */
+  --color-photo-caption-scrim: rgba(0, 0, 0, 0.65);
+
   --color-border: rgba(15, 17, 23, 0.10);
   --color-border-strong: rgba(15, 17, 23, 0.20);
 

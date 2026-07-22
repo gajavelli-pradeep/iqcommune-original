@@ -16,6 +16,7 @@ import {
 } from "@/lib/email/templates";
 import { newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
 import { requireCapability } from "./requireRole";
@@ -932,6 +933,142 @@ export async function recordRatingManually(
   });
   revalidateConsole();
   return { ok: true };
+}
+
+// ── Gallery ─────────────────────────────────────────────────────────────────
+
+/** A draft photo's city and caption, typed in the panel before publishing. */
+export async function updateGalleryPhoto(
+  photoId: string,
+  fields: { city?: string; caption?: string },
+): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const patch: Record<string, string | null> = {};
+  if ("city" in fields) patch.city = fields.city?.trim() || null;
+  if ("caption" in fields) patch.caption = fields.caption?.trim() || null;
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase
+    .from("gallery_photos")
+    .update(patch)
+    .eq("id", photoId)
+    .is("deleted_at", null);
+  if (error) throw new Error(`saving the photo details failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "gallery.detail_set",
+    entityType: "gallery",
+    entityRef: photoId,
+  });
+  revalidateConsole();
+}
+
+/**
+ * Publishes every draft to "Sessions in the room", evicting the oldest beyond
+ * the twenty the section carries.
+ *
+ * Eviction is a soft delete, not a hard one: a photo pushed off the landing
+ * page is still a photo someone chose and captioned, and the participants in it
+ * consented to it being used. Losing the record would also lose that.
+ *
+ * A draft missing its city or caption is refused rather than published blank —
+ * the landing page renders both, and the DB constraint would reject it anyway.
+ */
+export async function publishGalleryDrafts(): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data: drafts, error: draftError } = await supabase
+    .from("gallery_photos")
+    .select("id, caption, city")
+    .eq("published", false)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .order("id");
+  if (draftError) throw new Error(`gallery drafts read failed: ${draftError.message}`);
+  if (!drafts || drafts.length === 0) return { ok: false, message: "There is nothing in draft to publish." };
+
+  const incomplete = drafts.filter((photo) => !photo.city?.trim() || !photo.caption?.trim());
+  if (incomplete.length > 0) {
+    return {
+      ok: false,
+      message: `Add a city and a caption to ${incomplete.length} draft photo(s) before publishing.`,
+    };
+  }
+
+  const { error: publishError } = await supabase
+    .from("gallery_photos")
+    .update({ published: true })
+    .in("id", drafts.map((photo) => photo.id));
+  if (publishError) throw new Error(`publish failed: ${publishError.message}`);
+
+  // Evict the oldest back down to the limit.
+  const { data: live } = await supabase
+    .from("gallery_photos")
+    .select("id")
+    .eq("published", true)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .order("id");
+
+  const surplus = (live ?? []).slice(0, Math.max(0, (live?.length ?? 0) - GALLERY_LIMIT));
+  if (surplus.length > 0) {
+    await supabase
+      .from("gallery_photos")
+      .update({ deleted_at: new Date().toISOString(), published: false })
+      .in("id", surplus.map((photo) => photo.id));
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "gallery.published",
+    entityType: "gallery",
+    detail:
+      `Published ${drafts.length} photo(s) to "Sessions in the room"` +
+      (surplus.length ? ` (${surplus.length} oldest auto-removed to stay at ${GALLERY_LIMIT}).` : "."),
+  });
+  revalidatePath("/");
+  revalidateConsole();
+  return { ok: true };
+}
+
+/** Removes one photo, draft or live, and its stored object. */
+export async function removeGalleryPhoto(photoId: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("gallery_photos")
+    .select("storage_path, published")
+    .eq("id", photoId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`gallery photo read failed: ${error.message}`);
+  if (!data) throw new Error("that photo is already gone");
+
+  // The object goes first: the bucket is public, so a row removed while the
+  // file survives leaves the photo readable at its URL after someone deleted it.
+  const { error: removeError } = await supabase.storage.from("gallery").remove([data.storage_path]);
+  if (removeError) throw new Error(`removing the stored photo failed: ${removeError.message}`);
+
+  const { error: rowError } = await supabase
+    .from("gallery_photos")
+    .update({ deleted_at: new Date().toISOString(), published: false })
+    .eq("id", photoId)
+    .is("deleted_at", null);
+  if (rowError) throw new Error(`delete failed: ${rowError.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: data.published ? "gallery.unpublished" : "gallery.draft_removed",
+    entityType: "gallery",
+    entityRef: photoId,
+  });
+  revalidatePath("/");
+  revalidateConsole();
 }
 
 // ── Payouts ─────────────────────────────────────────────────────────────────
