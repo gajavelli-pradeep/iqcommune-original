@@ -34,10 +34,14 @@ export async function sendEmail(traceId: string, message: EmailMessage): Promise
   const sender = process.env.BREVO_SENDER_EMAIL;
 
   if (process.env.EMAIL_DELIVERY !== "live") {
+    // The rendered body + recipient are what make the link checkable without
+    // sending — but only log them OUTSIDE production (audit M9). In production
+    // this branch means EMAIL_DELIVERY was left unset by mistake, and the logger
+    // contract forbids spilling addresses/names into those logs.
+    const inspectable = process.env.NODE_ENV !== "production";
     log.info(traceId, "email not sent — dry run", {
-      to: message.to,
       subject: message.subject,
-      body: message.body,
+      ...(inspectable ? { to: message.to, body: message.body } : {}),
     });
     return { delivered: false, reason: "dry-run" };
   }

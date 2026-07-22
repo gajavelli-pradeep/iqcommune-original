@@ -1,3 +1,5 @@
+import { SESSION_SHOTS } from "@/constants/photo-shots";
+
 import { buildLink } from "./links";
 import type { EmailMessage } from "./send";
 
@@ -66,13 +68,21 @@ export function consentRequest(to: string, firstName: string, assignmentId: stri
 }
 
 export function photoReminder(to: string, firstName: string, assignmentId: string): EmailMessage {
+  // Carries the shot ideas ahead of the session, not just the link (audit G4b):
+  // the procedure wants the practitioner to have them ready before they need them.
+  const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label} — ${shot.note}`);
   return {
     to,
-    subject: "Your session photo link",
+    subject: "Your session photos — shot guide and upload link",
     body: lines(
       `Hi ${firstName},`,
       "",
-      "Bookmark this link and come back to it during or right after your session to submit photos.",
+      "Ahead of your session, here are the eight shots that make a session gallery look great —",
+      "keep this handy so you have them ready on the day:",
+      "",
+      ...shots,
+      "",
+      "When the session wraps, upload them here (bookmark it now):",
       "",
       buildLink("photos", assignmentId),
       "",
@@ -109,6 +119,60 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
       buildLink("invite", inviteId),
       "",
       "This link can only be used once.",
+      "",
+      "- iqcommune",
+    ),
+  };
+}
+
+/**
+ * Internal notifications (audit G4a). The procedure names welcome, rejection and
+ * deactivation as a distinct class of message — sent immediately with no undo
+ * hold (audit G4c), unlike the external link emails. They carry no tokenised
+ * link, just news of a decision.
+ */
+
+export function practitionerWelcome(to: string, firstName: string): EmailMessage {
+  return {
+    to,
+    subject: "You're empanelled with iqcommune",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "Welcome aboard - your empanelment is confirmed and you're now part of the iqcommune",
+      "practitioner network. We'll be in touch with your first session details soon.",
+      "",
+      "- iqcommune",
+    ),
+  };
+}
+
+export function applicationRejected(to: string, firstName: string): EmailMessage {
+  return {
+    to,
+    subject: "An update on your iqcommune application",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "Thank you for your interest in the iqcommune practitioner network. After review, we're",
+      "not able to move forward with your application at this time. We genuinely appreciate the",
+      "time you took to apply, and we wish you the very best.",
+      "",
+      "- iqcommune",
+    ),
+  };
+}
+
+export function practitionerDeactivated(to: string, firstName: string): EmailMessage {
+  return {
+    to,
+    subject: "Your iqcommune empanelment status",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "This is to let you know that your empanelment with iqcommune has been deactivated and you",
+      "won't be assigned further sessions. If you believe this is in error, please reply to this",
+      "email and we'll take a look.",
       "",
       "- iqcommune",
     ),

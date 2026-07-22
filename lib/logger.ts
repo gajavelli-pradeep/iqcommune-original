@@ -12,6 +12,13 @@ export function newTraceId(): string {
 
 type Level = "info" | "warn" | "error";
 
+// Last-line PII guard (audit M27). Domain failures wrap the raw provider
+// message, which for a unique-violation carries the offending email; a caller
+// might also pass one in `context`. Redacting email addresses from every
+// serialized line here means no single log call has to remember to — the guard
+// is global, not per-route.
+const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
+
 function emit(level: Level, traceId: string, message: string, context?: Record<string, unknown>) {
   const line = JSON.stringify({
     level,
@@ -19,7 +26,7 @@ function emit(level: Level, traceId: string, message: string, context?: Record<s
     message,
     time: new Date().toISOString(),
     ...context,
-  });
+  }).replace(EMAIL, "[email]");
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
   else console.info(line);
