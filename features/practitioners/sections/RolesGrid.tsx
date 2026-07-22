@@ -61,7 +61,7 @@ const ROLES: ReadonlyArray<{ title: string; description: string; icon: React.Rea
 
 export function RolesGrid() {
   return (
-    <section className="bg-surface-soft px-8 py-16">
+    <section className="bg-surface-soft px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Who we're looking for"

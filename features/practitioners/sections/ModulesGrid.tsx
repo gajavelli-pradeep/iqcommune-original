@@ -94,7 +94,7 @@ const PAIRINGS = [
 
 export function ModulesGrid() {
   return (
-    <section className="bg-surface px-8 py-16">
+    <section className="bg-surface px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Teaching modules"
