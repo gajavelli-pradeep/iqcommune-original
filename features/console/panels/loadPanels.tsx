@@ -45,17 +45,33 @@ function PanelError({ message }: { message: string }) {
   );
 }
 
+interface LoadedPanel {
+  node: ReactNode;
+  count: number;
+}
+
 /** Loads one panel in isolation: on any read failure it renders PanelError
- *  instead of rejecting, so the rest of the console still loads. */
-async function loadPanel<T>(load: () => Promise<T>, render: (rows: T) => ReactNode): Promise<ReactNode> {
+ *  instead of rejecting, so the rest of the console still loads. Returns the
+ *  node plus the row count for the sidebar badge. */
+async function loadPanel<T>(
+  load: () => Promise<readonly T[]>,
+  render: (rows: readonly T[]) => ReactNode,
+): Promise<LoadedPanel> {
   try {
-    return render(await load());
+    const rows = await load();
+    return { node: render(rows), count: rows.length };
   } catch (error) {
-    return <PanelError message={error instanceof Error ? error.message : "Read failed."} />;
+    return { node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />, count: 0 };
   }
 }
 
-export async function loadConsolePanels(role: ConsoleRole): Promise<Record<string, ReactNode>> {
+export interface LoadedConsole {
+  panels: Record<string, ReactNode>;
+  /** Row count per tab id, for the sidebar badges (V7 `.sb-badge`). */
+  counts: Record<string, number>;
+}
+
+export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsole> {
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
     await Promise.all([
       loadPanel(listPractitioners, (rows) => <PractitionersPanel rows={rows} role={role} />),
@@ -68,20 +84,33 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<Record<strin
       loadPanel(listGallery, (rows) => <GalleryPanel rows={rows} role={role} />),
       can(role, "viewActivity")
         ? loadPanel(listActivity, (rows) => <ActivityPanel rows={rows} role={role} />)
-        : Promise.resolve<ReactNode>(null),
+        : Promise.resolve<LoadedPanel>({ node: null, count: 0 }),
     ]);
 
   const panels: Record<string, ReactNode> = {
-    practitioners,
-    agreements,
-    requests,
-    confirmations,
-    sessions,
-    photos,
-    payouts,
-    gallery,
+    practitioners: practitioners.node,
+    agreements: agreements.node,
+    requests: requests.node,
+    confirmations: confirmations.node,
+    sessions: sessions.node,
+    photos: photos.node,
+    payouts: payouts.node,
+    gallery: gallery.node,
     settings: <SettingsPanel />,
   };
-  if (activity) panels.activity = activity;
-  return panels;
+  const counts: Record<string, number> = {
+    practitioners: practitioners.count,
+    agreements: agreements.count,
+    requests: requests.count,
+    confirmations: confirmations.count,
+    sessions: sessions.count,
+    photos: photos.count,
+    payouts: payouts.count,
+    gallery: gallery.count,
+  };
+  if (activity.node) {
+    panels.activity = activity.node;
+    counts.activity = activity.count;
+  }
+  return { panels, counts };
 }

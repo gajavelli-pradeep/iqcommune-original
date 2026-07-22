@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function GlobalAdminConsole() {
   const { role, email } = await requireRole("global_admin");
-  const panels = await loadConsolePanels(role);
+  const { panels, counts } = await loadConsolePanels(role);
 
-  return <ConsoleShell role={role} email={email} panels={panels} />;
+  return <ConsoleShell role={role} email={email} panels={panels} counts={counts} />;
 }

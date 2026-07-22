@@ -71,24 +71,98 @@ export function can(role: ConsoleRole, capability: Capability): boolean {
 
 export interface ConsoleTab {
   id: string;
+  /** Sidebar label (V7 `.sb-item`). */
   label: string;
+  /** Panel page heading (V7 `.page-hdr h1`) — differs from the sidebar label
+   *  on some tabs (e.g. "Practitioners" → "Practitioner pipeline"). */
+  title: string;
+  /** Panel page subtitle (V7 `.page-hdr p`). */
+  subtitle: string;
   section: string;
   /** Omitted when every role may open it. */
   requires?: Capability;
 }
 
-/** Sidebar order and grouping, from the spec's `sb-sec` / `sb-item` blocks. */
+/** Sidebar order and grouping, from the spec's `sb-sec` / `sb-item` blocks;
+ *  page title + subtitle from the spec's `.page-hdr`. */
 export const CONSOLE_TABS: readonly ConsoleTab[] = [
-  { id: "practitioners", label: "Practitioners", section: "Practitioner Management" },
-  { id: "agreements", label: "Agreements", section: "Practitioner Management" },
-  { id: "requests", label: "Session Requests", section: "Session Pipeline" },
-  { id: "confirmations", label: "Session Consent", section: "Session Pipeline" },
-  { id: "sessions", label: "Session Details", section: "Session Pipeline" },
-  { id: "photos", label: "Photos", section: "Session Pipeline" },
-  { id: "payouts", label: "Payouts", section: "Finance" },
-  { id: "gallery", label: "Gallery", section: "System" },
-  { id: "settings", label: "Settings", section: "System" },
-  { id: "activity", label: "Activity", section: "System", requires: "viewActivity" },
+  {
+    id: "practitioners",
+    label: "Practitioners",
+    title: "Practitioner pipeline",
+    subtitle: "Manage applications, onboarding, and empanelment",
+    section: "Practitioner Management",
+  },
+  {
+    id: "agreements",
+    label: "Agreements",
+    title: "Agreements",
+    subtitle:
+      "Practitioners appear here automatically once marked Empanelled — signed date, method, and status are all captured automatically the moment they sign online",
+    section: "Practitioner Management",
+  },
+  {
+    id: "requests",
+    label: "Session Requests",
+    title: "Session Requests",
+    subtitle: "Incoming requests from iqcommune.com — assign a practitioner to confirm",
+    section: "Session Pipeline",
+  },
+  {
+    id: "confirmations",
+    label: "Session Consent",
+    title: "Session Consent",
+    subtitle:
+      "The critical junction of the whole loop — generate consent, track it, then send the photo guide once confirmed.",
+    section: "Session Pipeline",
+  },
+  {
+    id: "sessions",
+    label: "Session Details",
+    title: "Session Details",
+    subtitle:
+      "An overall dashboard — delivery status, payout figures, and post-session rating for every session",
+    section: "Session Pipeline",
+  },
+  {
+    id: "photos",
+    label: "Photos",
+    title: "Session Photos",
+    subtitle:
+      "Every completed session appears here — photos land automatically if the practitioner uses the link, or upload them yourself if they send them another way.",
+    section: "Session Pipeline",
+  },
+  {
+    id: "payouts",
+    label: "Payouts",
+    title: "Payouts",
+    subtitle:
+      "Track practitioner payments per session — Gross and Net pull from the session's consent record; mark Paid once the bank transfer is done.",
+    section: "Finance",
+  },
+  {
+    id: "gallery",
+    label: "Gallery",
+    title: "Gallery",
+    subtitle:
+      "Curate photos for “Sessions in the room” on the main landing page. Standalone — not linked to practitioners, sessions, or requests.",
+    section: "System",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    title: "Settings",
+    subtitle: "Manage team access and review platform-wide permissions.",
+    section: "System",
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    title: "Activity",
+    subtitle: "A running log of actions taken across the console — visible to Global Admins only.",
+    section: "System",
+    requires: "viewActivity",
+  },
 ];
 
 export function tabsFor(role: ConsoleRole): readonly ConsoleTab[] {
