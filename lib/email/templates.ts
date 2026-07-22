@@ -27,6 +27,53 @@ export function sessionRequestReceived(to: string, firstName: string): EmailMess
   };
 }
 
+/**
+ * The console's "Send follow-up to client" — chasing a request that is waiting
+ * on something from the requester's side.
+ *
+ * It names what is outstanding rather than asking them to guess: the commonest
+ * reason a request stalls is a venue nobody has confirmed, and "just checking
+ * in" does not get one.
+ */
+export function sessionRequestFollowUp(
+  to: string,
+  firstName: string,
+  outstanding: readonly string[],
+): EmailMessage {
+  return {
+    to,
+    subject: "Following up on your session request",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "Following up on your session request - we're ready to move ahead and need a little more from your side:",
+      "",
+      ...outstanding.map((item) => `- ${item}`),
+      "",
+      "Reply to this email and we'll get it scheduled.",
+      "",
+      "- iqcommune",
+    ),
+  };
+}
+
+/** The console's "Send cancellation message" for a request that fell through. */
+export function sessionRequestCancelled(to: string, firstName: string): EmailMessage {
+  return {
+    to,
+    subject: "Your session request",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "We're sorry - we aren't able to take your session request forward at this time.",
+      "",
+      "If circumstances change, or you'd like to discuss a different date or format, just reply here and we'll pick it back up.",
+      "",
+      "- iqcommune",
+    ),
+  };
+}
+
 export function newSessionRequestForAdmin(to: string, summary: string): EmailMessage {
   return {
     to,

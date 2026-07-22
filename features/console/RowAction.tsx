@@ -16,10 +16,12 @@ import { useDeferredSend } from "@/hooks/useDeferredSend";
  *   `link`    — the underline text action in the pipeline tables (default).
  *   `ghost`   — V7 `.btn-ghost.btn-xs`: an inline hairline pill (Download/Delete).
  *   `ghost-block` — V7 `.btn-ghost.btn-sm` inside a detail card, full width.
+ *   `dark`    — V7 `.btn-dark.btn-sm`: ink fill, used for the outbound sends.
  *   `primary` — V7 `.gen-link-btn`: full-width gold, leading icon, gold glow.
  *
  * `primary` takes an ink label, not V7's white: white on `--color-gold` is
  * 2.1:1 and fails AA. Recorded here so it is not "corrected" back (CLAUDE.md).
+ * `dark` keeps white — white on `--color-ink` is 17:1.
  */
 export function RowAction({
   action,
@@ -34,7 +36,7 @@ export function RowAction({
   /** Shown in the toast while the Undo window is open, e.g. "Matching request…". */
   pendingMessage: string;
   tone?: "neutral" | "danger";
-  variant?: "link" | "ghost" | "ghost-block" | "primary";
+  variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary";
   icon?: ReactNode;
 }) {
   const { pending, schedule, undo } = useDeferredSend();
@@ -55,6 +57,7 @@ export function RowAction({
         ? "border-red-edge text-red hover:text-red"
         : "border-border-strong text-ink-muted hover:text-ink"
     }`,
+    dark: `flex w-full items-center justify-center gap-[7px] rounded-lg bg-ink px-3.5 py-2.5 text-sm font-medium text-surface transition-opacity hover:opacity-90 ${focus}`,
     primary: `flex w-full items-center justify-center gap-[7px] rounded-lg bg-gold px-3.5 py-2.5 text-sm font-semibold text-ink shadow-gold transition-[filter] hover:brightness-[1.08] ${focus}`,
   };
 

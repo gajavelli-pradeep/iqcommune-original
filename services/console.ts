@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -231,36 +232,110 @@ export async function listPractitioners(): Promise<PractitionerRow[]> {
 
 // ── Session requests ────────────────────────────────────────────────────────
 
+/** One incoming "Request a Session" submission from the public site. */
 export interface SessionRequestRow {
   id: string;
   name: string;
   organisation: string | null;
+  email: string;
+  phone: string;
   topic: string;
   audience: string;
-  location: string;
-  requestedOn: string;
+  city: string;
+  state: string | null;
+  groupSize: string | null;
+  /** Participants the client guarantees — distinct from the expected range. */
+  minCommitment: number | null;
+  preferredDates: string | null;
+  /** `null` while the SPOC has not named one — the panel flags that. */
+  venue: string | null;
+  notes: string | null;
+  receivedOn: string;
   status: string;
+  /** The practitioner who agreed on the call, once one has. */
+  assignedPractitionerId: string | null;
+  assignedTo: string | null;
+  agreedPayout: number | null;
+  /** The session this request became, once matched. */
+  sessionReference: string | null;
 }
 
 export async function listSessionRequests(): Promise<SessionRequestRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_requests")
-    .select("id, first_name, last_name, organisation_name, topic, audience, city, state, status, created_at")
+    // One string literal, not a concatenation: the client parses this at the
+    // type level and a `+` erases the literal type, so every column comes back
+    // as an error type.
+    .select(
+      "id, first_name, last_name, organisation_name, email, phone, topic, audience, city, state, group_size, min_commitment, preferred_window, venue_details, notes, status, created_at, assigned_practitioner_id, agreed_gross_payout, practitioners ( full_name ), sessions ( reference, deleted_at )",
+    )
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (error) throw new Error(`session_requests read failed: ${error.message}`);
 
+  return (data ?? []).map((row) => {
+    const practitioner = one<{ full_name: string }>(row.practitioners);
+    // A request can only have produced one live session, but the embed arrives
+    // as an array; a soft-deleted one must not be shown as the outcome.
+    const sessions = ((row.sessions ?? []) as Array<{ reference: string; deleted_at: string | null }>).filter(
+      (session) => !session.deleted_at,
+    );
+
+    return {
+      id: row.id,
+      name: `${row.first_name} ${row.last_name}`,
+      organisation: row.organisation_name,
+      email: row.email,
+      phone: row.phone,
+      topic: row.topic,
+      // The stored value is the enum ('corporate'); the console shows the same
+      // words the requester chose on the public form.
+      audience: AUDIENCE_LABELS[row.audience as Audience] ?? row.audience,
+      city: row.city,
+      state: row.state,
+      groupSize: row.group_size,
+      minCommitment: row.min_commitment,
+      preferredDates: row.preferred_window,
+      venue: row.venue_details,
+      notes: row.notes,
+      receivedOn: date(row.created_at),
+      status: row.status,
+      assignedPractitionerId: row.assigned_practitioner_id,
+      assignedTo: practitioner?.full_name ?? null,
+      agreedPayout: row.agreed_gross_payout,
+      sessionReference: sessions[0]?.reference ?? null,
+    };
+  });
+}
+
+/** Empanelled practitioners, for the request panel's assignment select. */
+export interface AssignablePractitioner {
+  id: string;
+  name: string;
+  averageRating: number | null;
+}
+
+export async function listAssignablePractitioners(): Promise<AssignablePractitioner[]> {
+  const supabase = createAdminClient();
+  const [{ data, error }, ratings] = await Promise.all([
+    supabase
+      .from("practitioners")
+      .select("id, full_name")
+      .eq("status", "Empanelled")
+      .is("deleted_at", null)
+      .order("full_name"),
+    averageRatings(supabase),
+  ]);
+
+  if (error) throw new Error(`practitioners read failed: ${error.message}`);
+
   return (data ?? []).map((row) => ({
     id: row.id,
-    name: `${row.first_name} ${row.last_name}`,
-    organisation: row.organisation_name,
-    topic: row.topic,
-    audience: row.audience,
-    location: [row.city, row.state].filter(Boolean).join(", "),
-    requestedOn: date(row.created_at),
-    status: row.status,
+    name: row.full_name,
+    averageRating: ratings.get(row.id) ?? null,
   }));
 }
 

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import {
   listActivity,
   listAgreements,
+  listAssignablePractitioners,
   listConsents,
   listGallery,
   listPayouts,
@@ -72,11 +73,19 @@ export interface LoadedConsole {
 }
 
 export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsole> {
+  // The request panel's assignment select needs the empanelled practitioners.
+  // Read once here rather than per row, and degrade to an empty list rather
+  // than failing the panel — an admin with no select is still better than a
+  // panel that will not load.
+  const assignable = await listAssignablePractitioners().catch(() => []);
+
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
     await Promise.all([
       loadPanel(listPractitioners, (rows) => <PractitionersPanel rows={rows} role={role} />),
       loadPanel(listAgreements, (rows) => <AgreementsPanel rows={rows} role={role} />),
-      loadPanel(listSessionRequests, (rows) => <RequestsPanel rows={rows} role={role} />),
+      loadPanel(listSessionRequests, (rows) => (
+        <RequestsPanel rows={rows} role={role} practitioners={assignable} />
+      )),
       loadPanel(listConsents, (rows) => <ConsentPanel rows={rows} role={role} />),
       loadPanel(listSessions, (rows) => <SessionsPanel rows={rows} role={role} />),
       loadPanel(listPhotoSubmissions, (rows) => <PhotosPanel rows={rows} role={role} />),

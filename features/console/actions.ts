@@ -11,6 +11,8 @@ import {
   practitionerDeactivated,
   practitionerWelcome,
   ratingRequest,
+  sessionRequestCancelled,
+  sessionRequestFollowUp,
 } from "@/lib/email/templates";
 import { newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -33,6 +35,16 @@ import { requireCapability } from "./requireRole";
  * (welcome/rejection/deactivation) sending "immediately" here is still 15s after
  * the click — the hold the procedure asks for (audit G4c).
  */
+
+/**
+ * The outcome of an action that can legitimately refuse.
+ *
+ * A thrown server action reaches the browser as a 500. That is right for a
+ * fault and wrong for "you haven't filled this in yet" — the second is a normal
+ * step in the flow, and logging it as a server error buries the real ones.
+ * Actions that only ever succeed or fault keep returning `void` and throwing.
+ */
+export type ActionResult = { ok: true } | { ok: false; message: string };
 
 function revalidateConsole() {
   revalidatePath("/console");
@@ -57,16 +69,291 @@ async function practitionerContact(
 
 // ── Session requests ─────────────────────────────────────────────────────────
 
-export async function matchSessionRequest(id: string): Promise<void> {
+/**
+ * The terms agreed with a practitioner on the phone, recorded against the
+ * request while it is still New. V7 captures these before anything is matched,
+ * which is why they live on the request rather than on a session that does not
+ * exist yet.
+ */
+export async function updateSessionRequestTerms(
+  id: string,
+  terms: { assignedPractitionerId?: string | null; agreedPayout?: number | null },
+): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
+
+  const patch: Record<string, unknown> = {};
+  if ("assignedPractitionerId" in terms) {
+    patch.assigned_practitioner_id = terms.assignedPractitionerId || null;
+  }
+  if ("agreedPayout" in terms) {
+    const payout = terms.agreedPayout;
+    if (payout !== null && payout !== undefined && (!Number.isFinite(payout) || payout < 0)) {
+      throw new Error("the agreed payout must be a positive amount");
+    }
+    patch.agreed_gross_payout = payout ?? null;
+  }
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase
+    .from("session_requests")
+    .update(patch)
+    .eq("id", id)
+    .is("deleted_at", null);
+  if (error) throw new Error(`saving the agreed terms failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.terms_updated",
+    entityType: "request",
+    entityRef: id,
+    detail: Object.keys(patch).join(", "),
+  });
+  revalidateConsole();
+}
+
+/**
+ * Matching a request — the step that turns an enquiry into real work
+ * (procedure step 8).
+ *
+ * It is not a status flip. Marking a request Matched creates the session it
+ * becomes and the assignment that carries the agreed payout, so the Session
+ * Details, Consent and Payouts tabs fill themselves. Without that the
+ * downstream tabs would need someone to key the same facts in again, which is
+ * exactly the manual synchronisation the V7 procedure exists to remove.
+ *
+ * It therefore refuses to run until the terms are recorded: a session with no
+ * practitioner and no payout is not a match, it is a half-finished one.
+ *
+ * Idempotent — re-matching an already-matched request does not create a second
+ * session.
+ */
+export async function matchSessionRequest(id: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data: request, error: readError } = await supabase
+    .from("session_requests")
+    .select(
+      "id, status, topic, audience, city, state, group_size, first_name, last_name, assigned_practitioner_id, agreed_gross_payout, venue_details",
+    )
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readError) throw new Error(`request read failed: ${readError.message}`);
+  if (!request) throw new Error("that request no longer exists");
+
+  // Returned, not thrown: this is the operator being told what is still needed,
+  // which is a normal outcome of the flow. Throwing would transport it as a
+  // 500, putting a routine "fill this in first" in the error log next to real
+  // faults.
+  if (!request.assigned_practitioner_id) {
+    return { ok: false, message: "Choose the practitioner who agreed before matching this request." };
+  }
+  if (request.agreed_gross_payout === null) {
+    return { ok: false, message: "Record the agreed gross payout before matching this request." };
+  }
+
+  const { data: existing } = await supabase
+    .from("sessions")
+    .select("id, reference")
+    .eq("session_request_id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  let sessionId: string;
+  let sessionReference: string;
+
+  if (existing) {
+    sessionId = existing.id as string;
+    sessionReference = existing.reference as string;
+  } else {
+    sessionReference = await nextReference(supabase, "session");
+    const { data: created, error: sessionError } = await supabase
+      .from("sessions")
+      .insert({
+        status: "Pending",
+        reference: sessionReference,
+        session_request_id: id,
+        module: request.topic,
+        audience: request.audience,
+        city: request.city,
+        state: request.state,
+        venue: request.venue_details,
+        participants: request.group_size,
+        spoc_name: `${request.first_name} ${request.last_name}`,
+        // The date is agreed on the call that follows the match; the client's
+        // preferred window is what they asked for, not a commitment, so it is
+        // not written in as one (migration 0011 makes the column nullable).
+        session_date: null,
+      })
+      .select("id")
+      .single();
+    if (sessionError) throw new Error(`session create failed: ${sessionError.message}`);
+    sessionId = created.id as string;
+  }
+
+  // The assignment carries the payout the whole finance side reads from.
+  const { data: assignment } = await supabase
+    .from("session_practitioners")
+    .select("id")
+    .eq("session_id", sessionId)
+    .eq("practitioner_id", request.assigned_practitioner_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!assignment) {
+    const { error: assignError } = await supabase.from("session_practitioners").insert({
+      session_id: sessionId,
+      practitioner_id: request.assigned_practitioner_id,
+      gross_payout: request.agreed_gross_payout,
+      confirmation_reference: await nextReference(supabase, "confirmation"),
+    });
+    if (assignError) throw new Error(`assignment create failed: ${assignError.message}`);
+  }
+
   const { error } = await supabase
     .from("session_requests")
     .update({ status: "Matched" })
     .eq("id", id)
     .is("deleted_at", null);
   if (error) throw new Error(`match failed: ${error.message}`);
-  await recordActivity({ actorEmail: actor, action: "request.matched", entityType: "request", entityRef: id });
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.matched",
+    entityType: "request",
+    entityRef: id,
+    detail: `Created session ${sessionReference} and its assignment.`,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
+/**
+ * "Send follow-up to client" — chases a request that is waiting on the
+ * requester. What is outstanding is derived from the record rather than left to
+ * the admin to remember, so the email says which thing is missing.
+ */
+export async function sendRequestFollowUp(id: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("session_requests")
+    .select("first_name, email, venue_details, preferred_window, min_commitment, group_size")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`request read failed: ${error.message}`);
+  if (!data) throw new Error("that request no longer exists");
+
+  const outstanding: string[] = [];
+  if (!data.venue_details) outstanding.push("The venue - where the session will be held.");
+  if (!data.preferred_window) outstanding.push("Your preferred dates.");
+  if (!data.min_commitment) outstanding.push("The minimum number of participants you can commit to.");
+  if (!data.group_size) outstanding.push("The expected group size.");
+  if (outstanding.length === 0) {
+    outstanding.push("Confirmation that you're still happy to go ahead, so we can lock a date.");
+  }
+
+  dispatchEmail(
+    newTraceId(),
+    sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding),
+  );
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.followed_up",
+    entityType: "request",
+    entityRef: id,
+    detail: outstanding.join(" "),
+  });
+}
+
+/** "Send cancellation message" — tells the client, without changing the status. */
+export async function sendRequestCancellation(id: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data } = await supabase
+    .from("session_requests")
+    .select("first_name, email")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!data) throw new Error("that request no longer exists");
+
+  dispatchEmail(newTraceId(), sessionRequestCancelled(data.email as string, data.first_name as string));
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.cancellation_sent",
+    entityType: "request",
+    entityRef: id,
+  });
+}
+
+/** The request panel's status select — the three V7 offers. */
+const REQUEST_STAGES = new Set(["New", "Matched", "Cancelled"]);
+
+export async function setSessionRequestStatus(id: string, status: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  if (!REQUEST_STAGES.has(status)) throw new Error(`unknown request status: ${status}`);
+
+  // Matching does real work, so it is not a plain update; routing it through
+  // here keeps the select on the same path as everything else rather than two
+  // that can diverge.
+  if (status === "Matched") return matchSessionRequest(id);
+  if (status === "Cancelled") {
+    await cancelSessionRequest(id);
+    return { ok: true };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("session_requests")
+    .update({ status: "New" })
+    .eq("id", id)
+    .is("deleted_at", null);
+  if (error) throw new Error(`status update failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.reopened",
+    entityType: "request",
+    entityRef: id,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
+/** The request card's danger zone — only while nothing downstream exists. */
+export async function deleteSessionRequest(id: string): Promise<void> {
+  const { email: actor } = await requireCapability("purge");
+  const supabase = createAdminClient();
+
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("id")
+    .eq("session_request_id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (session) {
+    throw new Error("this request already became a session — cancel it instead");
+  }
+
+  const { error } = await supabase
+    .from("session_requests")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("deleted_at", null);
+  if (error) throw new Error(`delete failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "request.deleted",
+    entityType: "request",
+    entityRef: id,
+  });
   revalidateConsole();
 }
 
@@ -254,7 +541,7 @@ export async function generateAndSendAgreement(rowId: string): Promise<void> {
 /** Asks Postgres for the next reference (migration 0008) — see the sequence note there. */
 async function nextReference(
   supabase: ReturnType<typeof createAdminClient>,
-  kind: "practitioner" | "agreement",
+  kind: "practitioner" | "agreement" | "session" | "confirmation",
 ): Promise<string> {
   const { data, error } = await supabase.rpc("next_reference", { kind });
   if (error || !data) throw new Error(`could not allocate a ${kind} reference: ${error?.message ?? "no value"}`);

@@ -71,10 +71,14 @@ export const PRACTITIONER_STATUS: PillMap<
   Deactivated: { label: "Deactivated", tone: "danger" },
 };
 
-/** Session requests — the spec's `reqMeta`. */
+/**
+ * Session requests — the spec's `reqMeta`. Violet then blue then red, matching
+ * V7's `.s-new` / `.s-matched` / `.s-rejected`: an untriaged request is not a
+ * warning and a matched one is not yet a success, it is in flight.
+ */
 export const REQUEST_STATUS: PillMap<"New" | "Matched" | "Cancelled"> = {
-  New: { label: "New", tone: "warning" },
-  Matched: { label: "Matched", tone: "success" },
+  New: { label: "New", tone: "intake" },
+  Matched: { label: "Matched", tone: "progress" },
   Cancelled: { label: "Cancelled", tone: "danger" },
 };
 

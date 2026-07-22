@@ -1,22 +1,81 @@
-import { cancelSessionRequest, matchSessionRequest } from "../actions";
-import { CellStack, ConsoleTable, type ColumnDef } from "../ConsoleTable";
-import { RowAction } from "../RowAction";
+"use client";
+
+import { type ColumnDef } from "../ConsoleTable";
+import { FilterablePanel } from "../FilterablePanel";
 import { REQUEST_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
-import type { SessionRequestRow } from "@/services/console";
+import { RequestDetail } from "./RequestDetail";
+import type { AssignablePractitioner, SessionRequestRow } from "@/services/console";
 
-/** The public "Request a Session" submissions — step 1 of the operating loop. */
+/**
+ * The public "Request a Session" submissions — step 1 of the operating loop.
+ *
+ * Ten columns, as V7 has them: this is a triage table, and the point of it is
+ * that an admin can judge a request without opening it. Everything that acts on
+ * a request lives in the card it opens.
+ */
 
 const COLUMNS: ReadonlyArray<ColumnDef<SessionRequestRow>> = [
   {
     key: "requester",
-    header: "Requested by",
-    render: (row) => <CellStack value={row.name} sub={row.organisation ?? undefined} />,
+    header: "SPOC / Requester",
+    render: (row) => (
+      <div>
+        <div className="font-medium text-ink">{row.name}</div>
+        <div className="mt-0.5 text-sm text-ink-muted">{row.organisation ?? "—"}</div>
+        {/* Whether a venue exists decides whether this request can be scheduled
+            at all, so it is surfaced here rather than buried in the card. */}
+        {row.venue ? (
+          <div className="mt-0.5 text-3xs text-green">📍 Venue provided</div>
+        ) : (
+          <div className="mt-0.5 text-3xs text-gold-dark">⚠ Venue pending</div>
+        )}
+      </div>
+    ),
   },
-  { key: "topic", header: "Topic", render: (row) => row.topic },
-  { key: "audience", header: "Audience", render: (row) => row.audience },
-  { key: "location", header: "Location", render: (row) => row.location },
-  { key: "requestedOn", header: "Requested on", render: (row) => row.requestedOn },
+  { key: "topic", header: "Topic", render: (row) => <span className="text-ink-muted">{row.topic}</span> },
+  {
+    key: "audience",
+    header: "Audience type",
+    render: (row) => <span className="text-xs text-ink-muted">{row.audience}</span>,
+  },
+  {
+    key: "city",
+    header: "City",
+    render: (row) => (
+      <span className="text-xs text-ink-muted">
+        {row.city || "—"}
+        {row.state ? <span className="block text-3xs text-ink-faint">{row.state}</span> : null}
+      </span>
+    ),
+  },
+  {
+    key: "groupSize",
+    header: "Group size",
+    render: (row) => (
+      <span className="text-ink-muted">{row.groupSize ? `${row.groupSize} people` : "—"}</span>
+    ),
+  },
+  {
+    key: "minCommitment",
+    header: "Min. commitment",
+    render: (row) =>
+      row.minCommitment ? (
+        <span className="font-semibold text-gold-dark">{row.minCommitment} pax</span>
+      ) : (
+        <span className="text-xs text-ink-faint">—</span>
+      ),
+  },
+  {
+    key: "preferredDates",
+    header: "Preferred dates",
+    render: (row) => <span className="text-xs text-ink-muted">{row.preferredDates ?? "—"}</span>,
+  },
+  {
+    key: "received",
+    header: "Received",
+    render: (row) => <span className="text-xs text-ink-faint">{row.receivedOn}</span>,
+  },
   {
     key: "status",
     header: "Status",
@@ -26,44 +85,44 @@ const COLUMNS: ReadonlyArray<ColumnDef<SessionRequestRow>> = [
     },
   },
   {
-    key: "actions",
-    header: "",
-    align: "right",
-    requires: "mutate",
+    key: "assignedTo",
+    header: "Assigned to",
     render: (row) =>
-      row.status === "New" ? (
-        <div className="flex justify-end gap-1">
-          <RowAction
-            action={matchSessionRequest.bind(null, row.id)}
-            label="Match"
-            pendingMessage={`Matching ${row.name}'s request…`}
-          />
-          <RowAction
-            action={cancelSessionRequest.bind(null, row.id)}
-            label="Cancel"
-            pendingMessage="Cancelling request…"
-            tone="danger"
-          />
+      row.assignedTo ? (
+        <div>
+          <span className="text-xs text-ink-muted">{row.assignedTo}</span>
+          <div className="text-3xs text-ink-faint">→ Session {row.sessionReference ?? "—"}</div>
         </div>
-      ) : null,
+      ) : (
+        <span className="text-2xs text-ink-faint">Unassigned</span>
+      ),
   },
 ];
 
 export function RequestsPanel({
   rows,
   role,
+  practitioners,
 }: {
   rows: readonly SessionRequestRow[];
   role: ConsoleRole;
+  practitioners: readonly AssignablePractitioner[];
 }) {
   return (
-    <ConsoleTable
+    <FilterablePanel
       caption="Session requests"
       columns={COLUMNS}
       rows={rows}
       role={role}
       rowKey={(row) => row.id}
+      rowLabel={(row) => `the request from ${row.name}`}
       empty="No session requests yet."
+      statusOf={(row) => row.status}
+      isPending={(row) => row.status === "New"}
+      pendingLabel="New — unassigned"
+      periodOf={(row) => row.receivedOn}
+      periodLabel="Received in:"
+      expand={(row) => <RequestDetail row={row} role={role} practitioners={practitioners} />}
     />
   );
 }
