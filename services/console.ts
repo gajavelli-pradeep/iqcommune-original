@@ -339,7 +339,15 @@ export async function listActivity(limit = 200): Promise<ActivityRow[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(`activity_log read failed: ${error.message}`);
+  if (error) {
+    // A table that hasn't been migrated yet (PostgREST "Could not find the
+    // table" / undefined_table) must not take the whole console down. Degrade
+    // to an empty log and let the rest of the console load.
+    if (error.code === "PGRST205" || error.code === "42P01" || /Could not find the table/i.test(error.message)) {
+      return [];
+    }
+    throw new Error(`activity_log read failed: ${error.message}`);
+  }
 
   return (data ?? []).map((row) => ({
     id: row.id,
