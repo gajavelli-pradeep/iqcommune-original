@@ -4,6 +4,14 @@ import { z } from "zod";
 
 export const MAX_PHOTOS = 10;
 export const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+/**
+ * Aggregate ceiling across all photos in one submission (audit M4). Without it
+ * the anonymous (untokenised) path accepts 10 × 25 MB = 250 MB per request into
+ * paid storage, rate-limited only per-IP. 60 MB comfortably fits ten typical
+ * phone photos while bounding the abuse vector on a self-hosted deploy (Vercel's
+ * ~4.5 MB body cap already limits it there).
+ */
+export const MAX_TOTAL_PHOTO_BYTES = 60 * 1024 * 1024;
 export const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png"] as const;
 
 export const photoSubmissionSchema = z.object({
@@ -27,11 +35,14 @@ export type PhotoSubmissionInput = z.infer<typeof photoSubmissionSchema>;
 export function validatePhotos(files: File[]): string | undefined {
   if (files.length === 0) return "Add at least one photo";
   if (files.length > MAX_PHOTOS) return `Up to ${MAX_PHOTOS} photos`;
+  let total = 0;
   for (const file of files) {
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type as (typeof ACCEPTED_PHOTO_TYPES)[number])) {
       return "Photos must be JPEG or PNG";
     }
     if (file.size > MAX_PHOTO_BYTES) return "Each photo must be under 25MB";
+    total += file.size;
   }
+  if (total > MAX_TOTAL_PHOTO_BYTES) return "Those photos are too large together — keep the total under 60MB";
   return undefined;
 }

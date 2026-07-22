@@ -1,8 +1,8 @@
-import { fail, ok } from "@/lib/api/response";
+import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { sessionRequestSubmission } from "@/lib/schemas/session-request";
-import { sendEmail } from "@/lib/email/send";
+import { dispatchEmail } from "@/lib/email/dispatch";
 import { newSessionRequestForAdmin, sessionRequestReceived } from "@/lib/email/templates";
 import { createSessionRequest } from "@/services/session-requests";
 
@@ -21,7 +21,11 @@ export async function POST(request: Request) {
       return fail("RATE_LIMITED", "Too many requests. Please try again shortly.", traceId);
     }
 
-    const parsed = sessionRequestSubmission.safeParse(await request.json());
+    const body = await readJsonBody(request);
+    if (!body.ok) {
+      return fail("VALIDATION_FAILED", "Request body must be valid JSON.", traceId);
+    }
+    const parsed = sessionRequestSubmission.safeParse(body.value);
     if (!parsed.success) {
       const fields: Record<string, string> = {};
       for (const issue of parsed.error.issues) fields[issue.path.join(".")] = issue.message;
@@ -32,13 +36,13 @@ export async function POST(request: Request) {
     const created = await createSessionRequest(parsed.data);
     log.info(traceId, "session request created", { id: created.id, audience: parsed.data.audience });
 
-    // After the write, and never awaited into the response path: the request is
-    // already saved, and a slow mail provider must not turn a successful
-    // submission into an error the person sees.
-    void sendEmail(traceId, sessionRequestReceived(parsed.data.email, parsed.data.firstName));
+    // Off the response path via dispatchEmail → after() (audit C2): the request
+    // is already saved, and a slow or failing mail provider must not turn a
+    // successful submission into an error the person sees.
+    dispatchEmail(traceId, sessionRequestReceived(parsed.data.email, parsed.data.firstName));
     const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
     if (adminInbox) {
-      void sendEmail(
+      dispatchEmail(
         traceId,
         newSessionRequestForAdmin(
           adminInbox,

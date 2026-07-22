@@ -53,3 +53,19 @@ export function fail(
     { status: ERROR_CODES[code] },
   );
 }
+
+/**
+ * Reads a JSON request body without letting a malformed/truncated payload throw
+ * into the route's generic catch (audit M1). A bad body is a client error (400),
+ * not a server fault (500) — reporting it as 500 inflates the error channel and
+ * masks real incidents. Returns `{ ok: false }` on any parse failure.
+ */
+export async function readJsonBody(
+  request: Request,
+): Promise<{ ok: true; value: unknown } | { ok: false }> {
+  try {
+    return { ok: true, value: await request.json() };
+  } catch {
+    return { ok: false };
+  }
+}

@@ -1,4 +1,4 @@
-import { fail, ok } from "@/lib/api/response";
+import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 // `applicationSchema` directly, with no `applicationSubmission` sibling: unlike
@@ -19,7 +19,11 @@ export async function POST(request: Request) {
       return fail("RATE_LIMITED", "Too many requests. Please try again shortly.", traceId);
     }
 
-    const parsed = applicationSchema.safeParse(await request.json());
+    const body = await readJsonBody(request);
+    if (!body.ok) {
+      return fail("VALIDATION_FAILED", "Request body must be valid JSON.", traceId);
+    }
+    const parsed = applicationSchema.safeParse(body.value);
     if (!parsed.success) {
       const fields: Record<string, string> = {};
       // Keyed on the first path segment: an array field yields paths like

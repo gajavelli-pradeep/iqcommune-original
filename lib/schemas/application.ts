@@ -1,6 +1,12 @@
 import { z } from "zod";
 
+import { MODULES } from "@/constants/modules";
+
 /** Practitioner empanelment application — shared by the modal and its route. */
+
+// Re-exported so existing call sites keep importing MODULES from here; the
+// single declaration now lives in constants/ (audit M4).
+export { MODULES };
 
 export const EXPERIENCE_BANDS = ["5 – 8 years", "9 – 12 years", "13 – 18 years", "18+ years"] as const;
 export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "3XL"] as const;
@@ -9,14 +15,6 @@ export const TEACHING_FREQUENCIES = [
   "Once in 2 months",
   "Once a quarter",
   "Flexible — depends on my schedule",
-] as const;
-export const MODULES = [
-  "Foundations of Personal Finance",
-  "Retirement & Goal-Based Financial Planning",
-  "Equity Investing Simplified",
-  "Debt & Fixed Income Investing",
-  "Asset Allocation & Portfolio Construction",
-  "Investment Solutions & Portfolio Strategies",
 ] as const;
 
 const required = (field: string) => z.string().trim().min(1, `${field} is required`);
