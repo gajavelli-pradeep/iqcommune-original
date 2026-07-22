@@ -1,3 +1,5 @@
+import "server-only";
+
 import { z } from "zod";
 
 /**
@@ -22,6 +24,17 @@ const required = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url("must be the project URL, e.g. https://xxx.supabase.co"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20, "looks too short to be the anon key"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20, "looks too short to be the service-role key"),
+  // Promoted FEATURE → REQUIRED (audit H1): each feature needing these has
+  // shipped, so ADR-0004's rule ("promote in the same change that ships the
+  // feature") applies. Without them a deploy boots green then 500s per request —
+  // boot-validation turns that into a loud failed deploy instead.
+  //   HMAC_SECRET      — signs all five tokenised link pages
+  //   UPSTASH_*        — rate-limits all seven public mutations
+  //   NEXT_PUBLIC_BASE_URL — canonical host for emailed links + OG/canonical URLs
+  HMAC_SECRET: z.string().min(32, "must be at least 32 chars — it signs the tokenised links"),
+  UPSTASH_REDIS_REST_URL: z.string().url("must be the Upstash REST URL"),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(20, "looks too short to be the Upstash token"),
+  NEXT_PUBLIC_BASE_URL: z.string().url("must be an absolute URL, e.g. https://iqcommune.com"),
 });
 
 /**
@@ -33,6 +46,10 @@ const raw = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  HMAC_SECRET: process.env.HMAC_SECRET,
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
 };
 
 export type Env = z.infer<typeof required>;
@@ -42,18 +59,17 @@ export type Env = z.infer<typeof required>;
  * and so `.env.example` can be diffed against it.
  */
 export const FEATURE_ENV = {
-  /** Canonical host for links inside outbound email. Required once email ships. */
-  NEXT_PUBLIC_BASE_URL: "email links",
-  /** Signs the tokenised /rate, /consent and /submit-photos links. */
-  HMAC_SECRET: "tokenised public links",
   /** Brevo transactional email. */
   BREVO_API_KEY: "outbound email",
   BREVO_SENDER_EMAIL: "outbound email",
-  /** Upstash, for rate limiting public mutations. */
-  UPSTASH_REDIS_REST_URL: "rate limiting",
-  UPSTASH_REDIS_REST_TOKEN: "rate limiting",
   /** Private bucket holding session photos. */
   SUPABASE_PHOTOS_BUCKET: "photo submissions",
+  /** "live" enables real Brevo sends; anything else is a logged dry run. */
+  EMAIL_DELIVERY: "outbound email delivery mode",
+  /** Where new-session-request notifications go. */
+  ADMIN_NOTIFY_EMAIL: "admin new-request notification",
+  /** Display name on outbound Brevo email. */
+  BREVO_SENDER_NAME: "outbound email",
 } as const;
 
 export type FeatureEnvKey = keyof typeof FEATURE_ENV;
@@ -73,7 +89,10 @@ export function validateEnv(): Env {
       .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
     throw new Error(
-      `Environment is not valid. Set these in .env.local (see .env.example):\n${problems}`,
+      // Points at docs/ENVIRONMENT.md, not .env.example (audit M12): the example
+      // is deliberately not committed (see that doc), so a fresh clone has no
+      // such file to "see".
+      `Environment is not valid. Set these in .env.local (see docs/ENVIRONMENT.md):\n${problems}`,
     );
   }
 
