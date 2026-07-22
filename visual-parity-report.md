@@ -1,39 +1,42 @@
 # Visual Parity Report — React vs V7 HTML
 
-**Method:** Playwright (headless Chromium) screenshotting each React page and its V7 HTML
-reference at the same viewport, read back and compared side by side. Fixes were re-screenshotted
-and re-compared until they matched.
+**Method:** Playwright (headless Chromium) screenshots each React page/section and its V7 HTML
+reference at the same viewport, read back and compared. Fixes are re-screenshotted until the section
+is visually indistinguishable, then locked. A dev-only preview harness (`app/dev-preview/[slug]`,
+404 in production) renders the token-gated flow pages with mock props so their forms can be shot.
 
-## Comparable surfaces
+## Page status
 
-| Page | React | V7 reference | Comparable? |
-|---|---|---|---|
-| Landing | `/` | `iqcommune-main-landing-page.html` | ✅ fully |
-| Practitioners | `/practitioners` | `iqcommune-empanelment.html` | ✅ fully |
-| Rate / Consent / Photos / Onboarding / Join-admin | token pages | rating/consent/photos/onboarding/user-setup | ⛔ show the invalid-link state without a **valid token + DB row** — the full forms can't be rendered for comparison without seeded data |
-| Admin console | `/console` etc. | `admin-console-automated.html` | ⛔ behind auth — needs a signed-in session (first-admin credential) |
+| Page | V7 reference | Status |
+|---|---|---|
+| Landing `/` | `iqcommune-main-landing-page.html` | Hero pixel-verified; full section sweep pending |
+| **Practitioners `/practitioners`** | `iqcommune-empanelment.html` | ✅ **Complete — 12/12 sections cloned & locked** |
+| Rate / Consent / Photos / Onboarding / Join-admin | flow mockups | Analysed (defects mapped); clone pending |
+| Admin console | `admin-console-automated.html` | Chrome/tabs match; panels are documented reductions |
 
-## Defects found and fixed (verified by re-screenshot)
+## Practitioners — section-by-section (all locked)
 
-| # | Page | Defect | Root cause | Fix |
-|---|---|---|---|---|
-| 1 | Landing | Header "Request a Session" button had a leading message icon; V7 has a trailing right-arrow | `RequestSessionButton` used one icon for all variants | Variant-aware: nav/ghost trail `→`, hero/CTA lead with the message icon |
-| 2 | Practitioners | Hero rendered on **light cream**; V7 hero is **dark ink** (white headline, gold accent, gold corner glows, dark card) | Hero built with `bg-surface-soft` | Inverted to `bg-ink` + glows + `text-surface`/`text-gold` + dark `tool-card`; added `--color-gold-glow[-soft]` tokens |
-| 3 | Practitioners | "This works well for some people" section rendered **light**; V7 is **dark** | `FitLists` built light | `bg-ink` + `SectionHeading tone="dark"` + green-tint good card / faint not-for-you card |
-| 4 | Practitioners | Division-of-work was two separate cards; V7 is one split box with a **dark "We Handle" header** | Two `bg-surface` cards | Single bordered grid: cream "You Bring" header, dark ink "We Handle" header, medium-ink We-Handle rows |
+1. **Header** — lockup grouped by the logo (was centre-floated); right CTA is the outlined gold pill.
+2. **Hero** — perk icons added, first perk featured, 4 visible, 20px card, muted-white label, gold toggle.
+3. **Trust bar** — three distinct icons (shield/dollar/clipboard-check), 15px, 48px gap.
+4. **Roles grid** — un-inverted (cream section / white cards), 6 role icons, 12px radius, plain note.
+5. **Process steps** — white section, dark-ink numbered circles, centred, 16px titles.
+6. **Division of work** — 12px radius, 12px headers, inline 15px ink-faint checks, We-column left pad.
+7. **Modules grid** — 40px card icons, inline gold `taughtBy`, bundle box with dark icon + pill chips.
+8. **Fit lists** — forest-green good palette (`#6fcf6f`), faint X-circle not-for-you markers.
+9. **Disclosure** — gold operational card, intro paragraphs, icon markers, left-gold-border note.
+10. **Apply CTA** — 640px column, vertical reassurance stack, trailing-arrow **white-label** button.
+11. **FAQs** — 12px items, ink-faint chevrons, 720px column (all 10 questions already matched).
+12. **Footer** — outlined white pill, no extra divider (dynamic © year retained).
 
-## Status by page
+**Global fixes folded in:** 32px horizontal section padding at all breakpoints; 80px (`py-20`) vertical
+section padding matching V7's base `section`; new tokens `--color-on-dark-faint`, `--color-gold-glow-strong`,
+`--color-fit-good{,-surface,-edge}`, `--color-on-dark-edge`. Shared `SiteHeader`/`SiteFooter`/`FaqAccordion`
+corrections also improve the landing/flow pages.
 
-- **Landing (`/`)** — parity high; structure, sections, colors, typography match. Header CTA fixed.
-  Remaining: sub-pixel spacing/pill-padding nits tracked as P2/P3 in `../FIDELITY-FLAWS.md`.
-- **Practitioners (`/practitioners`)** — the three structural mismatches above are fixed; the page
-  now reads as the V7 dark-hero design end to end.
+**Verification:** `pnpm typecheck` clean · 183 tests pass (incl. parity suites) · `eslint app components features`
+clean (token guard) · 0 console errors on `/practitioners` · full-page height within ~3% (hero exact),
+remaining delta is half-pixel V7 font sizes (13.5/14.5px) within rendering tolerance.
 
-## Not yet compared (blocked)
-
-- **Responsive breakpoints** (320–1920): only 1440 was compared this pass; the mobile/tablet sweep
-  is the next iteration.
-- **Token-gated and admin pages**: require seeded DB rows + a signed-in session to render their real
-  content — external data/credential blockers, not implementation gaps.
-
-_All fixes shipped on `feat/v7-production-hardening`; `pnpm verify` green (183 tests)._
+**Known intentional deviations:** dynamic copyright year (vs mockup's hardcoded 2025); both columns of
+Division-of-work kept on mobile (V7 hides one — content-parity rule/test).
