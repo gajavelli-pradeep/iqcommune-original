@@ -15,11 +15,48 @@ import { log } from "@/lib/logger";
  * can be traced back to the request that should have sent it.
  */
 
+/**
+ * Which mailbox a message goes out from (client decision, 2026-07-23).
+ *
+ * Practitioner-pipeline mail comes from practitioner@iqcommune.com and
+ * session mail from session@iqcommune.com, so a reply lands with the person
+ * whose job it is rather than in one shared inbox. `platform` is everything
+ * that is neither — console team invites — and uses the default sender.
+ *
+ * The stream is declared on the TEMPLATE, not chosen at the call site: which
+ * mailbox an email belongs to is a property of the email, and a caller picking
+ * it is a caller that can pick wrong.
+ */
+export type EmailStream = "practitioner" | "session" | "platform";
+
 export interface EmailMessage {
   to: string;
   subject: string;
   /** Plain text. HTML templates arrive with the admin console's drafts (P8). */
   body: string;
+  /** Defaults to `platform` — the shared sender — when a template omits it. */
+  stream?: EmailStream;
+}
+
+/** The env var holding each stream's From address. */
+const SENDER_ENV: Record<EmailStream, string> = {
+  practitioner: "BREVO_SENDER_PRACTITIONER",
+  session: "BREVO_SENDER_SESSION",
+  platform: "BREVO_SENDER_EMAIL",
+};
+
+/**
+ * The From address for a stream, falling back to the shared sender.
+ *
+ * The fallback is the point, not a safety net. The dedicated mailboxes arrive
+ * with Google Workspace and then have to be verified with Brevo before Brevo
+ * will send as them — sending from an unverified address is rejected outright.
+ * So the app ships ready: set the variable when the mailbox is live and mail
+ * moves to it with no deploy; leave it unset and everything keeps working from
+ * the existing sender.
+ */
+export function senderFor(stream: EmailStream = "platform"): string | undefined {
+  return process.env[SENDER_ENV[stream]] || process.env.BREVO_SENDER_EMAIL;
 }
 
 const ENDPOINT = "https://api.brevo.com/v3/smtp/email";
@@ -31,7 +68,7 @@ export type SendOutcome =
 
 export async function sendEmail(traceId: string, message: EmailMessage): Promise<SendOutcome> {
   const apiKey = process.env.BREVO_API_KEY;
-  const sender = process.env.BREVO_SENDER_EMAIL;
+  const sender = senderFor(message.stream);
 
   if (process.env.EMAIL_DELIVERY !== "live") {
     // The rendered body + recipient are what make the link checkable without
@@ -41,14 +78,20 @@ export async function sendEmail(traceId: string, message: EmailMessage): Promise
     const inspectable = process.env.NODE_ENV !== "production";
     log.info(traceId, "email not sent — dry run", {
       subject: message.subject,
+      // The stream and resolved sender are logged even in production: they
+      // carry no personal data, and they are the only way to confirm the
+      // routing is right before the mailboxes are live.
+      stream: message.stream ?? "platform",
+      from: sender ?? "(no sender configured)",
       ...(inspectable ? { to: message.to, body: message.body } : {}),
     });
     return { delivered: false, reason: "dry-run" };
   }
 
   if (!apiKey || !sender) {
-    log.warn(traceId, "email not sent — BREVO_API_KEY or BREVO_SENDER_EMAIL missing", {
+    log.warn(traceId, "email not sent — BREVO_API_KEY or a sender address is missing", {
       subject: message.subject,
+      stream: message.stream ?? "platform",
     });
     return { delivered: false, reason: "not-configured" };
   }

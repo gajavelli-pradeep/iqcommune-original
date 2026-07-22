@@ -62,6 +62,16 @@ export const FEATURE_ENV = {
   /** Brevo transactional email. */
   BREVO_API_KEY: "outbound email",
   BREVO_SENDER_EMAIL: "outbound email",
+  /**
+   * Per-stream From addresses (client decision, 2026-07-23): practitioner
+   * pipeline mail from practitioner@iqcommune.com, session mail from
+   * session@iqcommune.com. Both OPTIONAL on purpose — each falls back to
+   * BREVO_SENDER_EMAIL until the Google Workspace mailbox exists AND has been
+   * verified with Brevo, which will not accept a send from an unverified
+   * address. Set each one when its mailbox is live; no deploy is needed.
+   */
+  BREVO_SENDER_PRACTITIONER: "practitioner-pipeline email sender",
+  BREVO_SENDER_SESSION: "session email sender",
   /** Private bucket holding session photos. */
   SUPABASE_PHOTOS_BUCKET: "photo submissions",
   /** "live" enables real Brevo sends; anything else is a logged dry run. */

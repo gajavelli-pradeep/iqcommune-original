@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildLink } from "@/lib/email/links";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, senderFor } from "@/lib/email/send";
 import * as templates from "@/lib/email/templates";
 import { verifyToken } from "@/lib/tokens";
 
@@ -81,5 +81,88 @@ describe("email delivery", () => {
       delivered: false,
       reason: "not-configured",
     });
+  });
+});
+
+/**
+ * Which mailbox each email leaves from (client decision, 2026-07-23).
+ *
+ * Pinned by test because the failure is silent and external: a template that
+ * drifts to the wrong stream still sends, still looks right in the console, and
+ * is only noticed when a practitioner's reply lands in the sessions inbox. The
+ * table below is the client's split, restated where a change has to update it.
+ */
+describe("email sender routing", () => {
+  // Built inside each test, not at describe time: templates that carry a link
+  // read NEXT_PUBLIC_BASE_URL, which `beforeEach` has not stubbed yet when the
+  // describe body runs.
+  const practitionerMail = () => [
+    templates.onboardingLink("a@b.com", "Vikram", ID),
+    templates.practitionerWelcome("a@b.com", "Vikram"),
+    templates.applicationRejected("a@b.com", "Vikram"),
+    templates.practitionerDeactivated("a@b.com", "Vikram"),
+  ];
+
+  const sessionMail = () => [
+    templates.sessionRequestReceived("a@b.com", "Asha"),
+    templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."]),
+    templates.sessionRequestCancelled("a@b.com", "Asha"),
+    templates.newSessionRequestForAdmin("a@b.com", "summary"),
+    templates.consentRequest("a@b.com", "Vikram", ID),
+    templates.photoReminder("a@b.com", "Vikram", ID),
+    templates.ratingRequest("a@b.com", "Asha", ID),
+  ];
+
+  it("sends every practitioner-pipeline email from the practitioner mailbox", () => {
+    for (const message of practitionerMail()) expect(message.stream).toBe("practitioner");
+  });
+
+  it("sends every session email from the session mailbox", () => {
+    for (const message of sessionMail()) expect(message.stream).toBe("session");
+  });
+
+  it("leaves the console invite on the platform sender", () => {
+    // Team access is neither pipeline nor session work.
+    expect(templates.adminInvite("a@b.com", ID).stream).toBeUndefined();
+  });
+
+  it("resolves each stream to its own address once configured", () => {
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "practitioner@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_SESSION", "session@iqcommune.com");
+
+    expect(senderFor("practitioner")).toBe("practitioner@iqcommune.com");
+    expect(senderFor("session")).toBe("session@iqcommune.com");
+    expect(senderFor("platform")).toBe("hello@iqcommune.com");
+    expect(senderFor()).toBe("hello@iqcommune.com");
+  });
+
+  it("falls back to the shared sender until a mailbox is configured", () => {
+    // The mailboxes arrive with Google Workspace and must then be verified with
+    // Brevo. Until both are done the variables stay unset, and nothing may
+    // break in the meantime.
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "");
+    vi.stubEnv("BREVO_SENDER_SESSION", "");
+
+    expect(senderFor("practitioner")).toBe("hello@iqcommune.com");
+    expect(senderFor("session")).toBe("hello@iqcommune.com");
+  });
+
+  it("sends from the stream's address, not the shared one", async () => {
+    vi.stubEnv("EMAIL_DELIVERY", "live");
+    vi.stubEnv("BREVO_API_KEY", "key");
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "practitioner@iqcommune.com");
+
+    let sent: { sender?: { email?: string } } | undefined;
+    vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ messageId: "1" }));
+    });
+
+    await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"));
+
+    expect(sent?.sender?.email).toBe("practitioner@iqcommune.com");
   });
 });

@@ -9,12 +9,20 @@ import type { EmailMessage } from "./send";
  * Every link is built by `buildLink`, never assembled here — a template that
  * concatenated an id would put a guessable identifier in a URL, which is the
  * thing ADR 0004 exists to prevent.
+ *
+ * Every template also declares its `stream`, which decides the mailbox it is
+ * sent from (client decision, 2026-07-23): practitioner-pipeline mail from
+ * practitioner@, session mail from session@, so a reply reaches the person
+ * whose job it is. It is declared here rather than at the call site because
+ * which mailbox an email belongs to is a property of the email. A template
+ * with no stream is `platform` — currently only the console team invite.
  */
 
 const lines = (...parts: string[]) => parts.join("\n");
 
 export function sessionRequestReceived(to: string, firstName: string): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "We have your session request",
     body: lines(
@@ -41,6 +49,7 @@ export function sessionRequestFollowUp(
   outstanding: readonly string[],
 ): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "Following up on your session request",
     body: lines(
@@ -60,6 +69,7 @@ export function sessionRequestFollowUp(
 /** The console's "Send cancellation message" for a request that fell through. */
 export function sessionRequestCancelled(to: string, firstName: string): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "Your session request",
     body: lines(
@@ -76,6 +86,7 @@ export function sessionRequestCancelled(to: string, firstName: string): EmailMes
 
 export function newSessionRequestForAdmin(to: string, summary: string): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "New session request",
     body: lines("A new session request has come in:", "", summary),
@@ -84,6 +95,7 @@ export function newSessionRequestForAdmin(to: string, summary: string): EmailMes
 
 export function ratingRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "How was your session?",
     body: lines(
@@ -100,6 +112,7 @@ export function ratingRequest(to: string, firstName: string, assignmentId: strin
 
 export function consentRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
+    stream: "session",
     to,
     subject: "Confirm your session details",
     body: lines(
@@ -119,6 +132,9 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
   // the procedure wants the practitioner to have them ready before they need them.
   const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label} — ${shot.note}`);
   return {
+    // Sent to a practitioner, but about a session — and the reply ("which
+    // session is this?") belongs with whoever runs sessions.
+    stream: "session",
     to,
     subject: "Your session photos — shot guide and upload link",
     body: lines(
@@ -140,6 +156,7 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
 
 export function onboardingLink(to: string, firstName: string, agreementId: string): EmailMessage {
   return {
+    stream: "practitioner",
     to,
     subject: "Welcome to the iqcommune practitioner network",
     body: lines(
@@ -181,6 +198,7 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
 
 export function practitionerWelcome(to: string, firstName: string): EmailMessage {
   return {
+    stream: "practitioner",
     to,
     subject: "You're empanelled with iqcommune",
     body: lines(
@@ -196,6 +214,7 @@ export function practitionerWelcome(to: string, firstName: string): EmailMessage
 
 export function applicationRejected(to: string, firstName: string): EmailMessage {
   return {
+    stream: "practitioner",
     to,
     subject: "An update on your iqcommune application",
     body: lines(
@@ -212,6 +231,7 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
 
 export function practitionerDeactivated(to: string, firstName: string): EmailMessage {
   return {
+    stream: "practitioner",
     to,
     subject: "Your iqcommune empanelment status",
     body: lines(

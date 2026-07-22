@@ -30,11 +30,48 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_BASE_URL=http://localhost:3000   # canonical host for emailed links, no trailing slash
 HMAC_SECRET=                                  # signs /rate, /consent, /submit-photos links · 32+ chars
 BREVO_API_KEY=
-BREVO_SENDER_EMAIL=
+BREVO_SENDER_EMAIL=                           # fallback / platform sender (console invites)
+BREVO_SENDER_PRACTITIONER=                    # optional — e.g. practitioner@iqcommune.com
+BREVO_SENDER_SESSION=                         # optional — e.g. session@iqcommune.com
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 SUPABASE_PHOTOS_BUCKET=session-photos
 ```
+
+## Outbound email — which mailbox sends what
+
+Client decision, 2026-07-23: practitioner-pipeline mail goes out from
+`practitioner@iqcommune.com` and session mail from `session@iqcommune.com`, so a reply reaches the
+person whose job it is rather than one shared inbox.
+
+| Stream | Sender variable | Templates |
+|---|---|---|
+| `practitioner` | `BREVO_SENDER_PRACTITIONER` | empanelment agreement link, welcome, rejection, deactivation |
+| `session` | `BREVO_SENDER_SESSION` | request received, follow-up, cancellation, admin new-request alert, consent request, photo guide, rating request |
+| `platform` | `BREVO_SENDER_EMAIL` | console team invite |
+
+The stream is declared on the template, not chosen by the caller — which mailbox an email belongs to
+is a property of the email.
+
+**Both per-stream variables are optional, and that is the point.** Each falls back to
+`BREVO_SENDER_EMAIL`, so the app is already correct today and moves to the dedicated mailboxes the
+moment they exist. Adding them is a Vercel env change and a redeploy; no code change.
+
+### Before setting them
+
+Google Workspace giving you the mailbox is not enough. **Brevo rejects a send from an address it has
+not verified**, so setting the variable before verifying would turn every practitioner or session
+email into a provider rejection — worse than the shared sender it replaced. In order:
+
+1. Create the mailbox in Google Workspace.
+2. Add it in Brevo (*Senders, Domains & Dedicated IPs → Senders*) and complete the verification email.
+3. Confirm the `iqcommune.com` domain is authenticated in Brevo (SPF/DKIM), or mail will send but
+   land in spam.
+4. Only then set the variable in Vercel and redeploy.
+
+To check the routing before any of that, leave `EMAIL_DELIVERY` unset: every send logs a dry run
+carrying its `stream` and the `from` it resolved, so the mapping is verifiable with no mail sent and
+no mailbox in existence.
 
 ## Deliberately absent
 
