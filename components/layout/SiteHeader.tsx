@@ -49,49 +49,56 @@ export function SiteHeader({
         style={{ maxWidth: width }}
         className="mx-auto flex h-[68px] items-center justify-between gap-3 sm:gap-4"
       >
-        <Link
-          href="/"
-          className="flex shrink-0 flex-col gap-[3px]"
-          aria-label="iqcommune — home"
-        >
-          <span className="flex items-baseline leading-none">
-            <span className="text-4xl font-bold tracking-display text-gold sm:text-6xl">iq</span>
-            <span className="text-4xl font-light tracking-display text-ink sm:text-6xl">
-              commune
-            </span>
-          </span>
-          {/* Shown from 360px up to match V7, which keeps the strapline on every
-              phone. Hidden only below 360px, where the lockup plus the Request
-              button overflows the viewport — the 320px P1 this guard exists for. */}
-          <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-            Where financial intelligence connects
-          </span>
-        </Link>
-
-        {/* Hidden below 640px for the same measured reason as the strapline: the
-            wordmark, this badge and the right slot together overflow 320px.
-            Which sub-site you are on is also carried by the page's own h1. */}
-        {badge && badgeStyle === "pill" ? (
-          <span className="hidden shrink-0 rounded-full border border-gold-border bg-gold-light px-2.5 py-[3px] text-xs font-semibold uppercase tracking-[0.06em] text-gold-dark sm:inline-flex">
-            {badge.join(" ")}
-          </span>
-        ) : null}
-
-        {badge && badgeStyle === "lockup" ? (
-          <span className="hidden shrink-0 flex-col gap-0.5 border-l border-border-strong pl-3.5 sm:flex">
-            {badge.map((line) => (
-              <span
-                key={line}
-                className="text-2xs font-semibold uppercase leading-none tracking-caps text-gold-dark"
-              >
-                {line}
+        {/* Left cluster — logo and the lockup badge sit together, as V7 groups
+            them inside one <a> (gap:14px). Spreading them with justify-between
+            floated the lockup into the centre. */}
+        <div className="flex min-w-0 items-center gap-[14px]">
+          <Link
+            href="/"
+            className="flex shrink-0 flex-col gap-[3px]"
+            aria-label="iqcommune — home"
+          >
+            <span className="flex items-baseline leading-none">
+              <span className="text-4xl font-bold tracking-display text-gold sm:text-6xl">iq</span>
+              <span className="text-4xl font-light tracking-display text-ink sm:text-6xl">
+                commune
               </span>
-            ))}
-          </span>
-        ) : null}
+            </span>
+            {/* Shown from 360px up to match V7, which keeps the strapline on every
+                phone. Hidden only below 360px, where the lockup plus the Request
+                button overflows the viewport — the 320px P1 this guard exists for. */}
+            <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
+              Where financial intelligence connects
+            </span>
+          </Link>
 
-        {right && (
-          <div className="flex min-w-0 items-center gap-[0.6rem]">{right}</div>
+          {badge && badgeStyle === "lockup" ? (
+            <span className="hidden shrink-0 flex-col gap-0.5 border-l border-border-strong pl-3.5 sm:flex">
+              {badge.map((line) => (
+                <span
+                  key={line}
+                  className="text-2xs font-semibold uppercase leading-none tracking-caps text-gold-dark"
+                >
+                  {line}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </div>
+
+        {/* Right cluster — the pill badge (V7 places it top-right) and whatever
+            call-to-action the page supplies. */}
+        {(right || (badge && badgeStyle === "pill")) && (
+          <div className="flex min-w-0 items-center gap-[0.6rem]">
+            {/* Hidden below 640px: the wordmark, this badge and the right slot
+                together overflow 320px. The page's own h1 also names the sub-site. */}
+            {badge && badgeStyle === "pill" ? (
+              <span className="hidden shrink-0 rounded-full border border-gold-border bg-gold-light px-2.5 py-[3px] text-xs font-semibold uppercase tracking-[0.06em] text-gold-dark sm:inline-flex">
+                {badge.join(" ")}
+              </span>
+            ) : null}
+            {right}
+          </div>
         )}
       </div>
     </header>

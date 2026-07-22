@@ -50,7 +50,8 @@ export function PractitionerSections() {
             // the footer link above, which the spec also specifies and which
             // has no width budget to fit into.
             aria-label="See iqcommune for Learners"
-            className="inline-flex whitespace-nowrap text-2xs font-semibold uppercase tracking-caps text-ink-muted transition-colors hover:text-gold-dark"
+            // V7 `.btn-nav-subtle`: outlined gold pill, not plain text.
+            className="inline-flex items-center whitespace-nowrap rounded-full border border-border-strong px-[18px] py-[9px] text-2xs font-semibold uppercase tracking-caps text-gold-dark transition-[background-color,border-color] hover:border-gold-dark hover:bg-gold-glow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
           >
             <span aria-hidden className="sm:hidden">
               For Learners
