@@ -115,18 +115,16 @@ export function OnboardingForm({
     <>
       <section className="rounded-lg border border-border bg-surface p-8">
         <Stepper steps={STEPS} current={2} />
-        <p className="mb-1 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
-          Step 2 of 2
-        </p>
-        <h1 className="mb-2 text-3xl font-semibold text-ink">
+        <h1 className="mb-1.5 text-2xl font-semibold text-ink">
           Welcome to the iqcommune practitioner network.
         </h1>
-        <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+        <p className="mb-6 text-md leading-[1.6] text-ink-muted">
           Your application has been reviewed and we&apos;d love to have you on board. Please review
           your details below, read through the empanelment agreement carefully, and provide your
           digital signature to complete the onboarding.
         </p>
-        <dl className="grid gap-3 min-[480px]:grid-cols-2">
+        {/* V7 .summary-item: filled surface-soft cards, always two columns. */}
+        <dl className="grid grid-cols-2 gap-3">
           {(
             [
               ["Name", practitioner.name],
@@ -137,9 +135,11 @@ export function OnboardingForm({
               ["Agreement reference", practitioner.agreementReference],
             ] as ReadonlyArray<[string, string]>
           ).map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-2xs uppercase tracking-caps text-ink-faint">{label}</dt>
-              <dd className="text-base font-medium text-ink">{value}</dd>
+            <div key={label} className="rounded-lg bg-surface-soft px-4 py-3">
+              <dt className="mb-[3px] text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+                {label}
+              </dt>
+              <dd className="text-md font-medium text-ink">{value}</dd>
             </div>
           ))}
         </dl>
@@ -267,18 +267,19 @@ export function OnboardingForm({
           }
         }}
       >
-        <h2 className="mb-3 text-md font-semibold text-ink">By signing below, you confirm that:</h2>
-        <ul className="mb-5">
-          {CONFIRMATIONS.map((item) => (
-            <li
-              key={item}
-              className="mb-2 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
-            >
-              <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
-              {item}
-            </li>
-          ))}
-        </ul>
+        {/* V7 .declaration-box — gold box, gold-dark title + list-marker points. */}
+        <div className="mb-5 rounded-[12px] border-[1.5px] border-gold-border bg-gold-light px-6 py-5">
+          <h2 className="mb-3 text-md font-semibold text-gold-dark">
+            By signing below, you confirm that:
+          </h2>
+          <ul className="list-disc pl-4 text-base leading-[1.7] text-gold-dark">
+            {CONFIRMATIONS.map((item) => (
+              <li key={item} className="mb-[0.35rem] last:mb-0">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <TextField
           label="Full name (as it should appear on the agreement)"

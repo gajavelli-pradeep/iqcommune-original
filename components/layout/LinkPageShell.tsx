@@ -14,11 +14,17 @@ import { SiteHeader } from "./SiteHeader";
  */
 export function LinkPageShell({
   badge,
+  badgeStyle = "pill",
+  right,
   width,
   strapline = null,
   children,
 }: {
   badge: string | readonly string[];
+  /** Most flow pages use the gold pill; onboarding uses the lockup + a right slot. */
+  badgeStyle?: "pill" | "lockup";
+  /** Extra header content (onboarding's "Onboarding · Step 2 of 2"). */
+  right?: ReactNode;
   /**
    * The page's column width. Each spec sets its own — 480px for account setup,
    * 720 for rating, 760 for consent, 860 for photos and onboarding — and the
@@ -33,7 +39,8 @@ export function LinkPageShell({
     <div className="flex min-h-dvh flex-col bg-surface-soft">
       <SiteHeader
         badge={typeof badge === "string" ? [badge] : badge}
-        badgeStyle="pill"
+        badgeStyle={badgeStyle}
+        right={right}
         width={width}
         strapline={strapline}
         compact

@@ -21,8 +21,17 @@ export function OnboardingPage({
   return (
     <LinkPageShell
       width="860px"
-      badge={["Practitioner Network", "Onboarding"]}
+      badge={["Practitioner", "Network"]}
+      badgeStyle="lockup"
       strapline="Where financial intelligence connects"
+      right={
+        <>
+          <span className="hidden text-md text-ink-muted sm:inline">Onboarding</span>
+          <span className="hidden shrink-0 rounded-full border border-gold-border bg-gold-light px-2.5 py-[3px] text-xs font-semibold uppercase tracking-[0.06em] text-gold-dark sm:inline-flex">
+            Step 2 of 2
+          </span>
+        </>
+      }
     >
       {practitioner ? (
         <OnboardingForm
