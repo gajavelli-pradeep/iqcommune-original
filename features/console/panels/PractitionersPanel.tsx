@@ -1,5 +1,8 @@
+"use client";
+
 import { deactivatePractitioner, empanelPractitioner } from "../actions";
-import { CellStack, ConsoleTable, type ColumnDef } from "../ConsoleTable";
+import { CellStack, type ColumnDef } from "../ConsoleTable";
+import { FilterablePanel, type StatusOption } from "../FilterablePanel";
 import { RowAction } from "../RowAction";
 import { PRACTITIONER_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
@@ -62,6 +65,18 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
   },
 ];
 
+/** The pipeline stages shown as filter pills (V7 `.filter-bar`). */
+const STATUSES: readonly StatusOption[] = [
+  { value: "Applied", label: "Applied" },
+  { value: "Screening Done", label: "Screening done" },
+  { value: "Agreement Sent", label: "Agreement sent" },
+  { value: "Empanelled", label: "Empanelled" },
+  { value: "Rejected", label: "Rejected" },
+];
+
+/** Not yet resolved — the pending stat-card counts these. */
+const RESOLVED = new Set(["Empanelled", "Rejected", "Deactivated"]);
+
 export function PractitionersPanel({
   rows,
   role,
@@ -70,13 +85,19 @@ export function PractitionersPanel({
   role: ConsoleRole;
 }) {
   return (
-    <ConsoleTable
+    <FilterablePanel
       caption="Practitioner pipeline"
       columns={COLUMNS}
       rows={rows}
       role={role}
       rowKey={(row) => row.id}
       empty="No practitioners yet."
+      statusOf={(row) => row.status}
+      statuses={STATUSES}
+      isPending={(row) => !RESOLVED.has(row.status)}
+      pendingLabel="Pending action (not yet Empanelled/Rejected)"
+      periodOf={(row) => row.appliedOn}
+      periodLabel="Applied in:"
     />
   );
 }
