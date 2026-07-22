@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { SectionHeading } from "@/components/ui/SectionHeading";
+
 import { SubmitPhotosButton } from "../RequestSession";
 import { listPublishedPhotos, type GalleryPhoto } from "@/services/gallery";
 
@@ -85,17 +87,12 @@ export function Gallery({ photos, failed }: { photos: GalleryPhoto[]; failed: bo
   return (
     <section className="bg-ink px-4 py-16 sm:px-8">
       <div className="mx-auto max-w-page">
-        <div className="mb-4 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-tool-chip-edge bg-tool-chip px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-bright">
-            Sessions in the room
-          </span>
-        </div>
-        <h2 className="mb-4 text-center text-[clamp(26px,3.8vw,40px)] font-semibold leading-[1.2] tracking-body text-surface">
-          Where it actually happens.
-        </h2>
-        <p className="mx-auto mb-10 max-w-[560px] text-center text-xl text-on-dark-muted">
-          Photos from sessions conducted across India — real rooms, real conversations.
-        </p>
+        <SectionHeading
+          tone="dark"
+          tag="Sessions in the room"
+          headline="Where it actually happens."
+          sub="Photos from sessions conducted across India — real rooms, real conversations."
+        />
 
         {failed ? (
           <p
