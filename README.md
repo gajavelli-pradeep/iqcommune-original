@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# iqcommune — V7
 
-## Getting Started
+Next.js (App Router, v16) + React 19 + Tailwind v4, backed by Supabase. Public marketing site,
+practitioner network, tokenised email-link flows (rate / consent / photos / onboarding / admin
+invite), and the admin consoles.
 
-First, run the development server:
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Environment is validated at boot (`instrumentation.ts` → `lib/env.ts`); a missing variable fails the
+server fast and names the problem. Copy the variables from **`docs/ENVIRONMENT.md`** into
+`.env.local` before running — there is no committed `.env.example` (deliberate; see that doc).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Dev server |
+| `pnpm build` / `pnpm start` | Production build / serve |
+| `pnpm lint` | ESLint (`--max-warnings 0`; includes the raw-colour-literal guard) |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test` | Vitest unit + parity tests |
+| `pnpm test:e2e` | Playwright |
+| `pnpm verify` | lint + typecheck + test + build — the full gate |
 
-## Learn More
+## Layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/            App Router routes (public pages, tokenised link pages, admin consoles, /api)
+components/     Shared chrome (SiteHeader/Footer, LinkPageShell) + UI primitives (Field, Modal…)
+features/       Per-surface sections & forms (landing, practitioners, rate, consent, onboarding…)
+hooks/          Shared client hooks (useApiSubmit)
+lib/            env, logger, tokens (HMAC link contract), rate-limit, api envelope, email, supabase
+services/       Server-only data access (service-role client; never imported client-side)
+supabase/       SQL migrations (0001…0005)
+docs/           ADRs, ENVIRONMENT contract, build plan, tool specs
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Security & conventions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Tokenised links** (`/rate`, `/consent`, `/submit-photos`, `/onboarding`, `/join-admin`) take one
+  HMAC-signed `t` param; the row acted on comes from the verified token, never the URL body
+  (ADR-0004). Invalid/expired/consumed links render the page's invalid-link state.
+- **Security headers** (CSP, `frame-ancestors 'none'`, HSTS, nosniff…) are set in `next.config.ts`.
+- **Colours** go through `var(--token)` from `app/globals.css`; the lint guard blocks raw hex.
+- **Production audit ledger:** `flaws.md`. Visual/responsive parity: `FIDELITY-FLAWS.md`.
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel (production branch: `main`). Set the production Supabase project's keys + `HMAC_SECRET` +
+`NEXT_PUBLIC_BASE_URL` in the Vercel dashboard — never point a local run at the production
+service-role key (it bypasses RLS). See `docs/ENVIRONMENT.md` and `docs/adr/0003-*`.
