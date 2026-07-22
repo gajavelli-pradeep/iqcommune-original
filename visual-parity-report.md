@@ -16,7 +16,65 @@ is visually indistinguishable, then locked. A dev-only preview harness (`app/dev
 | **Photos `/submit-photos`** | `iqcommune-postsession-photos.html` | ✅ **Complete** |
 | **Onboarding `/onboarding`** | `iqcommune-onboarding.html` | ✅ header/stepper/summary/agreement-toolbar/scroll-gate/hidden-signing-form; finer items (2-col name row, sig-tab ink-active, timestamp row, success receipt) remain |
 | **Join-admin `/join-admin`** | `iqcommune-user-setup.html` | ✅ **Complete** |
-| Admin console | `admin-console-automated.html` | ⛔ auth-gated + deliberate re-architecture — see below |
+| Admin console | `admin-console-automated.html` | 🔄 **tab by tab — 1/10 done** (see the console section) |
+
+## Admin console — tab by tab
+
+Each tab is finished completely (UI → schema → reads → mutations → workflow →
+roles → runtime → responsive → regression) before the next begins.
+
+| # | Tab | Status |
+|---|---|---|
+| 1 | **Practitioners** | ✅ **Complete** — see below |
+| 2 | Agreements | ⬜ next |
+| 3 | Session Requests | ⬜ |
+| 4 | Session Consent | ⬜ |
+| 5 | Session Details | ⬜ |
+| 6 | Photos | ⬜ |
+| 7 | Payouts | ⬜ (needs a paid-state migration — `invoice_reference` / `paid_on` are absent) |
+| 8 | Gallery | ⬜ |
+| 9 | Settings | ⬜ |
+| 10 | Activity | ⬜ |
+
+### Tab 1 — Practitioners
+
+**Root cause found and fixed:** the pipeline's first four stages live in
+`practitioner_applications`; the console read only `practitioners`
+(`Empanelled | Paused | Deactivated`). The filter pills and pending card were
+filtering over rows that could never hold those statuses. `listPractitioners`
+now unions both tables, keyed `app:<id>` / `prac:<id>`, with an email fallback
+for practitioners never linked to their application.
+
+**Cloned:** 5 columns exactly (no invented Actions column) · avatar + `role · org`
++ `★ n avg` sub-line · city with state sub-line · pending stat-card · 5 filter
+pills · period filter · **the expanded detail card** (identity, rating box,
+kv-grid with Global-Admin correction controls, pipeline stepper, conditional
+status control, per-stage automated actions, danger zone, Message/Notes).
+
+**The conditional status control** — V7 shows a `<select>` on Applied / Screening
+Done / Rejected and a read-only box otherwise, because the remaining stages are
+system-set. Reproduced, enforced server-side in `setApplicationStage`, and pinned
+by test so it cannot be "tidied" into an always-present dropdown.
+
+**Workflow driven end to end** through a real signed-in session: Screening Done →
+"Generate & send" creates the practitioner (`Pending`) + agreement, moves the
+application to `Agreement Sent`, emails the onboarding link, logs the action.
+A second click resends rather than issuing a second agreement (verified: 1
+practitioner, 1 agreement, 2 distinct log entries).
+
+**Verification:** `pnpm verify` green (196 tests, 41 files) · 0 console errors ·
+no page-level horizontal scroll at 320/480/768/1024/1440/1920 · 0 controls under
+44px under a coarse pointer · 0 clipped controls in the card at any width.
+
+**Deliberate deviations** (each recorded where the code lives): sidebar gold badge
+takes an ink label (V7's white is 2.1:1); the "Viewing as" role select is stated
+not offered (roles are real routes, not a CSS class swap); the bell opens the
+first waiting queue instead of toasting; Notes persists to `admin_notes` instead
+of toasting "saved"; pipeline stage dates are omitted rather than fabricated —
+V7's are hardcoded demo constants and the schema records no stage timestamps.
+
+**Known gap:** the global search box in the console header is still inert. It is a
+cross-entity search feature rather than a styling fix, so it is not half-built here.
 
 ## Practitioners — section-by-section (all locked)
 
