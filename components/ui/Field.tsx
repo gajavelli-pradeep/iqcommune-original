@@ -2,6 +2,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 
+import { checkboxClass, checkboxLabelClass, controlClass, selectClass } from "./control";
+
 /**
  * Form field primitives, shared by both P1 modals and by P2's application form.
  *
@@ -9,14 +11,12 @@ import { useId, useState, type ReactNode } from "react";
  * and wired for you, so "input without a label" cannot happen by forgetting.
  * Errors are announced and tied to the control with `aria-describedby`, which a
  * red border alone never does.
+ *
+ * The control's APPEARANCE is not decided here. It comes from `control.ts`,
+ * which the console's in-table editors read too — so a change to the field
+ * style reaches both, and neither can drift from the other. This file owns the
+ * label, the hint, the error and the wiring between them.
  */
-
-const CONTROL =
-  "w-full rounded-md border bg-surface px-3 py-2.5 text-base text-ink transition-colors placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-60";
-
-function borderFor(error?: string) {
-  return error ? "border-red" : "border-border-strong";
-}
 
 function Shell({
   id,
@@ -84,7 +84,7 @@ export function TextField({
           aria-invalid={props.error ? true : undefined}
           aria-describedby={props.error ? `${id}-error` : undefined}
           onChange={(event) => props.onChange(event.target.value)}
-          className={`${CONTROL} ${isPassword ? "pr-11" : ""} ${borderFor(props.error)}`}
+          className={controlClass({ invalid: Boolean(props.error), className: isPassword ? "pr-11" : "" })}
         />
         {isPassword ? (
           <button
@@ -135,7 +135,7 @@ export function TextareaField(props: BaseProps & { rows?: number }) {
         aria-invalid={props.error ? true : undefined}
         aria-describedby={props.error ? `${id}-error` : undefined}
         onChange={(event) => props.onChange(event.target.value)}
-        className={`${CONTROL} resize-y ${borderFor(props.error)}`}
+        className={controlClass({ invalid: Boolean(props.error), className: "resize-y" })}
       />
     </Shell>
   );
@@ -158,7 +158,7 @@ export function SelectField({
         aria-invalid={props.error ? true : undefined}
         aria-describedby={props.error ? `${id}-error` : undefined}
         onChange={(event) => props.onChange(event.target.value)}
-        className={`${CONTROL} ${borderFor(props.error)}`}
+        className={selectClass({ invalid: Boolean(props.error) })}
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (
@@ -187,16 +187,15 @@ export function CheckboxField({
   return (
     <div className="mb-4">
       <div
-        className={`rounded-lg border-[1.5px] bg-surface-soft px-4 py-[0.9rem] ${borderFor(error)}`}
+        className={`rounded-lg border-[1.5px] bg-surface-soft px-4 py-[0.9rem] ${
+          error ? "border-red" : "border-border-strong"
+        }`}
       >
         {/* The label IS the tap target — the 15px box alone never could be, and
             that is why checkbox is exempt from the global 44px floor. A single
             short line of consent text draws only 38px, so the floor is set here
             where the target actually lives. */}
-        <label
-          htmlFor={id}
-          className="flex cursor-pointer items-start gap-2.5 text-sm leading-[1.6] text-ink-muted [@media(any-pointer:coarse)]:min-h-11"
-        >
+        <label htmlFor={id} className={checkboxLabelClass}>
           <input
             id={id}
             type="checkbox"
@@ -204,7 +203,7 @@ export function CheckboxField({
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${id}-error` : undefined}
             onChange={(event) => onChange(event.target.checked)}
-            className="mt-[3px] h-[15px] w-[15px] shrink-0 accent-gold"
+            className={`mt-[3px] ${checkboxClass}`}
           />
           <span>{children}</span>
         </label>

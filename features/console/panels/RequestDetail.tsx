@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { controlClass } from "@/components/ui/control";
+
 import {
   deleteSessionRequest,
   sendRequestCancellation,
@@ -26,8 +28,7 @@ import type { AssignablePractitioner, SessionRequestRow } from "@/services/conso
  */
 
 const SEC_TITLE = "mb-3.5 text-2xs font-semibold uppercase tracking-caps text-ink-faint";
-const FIELD =
-  "w-full min-w-[118px] rounded-lg border border-border-strong bg-surface-soft px-3 py-2.5 text-sm text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60";
+const FIELD = controlClass({ tone: "inline", className: "min-w-[118px]" });
 const HINT = "mt-1 text-3xs text-ink-faint";
 
 function Kv({ label, value }: { label: string; value: React.ReactNode }) {

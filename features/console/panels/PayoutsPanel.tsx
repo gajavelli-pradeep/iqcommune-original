@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { controlClass } from "@/components/ui/control";
+
 import { setInvoiceReference, setPayoutStatus } from "../actions";
 import { ConsoleTable, PersonCell, type ColumnDef } from "../ConsoleTable";
 import { PeriodFilter, matchesPeriod, yearsIn } from "../PeriodFilter";
@@ -18,8 +20,7 @@ import type { PayoutRow } from "@/services/console";
  * today, because an admin ticking it is saying it happened now.
  */
 
-const FIELD =
-  "rounded-lg border border-border-strong bg-surface-soft px-2 py-1.5 text-2xs text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60";
+const FIELD = controlClass({ tone: "inline" });
 
 /** The invoice reference cell — saved on blur, not on every keystroke. */
 function InvoiceReference({ row }: { row: PayoutRow }) {

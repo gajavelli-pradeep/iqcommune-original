@@ -2,6 +2,8 @@
 
 import { useRef, useState, useTransition, type DragEvent } from "react";
 
+import { controlClass } from "@/components/ui/control";
+
 import { publishGalleryDrafts, removeGalleryPhoto, updateGalleryPhoto } from "../actions";
 import { can, type ConsoleRole } from "../roles";
 import { GALLERY_LIMIT } from "@/constants/gallery";
@@ -21,8 +23,7 @@ import type { GalleryRow } from "@/services/console";
  */
 
 const PILL = "rounded-full bg-surface-soft px-3 py-[5px] text-xs font-semibold text-ink";
-const FIELD =
-  "w-full rounded-[5px] border border-border-strong px-2 py-1.5 text-xs text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60";
+const FIELD = controlClass({ tone: "compact", size: "xs" });
 
 /** The small dark ✕ that sits on a photo tile. */
 function RemovePhoto({ id, label }: { id: string; label: string }) {

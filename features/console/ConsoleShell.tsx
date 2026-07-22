@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
+
+import { selectClass } from "@/components/ui/control";
 
 import { CONSOLE_ROLES, ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
 
@@ -110,8 +112,51 @@ export function ConsoleShell({
   counts?: Record<string, number>;
 }) {
   const router = useRouter();
+  const params = useSearchParams();
+
   const tabs = tabsFor(role);
-  const [active, setActive] = useState(tabs[0].id);
+
+  /**
+   * The open tab lives in the URL (`?tab=payouts`), not in component state.
+   *
+   * With state alone a refresh — or a back button, or a shared link — dropped
+   * you back on Practitioners, which on a ten-tab console means finding your
+   * place again every time. In the URL the tab survives a reload, can be sent
+   * to a colleague, and makes browser Back mean what it looks like it means.
+   *
+   * Validated against the tabs THIS role may open rather than trusted: a `?tab`
+   * naming a tab the role has no access to (Activity, for an Admin) must fall
+   * back rather than render an empty panel.
+   */
+  const requested = params.get("tab");
+  const fromUrl = tabs.some((tab) => tab.id === requested) ? requested! : tabs[0].id;
+
+  /**
+   * The URL is the source of truth on arrival; after that, state is.
+   *
+   * Deriving `active` from `useSearchParams` alone was correct and slow: every
+   * tab click went through `router.replace`, which re-runs the route on the
+   * server, so the console kept showing the OLD tab's rows for a second or two
+   * before the new ones arrived. Measured, not guessed — clicking Payouts and
+   * sampling the DOM found the previous tab's controls still mounted at 400ms
+   * and the payouts controls only at ~2s.
+   *
+   * So the click updates state (instant, no network) and the URL is rewritten
+   * with `history.replaceState`, which Next reflects in `useSearchParams`
+   * without refetching the route.
+   *
+   * When the URL moves on its own — Back/Forward, or the role switch, which IS
+   * a real navigation — state has to follow it. That resync happens DURING
+   * render against a remembered previous value, not in an effect: an effect
+   * would render the stale tab first and the right one a commit later, which is
+   * the flash this whole change exists to remove.
+   */
+  const [active, setActive] = useState(fromUrl);
+  const [syncedFrom, setSyncedFrom] = useState(fromUrl);
+  if (syncedFrom !== fromUrl) {
+    setSyncedFrom(fromUrl);
+    setActive(fromUrl);
+  }
 
   /**
    * The console menu, below the desktop breakpoint.
@@ -125,10 +170,28 @@ export function ConsoleShell({
    */
   const [menuOpen, setMenuOpen] = useState(false);
 
-  /** Choosing a tab is the end of navigating, so the menu closes with it. */
+  /**
+   * Choosing a tab is the end of navigating, so the menu closes with it.
+   *
+   * `replaceState`, not `push`: ten tabs would otherwise bury the page you
+   * arrived from under ten history entries, and Back would walk the tabs
+   * instead of leaving the console. Any other query already in the URL — `?as=`
+   * for the role preview — is preserved, so switching tabs does not silently
+   * end a preview.
+   *
+   * The first tab writes no `?tab=` at all, so the console's own URL stays
+   * clean; anything else is only reachable by having chosen it.
+   */
   const openTab = (id: string) => {
     setActive(id);
     setMenuOpen(false);
+
+    const next = new URLSearchParams(window.location.search);
+    if (id === tabs[0].id) next.delete("tab");
+    else next.set("tab", id);
+
+    const query = next.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   };
 
   const sections = tabs.reduce<Record<string, typeof tabs>>((grouped, tab) => {
@@ -144,6 +207,15 @@ export function ConsoleShell({
   // — the same tabs the red sidebar badges mark — and its dot is lit only when
   // one exists, rather than always.
   const waiting = tabs.find((tab) => tab.badge === "red" && (counts?.[tab.id] ?? 0) > 0);
+
+  /** Switching the previewed role keeps you on the tab you were reading. */
+  const roleHref = (next: string) => {
+    const query = new URLSearchParams();
+    if (next !== "global_admin") query.set("as", next);
+    if (active !== tabs[0].id) query.set("tab", active);
+    const search = query.toString();
+    return search ? `/globaladmin?${search}` : "/globaladmin";
+  };
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
@@ -233,11 +305,8 @@ export function ConsoleShell({
               <select
                 id="viewing-as"
                 value={role}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  router.push(next === "global_admin" ? "/globaladmin" : `/globaladmin?as=${next}`);
-                }}
-                className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold sm:block"
+                onChange={(event) => router.push(roleHref(event.target.value))}
+                className={selectClass({ tone: "inline", size: "sm", className: "hidden w-auto sm:block" })}
               >
                 {CONSOLE_ROLES.map((value) => (
                   <option key={value} value={value}>
@@ -329,11 +398,8 @@ export function ConsoleShell({
                 <select
                   id="menu-viewing-as"
                   value={role}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    router.push(next === "global_admin" ? "/globaladmin" : `/globaladmin?as=${next}`);
-                  }}
-                  className="w-full rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+                  onChange={(event) => router.push(roleHref(event.target.value))}
+                  className={selectClass({ tone: "inline", size: "sm" })}
                 >
                   {CONSOLE_ROLES.map((value) => (
                     <option key={value} value={value}>

@@ -1,11 +1,8 @@
 "use client";
-
 import { useMemo, useState, type ReactNode } from "react";
-
 import { ConsoleTable, type ColumnDef } from "./ConsoleTable";
 import { PeriodFilter, matchesPeriod, yearsIn } from "./PeriodFilter";
 import type { ConsoleRole } from "./roles";
-
 /**
  * A console panel with the V7 toolbar above the table: a clickable pending
  * stat-card, a status filter-pill row, and an optional period (month/year)
@@ -15,14 +12,12 @@ import type { ConsoleRole } from "./roles";
  * whole thing lives on one side of the RSC boundary: the columns carry
  * server-action-bound row actions, which only a client component may hold.
  */
-
 export interface StatusOption {
   /** The raw status value to match against `statusOf`. */
   value: string;
   /** The pill label (may differ in casing from the value). */
   label: string;
 }
-
 export function FilterablePanel<Row>({
   rows,
   columns,
@@ -62,14 +57,11 @@ export function FilterablePanel<Row>({
   const [pendingOnly, setPendingOnly] = useState(false);
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
-
   const pendingCount = useMemo(() => rows.filter(isPending).length, [rows, isPending]);
-
   const years = useMemo(
     () => (periodOf ? yearsIn(rows.map(periodOf)) : []),
     [rows, periodOf],
   );
-
   const filtered = useMemo(
     () =>
       rows.filter((row) => {
@@ -80,7 +72,6 @@ export function FilterablePanel<Row>({
       }),
     [rows, pendingOnly, status, month, year, statusOf, isPending, periodOf],
   );
-
   // V7 draws these small; the coarse-pointer minimums are added without
   // changing the drawn size on a mouse. `min-w-11` catches the short labels
   // ("All" is 43px wide, one pixel under the floor).
@@ -90,7 +81,6 @@ export function FilterablePanel<Row>({
         ? "border-ink bg-ink text-surface"
         : "border-border-strong bg-surface text-ink-muted hover:border-gold hover:text-ink"
     }`;
-
   return (
     <>
       {/* V7 .pending-bar — a clickable pending stat-card and the period filter. */}
@@ -109,7 +99,6 @@ export function FilterablePanel<Row>({
             <span className="mt-[3px] block text-3xs font-semibold text-red">✓ showing only this</span>
           ) : null}
         </button>
-
         {periodOf ? (
           <PeriodFilter
             label={periodLabel}
@@ -122,7 +111,6 @@ export function FilterablePanel<Row>({
           />
         ) : null}
       </div>
-
       {/* V7 .filter-bar — status filter pills. Omitted where V7 has none. */}
       {statuses.length > 0 ? (
         <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -142,7 +130,6 @@ export function FilterablePanel<Row>({
           ))}
         </div>
       ) : null}
-
       <ConsoleTable
         caption={caption}
         columns={columns}

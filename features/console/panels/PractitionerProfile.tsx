@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { controlClass, selectClass } from "@/components/ui/control";
+
 import {
   deactivatePractitioner,
   deleteApplication,
@@ -107,7 +109,7 @@ function KvRow({
               if (event.key === "Enter") save();
               if (event.key === "Escape") setEditing(false);
             }}
-            className="min-w-0 flex-1 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            className={controlClass({ tone: "compact", className: "min-w-0 flex-1" })}
           />
           <button
             type="button"
@@ -233,7 +235,7 @@ function NotesEditor({ rowId, initial }: { rowId: string; initial: string }) {
           setSaved(false);
         }}
         placeholder="Internal only — never shown to the practitioner."
-        className="w-full rounded-lg border border-border-strong bg-surface-soft px-2.5 py-2 text-xs text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+        className={controlClass({ tone: "inline" })}
       />
       <button
         type="button"
@@ -382,7 +384,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                         await setApplicationStage(row.id, next);
                       });
                     }}
-                    className="w-full min-w-[118px] cursor-pointer rounded-lg border border-border-strong bg-surface-soft px-3 py-2.5 text-sm text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60"
+                    className={selectClass({ tone: "inline", size: "sm", className: "min-w-[118px]" })}
                   >
                     {["Applied", "Screening Done", "Rejected"].map((option) => (
                       <option key={option} value={option}>

@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { selectClass } from "@/components/ui/control";
+
 import { recordRatingManually, sendRatingRequest, setSessionStatus } from "../actions";
 import { PersonCell, type ColumnDef } from "../ConsoleTable";
 import { FilterablePanel } from "../FilterablePanel";
@@ -18,8 +20,7 @@ import type { SessionRow } from "@/services/console";
  * the console can set it.
  */
 
-const SELECT =
-  "w-full min-w-[118px] cursor-pointer rounded-lg border border-border-strong bg-surface-soft px-2.5 py-2 text-sm text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60";
+const SELECT = selectClass({ tone: "inline", className: "min-w-[118px]" });
 
 /** The five stars, filled to `value`. Read-only — V7 renders them as output. */
 function Stars({ value, title }: { value: number; title?: string }) {

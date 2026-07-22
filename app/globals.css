@@ -93,6 +93,14 @@
   --color-border: rgba(15, 17, 23, 0.10);
   --color-border-strong: rgba(15, 17, 23, 0.20);
 
+  /* The console's form-control edge — V7's `--border-s`. Measured at 0.18, one
+     step inside `--color-border-strong` (0.20), which is the edge the public
+     form fields use. Two alphas two hundredths apart looks like a rounding
+     error until you put the two surfaces side by side: the console's controls
+     sit on `--color-surface-soft`, and the lighter edge is what stops them
+     reading as heavier than the white fields on the marketing pages. */
+  --color-control-edge: rgba(15, 17, 23, 0.18);
+
   /* On dark surfaces (footer, and the dark bands the marketing pages use).
      Added with the Footer, the first section to need them.
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { selectClass } from "@/components/ui/control";
+
 /**
  * The month/year filter that sits at the right of a panel's pending bar
  * (V7 `.period-filter`).
@@ -46,8 +48,8 @@ export function yearsIn(dates: readonly string[]): string[] {
   return [...found].sort().reverse();
 }
 
-const SELECT =
-  "rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:min-h-11";
+/** The pending bar sits on the page, so its filters use the inline family. */
+const SELECT = selectClass({ tone: "inline", className: "w-auto" });
 
 export function PeriodFilter({
   label,

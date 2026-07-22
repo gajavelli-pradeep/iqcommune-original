@@ -36,11 +36,19 @@ yarn-error.log*
 # secrets — this repo is pushed to a public remote
 #
 # `.env*` catches .env, .env.local, .env.production, .env.staging and anything
-# else added later. No negation, deliberately: this repo's .env.example has not
-# been read and verified value-free, and `git add -A` would publish it. Re-add
-# `!.env.example` only after confirming it carries names and no values.
+# else added later.
+#
+# .env.example is negated back in, having been read line by line and confirmed
+# value-free (2026-07-23): every credential is a `<placeholder>`, and the only
+# concrete values are localhost, a bucket name and public @iqcommune addresses.
+# It has to be tracked — an untracked template is a template nobody receives,
+# which is how BREVO_SENDER_PRACTITIONER/_SESSION and EMAIL_DELIVERY came to be
+# read by the code while appearing in no file an operator could see.
+# tests/unit/env-contract.test.ts fails if a variable the code reads is missing
+# from it. Anything with a REAL value belongs in .env.local, which stays ignored.
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.p12

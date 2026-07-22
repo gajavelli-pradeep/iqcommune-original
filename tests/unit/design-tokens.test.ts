@@ -53,6 +53,10 @@ const BUILT_IN = new Set([
   "solid", "dashed", "dotted", "double", "hidden", "visible", "scroll",
   // Table border model, not a colour: border-collapse / border-separate.
   "collapse", "separate",
+  // `background-clip` / `background-origin`. These read as `bg-…` and are not
+  // colours — `bg-clip-padding` asked this guard for a `--color-clip-padding`.
+  "clip-border", "clip-padding", "clip-content", "clip-text",
+  "origin-border", "origin-padding", "origin-content",
   "x", "y", "t", "b", "l", "r", "s", "e", "px", "0",
   "xs", "sm", "base", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "2xs", "3xs",
   "normal", "tight", "tighter", "wide", "wider", "widest", "snug", "relaxed", "loose",

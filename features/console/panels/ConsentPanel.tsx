@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { controlClass, selectClass } from "@/components/ui/control";
+
 import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
@@ -23,8 +25,19 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
 const PART = "mb-1.5 text-2xs font-bold uppercase tracking-caps text-gold-dark";
 const LABEL = "mb-[5px] block text-xs font-semibold text-ink";
-const FIELD =
-  "w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-sm text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60";
+/** The confirmation form's own controls — V7's tight white selects. */
+const FIELD = controlClass({ tone: "compact" });
+
+/**
+ * The session picker is NOT on the compact family the fields beside it use.
+ *
+ * V7 gives it `class="status-sel"` (the inline family) with a 480px cap, while
+ * the hour/minute/meridiem/duration selects under it are the tight compact ones
+ * — a deliberate split, since the picker carries a full session description and
+ * the others carry two characters each. Sharing one constant between them made
+ * the picker 6px-cornered and 6px-padded against V7's 8/12.
+ */
+const PICKER = selectClass({ tone: "inline" });
 
 const HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
 const MINUTES = ["00", "15", "30", "45"];
@@ -77,7 +90,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
             await setSessionStatus(row.sessionId, next);
           });
         }}
-        className="w-full min-w-[110px] cursor-pointer rounded-lg border border-border-strong bg-surface-soft px-2.5 py-1.5 text-xs text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:opacity-60"
+        className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
         {["Pending", "Confirmed", "Cancelled"].map((option) => (
           <option key={option} value={option}>
@@ -190,7 +203,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
               setDone(null);
               setError(null);
             }}
-            className={`${FIELD} max-w-[480px] cursor-pointer`}
+            className={`${PICKER} max-w-[480px]`}
           >
             <option value="">— Select a matched session —</option>
             {sessions.map((entry) => (
@@ -245,7 +258,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
                   <label className="sr-only" htmlFor="confirm-hour">
                     Hour
                   </label>
-                  <select id="confirm-hour" value={hour} onChange={(e) => setHour(e.target.value)} className={FIELD}>
+                  <select id="confirm-hour" value={hour} onChange={(e) => setHour(e.target.value)} className={PICKER}>
                     {HOURS.map((value) => (
                       <option key={value}>{value}</option>
                     ))}
@@ -257,7 +270,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
                     id="confirm-minute"
                     value={minute}
                     onChange={(e) => setMinute(e.target.value)}
-                    className={FIELD}
+                    className={PICKER}
                   >
                     {MINUTES.map((value) => (
                       <option key={value}>{value}</option>
@@ -270,7 +283,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
                     id="confirm-meridiem"
                     value={meridiem}
                     onChange={(e) => setMeridiem(e.target.value)}
-                    className={FIELD}
+                    className={PICKER}
                   >
                     <option>AM</option>
                     <option>PM</option>
@@ -285,7 +298,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
                   id="confirm-duration"
                   value={duration}
                   onChange={(event) => setDuration(event.target.value)}
-                  className={FIELD}
+                  className={PICKER}
                 >
                   <option value="3">3 hours — single module</option>
                   <option value="6">6 hours — bundled, two modules</option>
@@ -402,7 +415,7 @@ function PhotoGuidePart({ sessions }: { sessions: readonly ConfirmableSession[] 
             id="guide-session"
             value={selected}
             onChange={(event) => setSelected(event.target.value)}
-            className={`${FIELD} max-w-[480px] cursor-pointer`}
+            className={`${PICKER} max-w-[480px]`}
           >
             <option value="">— Select a confirmed session —</option>
             {sessions.map((entry) => (

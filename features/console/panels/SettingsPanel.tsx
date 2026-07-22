@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { checkboxClass, controlClass, selectClass } from "@/components/ui/control";
+
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
 import { inviteTeamMember, removeTeamMember } from "../actions";
@@ -25,8 +27,8 @@ import type { MasterDataRow, TeamMemberRow } from "@/services/console";
 
 const SECTION_TITLE = "mb-1 text-[15px] font-semibold text-ink";
 const SECTION_NOTE = "mb-4 text-xs text-ink-muted";
-const CONTROL =
-  "rounded-md border border-border-strong bg-surface px-2.5 py-[7px] text-xs text-ink focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:min-h-11";
+const CONTROL = controlClass({ tone: "inline" });
+const PICKER = selectClass({ tone: "inline" });
 const XS =
   "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45";
 const XS_GHOST = `${XS} border border-border-strong bg-surface text-ink-muted hover:bg-surface-soft hover:text-ink`;
@@ -122,7 +124,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
         <label className="sr-only" htmlFor="master-city">
           Filter by city
         </label>
-        <select id="master-city" value={city} onChange={(event) => setCity(event.target.value)} className={CONTROL}>
+        <select id="master-city" value={city} onChange={(event) => setCity(event.target.value)} className={PICKER}>
           <option value="">All cities</option>
           {cities.map((value) => (
             <option key={value}>{value}</option>
@@ -131,7 +133,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
         <label className="sr-only" htmlFor="master-state">
           Filter by state
         </label>
-        <select id="master-state" value={state} onChange={(event) => setState(event.target.value)} className={CONTROL}>
+        <select id="master-state" value={state} onChange={(event) => setState(event.target.value)} className={PICKER}>
           <option value="">All states</option>
           {states.map((value) => (
             <option key={value}>{value}</option>
@@ -173,7 +175,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
                   onChange={(event) =>
                     setSelected(event.target.checked ? new Set(shown.map((row) => row.id)) : new Set())
                   }
-                  className={TAP_TARGET}
+                  className={`${checkboxClass} ${TAP_TARGET}`}
                 />
               </th>
               {MASTER_COLUMNS.map((column) => (
@@ -211,7 +213,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
                     checked={selected.has(row.id)}
                     aria-label={`Select ${row.name}`}
                     onChange={() => toggle(row.id)}
-                    className={TAP_TARGET}
+                    className={`${checkboxClass} ${TAP_TARGET}`}
                   />
                 </td>
                 <td className="px-4 py-3 align-top text-base font-medium text-ink">{row.name}</td>
@@ -338,7 +340,7 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
               id="invite-role"
               value={inviteRole}
               onChange={(event) => setInviteRole(event.target.value as ConsoleRole)}
-              className={`${CONTROL} min-w-[130px] flex-1`}
+              className={`${PICKER} min-w-[130px] flex-1`}
             >
               {CONSOLE_ROLES.map((value) => (
                 <option key={value} value={value}>
