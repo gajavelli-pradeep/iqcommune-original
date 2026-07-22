@@ -27,7 +27,7 @@ const STEPS: ReadonlyArray<{ title: string; description: string }> = [
 
 export function ProcessSteps() {
   return (
-    <section className="bg-surface-soft px-8 py-16">
+    <section className="bg-surface px-8 py-16">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="The process"
@@ -40,17 +40,18 @@ export function ProcessSteps() {
           }
           sub="We've structured this so your time investment is minimal — until you're actually in the room teaching."
         />
-        <ol className="mt-10 grid gap-5 min-[560px]:grid-cols-2 min-[900px]:grid-cols-4">
+        {/* V7 .steps: a centred, wrapping row — each step max 210px in a 960px band. */}
+        <ol className="mx-auto mt-10 flex max-w-[960px] flex-wrap justify-center gap-8">
           {STEPS.map((step, index) => (
-            <li key={step.title}>
+            <li key={step.title} className="max-w-[210px] flex-[1_1_180px] text-center">
               <span
                 aria-hidden
-                className="mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-gold-border bg-gold-light text-2xl font-semibold text-gold-dark"
+                className="mx-auto mb-4 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-ink text-3xl font-semibold text-surface"
               >
                 {index + 1}
               </span>
-              <h3 className="mb-1.5 text-md font-semibold text-ink">{step.title}</h3>
-              <p className="text-sm leading-[1.6] text-ink-muted">{step.description}</p>
+              <h3 className="mb-1.5 text-xl font-semibold text-ink">{step.title}</h3>
+              <p className="text-base leading-[1.6] text-ink-muted">{step.description}</p>
             </li>
           ))}
         </ol>
