@@ -9,7 +9,7 @@ is visually indistinguishable, then locked. A dev-only preview harness (`app/dev
 
 | Page | V7 reference | Status |
 |---|---|---|
-| Landing `/` | `iqcommune-main-landing-page.html` | Hero pixel-verified; full section sweep pending |
+| **Landing `/`** | `iqcommune-main-landing-page.html` | ✅ **Complete — all sections cloned & locked** |
 | **Practitioners `/practitioners`** | `iqcommune-empanelment.html` | ✅ **Complete — 12/12 sections cloned & locked** |
 | Rate / Consent / Photos / Onboarding / Join-admin | flow mockups | Analysed (defects mapped); clone pending |
 | Admin console | `admin-console-automated.html` | Chrome/tabs match; panels are documented reductions |
@@ -38,5 +38,18 @@ corrections also improve the landing/flow pages.
 clean (token guard) · 0 console errors on `/practitioners` · full-page height within ~3% (hero exact),
 remaining delta is half-pixel V7 font sizes (13.5/14.5px) within rendering tolerance.
 
+## Landing — fixes this pass
+
+- **Systemic width bug (measured, not guessed):** V7 double-pads content sections
+  (`section{padding:2rem}` + `.container{padding:2rem}` = 64px inset); React had only 32px, so cards
+  were 32px too wide per side. Bundle cards were 300px vs V7's 279px. Added the container's `px-8` to
+  all 16 content wrappers on **both** pages — bundle cards now measure 279px exactly.
+- **Gallery** rebuilt as the V7 carousel (pill-less header, overlay-caption slides, prev/next + dots,
+  reduced-motion-safe autoplay).
+- **Gold CTA** → white label (client directive). Card radii → 12px across 7 cards. TrainerComparison
+  internal divider removed. Takeaways callout gains its info icon. Ribbon gap 2.5rem. Bundle 3-col ≥480.
+  ToolNote italic; tw-bars 40px.
+
 **Known intentional deviations:** dynamic copyright year (vs mockup's hardcoded 2025); both columns of
-Division-of-work kept on mobile (V7 hides one — content-parity rule/test).
+Division-of-work kept on mobile (V7 hides one — content-parity rule/test); landing/practitioners
+full-page height within ~4% (residual is V7's half-pixel 13.5/14.5px fonts, within rendering tolerance).
