@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-import { ROLE_LABELS, tabsFor, type ConsoleRole } from "./roles";
+import { ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
 
 /**
  * The console chrome, shared by all three routes.
@@ -102,6 +103,7 @@ export function ConsoleShell({
   /** Row count per tab id, for the sidebar badges (V7 `.sb-badge`). */
   counts?: Record<string, number>;
 }) {
+  const router = useRouter();
   const tabs = tabsFor(role);
   const [active, setActive] = useState(tabs[0].id);
 
@@ -111,6 +113,13 @@ export function ConsoleShell({
   }, {});
 
   const current = tabs.find((tab) => tab.id === active) ?? tabs[0];
+
+  // The notification bell's target. V7's bell is a `showToast('3 notifications
+  // pending')` placeholder; a bell that lights up and goes nowhere is worse
+  // than no bell, so it opens the first queue actually waiting on the operator
+  // — the same tabs the red sidebar badges mark — and its dot is lit only when
+  // one exists, rather than always.
+  const waiting = tabs.find((tab) => tab.badge === "red" && (counts?.[tab.id] ?? 0) > 0);
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
@@ -154,31 +163,40 @@ export function ConsoleShell({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-3 min-[900px]:ml-0">
-          {role === "global_admin" ? (
-            <select
-              aria-label="Viewing as"
-              defaultValue="global"
-              className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold sm:block"
-            >
-              <option value="global">Viewing as: Global Admin</option>
-              <option value="admin">Viewing as: Admin</option>
-              <option value="user">Viewing as: User</option>
-            </select>
-          ) : (
-            <span className="hidden text-2xs font-semibold uppercase tracking-caps text-gold-dark sm:inline">
-              {ROLE_LABELS[role]}
-            </span>
-          )}
+          {/*
+            V7 puts a "Viewing as:" role `<select>` here, but that select is the
+            mockup's own demonstration device — it swaps a `role-*` class on
+            `<body>` so one static file can show three permission levels. The
+            real product resolves the role from the signed-in session and serves
+            a different route per role (see `roles.ts`), so there is nothing for
+            it to switch: it would be a dropdown that changes nothing, and a
+            Global Admin cannot become an Admin by choosing to.
+
+            The role is therefore stated rather than offered.
+          */}
+          <span className="hidden text-2xs font-semibold uppercase tracking-caps text-gold-dark sm:inline">
+            {ROLE_LABELS[role]}
+          </span>
           <button
             type="button"
-            aria-label="Notifications"
-            className="relative flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-strong text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink"
+            onClick={() => waiting && setActive(waiting.id)}
+            disabled={!waiting}
+            aria-label={
+              waiting
+                ? `${counts?.[waiting.id]} waiting in ${waiting.label} — open it`
+                : "Nothing is waiting for you"
+            }
+            /* 34px drawn (V7 `.nav-icon-btn`); the pseudo-element carries the
+               44px tap area on touch. */
+            className="relative flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-strong text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold [@media(any-pointer:coarse)]:after:absolute [@media(any-pointer:coarse)]:after:left-1/2 [@media(any-pointer:coarse)]:after:top-1/2 [@media(any-pointer:coarse)]:after:h-11 [@media(any-pointer:coarse)]:after:w-11 [@media(any-pointer:coarse)]:after:-translate-x-1/2 [@media(any-pointer:coarse)]:after:-translate-y-1/2 [@media(any-pointer:coarse)]:after:content-['']"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span aria-hidden className="absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-surface bg-gold" />
+            {waiting ? (
+              <span aria-hidden className="absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-surface bg-gold" />
+            ) : null}
           </button>
           <span
             aria-hidden
@@ -209,6 +227,7 @@ export function ConsoleShell({
                       <li key={tab.id}>
                         <button
                           type="button"
+                          data-tab={tab.id}
                           aria-current={isActive ? "page" : undefined}
                           onClick={() => setActive(tab.id)}
                           className={`flex min-h-11 w-full items-center gap-2.5 border-l-[2.5px] px-5 py-[0.6rem] text-left text-base transition-colors ${
@@ -230,8 +249,22 @@ export function ConsoleShell({
                             {TAB_ICONS[tab.id]}
                           </svg>
                           {tab.label}
-                          {typeof count === "number" ? (
-                            <span className="ml-auto rounded-full bg-gold px-[7px] py-px text-2xs font-semibold text-surface">
+                          {tab.badge && typeof count === "number" ? (
+                            // V7 `.sb-badge` — gold/green/red per tab. The gold
+                            // badge takes an ink label where V7 uses white
+                            // (2.1:1 — fails AA and the project's
+                            // gold-fill-takes-an-ink-label rule); green and red
+                            // carry white legibly. Fill and shape are V7's.
+                            // Do not "fix" the gold one back.
+                            <span
+                              className={`ml-auto rounded-full px-[7px] py-px text-2xs font-semibold ${
+                                tab.badge === "green"
+                                  ? "bg-green text-surface"
+                                  : tab.badge === "red"
+                                    ? "bg-red text-surface"
+                                    : "bg-gold text-ink"
+                              }`}
+                            >
                               {count}
                             </span>
                           ) : null}
@@ -257,14 +290,19 @@ export function ConsoleShell({
               <h1 className="text-2xl font-semibold tracking-body text-ink">{current.title}</h1>
               <p className="mt-px text-base text-ink-faint">{current.subtitle}</p>
             </div>
-            <div className="flex shrink-0 gap-2.5">
-              <button
-                type="button"
-                className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-              >
-                Export
-              </button>
-            </div>
+            {/* V7 .page-hdr-r — present only on the tabs that declare one. */}
+            {current.headerAction &&
+            (!current.headerAction.requires || can(role, current.headerAction.requires)) ? (
+              <div className="flex shrink-0 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => router.refresh()}
+                  className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                >
+                  {current.headerAction.label}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="p-4 sm:p-7">

@@ -81,6 +81,21 @@ export interface ConsoleTab {
   section: string;
   /** Omitted when every role may open it. */
   requires?: Capability;
+  /** The action in the page header's right slot (V7 `.page-hdr-r`). Only some
+   *  tabs have one; omit for the tabs whose header is title + subtitle only. */
+  headerAction?: { label: string; requires?: Capability };
+  /**
+   * The sidebar count badge (V7 `.sb-badge`). Omit for a tab V7 gives no badge
+   * — Gallery, Settings and Activity are reference views, and a "0" beside them
+   * reads as an outstanding queue that does not exist.
+   *
+   * Tones are V7's: `red` marks a queue waiting on the operator, `green` a
+   * healthy total, `gold` a plain count. Note this uses red for a routine
+   * count, which the house rules reserve for real errors — inside the console
+   * the V7 clone is the authority, the same call already recorded in
+   * `StatusPill`. Public-site counts keep amber.
+   */
+  badge?: "gold" | "green" | "red";
 }
 
 /** Sidebar order and grouping, from the spec's `sb-sec` / `sb-item` blocks;
@@ -92,6 +107,8 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     title: "Practitioner pipeline",
     subtitle: "Manage applications, onboarding, and empanelment",
     section: "Practitioner Management",
+    headerAction: { label: "Export" },
+    badge: "gold",
   },
   {
     id: "agreements",
@@ -100,6 +117,7 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     subtitle:
       "Practitioners appear here automatically once marked Empanelled — signed date, method, and status are all captured automatically the moment they sign online",
     section: "Practitioner Management",
+    badge: "green",
   },
   {
     id: "requests",
@@ -107,6 +125,8 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     title: "Session Requests",
     subtitle: "Incoming requests from iqcommune.com — assign a practitioner to confirm",
     section: "Session Pipeline",
+    headerAction: { label: "Export" },
+    badge: "red",
   },
   {
     id: "confirmations",
@@ -115,6 +135,7 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     subtitle:
       "The critical junction of the whole loop — generate consent, track it, then send the photo guide once confirmed.",
     section: "Session Pipeline",
+    badge: "red",
   },
   {
     id: "sessions",
@@ -123,6 +144,8 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     subtitle:
       "An overall dashboard — delivery status, payout figures, and post-session rating for every session",
     section: "Session Pipeline",
+    headerAction: { label: "Check for updates", requires: "mutate" },
+    badge: "green",
   },
   {
     id: "photos",
@@ -131,6 +154,8 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     subtitle:
       "Every completed session appears here — photos land automatically if the practitioner uses the link, or upload them yourself if they send them another way.",
     section: "Session Pipeline",
+    headerAction: { label: "Check for updates", requires: "mutate" },
+    badge: "gold",
   },
   {
     id: "payouts",
@@ -139,6 +164,7 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
     subtitle:
       "Track practitioner payments per session — Gross and Net pull from the session's consent record; mark Paid once the bank transfer is done.",
     section: "Finance",
+    badge: "red",
   },
   {
     id: "gallery",

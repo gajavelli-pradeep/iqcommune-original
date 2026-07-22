@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
+import { ExpandableRows } from "./ExpandableRows";
 import { can, type Capability, type ConsoleRole } from "./roles";
 
 /**
@@ -37,6 +38,8 @@ export function ConsoleTable<Row>({
   rowKey,
   empty = "Nothing here yet.",
   caption,
+  expand,
+  rowLabel,
 }: {
   columns: ReadonlyArray<ColumnDef<Row>>;
   rows: readonly Row[];
@@ -45,12 +48,19 @@ export function ConsoleTable<Row>({
   empty?: string;
   /** Describes the table for screen readers; visually hidden. */
   caption: string;
+  /** Returns the detail card a row opens. Omit for a table with no expansion. */
+  expand?: (row: Row) => ReactNode;
+  /** Names a row for the expand control's screen-reader text. */
+  rowLabel?: (row: Row) => string;
 }) {
   const visible = columns.filter((column) => !column.requires || can(role, column.requires));
 
   if (rows.length === 0) {
     return <EmptyState title={empty} />;
   }
+
+  const cellClass = (column: ColumnDef<Row>) =>
+    `px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
 
   return (
     // Tables are the one place horizontal scroll is correct rather than a bug: a
@@ -75,22 +85,33 @@ export function ConsoleTable<Row>({
             ))}
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-border last:border-b-0">
-              {visible.map((column) => (
-                <td
-                  key={column.key}
-                  className={`px-4 py-3 align-top text-base text-ink ${
-                    column.align === "right" ? "text-right tabular-nums" : ""
-                  }`}
-                >
-                  {column.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
+        {expand ? (
+          <ExpandableRows
+            colSpan={visible.length}
+            rows={rows.map((row) => ({
+              key: rowKey(row),
+              label: rowLabel?.(row) ?? rowKey(row),
+              cells: visible.map((column) => ({
+                key: column.key,
+                className: cellClass(column),
+                node: column.render(row),
+              })),
+              detail: expand(row),
+            }))}
+          />
+        ) : (
+          <tbody>
+            {rows.map((row) => (
+              <tr key={rowKey(row)} className="border-b border-border last:border-b-0">
+                {visible.map((column) => (
+                  <td key={column.key} className={cellClass(column)}>
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        )}
       </table>
     </ScrollRegion>
   );
@@ -102,6 +123,38 @@ export function CellStack({ value, sub }: { value: ReactNode; sub?: ReactNode })
     <div>
       <div className="font-medium text-ink">{value}</div>
       {sub ? <div className="mt-0.5 text-sm text-ink-muted">{sub}</div> : null}
+    </div>
+  );
+}
+
+/** First letters of the first two words — "Priya Sharma" → "PS". */
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+/**
+ * A person cell (V7 `.p-cell`): a gold-light avatar of the name's initials
+ * beside the name, optionally with a smaller sub-line. Several panels lead with
+ * this, so it lives here rather than in each.
+ */
+export function PersonCell({ name, sub }: { name: string; sub?: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gold-light text-sm font-semibold text-gold-dark"
+      >
+        {initials(name)}
+      </span>
+      <div>
+        <div className="text-base font-medium text-ink">{name}</div>
+        {sub ? <div className="mt-0.5 text-sm text-ink-muted">{sub}</div> : null}
+      </div>
     </div>
   );
 }

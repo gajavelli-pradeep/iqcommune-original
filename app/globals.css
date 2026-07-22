@@ -45,6 +45,37 @@
 
   --color-green: #2a6b2a;        /* success only */
   --color-green-light: #eef7ee;
+
+  /* Outline on a tinted fill — V7's `--green-m` / `--red-m`. Distinct from the
+     -light fill: an outline drawn in the fill colour is no outline at all,
+     which is why the console's pipeline markers and danger buttons need these. */
+  --color-green-edge: #c8e6c8;
+  --color-red-edge: #f0b0b0;
+
+  /* The console's selected table row — V7 `tbody tr.dr.sel`. A warm cream, one
+     step off `--color-surface-soft`, so an open row reads as chosen rather than
+     merely hovered. */
+  --color-row-selected: #fffbf0;
+
+  /* ── Console status palette ────────────────────────────────────────────────
+     The admin console tracks records through pipelines with more than two
+     outcomes, so "success or failure" cannot carry it: a request that is New,
+     Matched or Confirmed is three different states and none of them is an
+     error. These are V7's own console values, and they stay inside the console
+     — the public site's reserved semantics (green success / red error / gold
+     brand) are unchanged. Each text colour clears 7:1 on its own fill. */
+  --color-info: #185fa5;          /* blue — in progress (Screening done, Matched) */
+  --color-info-light: #e6f1fb;
+  --color-info-edge: #85b7eb;
+
+  --color-attention: #854f0b;     /* amber — needs action, not yet a failure */
+  --color-attention-light: #faeeda;
+  --color-attention-edge: #fac775;
+
+  --color-intake: #534ab7;        /* violet — newly arrived, untriaged */
+  --color-intake-light: #eeedfe;
+  --color-intake-edge: #afa9ec;
+
   --color-fit-good: #6fcf6f;                     /* good-fit head + check on the dark honest section */
   --color-fit-good-surface: rgba(42, 107, 42, 0.15);
   --color-fit-good-edge: rgba(42, 107, 42, 0.25);

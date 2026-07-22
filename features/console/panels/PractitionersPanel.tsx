@@ -1,33 +1,70 @@
 "use client";
 
-import { deactivatePractitioner, empanelPractitioner } from "../actions";
-import { CellStack, type ColumnDef } from "../ConsoleTable";
+import { type ColumnDef } from "../ConsoleTable";
 import { FilterablePanel, type StatusOption } from "../FilterablePanel";
-import { RowAction } from "../RowAction";
 import { PRACTITIONER_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
+import { PractitionerProfile } from "./PractitionerProfile";
 import type { PractitionerRow } from "@/services/console";
 
 /**
  * The practitioner pipeline — the console's first panel and the one every other
- * follows. It is a column list and nothing else; the table, the pill and the
- * role gating are shared.
+ * follows. Five columns and nothing else: V7 has no actions column here, and
+ * adding one would be inventing a control the spec does not have. Every action
+ * lives in the detail card the row opens (`PractitionerProfile`), which is also
+ * where the rest of the application's fields are.
  */
+
+/** First letters of the first two words — "Priya Sharma" → "PS". */
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
   {
     key: "practitioner",
     header: "Practitioner",
     render: (row) => (
-      <CellStack
-        value={row.name}
-        sub={[row.role, row.organisation].filter(Boolean).join(" · ")}
-      />
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gold-light text-sm font-semibold text-gold-dark"
+        >
+          {initials(row.name)}
+        </span>
+        <div>
+          <div className="text-base font-medium text-ink">{row.name}</div>
+          <div className="mt-0.5 text-sm text-ink-muted">
+            {[row.role, row.organisation].filter(Boolean).join(" · ")}
+            {row.averageRating !== null ? (
+              <span className="text-gold-dark"> · ★ {row.averageRating} avg</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
     ),
   },
-  { key: "module", header: "Module", render: (row) => row.module },
-  { key: "city", header: "City", render: (row) => row.city },
-  { key: "appliedOn", header: "Applied on", render: (row) => row.appliedOn },
+  { key: "module", header: "Module", render: (row) => <span className="text-ink-muted">{row.module}</span> },
+  {
+    key: "city",
+    header: "City",
+    render: (row) => (
+      <span className="text-ink-muted">
+        {row.city}
+        {row.state ? <span className="block text-3xs text-ink-faint">{row.state}</span> : null}
+      </span>
+    ),
+  },
+  {
+    key: "appliedOn",
+    header: "Applied on",
+    render: (row) => <span className="text-xs text-ink-faint">{row.appliedOn}</span>,
+  },
   {
     key: "status",
     header: "Status",
@@ -37,31 +74,6 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
       // the console does not know about is a thing to notice, not to swallow.
       return meta ? <StatusPill {...meta} /> : <StatusPill label={row.status} tone="neutral" />;
     },
-  },
-  {
-    key: "actions",
-    header: "",
-    align: "right",
-    requires: "mutate",
-    render: (row) => (
-      <div className="flex justify-end gap-1">
-        {row.status !== "Empanelled" ? (
-          <RowAction
-            action={empanelPractitioner.bind(null, row.id)}
-            label="Empanel"
-            pendingMessage={`Empanelling ${row.name}…`}
-          />
-        ) : null}
-        {row.status !== "Deactivated" ? (
-          <RowAction
-            action={deactivatePractitioner.bind(null, row.id)}
-            label="Deactivate"
-            pendingMessage={`Deactivating ${row.name}…`}
-            tone="danger"
-          />
-        ) : null}
-      </div>
-    ),
   },
 ];
 
@@ -91,13 +103,15 @@ export function PractitionersPanel({
       rows={rows}
       role={role}
       rowKey={(row) => row.id}
-      empty="No practitioners yet."
+      rowLabel={(row) => row.name}
+      empty="No practitioners match this filter."
       statusOf={(row) => row.status}
       statuses={STATUSES}
       isPending={(row) => !RESOLVED.has(row.status)}
       pendingLabel="Pending action (not yet Empanelled/Rejected)"
       periodOf={(row) => row.appliedOn}
       periodLabel="Applied in:"
+      expand={(row) => <PractitionerProfile row={row} role={role} />}
     />
   );
 }

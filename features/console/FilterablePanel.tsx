@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { ConsoleTable, type ColumnDef } from "./ConsoleTable";
 import type { ConsoleRole } from "./roles";
@@ -32,11 +32,13 @@ export function FilterablePanel<Row>({
   caption,
   empty,
   statusOf,
-  statuses,
+  statuses = [],
   isPending,
   pendingLabel,
   periodOf,
   periodLabel = "Applied in:",
+  expand,
+  rowLabel,
 }: {
   rows: readonly Row[];
   columns: ReadonlyArray<ColumnDef<Row>>;
@@ -45,12 +47,17 @@ export function FilterablePanel<Row>({
   caption: string;
   empty: string;
   statusOf: (row: Row) => string;
-  statuses: readonly StatusOption[];
+  /** Status filter pills (V7 `.filter-bar`). Omit/empty to hide the bar. */
+  statuses?: readonly StatusOption[];
   isPending: (row: Row) => boolean;
   pendingLabel: string;
   /** A "12 Jun 2025"-style date to filter on; omit to hide the period filter. */
   periodOf?: (row: Row) => string;
   periodLabel?: string;
+  /** Returns the detail card a row opens (V7 `.profile-card`). */
+  expand?: (row: Row) => ReactNode;
+  /** Names a row for the expand control's screen-reader text. */
+  rowLabel?: (row: Row) => string;
 }) {
   const [status, setStatus] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
@@ -84,15 +91,18 @@ export function FilterablePanel<Row>({
     [rows, pendingOnly, status, month, year, statusOf, isPending, periodOf],
   );
 
+  // V7 draws these small; the coarse-pointer minimums are added without
+  // changing the drawn size on a mouse. `min-w-11` catches the short labels
+  // ("All" is 43px wide, one pixel under the floor).
   const chip = (active: boolean) =>
-    `rounded-full border px-[14px] py-[5px] text-sm font-medium transition-colors ${
+    `rounded-full border px-[14px] py-[5px] text-sm font-medium transition-colors [@media(any-pointer:coarse)]:min-w-11 ${
       active
         ? "border-ink bg-ink text-surface"
         : "border-border-strong bg-surface text-ink-muted hover:border-gold hover:text-ink"
     }`;
 
   const select =
-    "rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold";
+    "rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:min-h-11";
 
   return (
     <>
@@ -142,23 +152,25 @@ export function FilterablePanel<Row>({
         ) : null}
       </div>
 
-      {/* V7 .filter-bar — status filter pills. */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-sm text-ink-faint">Filter:</span>
-        <button type="button" onClick={() => setStatus("")} className={chip(status === "")}>
-          All
-        </button>
-        {statuses.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setStatus(option.value)}
-            className={chip(status === option.value)}
-          >
-            {option.label}
+      {/* V7 .filter-bar — status filter pills. Omitted where V7 has none. */}
+      {statuses.length > 0 ? (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-sm text-ink-faint">Filter:</span>
+          <button type="button" onClick={() => setStatus("")} className={chip(status === "")}>
+            All
           </button>
-        ))}
-      </div>
+          {statuses.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setStatus(option.value)}
+              className={chip(status === option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <ConsoleTable
         caption={caption}
@@ -167,6 +179,8 @@ export function FilterablePanel<Row>({
         role={role}
         rowKey={rowKey}
         empty={empty}
+        expand={expand}
+        rowLabel={rowLabel}
       />
     </>
   );

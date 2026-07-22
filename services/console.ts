@@ -11,16 +11,41 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * the wrong shape for an admin view, and the route is the boundary.
  */
 
+/**
+ * One row of the V7 practitioner pipeline.
+ *
+ * The pipeline spans two tables: `practitioner_applications` holds the first
+ * four stages (Applied → Screening Done → Agreement Sent → Rejected) and every
+ * profile field the detail card renders; `practitioners` holds the last two
+ * (Empanelled, Deactivated). A row is one person seen through whichever of
+ * those records exists, which is why both ids are carried — a mutation has to
+ * know which table it owns.
+ */
 export interface PractitionerRow {
+  /** Namespaced `app:<uuid>` / `prac:<uuid>` so ids stay unique across the union. */
   id: string;
-  reference: string;
+  applicationId: string | null;
+  practitionerId: string | null;
+  /** Assigned at empanelment — `null` before it, never invented. */
+  reference: string | null;
   name: string;
   role: string;
   organisation: string | null;
   module: string;
   city: string;
+  state: string | null;
+  /** Postal address for the welcome kit; only newer applications carry one. */
+  address: string | null;
+  tshirtSize: string | null;
+  experience: string | null;
+  email: string;
+  phone: string | null;
   appliedOn: string;
   status: string;
+  /** Mean of this practitioner's session ratings, or `null` if never rated. */
+  averageRating: number | null;
+  /** Internal admin notes — never shown to the practitioner. */
+  notes: string | null;
 }
 
 const date = (value: string | null) =>
@@ -36,43 +61,172 @@ function one<T>(relation: unknown): T | null {
   return (relation ?? null) as T | null;
 }
 
+/** A practitioner's mean rating, keyed by practitioner id. Unrated → absent. */
+async function averageRatings(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from("session_ratings")
+    .select("rating, session_practitioners ( practitioner_id, deleted_at )");
+
+  // A rating is decoration on this table, not its subject: failing the whole
+  // pipeline read because the ratings join broke would be the wrong trade.
+  if (error) return new Map();
+
+  const totals = new Map<string, { sum: number; count: number }>();
+  for (const row of data ?? []) {
+    const assignment = one<{ practitioner_id: string; deleted_at: string | null }>(
+      row.session_practitioners,
+    );
+    if (!assignment || assignment.deleted_at) continue;
+    const running = totals.get(assignment.practitioner_id) ?? { sum: 0, count: 0 };
+    running.sum += row.rating;
+    running.count += 1;
+    totals.set(assignment.practitioner_id, running);
+  }
+
+  return new Map(
+    [...totals].map(([id, { sum, count }]) => [id, Math.round((sum / count) * 10) / 10]),
+  );
+}
+
+/**
+ * The whole practitioner pipeline — applications and practitioners as one list.
+ *
+ * A practitioner that came from an application appears once, not twice: the
+ * application supplies the profile, the practitioner record supplies the
+ * outcome. Where the two disagree the practitioner wins, because a live
+ * Deactivated must not be masked by the stage the application stopped at.
+ */
 export async function listPractitioners(): Promise<PractitionerRow[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("practitioners")
-    .select(
-      "id, reference, full_name, role, organisation, city, status, created_at, practitioner_agreements ( modules, deleted_at )",
-    )
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    // Bounded (audit M15): the console table is not paginated yet, so cap the
-    // read rather than fetch an unbounded set as the network grows.
-    .limit(500);
 
-  if (error) throw new Error(`practitioners read failed: ${error.message}`);
+  // Bounded (audit M15): the console table is not paginated yet, so cap each
+  // read rather than fetch an unbounded set as the network grows.
+  const [applications, practitioners, ratings] = await Promise.all([
+    supabase
+      .from("practitioner_applications")
+      .select(
+        "id, status, first_name, last_name, email, phone, job_title, city, state, experience_band, address, tshirt_size, modules, admin_notes, created_at",
+      )
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("practitioners")
+      .select(
+        "id, reference, full_name, role, organisation, city, email, status, application_id, created_at, practitioner_agreements ( modules, deleted_at )",
+      )
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    averageRatings(supabase),
+  ]);
 
-  return (data ?? []).map((row) => {
+  if (applications.error) {
+    throw new Error(`practitioner_applications read failed: ${applications.error.message}`);
+  }
+  if (practitioners.error) {
+    throw new Error(`practitioners read failed: ${practitioners.error.message}`);
+  }
+
+  const applicationById = new Map((applications.data ?? []).map((row) => [row.id, row]));
+
+  // A practitioner seeded before `application_id` was populated still has an
+  // application behind them; without this they appear twice — once as the
+  // applicant and once as the practitioner — which reads as two people. Email
+  // is the identity the rest of the system already keys on (both tables carry a
+  // `lower(email)` index for exactly this).
+  const applicationByEmail = new Map(
+    (applications.data ?? []).map((row) => [row.email.toLowerCase(), row]),
+  );
+
+  const claimed = new Set<string>();
+
+  // Sorted on the raw timestamp, not the rendered one: "12 Jun 2025" sorts
+  // lexically, which puts December before June.
+  const sortable: Array<{ at: string; row: PractitionerRow }> = [];
+
+  for (const row of practitioners.data ?? []) {
+    const application =
+      (row.application_id ? applicationById.get(row.application_id) : undefined) ??
+      applicationByEmail.get(row.email.toLowerCase());
+    if (application) claimed.add(application.id);
+
     // Exclude soft-deleted agreements (audit M15): a withdrawn agreement must
     // not contribute its module to what a practitioner is shown as teaching.
     const agreements = ((row.practitioner_agreements ?? []) as Array<{
       modules: string[];
       deleted_at: string | null;
     }>).filter((agreement) => !agreement.deleted_at);
-    return {
-      id: row.id,
-      reference: row.reference,
-      name: row.full_name,
-      role: row.role,
-      organisation: row.organisation,
-      // The module a practitioner teaches lives on their agreement, not on
-      // them: it is what they were empanelled for, and it can change between
-      // agreements without rewriting who they are.
-      module: agreements.flatMap((agreement) => agreement.modules).join(", ") || "—",
-      city: row.city,
-      appliedOn: date(row.created_at),
-      status: row.status,
-    };
-  });
+
+    const appliedAt = application?.created_at ?? row.created_at;
+    sortable.push({
+      at: appliedAt,
+      row: {
+        id: `prac:${row.id}`,
+        applicationId: application?.id ?? null,
+        practitionerId: row.id,
+        reference: row.reference,
+        name: row.full_name,
+        role: row.role,
+        organisation: row.organisation,
+        // The module a practitioner teaches lives on their agreement, not on
+        // them: it is what they were empanelled for, and it can change between
+        // agreements without rewriting who they are.
+        module:
+          agreements.flatMap((agreement) => agreement.modules).join(", ") ||
+          (application?.modules ?? []).join(", ") ||
+          "—",
+        city: row.city,
+        state: application?.state ?? null,
+        address: application?.address ?? null,
+        tshirtSize: application?.tshirt_size ?? null,
+        experience: application?.experience_band ?? null,
+        email: row.email,
+        phone: application?.phone ?? null,
+        appliedOn: date(appliedAt),
+        // A paused or deactivated practitioner shows that, not the stage their
+        // application happens to sit at. 'Pending' is the pre-empanelment
+        // placeholder the agreement FK needs, so it defers to the application.
+        status: row.status === "Pending" ? (application?.status ?? "Agreement Sent") : row.status,
+        averageRating: ratings.get(row.id) ?? null,
+        notes: application?.admin_notes ?? null,
+      },
+    });
+  }
+
+  for (const row of applications.data ?? []) {
+    if (claimed.has(row.id)) continue;
+    sortable.push({
+      at: row.created_at,
+      row: {
+        id: `app:${row.id}`,
+        applicationId: row.id,
+        practitionerId: null,
+        // Assigned at empanelment. Showing a placeholder here would be
+        // inventing an identifier nothing else in the system could resolve.
+        reference: null,
+        name: `${row.first_name} ${row.last_name}`,
+        role: row.job_title,
+        organisation: null,
+        module: (row.modules ?? []).join(", ") || "—",
+        city: row.city,
+        state: row.state,
+        address: row.address,
+        tshirtSize: row.tshirt_size,
+        experience: row.experience_band,
+        email: row.email,
+        phone: row.phone,
+        appliedOn: date(row.created_at),
+        status: row.status,
+        averageRating: null,
+        notes: row.admin_notes,
+      },
+    });
+  }
+
+  return sortable.sort((a, b) => b.at.localeCompare(a.at)).map((entry) => entry.row);
 }
 
 // ── Session requests ────────────────────────────────────────────────────────
