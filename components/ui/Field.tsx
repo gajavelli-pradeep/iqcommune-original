@@ -92,7 +92,7 @@ export function TextField({
             onClick={() => setReveal((shown) => !shown)}
             aria-label={reveal ? "Hide password" : "Show password"}
             aria-pressed={reveal}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-faint transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            className="tap-44 absolute inset-y-0 right-0 flex items-center px-3 text-ink-faint transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
           >
             <svg
               width="18"
@@ -189,7 +189,14 @@ export function CheckboxField({
       <div
         className={`rounded-lg border-[1.5px] bg-surface-soft px-4 py-[0.9rem] ${borderFor(error)}`}
       >
-        <label htmlFor={id} className="flex cursor-pointer items-start gap-2.5 text-sm leading-[1.6] text-ink-muted">
+        {/* The label IS the tap target — the 15px box alone never could be, and
+            that is why checkbox is exempt from the global 44px floor. A single
+            short line of consent text draws only 38px, so the floor is set here
+            where the target actually lives. */}
+        <label
+          htmlFor={id}
+          className="flex cursor-pointer items-start gap-2.5 text-sm leading-[1.6] text-ink-muted [@media(any-pointer:coarse)]:min-h-11"
+        >
           <input
             id={id}
             type="checkbox"

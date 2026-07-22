@@ -91,7 +91,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
           type="button"
           onClick={() => goTo(current - 1)}
           aria-label="Previous photos"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-tool-edge text-on-dark-muted transition-colors hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          className="tap-44 flex h-9 w-9 items-center justify-center rounded-full border border-tool-edge text-on-dark-muted transition-colors hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden focusable="false">
             <polyline points="15 18 9 12 15 6" />
@@ -105,7 +105,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
               onClick={() => goTo(i)}
               aria-label={`Go to photo ${i + 1}`}
               aria-current={i === current}
-              className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${
+              className={`tap-44 h-1.5 rounded-full transition-[width,background-color] duration-300 ${
                 i === current ? "w-[18px] bg-gold" : "w-1.5 bg-surface/15 hover:bg-surface/30"
               }`}
             />
@@ -115,7 +115,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
           type="button"
           onClick={() => goTo(current + 1)}
           aria-label="Next photos"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-tool-edge text-on-dark-muted transition-colors hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          className="tap-44 flex h-9 w-9 items-center justify-center rounded-full border border-tool-edge text-on-dark-muted transition-colors hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden focusable="false">
             <polyline points="9 18 15 12 9 6" />

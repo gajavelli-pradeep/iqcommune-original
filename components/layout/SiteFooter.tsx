@@ -51,7 +51,11 @@ export function SiteFooter({
               trailing the last word at every width. */}
           <Link
             href="/practitioners"
-            className="border-b border-gold-rule pb-[2px] text-md font-medium text-on-dark transition-colors hover:border-gold-rule-strong hover:text-gold-bright focus-visible:border-gold-rule-strong focus-visible:text-gold-bright"
+            /* `tap-44`, not padding: the link is inline by the reasoning
+               above, so `min-block-size` cannot touch it, and on one line it
+               draws only 31px tall. The pseudo-element adds the hit area
+               without altering the line box the comment above protects. */
+            className="tap-44 border-b border-gold-rule pb-[2px] text-md font-medium text-on-dark transition-colors hover:border-gold-rule-strong hover:text-gold-bright focus-visible:border-gold-rule-strong focus-visible:text-gold-bright"
           >
             Teach what you practise — join the iqcommune practitioner network
             <ArrowRightIcon className="ml-[7px] inline-block align-middle" />
@@ -67,7 +71,7 @@ export function SiteFooter({
           {` — ${tagline}  ·  `}
           <a
             href={`mailto:${email}`}
-            className="transition-colors hover:text-on-dark-bright focus-visible:text-on-dark-bright"
+            className="tap-44 transition-colors hover:text-on-dark-bright focus-visible:text-on-dark-bright"
           >
             {email}
           </a>

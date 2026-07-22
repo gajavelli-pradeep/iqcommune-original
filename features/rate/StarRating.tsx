@@ -73,7 +73,11 @@ export function StarRating({
                   ?.querySelector<HTMLButtonElement>(`[data-value="${next}"]`)
                   ?.focus();
               }}
-              className="flex h-12 w-12 items-center justify-center rounded-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:scale-100"
+              /* `shrink-0` is the touch-target fix: the row is flex, so the
+                 declared 48px was being squeezed to 42px at narrow widths —
+                 under the floor exactly where the control is used most. Five
+                 stars and four gaps still fit inside 320px. */
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:scale-100"
             >
               <svg
                 width="40"

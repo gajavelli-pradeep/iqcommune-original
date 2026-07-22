@@ -32,6 +32,15 @@ const XS =
 const XS_GHOST = `${XS} border border-border-strong bg-surface text-ink-muted hover:bg-surface-soft hover:text-ink`;
 const XS_DARK = `${XS} bg-ink text-surface hover:opacity-90`;
 
+/**
+ * A 44px tap area for a bare checkbox. Checkbox and radio are excluded from the
+ * global coarse-pointer floor on purpose (clamping them fights their own
+ * design), on the understanding that a wrapping label carries the target — and
+ * a checkbox alone in a table cell has no such label.
+ */
+const TAP_TARGET =
+  "relative [@media(any-pointer:coarse)]:after:absolute [@media(any-pointer:coarse)]:after:left-1/2 [@media(any-pointer:coarse)]:after:top-1/2 [@media(any-pointer:coarse)]:after:h-11 [@media(any-pointer:coarse)]:after:w-11 [@media(any-pointer:coarse)]:after:-translate-x-1/2 [@media(any-pointer:coarse)]:after:-translate-y-1/2 [@media(any-pointer:coarse)]:after:content-['']";
+
 type SortKey = keyof Pick<MasterDataRow, "name" | "phone" | "email" | "city" | "state">;
 
 const MASTER_COLUMNS: ReadonlyArray<{ key: SortKey; label: string }> = [
@@ -164,6 +173,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
                   onChange={(event) =>
                     setSelected(event.target.checked ? new Set(shown.map((row) => row.id)) : new Set())
                   }
+                  className={TAP_TARGET}
                 />
               </th>
               {MASTER_COLUMNS.map((column) => (
@@ -181,7 +191,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
                       )
                     }
                     aria-label={`Sort by ${column.label}`}
-                    className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-caps text-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                    className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-caps text-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold [@media(any-pointer:coarse)]:min-w-11"
                   >
                     {column.label}{" "}
                     <span aria-hidden className={sort.key === column.key ? "text-gold-dark" : "opacity-40"}>
@@ -201,6 +211,7 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
                     checked={selected.has(row.id)}
                     aria-label={`Select ${row.name}`}
                     onChange={() => toggle(row.id)}
+                    className={TAP_TARGET}
                   />
                 </td>
                 <td className="px-4 py-3 align-top text-base font-medium text-ink">{row.name}</td>

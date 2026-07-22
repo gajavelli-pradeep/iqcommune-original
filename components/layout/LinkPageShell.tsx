@@ -56,7 +56,8 @@ export function LinkPageShell({
             Confidential · Questions? Reply to the email this link was sent from, or write to{" "}
             <a
               href="mailto:hello@iqcommune.com"
-              className="underline underline-offset-2 transition-colors hover:text-ink-muted"
+              /* Inline link: `min-block-size` cannot grow it, so `tap-44` does. */
+              className="tap-44 underline underline-offset-2 transition-colors hover:text-ink-muted"
             >
               hello@iqcommune.com
             </a>

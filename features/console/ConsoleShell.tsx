@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-import { ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
+import { CONSOLE_ROLES, ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
 
 /**
  * The console chrome, shared by all three routes.
@@ -92,12 +92,18 @@ const TAB_ICONS: Record<string, ReactNode> = {
 
 export function ConsoleShell({
   role,
+  actualRole,
   email,
   panels,
   counts,
 }: {
   role: ConsoleRole;
   email: string;
+  /**
+   * The signed-in role, when it differs from the one being rendered — a Global
+   * Admin previewing a narrower console. Only they get the switch.
+   */
+  actualRole?: ConsoleRole;
   /** Rendered panel keyed by tab id. A tab with no panel yet says so. */
   panels?: Partial<Record<string, ReactNode>>;
   /** Row count per tab id, for the sidebar badges (V7 `.sb-badge`). */
@@ -106,6 +112,24 @@ export function ConsoleShell({
   const router = useRouter();
   const tabs = tabsFor(role);
   const [active, setActive] = useState(tabs[0].id);
+
+  /**
+   * The console menu, below the desktop breakpoint.
+   *
+   * Under 900px the sidebar used to stack above the panel, so every tab in the
+   * console sat between the header and the content you came to read; and the
+   * header actions were squeezed into a bar with no room for them. Both now
+   * live behind one control at the LEFT of the header — navigation belongs
+   * where navigation is, and a header action that cannot fit belongs in the
+   * overflow rather than wrapping.
+   */
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  /** Choosing a tab is the end of navigating, so the menu closes with it. */
+  const openTab = (id: string) => {
+    setActive(id);
+    setMenuOpen(false);
+  };
 
   const sections = tabs.reduce<Record<string, typeof tabs>>((grouped, tab) => {
     grouped[tab.section] = [...(grouped[tab.section] ?? []), tab];
@@ -123,15 +147,42 @@ export function ConsoleShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
-      <header className="sticky top-0 z-[var(--z-header)] flex h-16 items-center gap-6 border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:px-7">
-        {/* Logo + "Admin Console" lockup (V7 .nav-logo). */}
-        <div className="flex shrink-0 items-center gap-3.5">
-          <div className="flex flex-col gap-0.5">
+      <header className="sticky top-0 z-[var(--z-header)] flex h-16 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:gap-6 sm:px-7">
+        {/* The console menu, left of the wordmark — below 900px it owns the
+            navigation and the actions that do not fit the bar. */}
+        <button
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="console-menu"
+          aria-label={menuOpen ? "Close the console menu" : "Open the console menu"}
+          onClick={() => setMenuOpen((open) => !open)}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border-strong text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold min-[900px]:hidden"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+            {menuOpen ? (
+              <path d="M18 6 6 18M6 6l12 12" />
+            ) : (
+              <>
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
+
+        {/* Logo + "Admin Console" lockup (V7 .nav-logo).
+            Allowed to shrink, unlike the actions on the right. Both sides were
+            `shrink-0`, so at exactly 360px — where the strapline switches on —
+            nothing could give and the bar pushed the whole page into
+            horizontal scroll. The identity truncates; the controls do not. */}
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <span className="flex items-baseline leading-none">
               <span className="text-4xl font-bold tracking-display text-gold">iq</span>
               <span className="text-4xl font-light tracking-display text-ink">commune</span>
             </span>
-            <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
+            <span className="hidden truncate text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
               Where financial intelligence connects
             </span>
           </div>
@@ -162,31 +213,52 @@ export function ConsoleShell({
           </div>
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3 min-[900px]:ml-0">
+        <div className="ml-auto hidden shrink-0 items-center gap-3 sm:flex min-[900px]:ml-0">
           {/*
-            V7 puts a "Viewing as:" role `<select>` here, but that select is the
-            mockup's own demonstration device — it swaps a `role-*` class on
-            `<body>` so one static file can show three permission levels. The
-            real product resolves the role from the signed-in session and serves
-            a different route per role (see `roles.ts`), so there is nothing for
-            it to switch: it would be a dropdown that changes nothing, and a
-            Global Admin cannot become an Admin by choosing to.
+            V7's "Viewing as:" switch. In the mockup it swaps a `role-*` class
+            on `<body>` so one static file can demonstrate three permission
+            levels; here it re-renders the console with a narrower capability
+            set, which is the same question asked honestly.
 
-            The role is therefore stated rather than offered — in the compact
-            form, so it occupies the select's footprint rather than dominating
-            the bar. The full description is the accessible name.
+            Offered only to a Global Admin, and only ever narrowing — checking
+            what an Admin or a User actually sees is how a control that leaked
+            into the wrong tier gets caught. Everyone else has nothing to switch
+            to, so their role is stated instead.
           */}
-          <span
-            title={ROLE_LABELS[role]}
-            className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted sm:block"
-          >
-            <span className="sr-only">Signed in as: </span>
-            Viewing as: {SHORT_ROLE[role]}
-            <span className="sr-only"> — {ROLE_LABELS[role]}</span>
-          </span>
+          {actualRole === "global_admin" ? (
+            <>
+              <label className="sr-only" htmlFor="viewing-as">
+                Viewing the console as
+              </label>
+              <select
+                id="viewing-as"
+                value={role}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  router.push(next === "global_admin" ? "/globaladmin" : `/globaladmin?as=${next}`);
+                }}
+                className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold sm:block"
+              >
+                {CONSOLE_ROLES.map((value) => (
+                  <option key={value} value={value}>
+                    Viewing as: {SHORT_ROLE[value]}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <span
+              title={ROLE_LABELS[role]}
+              className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted sm:block"
+            >
+              <span className="sr-only">Signed in as: </span>
+              Viewing as: {SHORT_ROLE[role]}
+              <span className="sr-only"> — {ROLE_LABELS[role]}</span>
+            </span>
+          )}
           <button
             type="button"
-            onClick={() => waiting && setActive(waiting.id)}
+            onClick={() => waiting && openTab(waiting.id)}
             disabled={!waiting}
             aria-label={
               waiting
@@ -217,9 +289,75 @@ export function ConsoleShell({
       <div className="flex flex-1 flex-col min-[900px]:flex-row">
         {/* V7 .sidebar — flush-left, sticky, its own scroll; a footer identity block. */}
         <nav
+          id="console-menu"
           aria-label="Console sections"
-          className="shrink-0 border-b border-border bg-surface min-[900px]:sticky min-[900px]:top-16 min-[900px]:flex min-[900px]:h-[calc(100dvh-64px)] min-[900px]:w-[230px] min-[900px]:flex-col min-[900px]:self-start min-[900px]:overflow-y-auto min-[900px]:border-b-0 min-[900px]:border-r"
+          /* Below 900px this is the menu and is collapsed by default; at 900px
+             and above it is the permanent sidebar and `menuOpen` is irrelevant.
+             It owns its own scroll in both modes — a menu taller than the
+             screen with no scroll path is a menu whose last item cannot be
+             reached. */
+          className={`${
+            menuOpen ? "block" : "hidden"
+          } max-h-[calc(100dvh-64px)] shrink-0 overflow-y-auto overscroll-y-contain border-b border-border bg-surface min-[900px]:sticky min-[900px]:top-16 min-[900px]:!block min-[900px]:h-[calc(100dvh-64px)] min-[900px]:w-[230px] min-[900px]:self-start min-[900px]:border-b-0 min-[900px]:border-r`}
         >
+          {/* What the header sheds on the way down: the search (hidden below
+              900px) and the identity/actions (below 640px). They are offered
+              here rather than dropped, because a control that disappears on a
+              phone is a control that does not exist there. */}
+          <div className="border-b border-border p-4 min-[900px]:hidden">
+            <label className="sr-only" htmlFor="menu-search">
+              Search across practitioners, sessions, requests
+            </label>
+            <div className="mb-3 flex items-center gap-2 rounded-full border border-border-strong bg-surface-soft px-4 py-[7px]">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden className="shrink-0 text-ink-faint">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                id="menu-search"
+                type="search"
+                placeholder="Search across practitioners, sessions, requests…"
+                className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
+              />
+            </div>
+
+            {actualRole === "global_admin" ? (
+              <>
+                <label className="sr-only" htmlFor="menu-viewing-as">
+                  Viewing the console as
+                </label>
+                <select
+                  id="menu-viewing-as"
+                  value={role}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    router.push(next === "global_admin" ? "/globaladmin" : `/globaladmin?as=${next}`);
+                  }}
+                  className="w-full rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+                >
+                  {CONSOLE_ROLES.map((value) => (
+                    <option key={value} value={value}>
+                      Viewing as: {SHORT_ROLE[value]}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <p className="text-sm text-ink-muted">Viewing as: {SHORT_ROLE[role]}</p>
+            )}
+
+            {waiting ? (
+              <button
+                type="button"
+                onClick={() => openTab(waiting.id)}
+                className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-md border border-border-strong px-3 text-left text-sm text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+              >
+                <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-gold" />
+                {counts?.[waiting.id]} waiting in {waiting.label}
+              </button>
+            ) : null}
+          </div>
+
           <div className="flex-1 py-2 min-[900px]:py-0">
             {Object.entries(sections).map(([section, items]) => (
               <div key={section}>
@@ -236,7 +374,7 @@ export function ConsoleShell({
                           type="button"
                           data-tab={tab.id}
                           aria-current={isActive ? "page" : undefined}
-                          onClick={() => setActive(tab.id)}
+                          onClick={() => openTab(tab.id)}
                           className={`flex min-h-11 w-full items-center gap-2.5 border-l-[2.5px] px-5 py-[0.6rem] text-left text-base transition-colors ${
                             isActive
                               ? "border-l-gold bg-gold-light font-medium text-gold-dark"

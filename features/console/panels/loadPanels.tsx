@@ -108,9 +108,11 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     listAssignablePractitioners().catch(() => []),
     listConfirmableSessions().catch(() => []),
     listPhotoGuideSessions().catch(() => []),
-    // Team is a privileged read (it lists every console account), so only a
-    // role that can manage the team triggers it.
-    can(role, "manageTeam") ? listTeam().catch(() => []) : Promise.resolve([]),
+    // Every console role sees WHO is on the team — V7 leaves the table
+    // ungated and marks only the Actions column and the invite box
+    // `role-team`. Gating the read as well left an Admin looking at an empty
+    // table rather than a read-only one, which reads as a broken panel.
+    listTeam().catch(() => []),
     listMasterData().catch(() => []),
   ]);
 

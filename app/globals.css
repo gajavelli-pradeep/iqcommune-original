@@ -349,4 +349,38 @@ body {
   select {
     font-size: var(--text-xl);
   }
+
+  /* The same 44px floor the buttons above get. Form controls were left out, so
+     every select and text input the console added landed at 37-41px — under the
+     floor on every one of them, and invisible to any check run with a mouse.
+     Checkbox and radio stay excluded for the reason given above: clamping them
+     fights their own design, and they carry their tap area on a wrapping label.
+     Where one cannot (a bare checkbox in a table cell), the call site provides
+     its own expander. */
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]) {
+    min-block-size: 44px;
+  }
+
+  /* A tap area for a control that must stay visually small.
+     `min-block-size` above does nothing for two common cases: an INLINE link
+     (height does not apply to inline boxes, so a footer email link sits at
+     17px however tall the rule says), and a deliberately tiny control like a
+     carousel dot. Both grow their hit area with a centred pseudo-element,
+     which changes what a thumb can reach without moving a single pixel of
+     what is drawn. */
+  .tap-44 {
+    position: relative;
+  }
+
+  .tap-44::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 50%;
+    inset-block-start: 50%;
+    inline-size: 44px;
+    block-size: 44px;
+    translate: -50% -50%;
+  }
 }

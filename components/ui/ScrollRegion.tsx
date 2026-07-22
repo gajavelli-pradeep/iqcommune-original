@@ -9,8 +9,16 @@ import { forwardRef, type ReactNode, type UIEvent } from "react";
  * table can't reflow to 320px without losing columns).
  *
  * `role="region"` + `tabIndex={0}` + `aria-label` make the overflow reachable
- * and scrollable by keyboard alone (audit A11Y-3). `overscroll-contain` stops a
- * flick at the end from scrolling the page behind it.
+ * and scrollable by keyboard alone (audit A11Y-3).
+ *
+ * Overscroll containment is applied PER AXIS, and that is load-bearing. Setting
+ * `overscroll-behavior: contain` on a horizontal scroller looks harmless but
+ * breaks the page: declaring `overflow-x: auto` makes the browser compute
+ * `overflow-y: auto` as well, so the region counts as a vertical scroll
+ * container that is already at its boundary — and containment then SWALLOWS
+ * every vertical wheel event instead of letting it chain to the document. On a
+ * tall console tab the table covers most of the viewport, so the page simply
+ * would not scroll. Contain the axis this region owns; let the other chain.
  *
  * `relative` is load-bearing, not decoration. `overflow` only clips descendants
  * whose containing block is inside the scroller; an absolutely positioned one
@@ -56,8 +64,8 @@ export const ScrollRegion = forwardRef<
       tabIndex={0}
       onScroll={handleScroll}
       className={`${
-        axis === "y" ? "overflow-y-auto" : "overflow-x-auto"
-      } relative overscroll-contain rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
+        axis === "y" ? "overflow-y-auto overscroll-y-contain" : "overflow-x-auto overscroll-x-contain"
+      } relative rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
         className ? ` ${className}` : ""
       }`}
     >
