@@ -67,14 +67,14 @@ describe("Request a Session — control contract", () => {
     }
   });
 
-  it("never puts a white label on a gold fill", () => {
-    // Deliberate deviation: the spec says #fff, which is 2.3:1 on gold and
-    // fails AA. This test exists so the deviation cannot be silently reverted.
-    // It applies to the gold fills only — white on ink is 18:1 and correct.
+  it("keeps the V7 white label on a gold fill", () => {
+    // Client exact-match directive: V7 .btn-gold uses a #fff label. This test
+    // exists so the white label cannot be silently reverted to ink (the earlier
+    // AA-driven treatment). White on ink is separately correct at 18:1.
     render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
     for (const button of requestButtons().filter((b) => b.classList.contains("bg-gold"))) {
-      expect(button).toHaveClass("text-ink");
-      expect(button).not.toHaveClass("text-surface");
+      expect(button).toHaveClass("text-surface");
+      expect(button).not.toHaveClass("text-ink");
     }
   });
 });

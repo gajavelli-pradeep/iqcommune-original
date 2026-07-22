@@ -1,20 +1,21 @@
 import type { ReactNode } from "react";
 
-import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
 /**
  * Chrome shared by every emailed page — /rate, /consent, /submit-photos,
  * /onboarding, /join-admin.
  *
- * Extracted at its second use. All five are a narrow column of cards under a
- * badged header, closing with the same confidentiality note, and none of them
- * carries the footer's cross-site call to action: a practitioner arriving from
- * an email to confirm one session is not being recruited.
+ * These pages deliberately differ from the marketing chrome: their V7 nav is a
+ * compact 22px wordmark with no strapline, and none of them carries the dark
+ * site footer — the closing confidentiality note (V7 `.footer-note`) is all
+ * they show. A practitioner arriving from an email to confirm one session is
+ * not being recruited.
  */
 export function LinkPageShell({
   badge,
   width,
+  strapline = null,
   children,
 }: {
   badge: string | readonly string[];
@@ -22,10 +23,10 @@ export function LinkPageShell({
    * The page's column width. Each spec sets its own — 480px for account setup,
    * 720 for rating, 760 for consent, 860 for photos and onboarding — and the
    * header's inner width tracks it so the wordmark aligns with the card.
-   * Collapsing all five into one 520px default was a shared component losing
-   * the variation it existed to carry.
    */
   width: string;
+  /** Wordmark sub-line. Rate/consent/user-setup have none; photos/onboarding pass theirs. */
+  strapline?: string | null;
   children: ReactNode;
 }) {
   return (
@@ -34,11 +35,17 @@ export function LinkPageShell({
         badge={typeof badge === "string" ? [badge] : badge}
         badgeStyle="pill"
         width={width}
+        strapline={strapline}
+        compact
       />
-      <main className="flex-1 px-8 py-10">
-        <div style={{ maxWidth: width }} className="mx-auto">
+      {/* V7 .page — max-width column with its own 2.5rem 2rem 4rem padding.
+          The padding lives on this box (not an outer section), so the card
+          content is 64px narrower than the width and the nav logo (which fills
+          the full nav-inner width) sits ~32px left of the card, as in V7. */}
+      <main className="flex-1">
+        <div style={{ maxWidth: width }} className="mx-auto px-8 pt-10 pb-16">
           {children}
-          <p className="mt-6 text-center text-sm leading-[1.6] text-ink-faint">
+          <p className="mt-8 text-center text-sm leading-[1.6] text-ink-faint">
             Confidential · Questions? Reply to the email this link was sent from, or write to{" "}
             <a
               href="mailto:hello@iqcommune.com"
@@ -49,7 +56,6 @@ export function LinkPageShell({
           </p>
         </div>
       </main>
-      <SiteFooter top={false} />
     </div>
   );
 }

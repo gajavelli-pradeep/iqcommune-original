@@ -25,6 +25,8 @@ export function SiteHeader({
   badgeStyle = "lockup",
   right,
   width = "var(--container-page)",
+  strapline = "Where financial intelligence connects",
+  compact = false,
 }: {
   /**
    * Inner width. The public pages are 1100px, but each emailed page sets its
@@ -42,7 +44,18 @@ export function SiteHeader({
    */
   badgeStyle?: "pill" | "lockup";
   right?: ReactNode;
+  /**
+   * Wordmark sub-line. Defaults to the public strapline; the emailed flow pages
+   * pass `null` — their V7 nav has no strapline at all.
+   */
+  strapline?: string | null;
+  /**
+   * 22px wordmark instead of the public 26px. The emailed flow-page navs
+   * (`.nav-logo-mark` font-size:22px) are smaller than the marketing header.
+   */
+  compact?: boolean;
 }) {
+  const wordmark = compact ? "text-4xl" : "text-4xl sm:text-6xl";
   return (
     <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface/95 px-8 backdrop-blur-[12px]">
       <div
@@ -59,17 +72,17 @@ export function SiteHeader({
             aria-label="iqcommune — home"
           >
             <span className="flex items-baseline leading-none">
-              <span className="text-4xl font-bold tracking-display text-gold sm:text-6xl">iq</span>
-              <span className="text-4xl font-light tracking-display text-ink sm:text-6xl">
-                commune
-              </span>
+              <span className={`${wordmark} font-bold tracking-display text-gold`}>iq</span>
+              <span className={`${wordmark} font-light tracking-display text-ink`}>commune</span>
             </span>
             {/* Shown from 360px up to match V7, which keeps the strapline on every
                 phone. Hidden only below 360px, where the lockup plus the Request
                 button overflows the viewport — the 320px P1 this guard exists for. */}
-            <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-              Where financial intelligence connects
-            </span>
+            {strapline ? (
+              <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
+                {strapline}
+              </span>
+            ) : null}
           </Link>
 
           {badge && badgeStyle === "lockup" ? (

@@ -19,7 +19,11 @@ export function OnboardingPage({
   agreementDate?: string;
 }) {
   return (
-    <LinkPageShell width="860px" badge={["Practitioner Network", "Onboarding"]}>
+    <LinkPageShell
+      width="860px"
+      badge={["Practitioner Network", "Onboarding"]}
+      strapline="Where financial intelligence connects"
+    >
       {practitioner ? (
         <OnboardingForm
           practitioner={practitioner}
