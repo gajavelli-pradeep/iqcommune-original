@@ -53,7 +53,7 @@ export function RateForm({ session, token }: { session: RatedSession; token: str
       <SessionDetailsCard session={session} />
 
       <form
-        className="mt-4 rounded-lg border border-border bg-surface px-9 py-8"
+        className="mt-6 rounded-[12px] border border-border bg-surface px-9 py-8"
         onSubmit={async (event) => {
           event.preventDefault();
           if (rating === null) return;
@@ -63,7 +63,7 @@ export function RateForm({ session, token }: { session: RatedSession; token: str
       >
         <StarRating value={rating} onChange={setRating} />
 
-        <div className="mt-6">
+        <div className="mt-5">
           <TextareaField
             label="Anything you'd like to add?"
             optional
@@ -80,9 +80,6 @@ export function RateForm({ session, token }: { session: RatedSession; token: str
         <Button type="submit" variant="submit" busy={busy} busyLabel="Submitting…" disabled={rating === null}>
           Submit rating
         </Button>
-        {rating === null ? (
-          <p className="mt-2 text-center text-sm text-ink-faint">Choose a rating to continue.</p>
-        ) : null}
       </form>
     </>
   );

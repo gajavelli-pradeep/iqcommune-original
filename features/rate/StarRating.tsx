@@ -29,14 +29,14 @@ export function StarRating({
 }) {
   return (
     <div className="text-center">
-      <p id="rating-prompt" className="mb-3 text-md font-medium text-ink">
+      <p id="rating-prompt" className="mb-6 text-xl font-medium text-ink">
         Rate the practitioner out of 5
       </p>
 
       <div
         role="radiogroup"
         aria-labelledby="rating-prompt"
-        className="flex items-center justify-center gap-2.5"
+        className="mb-3 flex items-center justify-center gap-2.5"
       >
         {VALUES.map((option) => {
           const selected = value !== null && option <= value;
@@ -79,12 +79,11 @@ export function StarRating({
                 width="40"
                 height="40"
                 viewBox="0 0 24 24"
-                fill={selected ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={1.6}
+                strokeWidth={1.5}
                 aria-hidden
                 focusable="false"
-                className={selected ? "text-gold" : "text-border-strong"}
+                // V7 filled star: gold fill with a gold-dark stroke (two colours).
+                className={selected ? "fill-gold stroke-gold-dark" : "fill-none stroke-border-strong"}
               >
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
@@ -98,7 +97,7 @@ export function StarRating({
           to give. */}
       <p
         aria-live="polite"
-        className={`mt-2 text-base ${value === null ? "text-ink-faint" : "font-medium text-gold-dark"}`}
+        className={`mt-2 min-h-5 text-base font-medium ${value === null ? "text-ink-faint" : "text-gold-dark"}`}
       >
         {value === null ? "Tap a star to rate" : `${value} — ${RATING_LABELS[value]}`}
       </p>
