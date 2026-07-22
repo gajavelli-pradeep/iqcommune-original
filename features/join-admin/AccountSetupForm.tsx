@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
-import { KeyValueGrid } from "@/components/ui/KeyValueGrid";
 import { SuccessPanel } from "@/components/ui/SuccessPanel";
 import { useApiSubmit } from "@/hooks/useApiSubmit";
 import type { AdminInvite } from "@/types/link-pages";
@@ -46,21 +45,28 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface px-9 py-8">
-      <h1 className="mb-1 text-3xl font-semibold text-ink">Set up your account</h1>
-      <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+    <section className="rounded-[12px] border border-border bg-surface px-9 py-8">
+      <h1 className="mb-1.5 text-4xl font-semibold text-ink">Set up your account</h1>
+      <p className="mb-6 text-md leading-[1.6] text-ink-muted">
         You&apos;ve been invited to the iqcommune admin console. Confirm your details and choose a
         password to activate your account.
       </p>
 
-      <div className="mb-5">
-        <KeyValueGrid
-          rows={[
-            { label: "Email", value: invite.email },
-            { label: "Role", value: invite.role },
-          ]}
-        />
-      </div>
+      {/* V7 .kv-grid: a plain 2-column label-over-value list (title-case labels,
+          no box), matching the rate/consent detail grids. */}
+      <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-[0.85rem]">
+        {(
+          [
+            ["Email", invite.email],
+            ["Role", invite.role],
+          ] as ReadonlyArray<[string, string]>
+        ).map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="mb-0.5 text-xs text-ink-faint">{label}</dt>
+            <dd className="truncate text-md font-medium text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <form
         noValidate
