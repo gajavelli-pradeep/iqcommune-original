@@ -26,5 +26,14 @@ export default async function Onboarding({
   const practitioner = await getOnboardingPractitioner(result.payload.id);
   if (!practitioner) return <OnboardingPage failure="malformed" />;
 
-  return <OnboardingPage practitioner={practitioner} token={t} />;
+  // Computed once, server-side, in IST (audit M7): a stable value the client
+  // renders verbatim, so there is no UTC/IST hydration mismatch on the agreement
+  // date. This route is already dynamic (it reads the token), so it recomputes
+  // per request.
+  const agreementDate = new Date().toLocaleDateString("en-IN", {
+    dateStyle: "long",
+    timeZone: "Asia/Kolkata",
+  });
+
+  return <OnboardingPage practitioner={practitioner} token={t} agreementDate={agreementDate} />;
 }

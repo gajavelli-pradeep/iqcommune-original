@@ -28,7 +28,9 @@ const MESSAGES: Record<TokenFailure, { title: string; detail: string }> = {
   },
   expired: {
     title: "This link has expired",
-    detail: "Rating links are open for a limited time. Reply to the email and we'll send a new one.",
+    // Generic across all five flows (audit M22): this component is shared, so it
+    // must not name one of them ("Rating links…").
+    detail: "These links are open for a limited time. Reply to the email and we'll send a new one.",
   },
 };
 

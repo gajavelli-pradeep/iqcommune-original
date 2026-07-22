@@ -9,16 +9,23 @@ export function OnboardingPage({
   practitioner,
   failure,
   token,
+  agreementDate,
 }: {
   practitioner?: OnboardingPractitioner;
   failure?: TokenFailure;
   /** Forwarded to the write route, which re-verifies it server-side. */
   token?: string;
+  /** Server-computed IST date for the agreement's "Date:" line (audit M7). */
+  agreementDate?: string;
 }) {
   return (
     <LinkPageShell width="860px" badge={["Practitioner Network", "Onboarding"]}>
       {practitioner ? (
-        <OnboardingForm practitioner={practitioner} token={token ?? ""} />
+        <OnboardingForm
+          practitioner={practitioner}
+          token={token ?? ""}
+          agreementDate={agreementDate ?? ""}
+        />
       ) : (
         <InvalidLink reason={failure ?? "malformed"} />
       )}

@@ -2,7 +2,12 @@
 
 import { useRef, useState } from "react";
 
+import { Callout } from "@/components/ui/Callout";
 import { CheckboxField } from "@/components/ui/Field";
+import { Stepper } from "@/components/ui/Stepper";
+import { useFocusWhen } from "@/hooks/useFocusWhen";
+import { formatDateIST, formatDateTimeIST } from "@/utils/format";
+import type { PhotoSession } from "@/types/link-pages";
 import {
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTOS,
@@ -19,50 +24,14 @@ import { ShotChecklist } from "./ShotChecklist";
  * inputs are the photos and the consent that permits publishing them.
  */
 
-export interface PhotoSession {
-  practitioner: string;
-  practitionerRole: string;
-  practitionerRef: string;
-  sessionDate: string;
-  module: string;
-  city: string;
-  state: string;
-  sessionId: string;
-}
+// Shape lives in types/, out of the client graph (audit H6); re-exported here.
+export type { PhotoSession };
 
 const STEPS = [
   "Link received ahead of session",
   "Capture & submit during/after session",
   "Reviewed & published",
 ] as const;
-
-function Stepper({ current }: { current: number }) {
-  return (
-    <ol className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
-      {STEPS.map((step, index) => (
-        <li key={step} className="flex items-center gap-2">
-          <span
-            className={`flex items-center gap-1.5 text-sm ${
-              index <= current ? "font-medium text-gold-dark" : "text-ink-faint"
-            }`}
-          >
-            {index < current ? (
-              <span aria-hidden>✓</span>
-            ) : (
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-            )}
-            {step}
-          </span>
-          {index < STEPS.length - 1 ? (
-            <span aria-hidden className="text-ink-faint">
-              ›
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -84,23 +53,25 @@ export function PhotoSubmissionForm({
   const [consented, setConsented] = useState(false);
   const [errors, setErrors] = useState<{ photos?: string; consent?: string }>({});
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+  // The server computes the 30-day expiry and returns it (audit M23); the UI
+  // shows that, not a value recomputed from the browser clock.
+  const [expiryDate, setExpiryDate] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
+  const successRef = useFocusWhen<HTMLHeadingElement>(Boolean(submittedAt));
 
   if (submittedAt) {
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 30);
     const rows: ReadonlyArray<[string, string]> = [
       ["Submitted by", session.practitioner],
       ["Practitioner ref.", session.practitionerRef],
       ["Session", session.sessionId],
       ["Submitted at", submittedAt],
-      ["Storage expiry", expiry.toLocaleDateString("en-IN", { dateStyle: "medium" })],
+      ["Storage expiry", expiryDate],
       ["Status", "✓ Received — pending review"],
     ];
     return (
-      <section className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
+      <section role="status" className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
         <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-green-light text-green">
           <svg
             width="34"
@@ -115,7 +86,9 @@ export function PhotoSubmissionForm({
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h1 className="mb-1 text-2xl font-semibold text-ink">Photos received. Thank you.</h1>
+        <h1 ref={successRef} tabIndex={-1} className="mb-1 text-2xl font-semibold text-ink outline-none">
+          Photos received. Thank you.
+        </h1>
         <p className="mb-5 text-base leading-[1.6] text-ink-muted">
           We&apos;ll review and process them within 30 days. Confirmed photos will appear on the
           iqcommune sessions gallery. If you included an organisation name, we&apos;ll confirm with
@@ -142,7 +115,7 @@ export function PhotoSubmissionForm({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-8">
-      <Stepper current={1} />
+      <Stepper steps={STEPS} current={1} />
 
       <h1 className="mb-1 text-3xl font-semibold text-ink">Your session photo link</h1>
       <p className="mb-5 text-base leading-[1.6] text-ink-muted">
@@ -169,12 +142,14 @@ export function PhotoSubmissionForm({
         <Detail label="Session ID" value={session.sessionId} />
       </dl>
 
-      <p className="mb-6 rounded-r-lg border-l-[3px] border-l-gold bg-gold-light px-4 py-[0.85rem] text-sm leading-[1.6] text-gold-dark">
-        <strong className="font-semibold">Storage policy:</strong> All photos are stored securely
-        for 30 days from the date of submission. Anything not approved for publication within that
-        window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No
-        action needed from you after submission.
-      </p>
+      <div className="mb-6">
+        <Callout>
+          <strong className="font-semibold">Storage policy:</strong> All photos are stored securely
+          for 30 days from the date of submission. Anything not approved for publication within that
+          window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No
+          action needed from you after submission.
+        </Callout>
+      </div>
 
       <form
         noValidate
@@ -203,12 +178,8 @@ export function PhotoSubmissionForm({
               setSubmitError(result?.error?.message ?? "Something went wrong. Please try again.");
               return;
             }
-            setSubmittedAt(
-              new Date(result.data.submittedAt).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }),
-            );
+            setExpiryDate(formatDateIST(result.data.expiryDate));
+            setSubmittedAt(formatDateTimeIST(result.data.submittedAt));
           } catch {
             setSubmitError("We could not reach the server. Check your connection and try again.");
           } finally {
