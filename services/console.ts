@@ -434,37 +434,156 @@ export async function listSessions(): Promise<SessionRow[]> {
 
 // ── Session consent (per assignment) ────────────────────────────────────────
 
+/** A generated confirmation, as V7's "Part 2 — Track Status" table shows it. */
 export interface ConsentRow {
   id: string;
-  practitioner: string;
+  reference: string;
   session: string;
+  sessionDate: string;
+  practitioner: string;
   grossPayout: string;
   status: "Received" | "Pending";
   recordedOn: string;
+  sessionStatus: string;
+  issuedOn: string;
 }
+
+const CONSENT_SELECT =
+  "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status )";
 
 export async function listConsents(): Promise<ConsentRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_practitioners")
-    .select("id, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference )")
+    .select(CONSENT_SELECT)
     .is("deleted_at", null)
-    .order("confirmation_issued_on", { ascending: false });
+    // Only generated confirmations appear here — an assignment carries a
+    // reference from the moment it is matched, but the document does not exist
+    // until someone produces it.
+    .not("confirmation_generated_at", "is", null)
+    .order("confirmation_generated_at", { ascending: false })
+    .limit(500);
 
   if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
 
   return (data ?? []).map((row) => {
     const practitioner = one<{ full_name: string }>(row.practitioners);
-    const session = one<{ reference: string }>(row.sessions);
+    const session = one<{ reference: string; session_date: string | null; status: string }>(row.sessions);
     return {
       id: row.id,
-      practitioner: practitioner?.full_name ?? "—",
+      reference: row.confirmation_reference,
       session: session?.reference ?? "—",
+      sessionDate: date(session?.session_date ?? null),
+      practitioner: practitioner?.full_name ?? "—",
       grossPayout: money(row.gross_payout, row.currency),
       status: row.consent_given_at ? "Received" : "Pending",
       recordedOn: date(row.consent_given_at),
+      sessionStatus: session?.status ?? "—",
+      issuedOn: date(row.confirmation_generated_at),
     };
   });
+}
+
+/**
+ * A session whose confirmation has not been generated yet — the options in
+ * V7's "Part 1" picker, with everything the form auto-populates from the
+ * request and the practitioner record.
+ */
+export interface ConfirmableSession {
+  /** The assignment id — what the confirmation is generated against. */
+  id: string;
+  sessionReference: string;
+  confirmationReference: string;
+  practitioner: string;
+  module: string;
+  sessionDate: string | null;
+  city: string;
+  state: string | null;
+  venue: string | null;
+  participants: string | null;
+  spoc: string;
+  audience: string;
+  grossPayout: number;
+  currency: string;
+  startTime: string | null;
+  durationMinutes: number | null;
+  /** Whether the practitioner has returned consent — Part 3 gates on it. */
+  consentGiven: boolean;
+  confirmationGenerated: boolean;
+}
+
+async function listAssignments(generated: boolean): Promise<ConfirmableSession[]> {
+  const supabase = createAdminClient();
+  const query = supabase
+    .from("session_practitioners")
+    .select(
+      "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, module, session_date, city, state, venue, participants, spoc_name, audience, start_time, duration_minutes, deleted_at )",
+    )
+    .is("deleted_at", null)
+    .limit(500);
+
+  const { data, error } = generated
+    ? await query.not("confirmation_generated_at", "is", null)
+    : await query.is("confirmation_generated_at", null);
+
+  if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
+
+  return (data ?? [])
+    .map((row) => {
+      const practitioner = one<{ full_name: string }>(row.practitioners);
+      const session = one<{
+        reference: string;
+        module: string;
+        session_date: string | null;
+        city: string;
+        state: string | null;
+        venue: string | null;
+        participants: string | null;
+        spoc_name: string;
+        audience: string;
+        start_time: string | null;
+        duration_minutes: number | null;
+        deleted_at: string | null;
+      }>(row.sessions);
+
+      // An assignment whose session was withdrawn is not confirmable.
+      if (!session || session.deleted_at) return null;
+
+      return {
+        id: row.id,
+        sessionReference: session.reference,
+        confirmationReference: row.confirmation_reference,
+        practitioner: practitioner?.full_name ?? "—",
+        module: session.module,
+        sessionDate: session.session_date,
+        city: session.city,
+        state: session.state,
+        venue: session.venue,
+        participants: session.participants,
+        spoc: session.spoc_name,
+        audience: AUDIENCE_LABELS[session.audience as Audience] ?? session.audience,
+        grossPayout: row.gross_payout,
+        currency: row.currency,
+        startTime: session.start_time,
+        durationMinutes: session.duration_minutes,
+        consentGiven: Boolean(row.consent_given_at),
+        confirmationGenerated: Boolean(row.confirmation_generated_at),
+      };
+    })
+    .filter((row): row is ConfirmableSession => row !== null);
+}
+
+/** Part 1's picker: matched sessions with no confirmation generated yet. */
+export const listConfirmableSessions = () => listAssignments(false);
+
+/**
+ * Part 3's picker: sessions whose practitioner has returned consent. V7 gates
+ * the photo guide on Confirmed for a reason — the guide tells them what to
+ * shoot at a session they have not yet agreed to deliver.
+ */
+export async function listPhotoGuideSessions(): Promise<ConfirmableSession[]> {
+  const generated = await listAssignments(true);
+  return generated.filter((row) => row.consentGiven);
 }
 
 // ── Payouts (per assignment) ────────────────────────────────────────────────

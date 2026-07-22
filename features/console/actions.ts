@@ -844,6 +844,78 @@ async function assignmentContact(id: string): Promise<{ email: string; firstName
   return practitionerContact(supabase, data.practitioner_id as string);
 }
 
+/**
+ * "Generate Confirmation" (V7 tab 4, Part 1).
+ *
+ * Everything on that form flows from the request and the practitioner record
+ * except two things the admin supplies: the start time and the duration. So
+ * this writes those onto the SESSION — they are facts about the session, not
+ * about the document — and stamps the assignment as confirmed, which is what
+ * moves it into Part 2 and makes the consent request sendable.
+ *
+ * Idempotent: re-generating updates the time and leaves the original generation
+ * stamp alone, so the audit trail keeps the date the document first existed.
+ */
+export async function generateConfirmation(
+  assignmentId: string,
+  input: { startTime: string; durationHours: number; sessionDate?: string | null },
+): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  if (!/^\d{2}:\d{2}$/.test(input.startTime)) {
+    return { ok: false, message: "Enter a start time for the session." };
+  }
+  if (![3, 6].includes(input.durationHours)) {
+    return { ok: false, message: "Choose a duration — 3 hours for a single module, 6 for a bundle." };
+  }
+
+  const { data: assignment, error: readError } = await supabase
+    .from("session_practitioners")
+    .select("id, session_id, confirmation_reference, confirmation_generated_at")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readError) throw new Error(`assignment read failed: ${readError.message}`);
+  if (!assignment) return { ok: false, message: "That session is no longer available to confirm." };
+
+  const sessionPatch: Record<string, unknown> = {
+    start_time: input.startTime,
+    duration_minutes: input.durationHours * 60,
+    status: "Confirmed",
+  };
+  // The date is agreed on the same call; a session cannot be confirmed without
+  // one, so it is captured here rather than left for a later screen.
+  if (input.sessionDate) sessionPatch.session_date = input.sessionDate;
+
+  const { error: sessionError } = await supabase
+    .from("sessions")
+    .update(sessionPatch)
+    .eq("id", assignment.session_id)
+    .is("deleted_at", null);
+  if (sessionError) throw new Error(`session update failed: ${sessionError.message}`);
+
+  const { error } = await supabase
+    .from("session_practitioners")
+    .update({
+      confirmation_generated_at: assignment.confirmation_generated_at ?? new Date().toISOString(),
+      confirmation_issued_on: new Date().toISOString().slice(0, 10),
+    })
+    .eq("id", assignmentId)
+    .is("deleted_at", null);
+  if (error) throw new Error(`confirmation update failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: assignment.confirmation_generated_at ? "confirmation.regenerated" : "confirmation.generated",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `${assignment.confirmation_reference} — ${input.startTime}, ${input.durationHours}h.`,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
 export async function sendConsentRequest(assignmentId: string): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const contact = await assignmentContact(assignmentId);
