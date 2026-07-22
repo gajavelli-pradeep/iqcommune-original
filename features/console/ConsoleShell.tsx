@@ -5,7 +5,10 @@ import { useState, type ReactNode } from "react";
 
 import { selectClass } from "@/components/ui/control";
 
+import { ConsoleSearch } from "./ConsoleSearch";
+import { RowFocusContext } from "./RowFocusContext";
 import { CONSOLE_ROLES, ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
+import type { RowFocus, SearchHit } from "./search";
 
 /**
  * The console chrome, shared by all three routes.
@@ -98,6 +101,7 @@ export function ConsoleShell({
   email,
   panels,
   counts,
+  search = [],
 }: {
   role: ConsoleRole;
   email: string;
@@ -110,6 +114,8 @@ export function ConsoleShell({
   panels?: Partial<Record<string, ReactNode>>;
   /** Row count per tab id, for the sidebar badges (V7 `.sb-badge`). */
   counts?: Record<string, number>;
+  /** What the header search can find, already scoped to this role. */
+  search?: readonly SearchHit[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -194,6 +200,28 @@ export function ConsoleShell({
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   };
 
+  /**
+   * The row a search result asked for, handed to the panel through context.
+   *
+   * Opening a tab is only half of answering a search: the operator asked for a
+   * RECORD, and landing them on a fifty-row table to find it themselves is the
+   * half-measure that makes search not worth using. The panel takes it from
+   * here — clearing its filters so the row is not filtered out, expanding it,
+   * and scrolling it into view.
+   */
+  const [focus, setFocus] = useState<RowFocus | null>(null);
+
+  const openHit = (entry: SearchHit) => {
+    openTab(entry.tab);
+    // The nonce makes a repeat selection of the same row a new event; without
+    // it, re-picking a row you had since collapsed would change nothing.
+    setFocus((current) => ({
+      tab: entry.tab,
+      rowKey: entry.rowKey,
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
+  };
+
   const sections = tabs.reduce<Record<string, typeof tabs>>((grouped, tab) => {
     grouped[tab.section] = [...(grouped[tab.section] ?? []), tab];
     return grouped;
@@ -271,18 +299,12 @@ export function ConsoleShell({
 
         {/* Global search (V7 .nav-search). */}
         <div className="hidden flex-1 justify-center min-[900px]:flex">
-          <div className="flex w-[300px] items-center gap-2 rounded-full border border-border-strong bg-surface-soft px-4 py-[7px]">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden className="shrink-0 text-ink-faint">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="search"
-              aria-label="Search across practitioners, sessions, requests"
-              placeholder="Search across practitioners, sessions, requests…"
-              className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
-            />
-          </div>
+          <ConsoleSearch
+            index={search}
+            onSelect={openHit}
+            inputId="console-search"
+            className="w-[300px]"
+          />
         </div>
 
         <div className="ml-auto hidden shrink-0 items-center gap-3 sm:flex min-[900px]:ml-0">
@@ -374,21 +396,12 @@ export function ConsoleShell({
               here rather than dropped, because a control that disappears on a
               phone is a control that does not exist there. */}
           <div className="border-b border-border p-4 min-[900px]:hidden">
-            <label className="sr-only" htmlFor="menu-search">
-              Search across practitioners, sessions, requests
-            </label>
-            <div className="mb-3 flex items-center gap-2 rounded-full border border-border-strong bg-surface-soft px-4 py-[7px]">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden className="shrink-0 text-ink-faint">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                id="menu-search"
-                type="search"
-                placeholder="Search across practitioners, sessions, requests…"
-                className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
-              />
-            </div>
+            <ConsoleSearch
+              index={search}
+              onSelect={openHit}
+              inputId="menu-search"
+              className="mb-3"
+            />
 
             {actualRole === "global_admin" ? (
               <>
@@ -517,11 +530,17 @@ export function ConsoleShell({
           </div>
 
           <div className="p-4 sm:p-7">
-            {panels?.[current.id] ?? (
-              <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
-                This panel is not built yet.
-              </p>
-            )}
+            {/* Panels arrive as server-rendered nodes, so they cannot be handed
+                the focus target as a prop from here — they were built before
+                this component ran. Context reaches them because they render
+                inside it. */}
+            <RowFocusContext.Provider value={focus?.tab === current.id ? focus : null}>
+              {panels?.[current.id] ?? (
+                <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
+                  This panel is not built yet.
+                </p>
+              )}
+            </RowFocusContext.Provider>
           </div>
         </main>
       </div>

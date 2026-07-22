@@ -2,6 +2,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { ConsoleTable, type ColumnDef } from "./ConsoleTable";
 import { PeriodFilter, matchesPeriod, yearsIn } from "./PeriodFilter";
+import { useRowFocus } from "./RowFocusContext";
 import type { ConsoleRole } from "./roles";
 /**
  * A console panel with the V7 toolbar above the table: a clickable pending
@@ -57,6 +58,31 @@ export function FilterablePanel<Row>({
   const [pendingOnly, setPendingOnly] = useState(false);
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
+
+  /**
+   * A row the header search picked out of this panel.
+   *
+   * The filters are cleared when one arrives, and that is the whole reason this
+   * lives here rather than in `ExpandableRows`: a search that finds a Cancelled
+   * request while the panel is filtered to New would otherwise open a tab whose
+   * table does not contain the row it just promised. Search answers about the
+   * data, so it outranks a filter the operator set earlier.
+   *
+   * Reset during render against the nonce, not in an effect — an effect would
+   * paint the filtered table first and correct it a frame later, which reads as
+   * a flicker on exactly the interaction meant to feel direct.
+   */
+  const focus = useRowFocus();
+  // 0 is never a real nonce, so a panel mounting WITH a focus already set (the
+  // hit was on another tab) still treats it as new. See `ExpandableRows`.
+  const [handled, setHandled] = useState(0);
+  if (focus && focus.nonce !== handled) {
+    setHandled(focus.nonce);
+    setStatus("");
+    setPendingOnly(false);
+    setMonth("");
+    setYear("");
+  }
   const pendingCount = useMemo(() => rows.filter(isPending).length, [rows, isPending]);
   const years = useMemo(
     () => (periodOf ? yearsIn(rows.map(periodOf)) : []),

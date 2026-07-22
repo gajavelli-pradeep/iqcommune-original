@@ -20,7 +20,8 @@ import {
   listTeam,
 } from "@/services/console";
 
-import { can, type ConsoleRole } from "../roles";
+import { can, tabsFor, type ConsoleRole } from "../roles";
+import { hit, type SearchHit } from "../search";
 import { ActivityPanel } from "./ActivityPanel";
 import { AgreementsPanel } from "./AgreementsPanel";
 import { ConsentPanel } from "./ConsentPanel";
@@ -54,20 +55,31 @@ function PanelError({ message }: { message: string }) {
 interface LoadedPanel {
   node: ReactNode;
   count: number;
+  /** This panel's contribution to the global search index. */
+  hits: readonly SearchHit[];
 }
 
 /** Loads one panel in isolation: on any read failure it renders PanelError
  *  instead of rejecting, so the rest of the console still loads. Returns the
- *  node plus the row count for the sidebar badge. */
+ *  node plus the row count for the sidebar badge.
+ *
+ *  `index` is optional and is applied to the SAME rows the panel rendered from,
+ *  which is what makes search free: no second query, and a panel whose read
+ *  failed contributes nothing rather than contributing stale entries. */
 async function loadPanel<T>(
   load: () => Promise<readonly T[]>,
   render: (rows: readonly T[]) => ReactNode,
+  index?: (rows: readonly T[]) => readonly SearchHit[],
 ): Promise<LoadedPanel> {
   try {
     const rows = await load();
-    return { node: render(rows), count: rows.length };
+    return { node: render(rows), count: rows.length, hits: index?.(rows) ?? [] };
   } catch (error) {
-    return { node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />, count: 0 };
+    return {
+      node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />,
+      count: 0,
+      hits: [],
+    };
   }
 }
 
@@ -75,6 +87,14 @@ export interface LoadedConsole {
   panels: Record<string, ReactNode>;
   /** Row count per tab id, for the sidebar badges (V7 `.sb-badge`). */
   counts: Record<string, number>;
+  /**
+   * Everything the header search can find, for THIS role.
+   *
+   * Derived from the rows already read above, so it inherits their
+   * authorisation exactly — search cannot surface a record its viewer would be
+   * refused if they opened the panel directly.
+   */
+  search: readonly SearchHit[];
 }
 
 /**
@@ -90,11 +110,15 @@ async function loadActivity(role: ConsoleRole): Promise<LoadedPanel> {
       ),
       // The badge counts everything in the log, not just the page on screen.
       count: page.total,
+      // Activity is a paged feed with no row detail to open, and only ever one
+      // page is loaded — indexing it would search a window, not the log.
+      hits: [],
     };
   } catch (error) {
     return {
       node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />,
       count: 0,
+      hits: [],
     };
   }
 }
@@ -118,11 +142,53 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
 
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
     await Promise.all([
-      loadPanel(listPractitioners, (rows) => <PractitionersPanel rows={rows} role={role} />),
-      loadPanel(listAgreements, (rows) => <AgreementsPanel rows={rows} role={role} />),
-      loadPanel(listSessionRequests, (rows) => (
-        <RequestsPanel rows={rows} role={role} practitioners={assignable} />
-      )),
+      loadPanel(
+        listPractitioners,
+        (rows) => <PractitionersPanel rows={rows} role={role} />,
+        (rows) =>
+          rows.map((row) =>
+            hit("practitioners", row.id, row.name, `Practitioner · ${row.status}`, [
+              row.reference,
+              row.email,
+              row.phone,
+              row.city,
+              row.state,
+              row.organisation,
+              row.module,
+              row.role,
+            ]),
+          ),
+      ),
+      loadPanel(
+        listAgreements,
+        (rows) => <AgreementsPanel rows={rows} role={role} />,
+        (rows) =>
+          rows.map((row) =>
+            hit("agreements", row.id, row.practitioner, `Agreement ${row.reference} · ${row.status}`, [
+              row.reference,
+              row.modules,
+              row.method,
+            ]),
+          ),
+      ),
+      loadPanel(
+        listSessionRequests,
+        (rows) => <RequestsPanel rows={rows} role={role} practitioners={assignable} />,
+        (rows) =>
+          rows.map((row) =>
+            hit("requests", row.id, row.name, `Session request · ${row.city} · ${row.status}`, [
+              row.organisation,
+              row.email,
+              row.phone,
+              row.topic,
+              row.audience,
+              row.city,
+              row.state,
+              row.venue,
+              row.assignedTo,
+            ]),
+          ),
+      ),
       loadPanel(listConsents, (rows) => (
         <ConsentPanel
           rows={rows}
@@ -131,13 +197,27 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
           photoGuideSessions={photoGuideSessions}
         />
       )),
-      loadPanel(listSessions, (rows) => <SessionsPanel rows={rows} role={role} />),
+      loadPanel(
+        listSessions,
+        (rows) => <SessionsPanel rows={rows} role={role} />,
+        (rows) =>
+          rows.map((row) =>
+            hit("sessions", row.id, row.reference, `Session · ${row.sessionDate} · ${row.status}`, [
+              row.module,
+              row.requester,
+              row.requesterOrganisation,
+              row.practitioner,
+              row.audience,
+              row.sessionDate,
+            ]),
+          ),
+      ),
       loadPanel(listPhotoSubmissions, (rows) => <PhotosPanel rows={rows} role={role} />),
       loadPanel(listPayouts, (rows) => <PayoutsPanel rows={rows} role={role} />),
       loadPanel(listGallery, (rows) => <GalleryPanel rows={rows} role={role} />),
       can(role, "viewActivity")
         ? loadActivity(role)
-        : Promise.resolve<LoadedPanel>({ node: null, count: 0 }),
+        : Promise.resolve<LoadedPanel>({ node: null, count: 0, hits: [] }),
     ]);
 
   const panels: Record<string, ReactNode> = {
@@ -165,5 +245,17 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     panels.activity = activity.node;
     counts.activity = activity.count;
   }
-  return { panels, counts };
+
+  /**
+   * Only tabs this role actually has. `loadConsolePanels` builds every panel
+   * regardless of role — the sidebar is what narrows them — so without this
+   * filter a User could search their way to a row on a tab they have no way to
+   * open, and land on a blank panel.
+   */
+  const openable = new Set(tabsFor(role).map((tab) => tab.id));
+  const search = [practitioners, agreements, requests, sessions]
+    .flatMap((panel) => panel.hits)
+    .filter((entry) => openable.has(entry.tab));
+
+  return { panels, counts, search };
 }

@@ -39,7 +39,7 @@ export default async function GlobalAdminConsole({
   const previewing = role === "global_admin" ? toConsoleRole(as) : null;
   const viewing = previewing ?? role;
 
-  const { panels, counts } = await loadConsolePanels(viewing);
+  const { panels, counts, search } = await loadConsolePanels(viewing);
 
   return (
     <ConsoleShell
@@ -48,6 +48,7 @@ export default async function GlobalAdminConsole({
       email={email}
       panels={panels}
       counts={counts}
+      search={search}
     />
   );
 }

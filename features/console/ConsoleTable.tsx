@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/EmptyState";
+
+import { FocusableRows } from "./FocusableRows";
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
 import { ExpandableRows } from "./ExpandableRows";
@@ -100,17 +102,18 @@ export function ConsoleTable<Row>({
             }))}
           />
         ) : (
-          <tbody>
-            {rows.map((row) => (
-              <tr key={rowKey(row)} className="border-b border-border last:border-b-0">
-                {visible.map((column) => (
-                  <td key={column.key} className={cellClass(column)}>
-                    {column.render(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
+          // Flat rows, but still findable: global search has to be able to
+          // point at a row here too, not just on the expandable tables.
+          <FocusableRows
+            rows={rows.map((row) => ({
+              key: rowKey(row),
+              cells: visible.map((column) => ({
+                key: column.key,
+                className: cellClass(column),
+                node: column.render(row),
+              })),
+            }))}
+          />
         )}
       </table>
     </ScrollRegion>

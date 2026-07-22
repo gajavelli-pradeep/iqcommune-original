@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function UserConsole() {
   const { role, email } = await requireRole("user");
-  const { panels, counts } = await loadConsolePanels(role);
+  const { panels, counts, search } = await loadConsolePanels(role);
 
-  return <ConsoleShell role={role} email={email} panels={panels} counts={counts} />;
+  return <ConsoleShell role={role} email={email} panels={panels} counts={counts} search={search} />;
 }

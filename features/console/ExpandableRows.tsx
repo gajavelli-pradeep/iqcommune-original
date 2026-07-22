@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { useFocusedRow } from "./RowFocusContext";
+
 /**
  * The console's dominant interaction: click a table row, a full-width detail
  * card opens beneath it, and opening another closes the first.
@@ -103,6 +105,35 @@ export function ExpandableRows({
   const toggle = (key: string) => setOpenKey((current) => (current === key ? null : key));
   const close = () => setOpenKey(null);
 
+  /**
+   * A row the header search sent here.
+   *
+   * Read from context rather than passed down, because the only component that
+   * could pass it is `ConsoleTable`, which has no interest in it — threading a
+   * prop through a layer that ignores it is how a component ends up knowing
+   * about a feature it has nothing to do with.
+   *
+   * Opened during render so the row is expanded in the first paint after the
+   * tab switch; the scroll has to wait for an effect, since the detail row it
+   * scrolls to does not exist until this render commits.
+   */
+  const targeted = useFocusedRow(body, (key) => rows.some((row) => row.key === key));
+
+  /**
+   * Starts at 0, which is never a real nonce (they start at 1).
+   *
+   * Seeding this with the INCOMING nonce is the obvious version and is wrong:
+   * a search hit on another tab mounts this panel fresh, so the pending focus
+   * would arrive already marked as handled and the row would never open. It
+   * worked when the tab was already open and silently did nothing when it was
+   * not — i.e. it failed in exactly the case search exists for.
+   */
+  const [handled, setHandled] = useState(0);
+  if (targeted && targeted.nonce !== handled) {
+    setHandled(targeted.nonce);
+    setOpenKey(targeted.rowKey);
+  }
+
   return (
     <tbody ref={body}>
       {rows.map((row) => {
@@ -112,6 +143,7 @@ export function ExpandableRows({
         return (
           <Fragment key={row.key}>
             <tr
+              data-row-key={row.key}
               onClick={() => toggle(row.key)}
               className={`cursor-pointer border-b border-border transition-colors ${
                 open ? "bg-row-selected" : "hover:bg-surface-soft"
