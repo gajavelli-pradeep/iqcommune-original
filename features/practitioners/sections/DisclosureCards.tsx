@@ -59,7 +59,7 @@ function Tier({
 
 export function DisclosureCards() {
   return (
-    <section className="bg-surface-soft px-4 py-16 sm:px-8">
+    <section className="bg-surface-soft px-8 py-16">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Transparency"

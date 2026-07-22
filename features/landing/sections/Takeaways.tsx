@@ -103,7 +103,7 @@ const TAKEAWAYS: ReadonlyArray<{ title: string; icon: ReactNode; items: readonly
 
 export function Takeaways() {
   return (
-    <section className="bg-surface px-4 py-20 sm:px-8">
+    <section className="bg-surface px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Takeaways"

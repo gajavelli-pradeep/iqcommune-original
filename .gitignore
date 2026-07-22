@@ -74,3 +74,7 @@ blob-report/
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# visual-parity scratch (not shipped)
+_parity/
+_shot.mjs

@@ -23,7 +23,7 @@ const REASSURANCES: readonly IconStripEntry[] = [
 
 export function CtaSection() {
   return (
-    <section className="bg-ink px-4 py-[5.5rem] text-center sm:px-8">
+    <section className="bg-ink px-8 py-[5.5rem] text-center">
       <div className="mx-auto max-w-page">
         <div className="mb-4">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-tool-chip-edge bg-tool-chip px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-bright">

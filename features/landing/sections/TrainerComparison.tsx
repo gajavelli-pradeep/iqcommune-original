@@ -69,7 +69,7 @@ function CheckIcon() {
 
 export function TrainerComparison() {
   return (
-    <section className="bg-surface px-4 py-20 sm:px-8">
+    <section className="bg-surface px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Why it matters"

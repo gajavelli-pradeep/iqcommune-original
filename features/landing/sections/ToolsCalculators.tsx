@@ -16,7 +16,7 @@ import { ValuationCheck } from "../tools/ValuationCheck";
  */
 export function ToolsCalculators() {
   return (
-    <section className="bg-ink px-4 py-16 sm:px-8">
+    <section className="bg-ink px-8 py-16">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tone="dark"

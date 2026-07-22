@@ -11,7 +11,7 @@ const REASSURANCES = [
 
 export function ApplyCta({ apply }: { apply: React.ReactNode }) {
   return (
-    <section id="apply" className="scroll-mt-20 bg-surface-soft px-4 py-16 text-center sm:px-8">
+    <section id="apply" className="scroll-mt-20 bg-surface-soft px-8 py-16 text-center">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Apply"

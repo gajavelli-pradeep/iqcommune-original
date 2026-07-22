@@ -14,7 +14,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
-      <main className="flex-1 px-4 py-16 sm:px-8">
+      <main className="flex-1 px-8 py-16">
         <div className="mx-auto max-w-[var(--container-flow)]">
           <LoginForm />
         </div>

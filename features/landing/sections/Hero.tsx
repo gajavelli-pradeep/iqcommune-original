@@ -15,7 +15,7 @@ import { PractitionerPoolCard } from "../components/PractitionerPoolCard";
  */
 export function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-surface-soft px-4 pt-20 pb-[4.5rem] sm:px-8">
+    <section className="relative overflow-hidden border-b border-border bg-surface-soft px-8 pt-20 pb-[4.5rem]">
       {/* Decorative glow. aria-hidden and pointer-events-none: it is paint, not
           content, and must never intercept a click. */}
       <div

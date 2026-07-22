@@ -57,7 +57,7 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="relative overflow-hidden border-b border-on-dark-divider bg-ink px-4 py-16 sm:px-8">
+    <section className="relative overflow-hidden border-b border-on-dark-divider bg-ink px-8 py-16">
       {/* Decorative gold glows, top-right and bottom-left (V7 .hero::before/::after).
           aria-hidden and pointer-events-none: paint, not content. Dropped below
           720px, where they swamp a phone — the spec's own breakpoint. */}

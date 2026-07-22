@@ -44,7 +44,7 @@ export function SiteHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:px-8">
+    <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface/95 px-8 backdrop-blur-[12px]">
       <div
         style={{ maxWidth: width }}
         className="mx-auto flex h-[68px] items-center justify-between gap-3 sm:gap-4"

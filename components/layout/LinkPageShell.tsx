@@ -35,7 +35,7 @@ export function LinkPageShell({
         badgeStyle="pill"
         width={width}
       />
-      <main className="flex-1 px-4 py-10 sm:px-8">
+      <main className="flex-1 px-8 py-10">
         <div style={{ maxWidth: width }} className="mx-auto">
           {children}
           <p className="mt-6 text-center text-sm leading-[1.6] text-ink-faint">

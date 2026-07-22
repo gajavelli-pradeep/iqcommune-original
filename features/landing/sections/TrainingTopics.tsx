@@ -77,7 +77,7 @@ const MODULES: ReadonlyArray<{ name: string; description: string; icon: ReactNod
 
 export function TrainingTopics() {
   return (
-    <section className="bg-surface-soft px-4 py-20 sm:px-8">
+    <section className="bg-surface-soft px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="Training Topics"

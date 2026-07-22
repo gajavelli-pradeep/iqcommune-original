@@ -99,7 +99,7 @@ const FAQS: ReadonlyArray<Faq> = [
 
 export function Faqs() {
   return (
-    <section className="bg-surface-soft px-4 py-20 sm:px-8">
+    <section className="bg-surface-soft px-8 py-20">
       <div className="mx-auto max-w-page">
         <SectionHeading
           tag="FAQs"
