@@ -34,19 +34,26 @@ function ChevronIcon({ open }: { open: boolean }) {
       strokeWidth={2}
       aria-hidden
       focusable="false"
-      className={`shrink-0 text-gold transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+      className={`shrink-0 text-ink-faint transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
     >
       <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }
 
-export function FaqAccordion({ faqs }: { faqs: ReadonlyArray<Faq> }) {
+export function FaqAccordion({
+  faqs,
+  maxWidth = "780px",
+}: {
+  faqs: ReadonlyArray<Faq>;
+  /** V7 sets the FAQ column per page: 780px on the landing page, 720px on empanelment. */
+  maxWidth?: string;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const baseId = useId();
 
   return (
-    <ul className="mx-auto max-w-[780px]">
+    <ul className="mx-auto" style={{ maxWidth }}>
       {faqs.map((faq, index) => {
         const open = openIndex === index;
         const buttonId = `${baseId}-q${index}`;
@@ -54,7 +61,7 @@ export function FaqAccordion({ faqs }: { faqs: ReadonlyArray<Faq> }) {
         return (
           <li
             key={faq.question}
-            className="mb-3 overflow-hidden rounded-lg border border-border bg-surface"
+            className="mb-3 overflow-hidden rounded-[12px] border border-border bg-surface"
           >
             <h3>
               <button

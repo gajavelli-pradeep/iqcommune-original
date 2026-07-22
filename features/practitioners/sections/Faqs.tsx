@@ -65,7 +65,7 @@ export function Faqs() {
           headline="Things practitioners ask."
           sub="Honest answers — no fine print."
         />
-        <FaqAccordion faqs={FAQS} />
+        <FaqAccordion faqs={FAQS} maxWidth="720px" />
       </div>
     </section>
   );
