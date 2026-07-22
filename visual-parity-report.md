@@ -11,8 +11,12 @@ is visually indistinguishable, then locked. A dev-only preview harness (`app/dev
 |---|---|---|
 | **Landing `/`** | `iqcommune-main-landing-page.html` | ✅ **Complete — all sections cloned & locked** |
 | **Practitioners `/practitioners`** | `iqcommune-empanelment.html` | ✅ **Complete — 12/12 sections cloned & locked** |
-| Rate / Consent / Photos / Onboarding / Join-admin | flow mockups | Analysed (defects mapped); clone pending |
-| Admin console | `admin-console-automated.html` | Chrome/tabs match; panels are documented reductions |
+| **Rate `/rate`** | `iqcommune-practitioner-rating.html` | ✅ **Complete** |
+| **Consent `/consent`** | `iqcommune-session-consent.html` | ✅ **Complete** |
+| **Photos `/submit-photos`** | `iqcommune-postsession-photos.html` | ✅ **Complete** |
+| **Onboarding `/onboarding`** | `iqcommune-onboarding.html` | ✅ header/stepper/summary/agreement-toolbar/scroll-gate/hidden-signing-form; finer items (2-col name row, sig-tab ink-active, timestamp row, success receipt) remain |
+| **Join-admin `/join-admin`** | `iqcommune-user-setup.html` | ✅ **Complete** |
+| Admin console | `admin-console-automated.html` | ⛔ auth-gated + deliberate re-architecture — see below |
 
 ## Practitioners — section-by-section (all locked)
 
