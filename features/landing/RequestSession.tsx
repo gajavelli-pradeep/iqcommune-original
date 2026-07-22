@@ -1,9 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-import { PostSessionModal } from "./sections/PostSessionModal";
-import { RequestModal } from "./sections/RequestModal";
+// Deferred (audit H8): the modal bodies pull the zod barrel (~65KB gz), and a
+// provider ships on first paint. Loading them on open instead takes zod out of
+// the landing bundle — the whole reason `/` was over its 200KB budget.
+const RequestModal = dynamic(() => import("./sections/RequestModal").then((m) => m.RequestModal));
+const PostSessionModal = dynamic(() =>
+  import("./sections/PostSessionModal").then((m) => m.PostSessionModal),
+);
 
 /**
  * Owns the landing page's two dialogs.
@@ -40,8 +46,10 @@ export function RequestSessionProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={value}>
       {children}
-      <RequestModal open={requestOpen} onClose={() => setRequestOpen(false)} />
-      <PostSessionModal open={photosOpen} onClose={() => setPhotosOpen(false)} />
+      {/* Rendered only once opened, so the dynamic chunk (and zod) loads on
+          demand rather than at first paint. */}
+      {requestOpen ? <RequestModal open onClose={() => setRequestOpen(false)} /> : null}
+      {photosOpen ? <PostSessionModal open onClose={() => setPhotosOpen(false)} /> : null}
     </Context.Provider>
   );
 }
