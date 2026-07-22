@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { log, newTraceId } from "@/lib/logger";
 import "./globals.css";
 
 /**
@@ -20,7 +21,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Root layout error", { message: error.message, digest: error.digest });
+    log.error(error.digest ?? newTraceId(), "root layout error", {
+      message: error.message,
+      digest: error.digest,
+    });
   }, [error]);
 
   return (

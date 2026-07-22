@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { log, newTraceId } from "@/lib/logger";
 
 /** Route-level boundary: the layout survives, this replaces the page body. */
 export default function Error({
@@ -12,8 +13,12 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Replaced by the structured logger with a trace ID once F2 lands.
-    console.error("Route error", { message: error.message, digest: error.digest });
+    // Key the log on the digest the user is shown, so a support message quoting
+    // it lands on this exact failure (audit M8).
+    log.error(error.digest ?? newTraceId(), "route error", {
+      message: error.message,
+      digest: error.digest,
+    });
   }, [error]);
 
   return <ErrorNotice digest={error.digest} onRetry={reset} />;

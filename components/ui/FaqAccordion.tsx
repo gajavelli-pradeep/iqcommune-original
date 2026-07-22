@@ -34,7 +34,7 @@ function ChevronIcon({ open }: { open: boolean }) {
       strokeWidth={2}
       aria-hidden
       focusable="false"
-      className={`shrink-0 text-gold transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      className={`shrink-0 text-gold transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
     >
       <polyline points="6 9 12 15 18 9" />
     </svg>
