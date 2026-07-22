@@ -115,7 +115,7 @@ export function Takeaways() {
           {TAKEAWAYS.map((card) => (
             <li
               key={card.title}
-              className="overflow-hidden rounded-lg border border-border transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
+              className="overflow-hidden rounded-[12px] border border-border transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
             >
               <div className="flex items-center gap-2.5 bg-ink px-5 py-4">
                 <svg
@@ -149,13 +149,29 @@ export function Takeaways() {
           ))}
         </ul>
 
-        <p className="mx-auto mt-8 max-w-[780px] rounded-r-lg border border-l-[3px] border-border border-l-gold bg-surface-soft px-6 py-4 text-ink-muted">
-          <strong className="font-semibold text-ink">
-            This isn&apos;t a certificate programme.
-          </strong>{" "}
-          There are no slides to take home. What you leave with is a working plan — built
-          around your actual numbers, in the room, with a practitioner who can sense-check it
-          on the spot.
+        <p className="mx-auto mt-8 flex max-w-[780px] items-start gap-3 rounded-r-[12px] border border-l-[3px] border-border border-l-gold bg-surface-soft px-6 py-4 text-md leading-[1.65] text-ink-muted">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+            focusable="false"
+            className="mt-[2px] shrink-0 text-gold-dark"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          <span>
+            <strong className="font-semibold text-ink">
+              This isn&apos;t a certificate programme.
+            </strong>{" "}
+            There are no slides to take home. What you leave with is a working plan — built
+            around your actual numbers, in the room, with a practitioner who can sense-check it
+            on the spot.
+          </span>
         </p>
       </div>
     </section>

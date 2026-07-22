@@ -95,7 +95,8 @@ export function AudienceRibbon() {
   return (
     <IconStrip
       entries={AUDIENCES}
-      listClassName={LIST}
+      // V7 .inperson-ribbon-inner uses a 2.5rem gap (the trust bar uses 3rem).
+      listClassName="mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-10"
       className="border-y border-gold-border bg-gold-light px-8 py-[0.85rem]"
       itemClassName="flex items-center gap-2 text-[13px] font-medium text-gold-dark"
     />

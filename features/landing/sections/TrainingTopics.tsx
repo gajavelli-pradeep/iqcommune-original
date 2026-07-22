@@ -90,7 +90,7 @@ export function TrainingTopics() {
           {MODULES.map((module) => (
             <li
               key={module.name}
-              className="rounded-lg border border-border bg-surface p-6 transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
+              className="rounded-[12px] border border-border bg-surface p-6 transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
             >
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-gold-light text-gold-dark">
                 <svg

@@ -85,7 +85,7 @@ export function WhoIsThisFor() {
               key={audience.name}
               /* Hover lift is gated behind @media (hover: hover) by Tailwind, so
                  touch devices are not left with a stuck hover state. */
-              className="max-w-[240px] flex-[1_1_210px] rounded-lg border-[1.5px] border-border bg-surface-soft px-7 py-[1.6rem] transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
+              className="max-w-[240px] flex-[1_1_210px] rounded-[12px] border-[1.5px] border-border bg-surface-soft px-7 py-[1.6rem] transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
             >
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-gold-light text-gold-dark">
                 <svg

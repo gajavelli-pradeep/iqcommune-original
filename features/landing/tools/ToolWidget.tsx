@@ -21,7 +21,7 @@ export function ToolCard({
   children: ReactNode;
 }) {
   return (
-    <li className="flex flex-col rounded-lg border border-tool-edge bg-tool-card p-5 transition-[background,border-color] duration-200 hover:border-tool-edge-hover hover:bg-tool-card-hover">
+    <li className="flex flex-col rounded-[12px] border border-tool-edge bg-tool-card p-5 transition-[background,border-color] duration-200 hover:border-tool-edge-hover hover:bg-tool-card-hover">
       <div className="mb-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-caps text-gold">
           {module}
@@ -156,7 +156,7 @@ export function SegmentBar({
  */
 export function ToolNote({ children }: { children: ReactNode }) {
   return (
-    <p className="mt-2 text-2xs leading-[1.45] text-on-dark-muted">{children}</p>
+    <p className="mt-2 text-2xs italic leading-[1.45] text-on-dark-muted">{children}</p>
   );
 }
 
@@ -214,7 +214,7 @@ export function ToolBars({
   bars: ReadonlyArray<{ key: string; heightPercent: number; title: string }>;
 }) {
   return (
-    <div className="mt-2.5 flex h-9 items-end gap-[3px]" aria-hidden="true">
+    <div className="mt-2.5 flex h-10 items-end gap-[2px]" aria-hidden="true">
       {bars.map((bar, index) => (
         <div
           key={bar.key}

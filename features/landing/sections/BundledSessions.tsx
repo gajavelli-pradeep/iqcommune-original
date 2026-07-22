@@ -39,11 +39,11 @@ export function BundledSessions() {
           sub="Two related modules, taught back-to-back by one practitioner, as a single 6-hour session — open to every audience."
         />
 
-        <ul className="mt-8 grid grid-cols-1 gap-[1.1rem] min-[480px]:grid-cols-2 min-[720px]:grid-cols-3">
+        <ul className="mt-8 grid grid-cols-1 gap-[1.1rem] min-[480px]:grid-cols-3">
           {BUNDLES.map((bundle) => (
             <li
               key={bundle.modules.join("+")}
-              className="rounded-lg border-[1.5px] border-border bg-surface-soft p-[1.6rem] transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
+              className="rounded-[12px] border-[1.5px] border-border bg-surface-soft p-[1.6rem] transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-gold"
             >
               <p className="mb-4 text-xl font-semibold text-ink">6 hrs total</p>
 

@@ -77,7 +77,7 @@ export function TrainerComparison() {
           sub="The person teaching you should still be doing it. Here's why that gap changes everything."
         />
 
-        <div className="mx-auto grid max-w-[900px] grid-cols-1 overflow-hidden rounded-lg border border-border-strong min-[720px]:grid-cols-2">
+        <div className="mx-auto grid max-w-[900px] grid-cols-1 overflow-hidden rounded-[12px] border border-border-strong min-[720px]:grid-cols-2">
           <div>
             <h3 className="border-b border-border-strong bg-surface-soft px-7 py-[1.1rem] text-sm font-semibold uppercase tracking-eyebrow text-ink-faint">
               Conventional Trainers
@@ -95,9 +95,9 @@ export function TrainerComparison() {
             </ul>
           </div>
 
-          {/* Divider between the stacked columns on small screens; the grid
-              border handles the split once they sit side by side. */}
-          <div className="border-t border-border-strong min-[720px]:border-t-0 min-[720px]:border-l">
+          {/* Divider between the stacked columns on small screens; once side by
+              side, V7 separates the columns by header colour alone (no rule). */}
+          <div className="border-t border-border-strong min-[720px]:border-t-0">
             <h3 className="border-b border-border-strong bg-ink px-7 py-[1.1rem] text-sm font-semibold uppercase tracking-eyebrow text-surface">
               Our Practitioners
             </h3>
