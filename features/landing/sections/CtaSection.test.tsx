@@ -41,6 +41,8 @@ describe("CtaSection", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Request a Session/ }));
-    expect(screen.getByRole("dialog", { name: "Request a Session" })).toBeInTheDocument();
+    // The modal is now loaded on demand (next/dynamic, audit H8), so it appears
+    // asynchronously — find, not get.
+    expect(await screen.findByRole("dialog", { name: "Request a Session" })).toBeInTheDocument();
   });
 });
