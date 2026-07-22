@@ -78,3 +78,6 @@ blob-report/
 # visual-parity scratch (not shipped)
 _parity/
 _shot.mjs
+
+# dev-only console preview (not shipped)
+app/console-preview/
