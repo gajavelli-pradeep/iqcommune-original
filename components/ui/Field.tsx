@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 /**
  * Form field primitives, shared by both P1 modals and by P2's application form.
@@ -67,19 +67,58 @@ export function TextField({
   ...props
 }: BaseProps & { type?: "text" | "email" | "tel" | "date" | "password" }) {
   const id = useId();
+  const [reveal, setReveal] = useState(false);
+  const isPassword = type === "password";
+  // A password field toggles to a plain text input so its value can be read
+  // back and checked before submitting.
+  const inputType = isPassword && reveal ? "text" : type;
   return (
     <Shell id={id} label={props.label} hint={props.hint} error={props.error} optional={props.optional}>
-      <input
-        id={id}
-        type={type}
-        value={props.value}
-        placeholder={props.placeholder}
-        autoComplete={props.autoComplete}
-        aria-invalid={props.error ? true : undefined}
-        aria-describedby={props.error ? `${id}-error` : undefined}
-        onChange={(event) => props.onChange(event.target.value)}
-        className={`${CONTROL} ${borderFor(props.error)}`}
-      />
+      <div className="relative">
+        <input
+          id={id}
+          type={inputType}
+          value={props.value}
+          placeholder={props.placeholder}
+          autoComplete={props.autoComplete}
+          aria-invalid={props.error ? true : undefined}
+          aria-describedby={props.error ? `${id}-error` : undefined}
+          onChange={(event) => props.onChange(event.target.value)}
+          className={`${CONTROL} ${isPassword ? "pr-11" : ""} ${borderFor(props.error)}`}
+        />
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setReveal((shown) => !shown)}
+            aria-label={reveal ? "Hide password" : "Show password"}
+            aria-pressed={reveal}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-faint transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              aria-hidden
+              focusable="false"
+            >
+              {reveal ? (
+                <>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.39-1.61M14.12 14.12A3 3 0 1 1 9.88 9.88" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </>
+              ) : (
+                <>
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </>
+              )}
+            </svg>
+          </button>
+        ) : null}
+      </div>
     </Shell>
   );
 }

@@ -63,7 +63,7 @@ export function OnboardingForm({
   // reveals it and scrolls it into view.
   const signFormRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (readToEnd) signFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (readToEnd) signFormRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [readToEnd]);
 
   if (signedAt) {
