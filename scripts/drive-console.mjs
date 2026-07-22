@@ -48,17 +48,21 @@ await page.evaluate((tab) => {
 }, TAB);
 await page.waitForTimeout(400);
 
-// ── Find a row that offers the action ───────────────────────────────────────
+// ── Find the action ─────────────────────────────────────────────────────────
+// Some panels put their actions straight in the row; others hide them in the
+// detail card, so the visible table is tried first and rows are opened only if
+// that finds nothing.
+const named = page.getByRole("button", { name: BUTTON });
+let target = (await named.count()) ? named.first() : null;
+
 const toggles = page.locator("table tbody tr button[aria-expanded]");
-const count = await toggles.count();
-let target = null;
+const count = target ? 0 : await toggles.count();
 
 for (let index = 0; index < count; index += 1) {
   await toggles.nth(index).click();
   await page.waitForTimeout(300);
-  const candidate = page.getByRole("button", { name: BUTTON });
-  if (await candidate.count()) {
-    target = candidate.first();
+  if (await named.count()) {
+    target = named.first();
     break;
   }
   await toggles.nth(index).click();

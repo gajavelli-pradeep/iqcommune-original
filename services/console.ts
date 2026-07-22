@@ -266,23 +266,41 @@ export async function listSessionRequests(): Promise<SessionRequestRow[]> {
 
 // ── Agreements ──────────────────────────────────────────────────────────────
 
+/**
+ * One empanelment agreement.
+ *
+ * A practitioner reaches this panel automatically once their agreement is
+ * issued; everything but the reference is captured when they sign online, which
+ * is why the unsigned columns read "awaiting signature" rather than being blank
+ * — nothing is missing, it has not happened yet.
+ */
 export interface AgreementRow {
   id: string;
+  practitionerId: string;
   reference: string;
   practitioner: string;
   modules: string;
-  issuedOn: string;
-  version: string;
+  /** `null` until signed. */
+  signedOn: string | null;
+  /** Full timestamp of the signature, for the detail line and the PDF. */
+  signedAt: string | null;
+  /** How they signed — "Drawn" or "Typed". `null` until signed. */
+  method: string | null;
   status: "Signed" | "Pending";
 }
+
+const SIGNATURE_METHOD: Record<string, string> = { drawn: "Drawn", typed: "Typed" };
 
 export async function listAgreements(): Promise<AgreementRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioner_agreements")
-    .select("id, reference, modules, issued_on, version, signed_at, practitioners ( full_name )")
+    .select(
+      "id, practitioner_id, reference, modules, issued_on, signed_at, signature_mode, practitioners ( full_name )",
+    )
     .is("deleted_at", null)
-    .order("issued_on", { ascending: false });
+    .order("issued_on", { ascending: false })
+    .limit(500);
 
   if (error) throw new Error(`practitioner_agreements read failed: ${error.message}`);
 
@@ -290,11 +308,17 @@ export async function listAgreements(): Promise<AgreementRow[]> {
     const practitioner = one<{ full_name: string }>(row.practitioners);
     return {
       id: row.id,
+      practitionerId: row.practitioner_id,
       reference: row.reference,
       practitioner: practitioner?.full_name ?? "—",
       modules: (row.modules ?? []).join(", ") || "—",
-      issuedOn: date(row.issued_on),
-      version: row.version,
+      signedOn: row.signed_at ? date(row.signed_at) : null,
+      signedAt: row.signed_at ? dateTime(row.signed_at) : null,
+      // An unrecognised mode is shown as itself rather than dropped — a value
+      // the console does not know about is a thing to notice.
+      method: row.signed_at
+        ? (SIGNATURE_METHOD[row.signature_mode as string] ?? row.signature_mode ?? "—")
+        : null,
       status: row.signed_at ? "Signed" : "Pending",
     };
   });

@@ -172,10 +172,17 @@ export function ConsoleShell({
             it to switch: it would be a dropdown that changes nothing, and a
             Global Admin cannot become an Admin by choosing to.
 
-            The role is therefore stated rather than offered.
+            The role is therefore stated rather than offered — in the compact
+            form, so it occupies the select's footprint rather than dominating
+            the bar. The full description is the accessible name.
           */}
-          <span className="hidden text-2xs font-semibold uppercase tracking-caps text-gold-dark sm:inline">
-            {ROLE_LABELS[role]}
+          <span
+            title={ROLE_LABELS[role]}
+            className="hidden rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted sm:block"
+          >
+            <span className="sr-only">Signed in as: </span>
+            Viewing as: {SHORT_ROLE[role]}
+            <span className="sr-only"> — {ROLE_LABELS[role]}</span>
           </span>
           <button
             type="button"

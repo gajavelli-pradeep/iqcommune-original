@@ -9,7 +9,7 @@ import { useApiSubmit } from "@/hooks/useApiSubmit";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
 import type { OnboardingPractitioner } from "@/types/link-pages";
 
-import { AGREEMENT_CLAUSES } from "./agreement";
+import { AGREEMENT_CLAUSES } from "@/constants/agreement";
 import { SignaturePad, type Signature } from "./SignaturePad";
 
 /** P6 — review and sign the empanelment agreement. */

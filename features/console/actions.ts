@@ -578,6 +578,65 @@ export async function sendPhotoGuide(assignmentId: string): Promise<void> {
   await recordActivity({ actorEmail: actor, action: "photo_guide.sent", entityType: "assignment", entityRef: assignmentId });
 }
 
+/**
+ * The Agreements panel's "Delete" — which clears the *signed record*, not the
+ * agreement. V7's own confirm text is explicit about it: the agreement returns
+ * to Pending and the practitioner's status re-opens to "Agreement Sent", so a
+ * fresh signature is picked up automatically. It exists for a signature
+ * captured in error.
+ *
+ * The walk-back is the whole point, and it is why this is not a plain update:
+ * clearing the signature while leaving the practitioner Empanelled would leave
+ * a practitioner empanelled by a signature the system no longer holds.
+ */
+export async function clearSignedAgreement(agreementId: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data: agreement, error } = await supabase
+    .from("practitioner_agreements")
+    .update({
+      signed_at: null,
+      signed_name: null,
+      signed_designation: null,
+      signature_data: null,
+      signature_mode: null,
+      signed_ip: null,
+    })
+    .eq("id", agreementId)
+    .is("deleted_at", null)
+    .select("practitioner_id, reference")
+    .maybeSingle();
+  if (error) throw new Error(`clearing the signed agreement failed: ${error.message}`);
+  if (!agreement) throw new Error("that agreement no longer exists");
+
+  const practitionerId = agreement.practitioner_id as string;
+  const { data: practitioner } = await supabase
+    .from("practitioners")
+    .update({ status: "Pending" })
+    .eq("id", practitionerId)
+    .is("deleted_at", null)
+    .eq("status", "Empanelled")
+    .select("application_id")
+    .maybeSingle();
+
+  if (practitioner?.application_id) {
+    await supabase
+      .from("practitioner_applications")
+      .update({ status: "Agreement Sent" })
+      .eq("id", practitioner.application_id);
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "agreement.signature_cleared",
+    entityType: "agreement",
+    entityRef: agreementId,
+    detail: `Cleared the signed record for ${agreement.reference} — reset to Pending and re-opened the practitioner to Agreement Sent.`,
+  });
+  revalidateConsole();
+}
+
 export async function sendAgreement(agreementId: string): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
