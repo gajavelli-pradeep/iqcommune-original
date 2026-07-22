@@ -69,7 +69,7 @@ export function PractitionerSections() {
         <ModulesGrid />
         <FitLists />
         <DisclosureCards />
-        <ApplyCta apply={<ApplyButton label="Apply to join the Network" />} />
+        <ApplyCta apply={<ApplyButton label="Apply to join the Network" icon="arrow" />} />
         <Faqs />
       </main>
       <SiteFooter

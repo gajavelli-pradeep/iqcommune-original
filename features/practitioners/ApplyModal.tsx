@@ -40,7 +40,14 @@ export function ApplyProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function ApplyButton({ label = "Apply to Join the Network" }: { label?: string }) {
+export function ApplyButton({
+  label = "Apply to Join the Network",
+  icon = "users",
+}: {
+  label?: string;
+  /** V7 uses a leading users icon on the hero button, a trailing arrow on the closing CTA. */
+  icon?: "users" | "arrow";
+}) {
   const { openApply } = useApplyDialog();
   return (
     <button
@@ -48,21 +55,37 @@ export function ApplyButton({ label = "Apply to Join the Network" }: { label?: s
       onClick={openApply}
       className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-full bg-gold px-9 py-4 text-xl font-semibold text-ink shadow-gold transition-[filter,transform] duration-200 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:translate-y-0"
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden
-        focusable="false"
-      >
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
+      {icon === "users" ? (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+          focusable="false"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ) : null}
       {label}
+      {icon === "arrow" ? (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+          focusable="false"
+        >
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      ) : null}
     </button>
   );
 }

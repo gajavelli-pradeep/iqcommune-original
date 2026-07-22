@@ -1,5 +1,4 @@
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { TickIcon } from "@/components/ui/icons";
 
 /** The closing pitch and the button that opens the application. */
 
@@ -12,7 +11,7 @@ const REASSURANCES = [
 export function ApplyCta({ apply }: { apply: React.ReactNode }) {
   return (
     <section id="apply" className="scroll-mt-20 bg-surface-soft px-8 py-16 text-center">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-[640px]">
         <SectionHeading
           tag="Apply"
           headline={
@@ -25,10 +24,23 @@ export function ApplyCta({ apply }: { apply: React.ReactNode }) {
           sub="No formal interview, no audition. Just tell us who you are and what you'd teach. We'll take it from there."
         />
 
-        <ul className="mx-auto mb-8 mt-8 grid max-w-[720px] gap-2.5 text-left min-[720px]:grid-cols-3">
+        {/* V7: a centred vertical stack, not a 3-across grid. */}
+        <ul className="mx-auto mt-7 mb-8 flex flex-col items-center gap-3">
           {REASSURANCES.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-base leading-[1.5] text-ink-muted">
-              <TickIcon />
+            <li key={item} className="flex items-center gap-2.5 text-[14.5px] text-ink-muted">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.2}
+                aria-hidden
+                focusable="false"
+                className="shrink-0 text-gold-dark"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
               {item}
             </li>
           ))}
