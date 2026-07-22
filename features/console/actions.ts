@@ -86,8 +86,10 @@ export async function updateSessionRequestTerms(
   const supabase = createAdminClient();
 
   const patch: Record<string, unknown> = {};
+  const changed: string[] = [];
   if ("assignedPractitionerId" in terms) {
     patch.assigned_practitioner_id = terms.assignedPractitionerId || null;
+    changed.push(terms.assignedPractitionerId ? "practitioner assigned" : "practitioner cleared");
   }
   if ("agreedPayout" in terms) {
     const payout = terms.agreedPayout;
@@ -95,6 +97,7 @@ export async function updateSessionRequestTerms(
       throw new Error("the agreed payout must be a positive amount");
     }
     patch.agreed_gross_payout = payout ?? null;
+    changed.push(payout === null || payout === undefined ? "payout cleared" : `payout set to ${payout}`);
   }
   if (Object.keys(patch).length === 0) return;
 
@@ -110,7 +113,7 @@ export async function updateSessionRequestTerms(
     action: "request.terms_updated",
     entityType: "request",
     entityRef: id,
-    detail: Object.keys(patch).join(", "),
+    detail: changed.join(", "),
   });
   revalidateConsole();
 }
@@ -942,6 +945,13 @@ export async function recordRatingManually(
 /** How long an invite link stays usable. */
 const INVITE_TTL_HOURS = 72;
 
+/** The role as a person says it, for the audit line. */
+const ROLE_WORD: Record<string, string> = {
+  global_admin: "Global Admin",
+  admin: "Admin",
+  user: "User",
+};
+
 /**
  * Invites someone into the console.
  *
@@ -1001,7 +1011,7 @@ export async function inviteTeamMember(email: string, role: string): Promise<Act
     action: "team.invited",
     entityType: "invite",
     entityRef: invite.id as string,
-    detail: `${address} invited as ${consoleRole}.`,
+    detail: `${address} as ${ROLE_WORD[consoleRole]}`,
   });
   revalidateConsole();
   return { ok: true };
@@ -1273,7 +1283,7 @@ export async function setPayoutStatus(assignmentId: string, status: string): Pro
     action: status === "Paid" ? "payout.paid" : "payout.reopened",
     entityType: "assignment",
     entityRef: assignmentId,
-    detail: data ? `${data.confirmation_reference} — ${data.currency} ${data.gross_payout}.` : undefined,
+    detail: data ? `${data.confirmation_reference}, ${data.currency} ${data.gross_payout}` : undefined,
   });
   revalidateConsole();
   return { ok: true };

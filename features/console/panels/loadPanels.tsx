@@ -3,6 +3,7 @@ import "server-only";
 import type { ReactNode } from "react";
 
 import {
+  ACTIVITY_RETENTION_DAYS,
   listActivity,
   listAgreements,
   listAssignablePractitioners,
@@ -76,6 +77,28 @@ export interface LoadedConsole {
   counts: Record<string, number>;
 }
 
+/**
+ * The activity panel, which is paged rather than a plain list — `loadPanel`
+ * expects an array, and this returns a page plus a total.
+ */
+async function loadActivity(role: ConsoleRole): Promise<LoadedPanel> {
+  try {
+    const page = await listActivity();
+    return {
+      node: (
+        <ActivityPanel initial={page} role={role} retentionDays={ACTIVITY_RETENTION_DAYS} />
+      ),
+      // The badge counts everything in the log, not just the page on screen.
+      count: page.total,
+    };
+  } catch (error) {
+    return {
+      node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />,
+      count: 0,
+    };
+  }
+}
+
 export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsole> {
   // The request panel's assignment select needs the empanelled practitioners.
   // Read once here rather than per row, and degrade to an empty list rather
@@ -111,7 +134,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
       loadPanel(listPayouts, (rows) => <PayoutsPanel rows={rows} role={role} />),
       loadPanel(listGallery, (rows) => <GalleryPanel rows={rows} role={role} />),
       can(role, "viewActivity")
-        ? loadPanel(listActivity, (rows) => <ActivityPanel rows={rows} role={role} />)
+        ? loadActivity(role)
         : Promise.resolve<LoadedPanel>({ node: null, count: 0 }),
     ]);
 

@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       action: "photos.uploaded_by_admin",
       entityType: "session",
       entityRef: sessionId,
-      detail: `${created.photoCount} photo(s) for ${session.reference}, received outside the upload link.`,
+      detail: `${created.photoCount} photo(s) for ${session.reference}, received outside the upload link`,
     });
 
     return Response.json({ ok: true, photoCount: created.photoCount });

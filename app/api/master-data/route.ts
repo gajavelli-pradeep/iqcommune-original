@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     actorEmail: actor,
     action: "master_data.exported",
     entityType: "practitioners",
-    detail: `${rows.length} practitioner record(s) exported${ids ? " (selection)" : " (all)"}.`,
+    detail: `${rows.length} record(s)${ids ? ", selection" : ", all"}`,
   });
 
   const stamp = new Date().toISOString().slice(0, 10);

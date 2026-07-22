@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       actorEmail: actor,
       action: "gallery.drafted",
       entityType: "gallery",
-      detail: `${written.length} photo(s) added to the gallery draft.`,
+      detail: `${written.length} photo(s)`,
     });
 
     return Response.json({ ok: true, added: written.length });

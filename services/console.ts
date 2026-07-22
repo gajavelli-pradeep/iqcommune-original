@@ -970,41 +970,150 @@ export async function listMasterData(): Promise<MasterDataRow[]> {
 
 export interface ActivityRow {
   id: string;
-  actor: string;
+  /** The person, by name where the account has one, else their address. */
+  user: string;
+  /** Their console role at read time — "System" for an automatic transition. */
+  role: string;
+  /** One readable sentence: what happened. */
   action: string;
-  entity: string;
-  detail: string;
   at: string;
 }
 
-export async function listActivity(limit = 200): Promise<ActivityRow[]> {
+/**
+ * Turns a stored action key into the sentence V7's log reads as.
+ *
+ * The key is what the system records (`practitioner.empanelled`) because it is
+ * stable and filterable; this is what a person reads. Where an action already
+ * wrote a `detail`, that is the better sentence and wins.
+ */
+const ACTION_PHRASE: Record<string, string> = {
+  "application.stage_set": "Moved an application to a new stage",
+  "application.rejected": "Sent a rejection message",
+  "application.deleted": "Deleted an application",
+  "agreement.sent": "Sent an empanelment agreement",
+  "agreement.downloaded": "Downloaded an agreement",
+  "agreement.signature_cleared": "Cleared a signed agreement",
+  "practitioner.empanelled": "Empanelled a practitioner",
+  "practitioner.deactivated": "Deactivated a practitioner",
+  "practitioner.reactivated": "Reactivated a practitioner",
+  "practitioner.welcomed": "Sent a welcome message",
+  "practitioner.note_saved": "Saved a note on a practitioner",
+  "practitioner.field_overridden": "Corrected a practitioner's details",
+  "request.terms_updated": "Recorded the agreed terms on a request",
+  "request.matched": "Matched a session request",
+  "request.cancelled": "Cancelled a session request",
+  "request.reopened": "Reopened a session request",
+  "request.followed_up": "Sent a follow-up to a client",
+  "request.cancellation_sent": "Sent a cancellation message",
+  "request.deleted": "Deleted a session request",
+  "confirmation.generated": "Generated a session confirmation",
+  "confirmation.regenerated": "Regenerated a session confirmation",
+  "confirmation.downloaded": "Downloaded a confirmation",
+  "consent.requested": "Sent a consent request",
+  "photo_guide.sent": "Sent the photo guide",
+  "photo_guide.downloaded": "Downloaded the photo guide",
+  "photos.uploaded_by_admin": "Uploaded session photos",
+  "photos.downloaded": "Downloaded session photos",
+  "photos.deleted": "Deleted session photos",
+  "session.confirmed": "Confirmed a session",
+  "session.completed": "Marked a session completed",
+  "session.cancelled": "Cancelled a session",
+  "session.reopened": "Reopened a session",
+  "rating.requested": "Sent a rating request",
+  "rating.recorded_manually": "Recorded a rating from a verbal report",
+  "payout.invoice_set": "Set a payout's invoice reference",
+  "payout.paid": "Marked a payout paid",
+  "payout.reopened": "Reopened a payout",
+  "gallery.drafted": "Added photos to the gallery draft",
+  "gallery.detail_set": "Edited a gallery photo's details",
+  "gallery.published": "Published photos to the landing page",
+  "gallery.unpublished": "Removed a photo from the landing page",
+  "gallery.draft_removed": "Removed a gallery draft",
+  "team.invited": "Invited a team member",
+  "team.invite_withdrawn": "Withdrew a team invite",
+  "team.removed": "Removed a team member",
+  "master_data.exported": "Exported practitioner master data",
+};
+
+/** One page of the audit trail, with the total so the pager can say where it is. */
+export interface ActivityPage {
+  rows: ActivityRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export const ACTIVITY_PAGE_SIZE = 25;
+
+/**
+ * A page of the audit trail, newest first.
+ *
+ * Paged in the database rather than by slicing a capped fetch: the log runs to
+ * ninety days of every action every admin takes, so "fetch 200 and slice"
+ * would quietly hide the rest while showing a pager that implies otherwise.
+ * The exact count comes back with the page so the range shown is the truth.
+ */
+export async function listActivity(page = 1, pageSize = ACTIVITY_PAGE_SIZE): Promise<ActivityPage> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("activity_log")
-    .select("id, actor_email, action, entity_type, entity_ref, detail, created_at")
-    .order("created_at", { ascending: false })
-    .order("id")
-    .limit(limit);
+  const current = Math.max(1, Math.floor(page));
+  const from = (current - 1) * pageSize;
+
+  const [{ data, error, count }, accounts] = await Promise.all([
+    supabase
+      .from("activity_log")
+      .select("id, actor_email, action, entity_type, entity_ref, detail, created_at", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, from + pageSize - 1),
+    // The log stores who acted, not what they were — a role can change, and the
+    // entry should still say which one they hold. Resolved at read time.
+    supabase.auth.admin.listUsers({ page: 1, perPage: 200 }).catch(() => null),
+  ]);
 
   if (error) {
     // A table that hasn't been migrated yet (PostgREST "Could not find the
     // table" / undefined_table) must not take the whole console down. Degrade
     // to an empty log and let the rest of the console load.
     if (error.code === "PGRST205" || error.code === "42P01" || /Could not find the table/i.test(error.message)) {
-      return [];
+      return { rows: [], total: 0, page: current, pageSize };
     }
     throw new Error(`activity_log read failed: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    actor: row.actor_email ?? "system",
-    action: row.action,
-    entity: [row.entity_type, row.entity_ref].filter(Boolean).join(" "),
-    detail: row.detail ?? "",
-    at: dateTime(row.created_at),
-  }));
+  const byEmail = new Map(
+    (accounts?.data?.users ?? []).map((user) => [
+      (user.email ?? "").toLowerCase(),
+      {
+        name: (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "—",
+        role: toConsoleRole(user.app_metadata?.role),
+      },
+    ]),
+  );
+
+  const rows = (data ?? []).map((row) => {
+    const actorEmail = (row.actor_email ?? "").toLowerCase();
+    const account = actorEmail ? byEmail.get(actorEmail) : undefined;
+
+    return {
+      id: row.id,
+      // An automatic transition (a signature coming back, say) has no actor.
+      user: account?.name ?? row.actor_email ?? "System",
+      role: account?.role ? ROLE_LABEL[account.role] : row.actor_email ? "—" : "System",
+      // Phrase first, then the detail as context. The detail alone is often a
+      // fragment ("IQC-S003 → Completed.") or, worse, a column name — reading
+      // an audit trail should not require knowing the schema.
+      action: [ACTION_PHRASE[row.action] ?? row.action, row.detail?.trim()]
+        .filter(Boolean)
+        .join(" — "),
+      at: dateTime(row.created_at),
+    };
+  });
+
+  return { rows, total: count ?? rows.length, page: current, pageSize };
 }
+
+/** How long the log is kept, matching the note the Activity tab shows. */
+export const ACTIVITY_RETENTION_DAYS = 90;
 
 /**
  * Appends one audit-trail entry (audit M9). Best-effort by design: a failure to
@@ -1025,6 +1134,21 @@ export async function recordActivity(entry: {
     entity_ref: entry.entityRef ?? null,
     detail: entry.detail ?? null,
   });
+
+  /**
+   * Retention, enforced on write.
+   *
+   * The tab tells an admin entries are kept for 90 days; a promise the system
+   * does not keep is worse than no promise, and this is a log people will make
+   * decisions from. V7 describes exactly this mechanism — a new entry pushes
+   * the oldest past the window out — so it happens here rather than waiting for
+   * a cron, which ADR-0003 defers until a restore has been proven from backup.
+   *
+   * One indexed DELETE per logged action, and best-effort like the insert: a
+   * failure to prune must never fail the action being logged.
+   */
+  const cutoff = new Date(Date.now() - ACTIVITY_RETENTION_DAYS * 86_400_000).toISOString();
+  await supabase.from("activity_log").delete().lt("created_at", cutoff);
 }
 
 const dateTime = (value: string | null) =>
