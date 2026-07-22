@@ -682,35 +682,88 @@ export async function listPayouts(): Promise<PayoutRow[]> {
 
 // ── Photo submissions ───────────────────────────────────────────────────────
 
+/**
+ * One row of the Photos tab.
+ *
+ * The row is a COMPLETED SESSION, not a photo submission — V7's subtitle says
+ * it outright: "every completed session appears here", with photos either
+ * landed or still pending. Listing submissions instead would hide exactly the
+ * rows an admin needs to chase, since a session with no photos has no
+ * submission to list.
+ */
 export interface PhotoRow {
+  /** The session — stable whether or not photos exist yet. */
   id: string;
-  submitter: string;
+  submissionId: string | null;
+  practitioner: string;
+  practitionerReference: string | null;
+  sessionReference: string;
   module: string;
+  city: string;
   sessionDate: string;
   photoCount: number;
-  submittedOn: string;
-  status: string;
+  uploadedOn: string | null;
+  expiresOn: string | null;
+  /** Negative once past expiry; `null` while nothing has been uploaded. */
+  daysLeft: number | null;
+}
+
+/** Whole days from today to `date`, negative once past. */
+function daysUntil(value: string | null): number | null {
+  if (!value) return null;
+  const target = new Date(value);
+  const today = new Date();
+  target.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
 export async function listPhotoSubmissions(): Promise<PhotoRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("photo_submissions")
-    .select("id, submitter_name, module_taught, session_date, storage_keys, status, created_at")
+    .from("sessions")
+    .select(
+      "id, reference, module, city, session_date, session_practitioners ( deleted_at, practitioners ( full_name, reference ) ), photo_submissions ( id, storage_keys, created_at, expiry_date, deleted_at )",
+    )
+    .eq("status", "Completed")
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .order("session_date", { ascending: false, nullsFirst: false })
+    .limit(500);
 
-  if (error) throw new Error(`photo_submissions read failed: ${error.message}`);
+  if (error) throw new Error(`sessions read failed: ${error.message}`);
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    submitter: row.submitter_name,
-    module: row.module_taught,
-    sessionDate: date(row.session_date),
-    photoCount: (row.storage_keys ?? []).length,
-    submittedOn: date(row.created_at),
-    status: row.status,
-  }));
+  return (data ?? []).map((row) => {
+    const assignment = ((row.session_practitioners ?? []) as Array<{
+      deleted_at: string | null;
+      practitioners: unknown;
+    }>).find((entry) => !entry.deleted_at);
+    const practitioner = assignment
+      ? one<{ full_name: string; reference: string }>(assignment.practitioners)
+      : null;
+
+    const submission = ((row.photo_submissions ?? []) as Array<{
+      id: string;
+      storage_keys: string[];
+      created_at: string;
+      expiry_date: string;
+      deleted_at: string | null;
+    }>).find((entry) => !entry.deleted_at);
+
+    return {
+      id: row.id,
+      submissionId: submission?.id ?? null,
+      practitioner: practitioner?.full_name ?? "—",
+      practitionerReference: practitioner?.reference ?? null,
+      sessionReference: row.reference,
+      module: row.module,
+      city: row.city,
+      sessionDate: date(row.session_date),
+      photoCount: (submission?.storage_keys ?? []).length,
+      uploadedOn: submission ? date(submission.created_at) : null,
+      expiresOn: submission ? date(submission.expiry_date) : null,
+      daysLeft: submission ? daysUntil(submission.expiry_date) : null,
+    };
+  });
 }
 
 // ── Gallery ─────────────────────────────────────────────────────────────────

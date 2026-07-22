@@ -934,6 +934,57 @@ export async function recordRatingManually(
   return { ok: true };
 }
 
+// ── Photos ──────────────────────────────────────────────────────────────────
+
+/**
+ * Deletes a session's photos (V7's Delete on the Photos tab), which is also how
+ * an admin re-uploads: V7 disables Upload once photos exist and says "delete to
+ * reupload".
+ *
+ * The stored objects go with the row. A soft-deleted submission whose files
+ * stayed in the bucket would leave identifiable participants' photos live at a
+ * signable path after someone deliberately removed them — the retention promise
+ * is about the images, not the record of them.
+ */
+export async function deletePhotoSubmission(submissionId: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("photo_submissions")
+    .select("id, storage_keys, session_id")
+    .eq("id", submissionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`photo submission read failed: ${error.message}`);
+  if (!data) throw new Error("those photos are already gone");
+
+  const keys = (data.storage_keys ?? []) as string[];
+  if (keys.length > 0) {
+    const bucket = process.env.SUPABASE_PHOTOS_BUCKET || "session-photos";
+    const { error: removeError } = await supabase.storage.from(bucket).remove(keys);
+    // Removing the row while the objects survive is the one order that leaves
+    // orphans nothing can reach or expire, so the row stays until they are gone.
+    if (removeError) throw new Error(`removing the stored photos failed: ${removeError.message}`);
+  }
+
+  const { error: rowError } = await supabase
+    .from("photo_submissions")
+    .update({ deleted_at: new Date().toISOString(), storage_keys: [] })
+    .eq("id", submissionId)
+    .is("deleted_at", null);
+  if (rowError) throw new Error(`delete failed: ${rowError.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "photos.deleted",
+    entityType: "photo_submission",
+    entityRef: submissionId,
+    detail: `${keys.length} photo(s) removed from storage.`,
+  });
+  revalidateConsole();
+}
+
 // ── Outbound link emails (the external, 15s-held sends) ──────────────────────
 
 async function assignmentContact(id: string): Promise<{ email: string; firstName: string } | null> {

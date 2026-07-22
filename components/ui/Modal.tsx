@@ -28,12 +28,29 @@ export function Modal({
   title,
   description,
   children,
+  variant = "page",
+  maxWidth,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   children: ReactNode;
+  /**
+   * Which chrome to wear. `page` is the public site's — a light header and
+   * generous padding. `console` is V7's `.draft-modal`: an ink header bar with
+   * a small white title, tighter body padding, and a footer rail. Three console
+   * dialogs use it, so it is a real variant rather than a one-off override.
+   *
+   * The behaviour — Escape, focus trap, scroll lock — is identical either way,
+   * which is the whole reason this is a prop and not a second component.
+   */
+  variant?: "page" | "console";
+  /** Overrides the default width, e.g. V7's 680px photo grid. */
+  maxWidth?: string;
+  /** The footer rail (console variant): counts on the left, actions on the right. */
+  footer?: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -118,42 +135,84 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-xl bg-surface shadow-modal"
+        style={maxWidth ? { maxWidth } : undefined}
+        className={`my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden bg-surface shadow-modal ${
+          maxWidth ? "" : variant === "console" ? "max-w-[580px]" : "max-w-[520px]"
+        } ${variant === "console" ? "rounded-[10px]" : "rounded-xl"}`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-10 pb-5 pt-10">
-          <div>
-            <h2 id={titleId} className="text-2xl font-semibold text-ink">
-              {title}
-            </h2>
-            {description ? (
-              <p id={descriptionId} className="mt-1 text-base leading-[1.5] text-ink-muted">
-                {description}
-              </p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="-mr-2 -mt-1 shrink-0 rounded-md p-2 text-ink-faint transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-              focusable="false"
+        {variant === "console" ? (
+          // V7 `.draft-header` — an ink bar, so the dialog reads as console
+          // chrome rather than as part of the page behind it.
+          <div className="flex flex-shrink-0 items-center justify-between gap-4 bg-ink px-6 py-[1.1rem]">
+            <div>
+              <h2 id={titleId} className="text-base font-medium text-surface">
+                {title}
+              </h2>
+              {description ? (
+                <p id={descriptionId} className="mt-px text-2xs text-on-dark-faint">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-on-dark-muted transition-colors hover:bg-tool-card-hover hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
             >
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+              <span aria-hidden>✕</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-4 border-b border-border px-10 pb-5 pt-10">
+            <div>
+              <h2 id={titleId} className="text-2xl font-semibold text-ink">
+                {title}
+              </h2>
+              {description ? (
+                <p id={descriptionId} className="mt-1 text-base leading-[1.5] text-ink-muted">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="-mr-2 -mt-1 shrink-0 rounded-md p-2 text-ink-faint transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+                focusable="false"
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* The panel is height-capped, so this is where the overflow goes. */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-10 py-6">{children}</div>
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${
+            variant === "console" ? "p-5" : "px-10 py-6"
+          }`}
+        >
+          {children}
+        </div>
+
+        {/* V7 `.photo-modal-footer` — a fixed rail, so the actions stay put
+            while the grid above them scrolls. */}
+        {footer ? (
+          <div className="flex flex-shrink-0 items-center justify-between gap-2.5 border-t border-border px-5 py-[0.85rem]">
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );

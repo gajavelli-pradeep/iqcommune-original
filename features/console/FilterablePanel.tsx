@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import { ConsoleTable, type ColumnDef } from "./ConsoleTable";
+import { PeriodFilter, matchesPeriod, yearsIn } from "./PeriodFilter";
 import type { ConsoleRole } from "./roles";
 
 /**
@@ -14,8 +15,6 @@ import type { ConsoleRole } from "./roles";
  * whole thing lives on one side of the RSC boundary: the columns carry
  * server-action-bound row actions, which only a client component may hold.
  */
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export interface StatusOption {
   /** The raw status value to match against `statusOf`. */
@@ -66,26 +65,17 @@ export function FilterablePanel<Row>({
 
   const pendingCount = useMemo(() => rows.filter(isPending).length, [rows, isPending]);
 
-  const years = useMemo(() => {
-    if (!periodOf) return [] as string[];
-    const found = new Set<string>();
-    for (const row of rows) {
-      const match = periodOf(row).match(/\d{4}/);
-      if (match) found.add(match[0]);
-    }
-    return [...found].sort().reverse();
-  }, [rows, periodOf]);
+  const years = useMemo(
+    () => (periodOf ? yearsIn(rows.map(periodOf)) : []),
+    [rows, periodOf],
+  );
 
   const filtered = useMemo(
     () =>
       rows.filter((row) => {
         if (pendingOnly && !isPending(row)) return false;
         if (status && statusOf(row) !== status) return false;
-        if (periodOf) {
-          const period = periodOf(row);
-          if (year && !period.includes(year)) return false;
-          if (month && !period.includes(month)) return false;
-        }
+        if (periodOf && !matchesPeriod(periodOf(row), month, year)) return false;
         return true;
       }),
     [rows, pendingOnly, status, month, year, statusOf, isPending, periodOf],
@@ -100,9 +90,6 @@ export function FilterablePanel<Row>({
         ? "border-ink bg-ink text-surface"
         : "border-border-strong bg-surface text-ink-muted hover:border-gold hover:text-ink"
     }`;
-
-  const select =
-    "rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-sm text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:min-h-11";
 
   return (
     <>
@@ -124,31 +111,15 @@ export function FilterablePanel<Row>({
         </button>
 
         {periodOf ? (
-          <div className="flex items-center gap-1.5">
-            <span className="mr-0.5 text-xs text-ink-faint">{periodLabel}</span>
-            <label className="sr-only" htmlFor="period-month">
-              Month
-            </label>
-            <select id="period-month" value={month} onChange={(e) => setMonth(e.target.value)} className={select}>
-              <option value="">All months</option>
-              {MONTHS.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="period-year">
-              Year
-            </label>
-            <select id="period-year" value={year} onChange={(e) => setYear(e.target.value)} className={select}>
-              <option value="">All years</option>
-              {years.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PeriodFilter
+            label={periodLabel}
+            month={month}
+            year={year}
+            years={years}
+            onMonth={setMonth}
+            onYear={setYear}
+            idPrefix="panel-period"
+          />
         ) : null}
       </div>
 
