@@ -60,13 +60,10 @@ export function SiteHeader({
               commune
             </span>
           </span>
-          {/* Hidden below 640px. The spec has no mobile rules for the header, and
-              at 320px the lockup plus the Request button overflows the viewport —
-              a P1 bug. The strapline is decoration inside the wordmark, not an
-              affordance or information the reader needs, so it is the right thing
-              to drop; a header that scrolls sideways is not a fair trade for it.
-              Allowlisted in the content-parity gate for exactly this reason. */}
-          <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint sm:block">
+          {/* Shown from 360px up to match V7, which keeps the strapline on every
+              phone. Hidden only below 360px, where the lockup plus the Request
+              button overflows the viewport — the 320px P1 this guard exists for. */}
+          <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
             Where financial intelligence connects
           </span>
         </Link>
