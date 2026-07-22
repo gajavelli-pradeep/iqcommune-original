@@ -73,6 +73,9 @@
   --color-gold-bright: #f0c84a;                       /* gold hover on dark */
   --color-gold-rule: rgba(201, 152, 42, 0.35);
   --color-gold-rule-strong: rgba(201, 152, 42, 0.8);
+  /* Decorative radial glows on the dark hero bands (empanelment). */
+  --color-gold-glow: rgba(201, 152, 42, 0.12);
+  --color-gold-glow-soft: rgba(201, 152, 42, 0.06);
 
   /* Tool widgets on the dark calculators band. Added with ToolsCalculators,
      the first section to need an interactive surface on top of ink. */

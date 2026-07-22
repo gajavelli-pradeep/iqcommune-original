@@ -36,14 +36,18 @@ function FitList({
   const isGood = tone === "good";
   return (
     <div
-      className={`rounded-lg border p-6 ${isGood ? "border-green-light bg-green-light" : "border-border bg-surface-soft"}`}
+      className={`rounded-lg border p-6 ${isGood ? "border-flag-good-edge bg-flag-good" : "border-tool-edge bg-tool-card"}`}
     >
-      <h3 className="mb-4 text-md font-semibold text-ink">{title}</h3>
+      <h3 className={`mb-4 text-md font-semibold ${isGood ? "text-result-good" : "text-on-dark-muted"}`}>
+        {title}
+      </h3>
       <ul>
         {items.map((item) => (
           <li
             key={item}
-            className="mb-3 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
+            className={`mb-3 flex items-start gap-2.5 text-base leading-[1.55] last:mb-0 ${
+              isGood ? "text-on-dark-bright" : "text-on-dark-muted"
+            }`}
           >
             <svg
               width="14"
@@ -54,7 +58,7 @@ function FitList({
               strokeWidth={2.5}
               aria-hidden
               focusable="false"
-              className={`mt-[4px] shrink-0 ${isGood ? "text-green" : "text-red"}`}
+              className={`mt-[4px] shrink-0 ${isGood ? "text-result-good" : "text-result-bad"}`}
             >
               {isGood ? <polyline points="20 6 9 17 4 12" /> : <path d="M18 6 6 18M6 6l12 12" />}
             </svg>
@@ -68,9 +72,10 @@ function FitList({
 
 export function FitLists() {
   return (
-    <section className="bg-surface px-4 py-16 sm:px-8">
+    <section className="bg-ink px-4 py-16 sm:px-8">
       <div className="mx-auto max-w-page">
         <SectionHeading
+          tone="dark"
           tag="Before you apply"
           headline={
             <>

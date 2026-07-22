@@ -96,25 +96,44 @@ export function RequestSessionButton({
   className?: string;
 }) {
   const { openRequest } = useLandingDialogs();
+  // The header buttons (nav / ghost) trail a right-arrow; the hero/CTA buttons
+  // lead with the message icon — matching the V7 spec's two treatments.
+  const isHeader = variant === "nav" || variant === "ghost";
   return (
     <button
       type="button"
       onClick={openRequest}
       className={`inline-flex min-h-11 items-center justify-center rounded-full font-semibold transition-[filter,opacity,transform,background-color,border-color] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:translate-y-0 ${VARIANTS[variant]} ${className}`}
     >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden
-        focusable="false"
-      >
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
+      {isHeader ? null : (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+          focusable="false"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      )}
       Request a Session
+      {isHeader ? (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+          focusable="false"
+        >
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      ) : null}
     </button>
   );
 }

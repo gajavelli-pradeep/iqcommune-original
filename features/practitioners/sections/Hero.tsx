@@ -57,40 +57,54 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="border-b border-border bg-surface-soft px-4 py-16 sm:px-8">
-      <div className="mx-auto grid max-w-page gap-10 min-[860px]:grid-cols-[1fr_minmax(0,420px)]">
+    <section className="relative overflow-hidden border-b border-on-dark-divider bg-ink px-4 py-16 sm:px-8">
+      {/* Decorative gold glows, top-right and bottom-left (V7 .hero::before/::after).
+          aria-hidden and pointer-events-none: paint, not content. Dropped below
+          720px, where they swamp a phone — the spec's own breakpoint. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-[160px] -right-[120px] hidden h-[600px] w-[600px] min-[720px]:block"
+        style={{ background: "radial-gradient(circle, var(--color-gold-glow) 0%, transparent 68%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-[80px] -left-[80px] hidden h-[400px] w-[400px] min-[720px]:block"
+        style={{ background: "radial-gradient(circle, var(--color-gold-glow-soft) 0%, transparent 68%)" }}
+      />
+
+      <div className="relative mx-auto grid max-w-page gap-10 min-[860px]:grid-cols-[1fr_minmax(0,420px)]">
         <div>
-          <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-gold-border bg-gold-light px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-dark">
+          <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-tool-chip-edge bg-tool-chip px-3.5 py-[5px] text-xs font-semibold uppercase tracking-pill text-gold-bright">
             <StarIcon />
             For Finance Professionals
           </span>
 
-          <h1 className="mb-5 text-[clamp(30px,4.6vw,46px)] font-semibold leading-[1.15] tracking-body text-ink">
+          <h1 className="mb-5 text-[clamp(30px,4.6vw,46px)] font-semibold leading-[1.15] tracking-body text-surface">
             You spend your days
             <br />
             managing real money.
             <br />
-            <em className="not-italic text-gold-dark">
+            <em className="not-italic text-gold">
               Most people will never
               <br />
               learn from someone like you.
             </em>
           </h1>
 
-          <p className="mb-8 max-w-[520px] text-lead leading-[1.65] text-ink-muted">
+          <p className="mb-8 max-w-[520px] text-lead leading-[1.65] text-on-dark-muted">
             iqcommune connects working finance professionals with people who want to learn from
             someone still in the field. You bring the knowledge. We handle everything else.
           </p>
 
           {apply}
 
-          <p className="mt-4 text-base text-ink-faint">
+          <p className="mt-4 text-base text-on-dark-muted">
             No upfront fees. No sales work. We&apos;ll reach out within 2–3 working days.
           </p>
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-card-soft">
-          <p className="mb-4 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
+        <div className="rounded-lg border border-tool-edge bg-tool-card p-6">
+          <p className="mb-4 text-2xs font-semibold uppercase tracking-caps text-gold-bright">
             What this means for you
           </p>
           <ul>
@@ -98,10 +112,10 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
               <li
                 key={perk.title}
                 hidden={!expanded && index >= VISIBLE_PERKS}
-                className="mb-4 border-b border-border pb-4 last:mb-0 last:border-b-0 last:pb-0"
+                className="mb-4 border-b border-on-dark-divider pb-4 last:mb-0 last:border-b-0 last:pb-0"
               >
-                <p className="mb-1 text-base font-semibold text-ink">{perk.title}</p>
-                <p className="text-sm leading-[1.6] text-ink-muted">{perk.description}</p>
+                <p className="mb-1 text-base font-semibold text-surface">{perk.title}</p>
+                <p className="text-sm leading-[1.6] text-on-dark-muted">{perk.description}</p>
               </li>
             ))}
           </ul>
@@ -109,7 +123,7 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded((open) => !open)}
-            className="mt-4 flex min-h-11 w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-caps text-gold-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+            className="mt-4 flex min-h-11 w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-caps text-gold-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
           >
             {expanded ? "Show less" : "Show more"}
             <svg
