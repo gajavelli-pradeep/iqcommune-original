@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TextField } from "@/components/ui/Field";
@@ -59,6 +59,12 @@ export function OnboardingForm({
   const successRef = useFocusWhen<HTMLHeadingElement>(Boolean(signedAt));
 
   const agreementRef = useRef<HTMLDivElement>(null);
+  // V7 hides the signing section until the agreement is read to the end, then
+  // reveals it and scrolls it into view.
+  const signFormRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (readToEnd) signFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [readToEnd]);
 
   if (signedAt) {
     return (
@@ -149,30 +155,64 @@ export function OnboardingForm({
         </p>
       </section>
 
-      <section className="mt-4 rounded-lg border border-border bg-surface p-8">
-        <h2 className="mb-1 text-2xl font-semibold text-ink">
-          iqcommune — Practitioner Empanelment Agreement
+      <section className="mt-6 rounded-[12px] border border-border bg-surface p-8">
+        <h2 className="mb-1.5 text-2xl font-semibold text-ink">
+          Practitioner Empanelment Agreement
         </h2>
-        <p className="mb-4 text-base text-ink-muted">
+        <p className="mb-4 text-md text-ink-muted">
           Please read the full agreement below before signing. You must scroll to the end to
           proceed.
         </p>
 
-        {/*
-          The agreement scrolls inside its own panel. `overscroll-contain` stops
-          a flick at the bottom from scrolling the page instead — on a phone that
-          is how someone skips the last clause without meaning to.
-        */}
-        <div
-          ref={agreementRef}
-          tabIndex={0}
-          aria-label="Practitioner Empanelment Agreement"
-          onScroll={(event) => {
-            const el = event.currentTarget;
-            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setReadToEnd(true);
-          }}
-          className="max-h-[420px] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface-soft px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
-        >
+        {/* V7 .agreement-viewer — a dark toolbar over the scrolling body. */}
+        <div className="overflow-hidden rounded-[12px] border border-border">
+          <div className="flex items-center justify-between gap-3 bg-ink px-5 py-4">
+            <div className="min-w-0">
+              <p className="truncate text-base font-medium text-surface">
+                iqcommune — Practitioner Empanelment Agreement
+              </p>
+              <p className="truncate text-xs text-on-dark-faint">
+                {practitioner.agreementReference} · {agreementDate}
+              </p>
+            </div>
+            <span
+              aria-live="polite"
+              className={`flex shrink-0 items-center gap-1.5 text-base font-medium ${
+                readToEnd ? "text-gold" : "text-on-dark-muted"
+              }`}
+            >
+              {readToEnd ? "✓ Agreement read" : "Scroll to read"}
+              {!readToEnd ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden
+                  focusable="false"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              ) : null}
+            </span>
+          </div>
+          {/*
+            The agreement scrolls inside its own panel. `overscroll-contain` stops
+            a flick at the bottom from scrolling the page instead — on a phone that
+            is how someone skips the last clause without meaning to.
+          */}
+          <div
+            ref={agreementRef}
+            tabIndex={0}
+            aria-label="Practitioner Empanelment Agreement"
+            onScroll={(event) => {
+              const el = event.currentTarget;
+              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setReadToEnd(true);
+            }}
+            className="max-h-[420px] overflow-y-auto overscroll-contain bg-surface-soft px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+          >
           {/* Literal capitals, not `uppercase`: the spec's own text is capitalised
               and the parity gate compares characters, not rendered casing. */}
           <p className="text-md font-semibold tracking-caps text-ink">
@@ -231,20 +271,42 @@ export function OnboardingForm({
           <p className="mt-6 border-t border-border pt-4 text-center text-sm text-ink-faint">
             — End of Agreement — · iqcommune (InvestQ Commune) · hello@iqcommune.com
           </p>
+          </div>
         </div>
 
-        <p className="mt-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint">
-          Scroll to read
-        </p>
-        <p aria-live="polite" className="mt-1 text-sm font-medium text-gold-dark">
+        {/* V7 .scroll-gate-notice — a box with a shield icon that turns green
+            once the agreement has been read to the end. */}
+        <p
+          aria-live="polite"
+          className={`mt-3 flex items-center gap-2 rounded-lg border px-4 py-3 text-base ${
+            readToEnd
+              ? "border-green/40 bg-green-light text-green"
+              : "border-border bg-surface-soft text-ink-muted"
+          }`}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+            focusable="false"
+            className="shrink-0"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
           {readToEnd
-            ? "✓ Agreement read. Please complete your signature below."
+            ? "You've read the full agreement. Please complete your signature below."
             : "Please scroll through and read the full agreement above before you can proceed to sign."}
         </p>
       </section>
 
       <form
-        className="mt-4 rounded-lg border border-border bg-surface p-8"
+        ref={signFormRef}
+        // Hidden until the agreement is read to the end, as in V7.
+        className={`mt-6 rounded-[12px] border border-border bg-surface p-8 ${readToEnd ? "" : "hidden"}`}
         onSubmit={async (event) => {
           event.preventDefault();
           if (!readToEnd) return setError("Please read the full agreement before signing.");
