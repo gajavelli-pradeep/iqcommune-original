@@ -40,7 +40,7 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
       <SessionSummary session={session} />
 
       <form
-        className="mt-4 rounded-lg border border-border bg-surface px-9 py-8"
+        className="mt-6 rounded-[12px] border border-border bg-surface px-9 py-8"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!confirmed) return;
@@ -48,17 +48,30 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
           if (receipt) setRecordedAt(formatDateTimeIST(receipt.at));
         }}
       >
-        <div className="mb-5 rounded-lg border border-border bg-surface-soft px-5 py-4">
-          <h2 className="mb-3 text-md font-semibold text-ink">
+        <div className="mb-5 rounded-md bg-surface-soft px-6 py-5">
+          <h2 className="mb-3 text-lg font-semibold text-ink">
             Your consent is required to confirm this session
           </h2>
           <ul>
             {DECLARATIONS.map((declaration) => (
               <li
                 key={declaration}
-                className="mb-2.5 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
+                className="mb-2 flex items-start gap-2.5 text-base leading-[1.55] text-ink-muted last:mb-0"
               >
-                <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                {/* V7 .consent-item marker is a gold-dark check, not a dot. */}
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden
+                  focusable="false"
+                  className="mt-[3px] shrink-0 text-gold-dark"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
                 {declaration}
               </li>
             ))}

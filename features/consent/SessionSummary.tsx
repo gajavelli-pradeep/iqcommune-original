@@ -20,7 +20,7 @@ export type { ConsentSession };
  */
 function Rows({ rows }: { rows: ReadonlyArray<[string, string]> }) {
   return (
-    <dl className="grid gap-x-6 gap-y-[0.85rem] min-[480px]:grid-cols-2">
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-[0.85rem]">
       {rows.map(([label, value]) => (
         <div key={label}>
           <dt className="mb-0.5 text-xs text-ink-faint">{label}</dt>
@@ -33,9 +33,9 @@ function Rows({ rows }: { rows: ReadonlyArray<[string, string]> }) {
 
 export function SessionSummary({ session }: { session: ConsentSession }) {
   return (
-    <section className="rounded-lg border border-border bg-surface px-9 py-8">
-      <h1 className="mb-1 text-3xl font-semibold text-ink">Confirm your session details</h1>
-      <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+    <section className="rounded-[12px] border border-border bg-surface px-9 py-8">
+      <h1 className="mb-1.5 text-4xl font-semibold text-ink">Confirm your session details</h1>
+      <p className="mb-6 text-md leading-[1.6] text-ink-muted">
         Please review everything below carefully. Your consent confirms acceptance of this session
         and the stated payout.
       </p>
@@ -49,7 +49,7 @@ export function SessionSummary({ session }: { session: ConsentSession }) {
         ]}
       />
 
-      <h2 className="mb-1 mt-6 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
+      <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-label text-gold-dark">
         Session details
       </h2>
       <Rows
@@ -68,7 +68,7 @@ export function SessionSummary({ session }: { session: ConsentSession }) {
 
       <hr className="my-6 border-border" />
 
-      <h2 className="mb-3 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-label text-gold-dark">
         Payout confirmation
       </h2>
       <div className="flex items-center justify-between gap-4 rounded-lg bg-green-light px-5 py-4">
