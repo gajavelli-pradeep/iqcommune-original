@@ -93,3 +93,35 @@ is one typo away from destroying it.
 |---|---|---|
 | `.env.local` | the development Supabase project | never |
 | Vercel project env vars | the production Supabase project | never — set in the dashboard |
+
+## Which branches deploy
+
+**Only `main`.** `vercel.json` sets `git.deploymentEnabled` so every other branch
+is skipped:
+
+```json
+{ "git": { "deploymentEnabled": { "**": false, "*": false, "main": true } } }
+```
+
+Both wildcards are needed. Vercel matches these with
+[minimatch](https://github.com/isaacs/minimatch), where `*` does **not** match
+across `/` — so `*` alone would miss `v7/clone` and every other slashed branch
+name. `**` covers those. A branch matching several rules deploys if *any* rule
+is `true`, which is what lets the explicit `main: true` win over both.
+
+### Why this exists
+
+`v7/clone` is a mirror of `main`, pushed so the client has the branch. Its push
+triggered a **Preview** deployment, which failed at
+`next.config.ts` — `NEXT_PUBLIC_SUPABASE_URL must be set at build time`. Vercel
+scopes env vars per environment and ours are set for Production only, so the
+preview build had none.
+
+The fix is not to add the variables to Preview. Doing that would put the
+production `SUPABASE_SERVICE_ROLE_KEY` — which bypasses RLS entirely — into
+every preview build, on URLs that are less protected than production. A mirror
+branch is not worth widening access to real practitioner and session data.
+
+If a genuine preview environment is ever wanted, give it its **own Supabase
+project and keys**, add `main`'s sibling branch to the map above, and leave
+`EMAIL_DELIVERY` unset there so a preview can never mail a real practitioner.
