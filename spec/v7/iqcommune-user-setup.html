@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Set Up Your Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f1117; --ink-muted: #4a4d5c; --ink-faint: #9496a1;
+    --surface: #ffffff; --surface-soft: #f8f7f4;
+    --gold: #c9982a; --gold-light: #f5e9c8; --gold-dark: #8a6510;
+    --green: #2a6b2a; --green-light: #eef7ee;
+    --red: #a32d2d; --red-light: #fdf0f0;
+    --border: rgba(15,17,23,0.10);
+    --radius: 12px;
+  }
+  body {
+    font-family: 'DM Sans', sans-serif; background: var(--surface-soft);
+    color: var(--ink); font-size: 16px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  nav {
+    background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--border); padding: 0 2rem;
+  }
+  .nav-inner { max-width: 480px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .nav-logo-mark .iq { color: var(--gold); font-weight: 700; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-logo-mark .commune { color: var(--ink); font-weight: 300; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-badge {
+    background: var(--gold-light); color: var(--gold-dark); border: 1px solid #e0c870;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 100px;
+  }
+  .page { max-width: 480px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 2rem 2.25rem; margin-bottom: 1.5rem;
+  }
+  .card-title { font-size: 22px; font-weight: 600; margin-bottom: 0.35rem; }
+  .card-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.5rem; }
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.5rem; margin-bottom: 1.5rem; }
+  .kv-row .kv-l { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 2px; }
+  .kv-row .kv-v { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+  .field { margin-bottom: 1.1rem; }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .field input {
+    width: 100%; font-family: inherit; font-size: 14.5px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft);
+  }
+  .field input:focus { outline: none; border-color: var(--gold); }
+  .field-hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
+  .field-error { font-size: 11.5px; color: var(--red); margin-top: 4px; display: none; }
+  .btn-activate {
+    width: 100%; background: var(--ink); color: #fff; border: none; border-radius: 10px;
+    padding: 0.9rem; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer;
+  }
+  .btn-activate:hover { opacity: 0.9; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--green-light); color: var(--green); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+  .success-ts { font-size: 12.5px; color: var(--ink-faint); font-family: monospace; margin-top: 0.5rem; }
+  .footer-note { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 2rem; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo-mark"><span class="iq">iq</span><span class="commune">commune</span></div>
+    <span class="nav-badge">Account Setup</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="card" id="setup-card">
+    <div class="card-title">Set up your account</div>
+    <div class="card-sub">You've been invited to the iqcommune admin console. Confirm your details and choose a password to activate your account.</div>
+
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-l">Email</div><div class="kv-v" id="v-email">—</div></div>
+      <div class="kv-row"><div class="kv-l">Role</div><div class="kv-v" id="v-role">—</div></div>
+    </div>
+
+    <div class="field">
+      <label for="pw1">Create a password</label>
+      <input type="password" id="pw1" placeholder="At least 8 characters"/>
+    </div>
+    <div class="field">
+      <label for="pw2">Confirm password</label>
+      <input type="password" id="pw2" placeholder="Re-enter your password"/>
+      <div class="field-error" id="pw-error">Passwords don't match — check and try again.</div>
+    </div>
+
+    <button class="btn-activate" onclick="activateAccount()">Activate account</button>
+  </div>
+
+  <div class="card" id="success-card" style="display:none; text-align:center;">
+    <div class="success-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="card-title" style="text-align:center">Account activated</div>
+    <div class="card-sub" style="text-align:center">Your account is ready. Log in any time at iqcommune.com/login with this email and the password you just set.</div>
+    <div class="success-ts" id="success-ts"></div>
+  </div>
+
+  <div class="footer-note">Confidential · Questions? Reply to the email this link was sent from, or write to hello@iqcommune.com</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+document.getElementById('v-email').textContent = params.get('email') || '—';
+document.getElementById('v-role').textContent = params.get('role') || '—';
+document.title = 'iqcommune — Set Up Your Account (' + (params.get('email')||'') + ')';
+
+// NOTE: This is a static, client-only page — there is no backend here to
+// actually create a real account, hash and store a password, or issue a
+// session. In production, activateAccount() below would POST to a real
+// account-creation API, and the admin console's Team & Access table would
+// read real "active" status from that same backend (webhook/websocket/
+// polling a real endpoint) instead of relying on localStorage. Until that
+// backend exists, this writes to localStorage instead — the admin console
+// reads the same key and treats a match there exactly like it would treat
+// a real webhook firing. This only works because both pages are opened in
+// the same browser; swap this block for a real fetch() POST once a
+// backend exists, and nothing else on this page needs to change.
+function activateAccount() {
+  const pw1 = document.getElementById('pw1').value;
+  const pw2 = document.getElementById('pw2').value;
+  const err = document.getElementById('pw-error');
+  if (!pw1 || pw1.length < 8) {
+    err.textContent = 'Password must be at least 8 characters.';
+    err.style.display = 'block';
+    return;
+  }
+  if (pw1 !== pw2) {
+    err.textContent = "Passwords don't match — check and try again.";
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+  const ts = new Date();
+  const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) + '  ' +
+                ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  try {
+    const key = 'iqcommune_team_activations';
+    const existing = JSON.parse(localStorage.getItem(key) || '{}');
+    existing[params.get('ref') || params.get('email') || ''] = {
+      activated: true,
+      activatedAt: ts.toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch (e) { /* localStorage unavailable — activation still succeeds visually below */ }
+
+  document.getElementById('setup-card').style.display = 'none';
+  document.getElementById('success-card').style.display = 'block';
+  document.getElementById('success-ts').textContent = 'Activated: ' + tsStr;
+}
+</script>
+</body>
+</html>

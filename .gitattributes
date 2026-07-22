@@ -1,0 +1,6 @@
+# The V7 spec is a delivered artefact, not source we edit. Git's automatic
+# line-ending conversion would rewrite it on checkout, so the working copy would
+# no longer be byte-identical to what the client sent — and
+# tests/unit/spec-freshness.test.ts compares exactly those bytes. `-text`
+# disables the conversion in both directions and stores it verbatim.
+spec/v7/*.html -text

@@ -27,8 +27,9 @@ const STATE = process.argv[3] ?? "default";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, "..", "_parity");
+// The tracked spec (spec/v7), so this runs in a fresh clone.
 const V7 = path
-  .join(here, "..", "..", "client_requirements", "thefinalfinalfiles (V7)", "iqcommune-admin-console-automated.html")
+  .join(here, "..", "spec", "v7", "iqcommune-admin-console-automated.html")
   .split(path.sep)
   .join("/");
 

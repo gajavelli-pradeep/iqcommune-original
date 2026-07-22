@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Rate Your Practitioner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f1117; --ink-muted: #4a4d5c; --ink-faint: #9496a1;
+    --surface: #ffffff; --surface-soft: #f8f7f4;
+    --gold: #c9982a; --gold-light: #f5e9c8; --gold-dark: #8a6510;
+    --green: #2a6b2a; --green-light: #eef7ee;
+    --border: rgba(15,17,23,0.10); --border-strong: rgba(15,17,23,0.20);
+    --radius: 12px;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif; background: var(--surface-soft);
+    color: var(--ink); font-size: 16px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  nav {
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .nav-logo-mark { display: flex; align-items: baseline; gap: 0; line-height: 1; }
+  .nav-logo-mark .iq { color: var(--gold); font-weight: 700; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-logo-mark .commune { color: var(--ink); font-weight: 300; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-badge {
+    background: var(--gold-light); color: var(--gold-dark); border: 1px solid #e0c870;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 100px;
+  }
+  .page { max-width: 720px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 2rem 2.25rem; margin-bottom: 1.5rem;
+  }
+  .card-title { font-size: 22px; font-weight: 600; margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+  .card-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.5rem; }
+  .kv-row .kv-l { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 2px; }
+  .kv-row .kv-v { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+
+  .rating-section { text-align: center; padding: 0.5rem 0 1.5rem; }
+  .rating-prompt { font-size: 16px; font-weight: 500; color: var(--ink); margin-bottom: 1.5rem; }
+  .stars { display: flex; justify-content: center; gap: 10px; margin-bottom: 0.75rem; }
+  .star-btn {
+    background: none; border: none; cursor: pointer; padding: 4px; line-height: 1;
+    transition: transform 0.1s;
+  }
+  .star-btn:hover { transform: scale(1.12); }
+  .star-btn svg { width: 40px; height: 40px; stroke: var(--border-strong); stroke-width: 1.5; fill: none; transition: fill 0.15s, stroke 0.15s; }
+  .star-btn.filled svg { fill: var(--gold); stroke: var(--gold-dark); }
+  .rating-label { font-size: 13.5px; color: var(--ink-faint); min-height: 20px; font-weight: 500; }
+  .rating-label.chosen { color: var(--gold-dark); }
+
+  .form-group { margin-top: 1.25rem; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+  .form-group textarea {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border-strong);
+    border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--ink); background: var(--surface); outline: none; resize: vertical; min-height: 84px;
+    transition: border-color 0.15s;
+  }
+  .form-group textarea:focus { border-color: var(--gold); }
+  .form-hint { font-size: 12px; color: var(--ink-faint); margin-top: 5px; }
+
+  .btn-submit {
+    width: 100%; background: var(--ink); color: #fff; border: none; border-radius: 10px;
+    padding: 0.9rem; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer;
+    transition: opacity 0.15s; margin-top: 1.5rem;
+  }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-submit:not(:disabled):hover { opacity: 0.9; }
+
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--green-light); color: var(--green); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+  .success-ts { font-size: 12.5px; color: var(--ink-faint); font-family: monospace; margin-top: 0.5rem; }
+  .receipt-box { background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.25rem 0; text-align: left; }
+  .receipt-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .receipt-row:last-child { border-bottom: none; }
+  .receipt-label { color: var(--ink-faint); }
+  .receipt-value { font-weight: 500; color: var(--ink); }
+  .receipt-value.green { color: var(--green); }
+  .footer-note { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 2rem; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo-mark"><span class="iq">iq</span><span class="commune">commune</span></div>
+    <span class="nav-badge">Session Feedback</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="card" id="details-card">
+    <div class="card-title">How was your session?</div>
+    <div class="card-sub">Your feedback helps us maintain quality across our practitioner network — it takes less than a minute.</div>
+
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-l">Practitioner</div><div class="kv-v" id="v-practitioner">—</div></div>
+      <div class="kv-row"><div class="kv-l">Module</div><div class="kv-v" id="v-module">—</div></div>
+      <div class="kv-row"><div class="kv-l">Session date</div><div class="kv-v" id="v-date">—</div></div>
+      <div class="kv-row"><div class="kv-l">City</div><div class="kv-v" id="v-city">—</div></div>
+      <div class="kv-row"><div class="kv-l">Session ref.</div><div class="kv-v" id="v-ref">—</div></div>
+      <div class="kv-row"><div class="kv-l">Requested by</div><div class="kv-v" id="v-requestor">—</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="rating-card">
+    <div class="rating-section">
+      <div class="rating-prompt">Rate the practitioner out of 5</div>
+      <div class="stars" id="star-row">
+        <button class="star-btn" data-val="1" onclick="setRating(1)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="star-btn" data-val="2" onclick="setRating(2)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="star-btn" data-val="3" onclick="setRating(3)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="star-btn" data-val="4" onclick="setRating(4)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="star-btn" data-val="5" onclick="setRating(5)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      </div>
+      <div class="rating-label" id="rating-label">Tap a star to rate</div>
+    </div>
+
+    <div class="form-group">
+      <label for="feedback-text">Anything you'd like to add? (optional)</label>
+      <textarea id="feedback-text" placeholder="Any specific feedback about the session or the practitioner..."></textarea>
+      <div class="form-hint">This is shared internally with iqcommune only — not with the practitioner directly.</div>
+    </div>
+
+    <button class="btn-submit" id="btn-submit" disabled onclick="submitRating()">Submit rating</button>
+  </div>
+
+  <div class="card" id="success-card" style="display:none; text-align:center;">
+    <div class="success-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="card-title" style="text-align:center">Thank you for your feedback</div>
+    <div class="card-sub" style="text-align:center">We've recorded your rating — it genuinely helps us keep quality high across the network.</div>
+    <div class="receipt-box">
+      <div class="receipt-row"><span class="receipt-label">Practitioner</span><span class="receipt-value" id="r-practitioner">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Session</span><span class="receipt-value" id="r-session">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Your rating</span><span class="receipt-value green" id="r-rating">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Submitted at</span><span class="receipt-value" id="r-ts">—</span></div>
+    </div>
+    <div class="success-ts">If you'd like to share more, just reply to the email this link was sent from.</div>
+  </div>
+
+  <div class="footer-note">Confidential · Questions? Reply to the email this link was sent from, or write to hello@iqcommune.com</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const pPractitioner = params.get('practitioner') || 'Practitioner';
+const pModule        = params.get('module')       || 'Module';
+const pDate           = params.get('date')          || '—';
+const pCity            = params.get('city')           || '—';
+const pRef              = params.get('ref')             || '—';
+const pRequestor    = params.get('requestor')     || 'You';
+
+document.getElementById('v-practitioner').textContent = pPractitioner;
+document.getElementById('v-module').textContent        = pModule;
+document.getElementById('v-date').textContent            = pDate;
+document.getElementById('v-city').textContent             = pCity;
+document.getElementById('v-ref').textContent               = pRef;
+document.getElementById('v-requestor').textContent    = pRequestor;
+document.title = 'iqcommune — Rate ' + pPractitioner;
+
+let currentRating = 0;
+const labels = { 1: 'Poor', 2: 'Below average', 3: 'Good', 4: 'Very good', 5: 'Excellent' };
+
+function setRating(val) {
+  currentRating = val;
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.classList.toggle('filled', parseInt(btn.dataset.val) <= val);
+  });
+  const lbl = document.getElementById('rating-label');
+  lbl.textContent = val + ' — ' + labels[val];
+  lbl.classList.add('chosen');
+  document.getElementById('btn-submit').disabled = false;
+}
+
+// NOTE: This is a static, client-only page — there is no backend here to write
+// the rating back into the admin console automatically. In production,
+// submitRating() below would POST to a real feedback-capture API, and the
+// admin console would pick up the update from there (webhook/websocket/
+// polling a real endpoint), which then updates the practitioner's average
+// rating. Until that backend exists, this writes to localStorage instead —
+// the admin console reads the same key and treats a match there exactly
+// like it would treat a real webhook firing. This only works because both
+// pages are opened in the same browser; swap this block for a real fetch()
+// POST once a backend exists, and nothing else on this page needs to change.
+function submitRating() {
+  if (!currentRating) return;
+  const ts = new Date();
+  const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) + '  ' +
+                ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  try {
+    const key = 'iqcommune_rating_submissions';
+    const existing = JSON.parse(localStorage.getItem(key) || '{}');
+    existing[pRef] = {
+      rating: currentRating,
+      feedback: document.getElementById('feedback-text').value.trim(),
+      submittedAt: ts.toISOString(),
+      requestor: pRequestor,
+    };
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch (e) { /* localStorage unavailable — submission still succeeds visually below */ }
+
+  document.getElementById('r-practitioner').textContent = pPractitioner;
+  document.getElementById('r-session').textContent      = pRef + ' · ' + pModule;
+  document.getElementById('r-rating').textContent       = currentRating + ' / 5 — ' + labels[currentRating];
+  document.getElementById('r-ts').textContent            = tsStr;
+
+  document.getElementById('details-card').style.display = 'none';
+  document.getElementById('rating-card').style.display  = 'none';
+  document.getElementById('success-card').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

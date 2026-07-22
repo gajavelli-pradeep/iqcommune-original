@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Practitioner Onboarding & Agreement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f1117; --ink-muted: #4a4d5c; --ink-faint: #9496a1;
+    --surface: #ffffff; --surface-soft: #f8f7f4;
+    --gold: #c9982a; --gold-light: #f5e9c8; --gold-dark: #8a6510;
+    --green: #2a6b2a; --green-light: #eef7ee;
+    --border: rgba(15,17,23,0.10); --border-strong: rgba(15,17,23,0.20);
+    --radius: 12px;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif; background: var(--surface-soft);
+    color: var(--ink); font-size: 16px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 860px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; height: 68px;
+  }
+  .nav-logo { text-decoration: none; display: flex; flex-direction: column; gap: 3px; }
+  .nav-logo-mark { display: flex; align-items: baseline; gap: 0; line-height: 1; }
+  .nav-logo-mark .iq    { color: var(--gold); font-weight: 700; font-size: 24px; letter-spacing: -0.04em; }
+  .nav-logo-mark .commune { color: var(--ink); font-weight: 300; font-size: 24px; letter-spacing: -0.04em; }
+  .nav-logo-tag { font-size: 9.5px; font-weight: 500; letter-spacing: 0.1em; color: var(--ink-faint); text-transform: uppercase; }
+  .nav-step-label { font-size: 12px; color: var(--ink-faint); display: flex; align-items: center; gap: 6px; }
+  .nav-step-badge {
+    background: var(--gold-light); color: var(--gold-dark); border: 1px solid #e0c870;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 100px;
+  }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* ── PROGRESS STEPPER ── */
+  .stepper {
+    display: flex; align-items: center; gap: 0; margin-bottom: 2.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.5rem; overflow-x: auto;
+  }
+  .step-item { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; transition: all 0.3s;
+  }
+  .step-dot.done   { background: var(--green); color: #fff; }
+  .step-dot.active { background: var(--ink); color: #fff; }
+  .step-dot.pending{ background: var(--surface-soft); color: var(--ink-faint); border: 1.5px solid var(--border-strong); }
+  .step-text { font-size: 13px; font-weight: 500; }
+  .step-item.done   .step-text { color: var(--green); }
+  .step-item.active .step-text { color: var(--ink); }
+  .step-item.pending .step-text { color: var(--ink-faint); }
+  .step-arrow { margin: 0 0.75rem; color: var(--border-strong); font-size: 14px; flex-shrink: 0; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem; margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink); margin-bottom: 0.4rem;
+  }
+  .card-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  /* ── PRACTITIONER SUMMARY ── */
+  .summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;
+  }
+  .summary-item {
+    background: var(--surface-soft); border-radius: 8px; padding: 0.75rem 1rem;
+  }
+  .summary-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 3px; }
+  .summary-value { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+  /* ── AGREEMENT VIEWER ── */
+  .agreement-viewer {
+    border: 1.5px solid var(--border-strong); border-radius: var(--radius);
+    overflow: hidden; margin-bottom: 1.5rem;
+  }
+  .agreement-toolbar {
+    background: var(--ink); padding: 0.75rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .agreement-toolbar-title { font-size: 13px; font-weight: 500; color: #fff; }
+  .agreement-toolbar-sub   { font-size: 11px; color: rgba(255,255,255,0.45); }
+  .scroll-indicator {
+    font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.5);
+    display: flex; align-items: center; gap: 5px; transition: color 0.3s;
+  }
+  .scroll-indicator.done { color: var(--gold); }
+  .agreement-body {
+    height: 420px; overflow-y: scroll; padding: 1.75rem 2rem;
+    background: var(--surface); line-height: 1.75;
+    scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+  }
+  .agreement-body::-webkit-scrollbar { width: 6px; }
+  .agreement-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* Agreement content styles */
+  .ag-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 0.4rem; }
+  .ag-sub    { font-size: 13px; color: var(--ink-faint); margin-bottom: 1.5rem; }
+  .ag-detail-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 13px; }
+  .ag-detail-table td { padding: 0.6rem 0.9rem; border: 1px solid var(--border); }
+  .ag-detail-table .ag-label { background: var(--gold-light); color: var(--gold-dark); font-weight: 600; width: 38%; }
+  .ag-detail-table .ag-populated { background: var(--surface-soft); color: var(--ink); font-weight: 500; }
+  .ag-divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
+  .ag-preamble { font-size: 13.5px; color: var(--ink-muted); margin-bottom: 1.25rem; line-height: 1.7; }
+  .ag-clause-title { font-size: 14px; font-weight: 600; color: var(--ink); margin: 1.5rem 0 0.5rem; }
+  .ag-clause-body  { font-size: 13px; color: var(--ink-muted); line-height: 1.7; margin-bottom: 0.5rem; }
+  .ag-sub-clause   { font-size: 13px; color: var(--ink-muted); line-height: 1.7; margin-bottom: 0.4rem; padding-left: 1.25rem; }
+  .ag-highlight    { background: var(--gold-light); border-left: 3px solid var(--gold); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin: 1rem 0; font-size: 13px; color: var(--gold-dark); line-height: 1.65; }
+  .ag-populated-span { color: var(--ink); font-weight: 600; }
+  .ag-end { font-size: 13px; color: var(--ink-faint); text-align: center; margin-top: 1.5rem; font-style: italic; }
+
+  /* ── SCROLL GATE ── */
+  .scroll-gate-notice {
+    background: var(--surface-soft); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;
+    font-size: 13px; color: var(--ink-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .scroll-gate-notice svg { flex-shrink: 0; color: var(--ink-faint); }
+  .scroll-gate-notice.unlocked { background: var(--green-light); border-color: #b8d98a; color: var(--green); }
+  .scroll-gate-notice.unlocked svg { color: var(--green); }
+
+  /* ── SIGN SECTION ── */
+  .sign-section { display: none; }
+  .sign-section.visible { display: block; }
+  .declaration-box {
+    background: var(--gold-light); border: 1.5px solid #e0c870;
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
+  }
+  .declaration-title { font-size: 14px; font-weight: 600; color: var(--gold-dark); margin-bottom: 0.75rem; }
+  .declaration-points { font-size: 13px; color: var(--gold-dark); line-height: 1.7; }
+  .declaration-points li { margin-bottom: 0.35rem; margin-left: 1rem; }
+  .sign-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 5px; }
+  .form-group input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border-strong);
+    border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--ink); background: var(--surface); outline: none; transition: border-color 0.15s;
+  }
+  .form-group input:focus { border-color: var(--gold); }
+  .form-hint { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
+
+  /* ── SIGNATURE PAD ── */
+  .sig-area { margin-bottom: 1rem; }
+  .sig-label { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .sig-tabs { display: flex; gap: 6px; margin-bottom: 0.75rem; }
+  .sig-tab {
+    padding: 6px 16px; border-radius: 100px; border: 1.5px solid var(--border-strong);
+    font-size: 13px; font-weight: 500; color: var(--ink-muted); cursor: pointer;
+    background: var(--surface); transition: all 0.15s;
+  }
+  .sig-tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .sig-canvas-wrap {
+    border: 1.5px solid var(--border-strong); border-radius: 10px;
+    background: var(--surface-soft); position: relative; overflow: hidden;
+  }
+  #sig-canvas { display: block; cursor: crosshair; touch-action: none; }
+  .sig-clear {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 11px; font-weight: 500; color: var(--ink-faint);
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 100px; padding: 3px 10px; cursor: pointer; transition: color 0.15s;
+  }
+  .sig-clear:hover { color: var(--ink); }
+  .sig-typed-wrap { padding: 0.75rem 1rem; }
+  .sig-typed-preview {
+    font-size: 28px; font-weight: 400; color: var(--ink); letter-spacing: 0.02em;
+    min-height: 52px; border-bottom: 1.5px solid var(--border-strong);
+    font-family: Georgia, serif; padding-bottom: 4px;
+  }
+  .sig-typed-input {
+    width: 100%; border: none; outline: none; background: transparent;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink);
+    margin-top: 8px; padding: 4px 0;
+  }
+
+  /* ── TIMESTAMP ── */
+  .timestamp-row {
+    display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem;
+    background: var(--surface-soft); border-radius: 8px; margin-bottom: 1.25rem;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .timestamp-row svg { flex-shrink: 0; color: var(--green); }
+  .timestamp-val { font-weight: 500; color: var(--ink); }
+
+  /* ── SUBMIT ── */
+  .btn-sign {
+    width: 100%; background: var(--ink); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    padding: 15px; border-radius: 100px; border: none; cursor: pointer;
+    transition: opacity 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-sign:hover { opacity: 0.87; }
+  .btn-sign:disabled { opacity: 0.35; cursor: not-allowed; }
+  .sign-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 0.75rem; }
+
+  /* ── SUCCESS ── */
+  #success-screen { display: none; }
+  .success-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 3rem 2rem; text-align: center; margin-top: 2rem;
+  }
+  .success-tick {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--green-light); display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.5rem; color: var(--green);
+  }
+  .success-title { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 0.5rem; }
+  .success-sub   { font-size: 15px; color: var(--ink-muted); margin-bottom: 2rem; line-height: 1.65; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .receipt-box {
+    background: var(--surface-soft); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; max-width: 480px;
+    margin: 0 auto; text-align: left;
+  }
+  .receipt-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .receipt-row:last-child { border-bottom: none; }
+  .receipt-label { color: var(--ink-faint); }
+  .receipt-value { font-weight: 500; color: var(--ink); }
+  .receipt-value.green { color: var(--green); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .sign-name-row { grid-template-columns: 1fr; }
+    .stepper { padding: 0.75rem 1rem; }
+    .step-text { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="iqcommune-empanelment.html" style="text-decoration:none;">
+      <span style="display:flex;align-items:center;gap:14px;">
+        <span style="display:flex;flex-direction:column;gap:3px;">
+          <span style="display:flex;align-items:baseline;gap:0;line-height:1;">
+            <span style="color:var(--gold);font-weight:700;font-size:24px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">iq</span><span style="color:var(--ink);font-weight:300;font-size:24px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">commune</span>
+          </span>
+          <span style="font-size:9.5px;font-weight:500;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase;line-height:1;">Where financial intelligence connects</span>
+        </span>
+        <span style="border-left:1px solid var(--border-strong);padding-left:14px;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-dark);">Practitioner</span>
+          <span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-dark);">Network</span>
+        </span>
+      </span>
+    </a>
+    <div class="nav-step-label">
+      <span>Onboarding</span>
+      <span class="nav-step-badge">Step 2 of 2</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN PAGE ── -->
+<div class="page" id="onboarding-screen">
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step-item done">
+      <div class="step-dot done">✓</div>
+      <span class="step-text">Application submitted</span>
+    </div>
+    <span class="step-arrow">›</span>
+    <div class="step-item done">
+      <div class="step-dot done">✓</div>
+      <span class="step-text">Screening call done</span>
+    </div>
+    <span class="step-arrow">›</span>
+    <div class="step-item active">
+      <div class="step-dot active">3</div>
+      <span class="step-text">Review & sign agreement</span>
+    </div>
+    <span class="step-arrow">›</span>
+    <div class="step-item pending">
+      <div class="step-dot pending">4</div>
+      <span class="step-text">Empanelment confirmed</span>
+    </div>
+  </div>
+
+  <!-- WELCOME CARD -->
+  <div class="card">
+    <div class="card-title">Welcome to the iqcommune practitioner network.</div>
+    <div class="card-sub">Your application has been reviewed and we'd love to have you on board. Please review your details below, read through the empanelment agreement carefully, and provide your digital signature to complete the onboarding.</div>
+
+    <!-- PRACTITIONER DETAILS (auto-populated from URL params) -->
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-label">Name</div>
+        <div class="summary-value" id="disp-name">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Current role</div>
+        <div class="summary-value" id="disp-role">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Organisation</div>
+        <div class="summary-value" id="disp-org">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Module assigned</div>
+        <div class="summary-value" id="disp-module">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">City</div>
+        <div class="summary-value" id="disp-city">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Agreement reference</div>
+        <div class="summary-value" id="disp-ref">—</div>
+      </div>
+    </div>
+
+    <p style="font-size:13px;color:var(--ink-faint);">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      If any detail above is incorrect, please reply to the email you received this link from before proceeding.
+    </p>
+  </div>
+
+  <!-- AGREEMENT VIEWER -->
+  <div class="card">
+    <div class="card-title">Practitioner Empanelment Agreement</div>
+    <div class="card-sub">Please read the full agreement below before signing. You must scroll to the end to proceed.</div>
+
+    <div class="agreement-viewer">
+      <div class="agreement-toolbar">
+        <div>
+          <div class="agreement-toolbar-title">iqcommune — Practitioner Empanelment Agreement</div>
+          <div class="agreement-toolbar-sub">IQC-EMP-<span id="ref-in-toolbar">—</span> &nbsp;·&nbsp; <span id="date-in-toolbar">—</span></div>
+        </div>
+        <div class="scroll-indicator" id="scroll-indicator">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          Scroll to read
+        </div>
+      </div>
+
+      <div class="agreement-body" id="agreement-body" onscroll="checkScroll()">
+
+        <div class="ag-title">PRACTITIONER EMPANELMENT AGREEMENT</div>
+        <div class="ag-sub">Non-Exclusive · Confidential · India</div>
+
+        <table class="ag-detail-table">
+          <tr><td class="ag-label">Agreement Date</td><td class="ag-populated" id="ag-date">—</td></tr>
+          <tr><td class="ag-label">Platform</td><td class="ag-populated">InvestQ Commune, operating as <strong>iqcommune</strong> ("the Platform")</td></tr>
+          <tr><td class="ag-label">Practitioner</td><td class="ag-populated" id="ag-practitioner">—</td></tr>
+          <tr><td class="ag-label">Module(s)</td><td class="ag-populated" id="ag-modules">—</td></tr>
+        </table>
+
+        <div class="ag-divider"></div>
+
+        <p class="ag-preamble">This Agreement is entered into between the Platform and the Practitioner (individually a "Party", collectively the "Parties"). Together they agree to the following terms governing the Practitioner's empanelment and participation in iqcommune sessions.</p>
+
+        <div class="ag-clause-title">1. NATURE OF ENGAGEMENT</div>
+        <p class="ag-clause-body">The Practitioner is empanelled as an independent contributor — not an employee, agent, or partner of the Platform. No employment relationship, joint venture, or partnership is created by this Agreement.</p>
+        <p class="ag-clause-body">The engagement is non-exclusive. The Practitioner is free to conduct independent training, consulting, or advisory work outside of this Agreement.</p>
+
+        <div class="ag-clause-title">2. SCOPE OF ENGAGEMENT</div>
+        <p class="ag-clause-body">The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.</p>
+        <p class="ag-sub-clause">(a) Sessions are typically 3 hours in duration, in-person, with a maximum of 25 participants — or up to 6 hours for a bundled two-module session.</p>
+        <p class="ag-sub-clause">(b) The Platform will notify the Practitioner of session requests and confirm availability before any commitment is made. The Practitioner is never obligated to accept a session.</p>
+        <p class="ag-sub-clause">(c) Sessions are typically confirmed 1–2 weeks in advance.</p>
+
+        <div class="ag-clause-title">3. REVENUE SHARING & PER-SESSION CONFIRMATION</div>
+        <p class="ag-clause-body">The Practitioner will receive a payout for each session they confirm and deliver, as detailed in a Per-Session Confirmation issued by the Platform before every session.</p>
+        <p class="ag-sub-clause">(a) Before each session is confirmed, the Platform will issue a Per-Session Confirmation setting out: session date and timing, module, number of participants, audience type, confirmed gross payout amount (pre-tax), and expected payment date. TDS, GST, and net calculations are handled separately with the finance team and are not part of this confirmation. The session is not confirmed until the Practitioner provides digital consent.</p>
+        <p class="ag-sub-clause">(b) The Practitioner's payout per session is determined by the Platform based on the topic, number of participants, and type of audience. The Platform does not disclose total session fees or its own margin. Where a session proceeds with attendance at or above the minimum group size committed by the client, the Practitioner's confirmed payout is unaffected by any shortfall between committed and actual attendance.</p>
+        <p class="ag-sub-clause">(c) Payment will be made within 7 working days of the session date, subject to successful completion.</p>
+        <p class="ag-sub-clause">(d) There are no upfront fees, listing fees, or registration charges payable by the Practitioner to the Platform.</p>
+
+        <div class="ag-clause-title">4. IDENTITY, PRIVACY & DISCLOSURE</div>
+        <div class="ag-highlight">Disclosure operates at two tiers. <strong>Public anonymity (absolute):</strong> The Practitioner's full name, employer, and personal contact details are never published publicly. <strong>Operational disclosure (upon session confirmation, with consent):</strong> Once a session is confirmed, the session organiser receives the Practitioner's first name, current employer, domain, and years of experience. All coordination goes through iqcommune — not the Practitioner's personal contact.</div>
+        <p class="ag-sub-clause">(f) The Practitioner is solely responsible for determining whether their employer's policies permit this engagement. The Platform does not require employer disclosure.</p>
+
+        <div class="ag-clause-title">4A. PAYMENT & BILLING PREFERENCES</div>
+        <p class="ag-clause-body">Payment, invoicing, and tax details are collected and administered separately by the Platform's finance team after empanelment — not as part of this agreement or the onboarding process. The Practitioner remains solely responsible for raising invoices and for all tax obligations arising from this income.</p>
+
+        <div class="ag-clause-title">5. CONDUCT DURING SESSIONS</div>
+        <p class="ag-clause-body">The session environment must remain strictly educational and product-neutral. During sessions the Practitioner will not actively promote or cross-sell any financial product, fund, scheme, or instrument. The Practitioner will not collect attendee contact details in bulk. The Practitioner may share their own contact details or business card with attendees at their own discretion.</p>
+        <p class="ag-clause-body">These restrictions apply only within the session. Breach of the in-session restrictions is grounds for immediate termination.</p>
+
+        <div class="ag-clause-title">6. POST-SESSION CONDUCT</div>
+        <p class="ag-clause-body">iqcommune cannot and does not seek to control interactions between the Practitioner and session participants after a session concludes. Any professional or commercial arrangement that arises after a session is entirely between those two parties. iqcommune has no role, no liability, and places no restriction on such interactions. The Practitioner may not represent themselves as acting on behalf of iqcommune in any post-session commercial engagement.</p>
+
+        <div class="ag-clause-title">7. CONFIDENTIALITY</div>
+        <p class="ag-clause-body">Each Party agrees to keep confidential any non-public information disclosed by the other Party, including participant details, session pricing, and internal platform operations. This obligation survives termination for two (2) years.</p>
+
+        <div class="ag-clause-title">8. CONFLICT OF INTEREST</div>
+        <p class="ag-clause-body">The Practitioner agrees to disclose to the Platform any circumstance that may constitute a conflict of interest prior to accepting a session. The Platform reserves the right to reassign the session in such cases.</p>
+
+        <div class="ag-clause-title">9. INTELLECTUAL PROPERTY</div>
+        <p class="ag-clause-body">Teaching material and frameworks the Practitioner uses remain their own intellectual property. The Platform makes no claim over it. The iqcommune brand and name may not be used by the Practitioner in any public communication without prior written approval.</p>
+
+        <div class="ag-clause-title">10. TERM & TERMINATION</div>
+        <p class="ag-clause-body">This Agreement begins on the date signed below and continues until terminated by either Party with 14 days' written notice. The Platform may terminate immediately for breach of Clause 5 (Conduct During Sessions) or Clause 7 (Confidentiality). Revenue share for sessions already conducted remains payable upon termination.</p>
+
+        <div class="ag-clause-title">11. LIMITATION OF LIABILITY</div>
+        <p class="ag-clause-body">The Platform is not liable for loss of income from session cancellation or low demand. Session frequency is demand-driven and not guaranteed. The Practitioner is solely responsible for the accuracy of content shared during sessions.</p>
+
+        <div class="ag-clause-title">12. GOVERNING LAW & DISPUTES</div>
+        <p class="ag-clause-body">This Agreement is governed by the laws of India. Disputes will first be resolved through mutual discussion. If unresolved within 30 days, the matter will be referred to arbitration under the Arbitration and Conciliation Act, 1996.</p>
+
+        <div class="ag-clause-title">13. ENTIRE AGREEMENT</div>
+        <p class="ag-clause-body">This Agreement, together with any written Per-Session Confirmation, constitutes the entire agreement between the Parties. Amendments require written consent from both Parties.</p>
+
+        <div class="ag-divider"></div>
+        <p class="ag-end">— End of Agreement — &nbsp;·&nbsp; iqcommune (InvestQ Commune) &nbsp;·&nbsp; hello@iqcommune.com</p>
+      </div>
+    </div>
+
+    <!-- SCROLL GATE NOTICE -->
+    <div class="scroll-gate-notice" id="scroll-gate">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Please scroll through and read the full agreement above before you can proceed to sign.
+    </div>
+
+    <!-- SIGN SECTION — revealed after full scroll -->
+    <div class="sign-section" id="sign-section">
+
+      <div class="declaration-box">
+        <div class="declaration-title">By signing below, you confirm that:</div>
+        <ul class="declaration-points">
+          <li>You have read and understood the full Practitioner Empanelment Agreement above.</li>
+          <li>You agree to the terms as stated, including Clause 5 (in-session conduct) and Clause 4 (disclosure tiers).</li>
+          <li>You confirm that your details shown above are accurate.</li>
+          <li>You understand this agreement is legally binding and digitally timestamped.</li>
+          <li>This digital signature has the same legal standing as a physical signature under the Information Technology Act, 2000.</li>
+        </ul>
+      </div>
+
+      <div class="sign-name-row">
+        <div class="form-group">
+          <label for="sign-fullname">Full name (as it should appear on the agreement)</label>
+          <input type="text" id="sign-fullname" placeholder="Your full legal name"/>
+        </div>
+        <div class="form-group">
+          <label for="sign-designation">Designation</label>
+          <input type="text" id="sign-designation" placeholder="e.g. Equity Analyst"/>
+          <div class="form-hint">As per your current employment.</div>
+        </div>
+      </div>
+
+      <!-- Signature pad -->
+      <div class="sig-area">
+        <div class="sig-label">Your signature</div>
+        <div class="sig-tabs">
+          <div class="sig-tab active" onclick="switchSigMode('draw',this)">Draw signature</div>
+          <div class="sig-tab"        onclick="switchSigMode('type',this)">Type signature</div>
+        </div>
+
+        <div id="sig-draw-wrap" class="sig-canvas-wrap">
+          <canvas id="sig-canvas" width="780" height="120"></canvas>
+          <button class="sig-clear" onclick="clearCanvas()">Clear</button>
+        </div>
+
+        <div id="sig-type-wrap" class="sig-canvas-wrap" style="display:none;">
+          <div class="sig-typed-wrap">
+            <div class="sig-typed-preview" id="sig-typed-preview"></div>
+            <input class="sig-typed-input" id="sig-typed-input" placeholder="Type your name to generate signature" oninput="updateTypedSig()"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto timestamp -->
+      <div class="timestamp-row">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Digital timestamp: &nbsp;<span class="timestamp-val" id="live-timestamp">—</span></span>
+        <span style="margin-left:auto;font-size:11px;color:var(--ink-faint);">Auto-captured at submission</span>
+      </div>
+
+      <button class="btn-sign" id="btn-sign" onclick="submitAgreement()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        I agree — sign & complete onboarding
+      </button>
+      <p class="sign-fine">This action is irreversible. A copy of the signed agreement will be sent to your registered email.</p>
+    </div>
+  </div>
+
+</div><!-- end onboarding-screen -->
+
+<!-- ── SUCCESS SCREEN ── -->
+<div class="page" id="success-screen">
+  <div class="success-card">
+    <div class="success-tick">
+      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="success-title">Agreement signed. Welcome to iqcommune.</div>
+    <div class="success-sub">Your empanelment is confirmed. We'll be in touch with your first session details within 2–3 working days. Keep an eye on <span id="success-email" style="font-weight:500;color:var(--ink);">your inbox</span>.</div>
+
+    <div class="receipt-box">
+      <div class="receipt-row">
+        <span class="receipt-label">Signed by</span>
+        <span class="receipt-value" id="receipt-name">—</span>
+      </div>
+      <div class="receipt-row">
+        <span class="receipt-label">Agreement ref.</span>
+        <span class="receipt-value" id="receipt-ref">—</span>
+      </div>
+      <div class="receipt-row">
+        <span class="receipt-label">Module assigned</span>
+        <span class="receipt-value" id="receipt-module">—</span>
+      </div>
+      <div class="receipt-row">
+        <span class="receipt-label">Timestamp</span>
+        <span class="receipt-value green" id="receipt-ts">—</span>
+      </div>
+      <div class="receipt-row">
+        <span class="receipt-label">Status</span>
+        <span class="receipt-value green">✓ Digitally signed</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── URL PARAMS — auto-populate from coordinator-sent link ─────────────────
+// Example link: iqcommune-onboarding.html?name=Vikram+Kulkarni&role=Equity+Analyst
+//   &org=Kotak+Securities&module=Stock+Market+Basics&city=Mumbai&ref=0042
+//
+// If params not present, falls back to placeholders so page still works standalone
+
+const params = new URLSearchParams(window.location.search);
+
+const pName   = params.get('name')   || 'Practitioner Name';
+const pRole   = params.get('role')   || 'Current Role';
+const pOrg    = params.get('org')    || 'Organisation';
+const pModule = params.get('module') || 'Module TBC';
+const pCity   = params.get('city')   || 'City';
+const pRef    = params.get('ref')    || '0001';
+const pEmail  = params.get('email')  || 'your registered email';
+
+const refCode  = 'IQC-EMP-' + pRef;
+const dateStr  = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+
+// Populate display fields
+document.getElementById('disp-name').textContent    = pName;
+document.getElementById('disp-role').textContent    = pRole;
+document.getElementById('disp-org').textContent     = pOrg;
+document.getElementById('disp-module').textContent  = pModule;
+document.getElementById('disp-city').textContent    = pCity;
+document.getElementById('disp-ref').textContent     = refCode;
+
+// Populate agreement inline
+document.getElementById('ag-date').textContent         = dateStr;
+document.getElementById('ag-practitioner').textContent = `${pName} · ${pCity} · ${pEmail}`;
+document.getElementById('ag-modules').textContent      = pModule;
+document.getElementById('ref-in-toolbar').textContent  = pRef;
+document.getElementById('date-in-toolbar').textContent = dateStr;
+document.getElementById('success-email').textContent   = pEmail;
+
+// Pre-fill sign name
+document.getElementById('sign-fullname').value = pName;
+document.getElementById('sign-designation').value = pRole;
+
+// ── LIVE TIMESTAMP ────────────────────────────────────────────────────────
+function updateTimestamp() {
+  const now = new Date();
+  document.getElementById('live-timestamp').textContent =
+    now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) + '  ' +
+    now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+updateTimestamp();
+setInterval(updateTimestamp, 1000);
+
+// ── SCROLL GATE ───────────────────────────────────────────────────────────
+let hasScrolled = false;
+function checkScroll() {
+  const el = document.getElementById('agreement-body');
+  const atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 40);
+  const ind = document.getElementById('scroll-indicator');
+  if (atBottom && !hasScrolled) {
+    hasScrolled = true;
+    ind.textContent = '✓ Agreement read';
+    ind.classList.add('done');
+    document.getElementById('scroll-gate').classList.add('unlocked');
+    document.getElementById('scroll-gate').innerHTML = `
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      You've read the full agreement. Please complete your signature below.`;
+    document.getElementById('sign-section').classList.add('visible');
+    document.getElementById('sign-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ── SIGNATURE CANVAS ──────────────────────────────────────────────────────
+const canvas = document.getElementById('sig-canvas');
+const ctx    = canvas.getContext('2d');
+let drawing  = false;
+let hasSig   = false;
+
+// Scale canvas for display
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width  = wrap.clientWidth  * ratio;
+  canvas.height = 120 * ratio;
+  canvas.style.width  = wrap.clientWidth + 'px';
+  canvas.style.height = '120px';
+  ctx.scale(ratio, ratio);
+  ctx.strokeStyle = '#0f1117';
+  ctx.lineWidth   = 2;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  if (e.touches) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+canvas.addEventListener('mousedown',  e => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); });
+canvas.addEventListener('mousemove',  e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; });
+canvas.addEventListener('mouseup',    () => { drawing = false; });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); });
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; });
+canvas.addEventListener('touchend',   () => { drawing = false; });
+
+function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); hasSig = false; }
+
+// ── TYPED SIGNATURE ───────────────────────────────────────────────────────
+let sigMode = 'draw';
+function switchSigMode(mode, btn) {
+  sigMode = mode;
+  document.querySelectorAll('.sig-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sig-draw-wrap').style.display = mode === 'draw' ? 'block' : 'none';
+  document.getElementById('sig-type-wrap').style.display = mode === 'type' ? 'block' : 'none';
+}
+function updateTypedSig() {
+  const val = document.getElementById('sig-typed-input').value;
+  document.getElementById('sig-typed-preview').textContent = val;
+}
+
+// ── SUBMIT ────────────────────────────────────────────────────────────────
+function submitAgreement() {
+  const fullname = document.getElementById('sign-fullname').value.trim();
+  if (!fullname) { alert('Please enter your full name before signing.'); return; }
+
+  if (sigMode === 'draw' && !hasSig) {
+    alert('Please draw your signature in the box above, or switch to typed signature.'); return;
+  }
+  if (sigMode === 'type' && !document.getElementById('sig-typed-input').value.trim()) {
+    alert('Please type your name to generate a signature.'); return;
+  }
+
+  const ts = new Date();
+  const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) + '  ' +
+                ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  // ── SEND THE SUBMISSION BACK ──────────────────────────────────────────
+  // In production this is a real API call: POST the signature, method,
+  // and timestamp to the backend, which then updates the admin console
+  // (and the console picks it up via webhook/websocket/polling a real
+  // endpoint). There is no backend yet, so this writes to localStorage
+  // instead — the admin console reads the same key and treats a match
+  // there exactly like it would treat a real webhook firing. This only
+  // works because both pages are opened in the same browser; swap this
+  // block for a real fetch() POST once a backend exists, and nothing
+  // else about this page needs to change.
+  try {
+    const key = 'iqcommune_agreement_submissions';
+    const existing = JSON.parse(localStorage.getItem(key) || '{}');
+    existing[pRef] = {
+      signed: true,
+      method: sigMode === 'draw' ? 'Drawn' : 'Typed',
+      signedAt: ts.toISOString(),
+      signerName: fullname,
+    };
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch (e) { /* localStorage unavailable — submission still succeeds visually below */ }
+
+  // Populate success screen
+  document.getElementById('receipt-name').textContent   = fullname;
+  document.getElementById('receipt-ref').textContent    = refCode;
+  document.getElementById('receipt-module').textContent = pModule;
+  document.getElementById('receipt-ts').textContent     = tsStr;
+
+  // Switch screens
+  document.getElementById('onboarding-screen').style.display = 'none';
+  document.getElementById('success-screen').style.display    = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

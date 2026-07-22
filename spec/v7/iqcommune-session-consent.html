@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Session Consent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f1117; --ink-muted: #4a4d5c; --ink-faint: #9496a1;
+    --surface: #ffffff; --surface-soft: #f8f7f4;
+    --gold: #c9982a; --gold-light: #f5e9c8; --gold-dark: #8a6510;
+    --green: #2a6b2a; --green-light: #eef7ee;
+    --border: rgba(15,17,23,0.10); --border-strong: rgba(15,17,23,0.20);
+    --radius: 12px;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif; background: var(--surface-soft);
+    color: var(--ink); font-size: 16px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  nav {
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .nav-logo-mark { display: flex; align-items: baseline; gap: 0; line-height: 1; }
+  .nav-logo-mark .iq { color: var(--gold); font-weight: 700; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-logo-mark .commune { color: var(--ink); font-weight: 300; font-size: 22px; letter-spacing: -0.04em; }
+  .nav-badge {
+    background: var(--gold-light); color: var(--gold-dark); border: 1px solid #e0c870;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 100px;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 2rem 2.25rem; margin-bottom: 1.5rem;
+  }
+  .card-title { font-size: 22px; font-weight: 600; margin-bottom: 0.35rem; }
+  .card-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.5rem; }
+  .sec-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold-dark); margin: 1.5rem 0 0.75rem; }
+  .sec-title:first-of-type { margin-top: 0; }
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.5rem; }
+  .kv-row .kv-l { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 2px; }
+  .kv-row .kv-v { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+  .payout-highlight {
+    background: var(--green-light); border-radius: 8px; padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between; margin: 1rem 0;
+  }
+  .payout-label { font-size: 11px; color: var(--green); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .payout-sub { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }
+  .payout-amount { font-size: 24px; font-weight: 600; color: var(--green); }
+  .note { font-size: 12.5px; color: var(--ink-muted); font-style: italic; margin-top: 0.5rem; }
+  .consent-box { background: var(--surface-soft); border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 0.5rem; }
+  .consent-box-title { font-size: 15px; font-weight: 600; margin-bottom: 0.75rem; }
+  .consent-item { display: flex; gap: 10px; font-size: 13.5px; color: var(--ink-muted); margin-bottom: 8px; }
+  .consent-item svg { flex-shrink: 0; margin-top: 3px; color: var(--gold-dark); }
+  .check-row { display: flex; align-items: flex-start; gap: 10px; margin: 1.25rem 0; cursor: pointer; }
+  .check-row input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--gold-dark); cursor: pointer; }
+  .check-row span { font-size: 13.5px; color: var(--ink-muted); }
+  .btn-consent {
+    width: 100%; background: var(--ink); color: #fff; border: none; border-radius: 10px;
+    padding: 0.9rem; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-consent:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-consent:not(:disabled):hover { opacity: 0.9; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--green-light); color: var(--green); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+  .success-ts { font-size: 12.5px; color: var(--ink-faint); font-family: monospace; margin-top: 0.5rem; }
+  .footer-note { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 2rem; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo-mark"><span class="iq">iq</span><span class="commune">commune</span></div>
+    <span class="nav-badge">Session Consent</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="card" id="details-card">
+    <div class="card-title">Confirm your session details</div>
+    <div class="card-sub">Please review everything below carefully. Your consent confirms acceptance of this session and the stated payout.</div>
+
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-l">Confirmation Ref. No.</div><div class="kv-v" id="v-ref">—</div></div>
+      <div class="kv-row"><div class="kv-l">Empanelment Agreement Ref.</div><div class="kv-v" id="v-agreementRef">—</div></div>
+      <div class="kv-row"><div class="kv-l">Issued On</div><div class="kv-v" id="v-issuedOn">—</div></div>
+      <div class="kv-row"><div class="kv-l">First Name</div><div class="kv-v" id="v-firstName">—</div></div>
+    </div>
+
+    <div class="sec-title">Session details</div>
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-l">Module confirmed for</div><div class="kv-v" id="v-module">—</div></div>
+      <div class="kv-row"><div class="kv-l">Date</div><div class="kv-v" id="v-date">—</div></div>
+      <div class="kv-row"><div class="kv-l">Start time</div><div class="kv-v" id="v-startTime">—</div></div>
+      <div class="kv-row"><div class="kv-l">Duration</div><div class="kv-v" id="v-duration">—</div></div>
+      <div class="kv-row"><div class="kv-l">Venue</div><div class="kv-v" id="v-venue">—</div></div>
+      <div class="kv-row"><div class="kv-l">City, State</div><div class="kv-v" id="v-cityState">—</div></div>
+      <div class="kv-row"><div class="kv-l">Audience type</div><div class="kv-v" id="v-audience">—</div></div>
+      <div class="kv-row"><div class="kv-l">Participants</div><div class="kv-v" id="v-participants">—</div></div>
+      <div class="kv-row"><div class="kv-l">SPOC name</div><div class="kv-v" id="v-spoc">—</div></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sec-title" style="margin-top:0">Payout confirmation</div>
+    <div class="payout-highlight">
+      <div>
+        <div class="payout-label">Gross payout amount</div>
+        <div class="payout-sub">This amount is pre-tax. TDS, GST, and net calculations are handled separately by iqcommune's finance team — not shown here.</div>
+      </div>
+      <div class="payout-amount" id="v-gross">₹0</div>
+    </div>
+    <div class="kv-grid" style="margin-top:1rem;">
+      <div class="kv-row"><div class="kv-l">Payment TAT</div><div class="kv-v">+7 working days from invoice receipt</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="consent-card">
+    <div class="consent-box">
+      <div class="consent-box-title">Your consent is required to confirm this session</div>
+      <div class="consent-item"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>I have reviewed all session details and the confirmed payout amount above and confirm they are correct.</span></div>
+      <div class="consent-item"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>I agree to deliver the session as described and accept the payout amount stated.</span></div>
+      <div class="consent-item"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>I understand this confirmation is specific to this session only and does not alter my empanelment agreement.</span></div>
+    </div>
+    <label class="check-row">
+      <input type="checkbox" id="consent-check" onchange="document.getElementById('btn-consent').disabled = !this.checked"/>
+      <span>I confirm the above and provide my digital consent to this session.</span>
+    </label>
+    <button class="btn-consent" id="btn-consent" disabled onclick="giveConsent()">Provide consent</button>
+  </div>
+
+  <div class="card" id="success-card" style="display:none; text-align:center;">
+    <div class="success-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="card-title" style="text-align:center">Consent recorded</div>
+    <div class="card-sub" style="text-align:center">Thank you — your session is now fully confirmed. iqcommune has been notified.</div>
+    <div class="success-ts" id="success-ts"></div>
+  </div>
+
+  <div class="footer-note">Confidential · Questions? Reply to the email this link was sent from, or write to hello@iqcommune.com</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+function set(id, key, fallback) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = params.get(key) || (fallback !== undefined ? fallback : '—');
+}
+set('v-ref', 'ref');
+set('v-agreementRef', 'agreementRef');
+set('v-issuedOn', 'issuedOn');
+set('v-firstName', 'firstName');
+set('v-module', 'module');
+set('v-date', 'date');
+set('v-startTime', 'startTime');
+set('v-duration', 'duration');
+set('v-venue', 'venue');
+document.getElementById('v-cityState').textContent = (params.get('city')||'—') + ', ' + (params.get('state')||'—');
+set('v-audience', 'audience');
+set('v-participants', 'participants');
+set('v-spoc', 'spoc');
+document.getElementById('v-gross').textContent = '\u20B9' + Number(params.get('gross')||0).toLocaleString('en-IN');
+document.title = 'iqcommune — Session Consent (' + (params.get('ref')||'') + ')';
+
+// NOTE: This is a static, client-only page — there is no backend here to write
+// consent status back into the admin console automatically. In production,
+// giveConsent() below would POST to a real consent-capture API, and the admin
+// console would pick up the update from there (webhook/websocket/polling a
+// real endpoint). Until that backend exists, this writes to localStorage
+// instead — the admin console reads the same key and treats a match there
+// exactly like it would treat a real webhook firing. This only works because
+// both pages are opened in the same browser; swap this block for a real
+// fetch() POST once a backend exists, and nothing else on this page changes.
+function giveConsent() {
+  const ts = new Date();
+  const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) + '  ' +
+                ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  try {
+    const key = 'iqcommune_consent_submissions';
+    const existing = JSON.parse(localStorage.getItem(key) || '{}');
+    existing[params.get('ref') || ''] = {
+      consented: true,
+      consentedAt: ts.toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch (e) { /* localStorage unavailable — submission still succeeds visually below */ }
+
+  document.getElementById('details-card').style.display = 'none';
+  document.getElementById('consent-card').style.display = 'none';
+  document.getElementById('success-card').style.display = 'block';
+  document.getElementById('success-ts').textContent = 'Digital consent timestamp: ' + tsStr;
+}
+</script>
+</body>
+</html>

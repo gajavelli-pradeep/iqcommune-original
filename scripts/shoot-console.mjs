@@ -19,14 +19,8 @@ const LABEL = process.argv[3] ?? TAB;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, "..", "_parity");
-const V7 = path.join(
-  here,
-  "..",
-  "..",
-  "client_requirements",
-  "thefinalfinalfiles (V7)",
-  "iqcommune-admin-console-automated.html",
-);
+// The tracked spec (spec/v7), so this runs in a fresh clone.
+const V7 = path.join(here, "..", "spec", "v7", "iqcommune-admin-console-automated.html");
 
 const VIEWPORT = { width: 1440, height: 1200 };
 

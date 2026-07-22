@@ -13,12 +13,21 @@ import { resolve } from "node:path";
  * stricter fails on formatting differences that carry no meaning.
  */
 
-const SPEC_DIR = resolve(
-  process.cwd(),
-  "..",
-  "client_requirements",
-  "thefinalfinalfiles (V7)",
-);
+/**
+ * The tracked V7 spec, inside the repo.
+ *
+ * This used to resolve to `../client_requirements/thefinalfinalfiles (V7)/` —
+ * a folder SIBLING to the checkout and tracked by nothing. It exists on the
+ * machine the specs were delivered to and nowhere else, so all eight parity
+ * suites passed locally and failed at import in CI, every run, from the day
+ * they were written. A gate whose source of truth is not versioned is not a
+ * gate; it is a gate-shaped thing that only one laptop can run.
+ *
+ * `spec/v7/` is now that source of truth, and `spec-freshness.test.ts` fails if
+ * the delivery folder is present and has drifted from it — so a re-delivery
+ * cannot silently leave the tracked copy stale.
+ */
+const SPEC_DIR = resolve(process.cwd(), "spec", "v7");
 
 /** Attributes that carry user-visible copy rather than markup plumbing. */
 const TEXT_ATTRIBUTES = ["placeholder", "aria-label", "title", "alt", "value"];

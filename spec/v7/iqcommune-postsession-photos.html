@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Post-Session Photo Submission</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#0f1117;--ink-muted:#4a4d5c;--ink-faint:#9496a1;
+    --surface:#ffffff;--surface-soft:#f8f7f4;
+    --gold:#c9982a;--gold-light:#f5e9c8;--gold-dark:#8a6510;
+    --green:#2a6b2a;--green-light:#eef7ee;
+    --border:rgba(15,17,23,0.10);--border-strong:rgba(15,17,23,0.20);
+    --radius:12px;
+  }
+  html{scroll-behavior:smooth}
+  body{font-family:'DM Sans',sans-serif;background:var(--surface-soft);color:var(--ink);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+
+  /* NAV */
+  nav{background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;position:sticky;top:0;z-index:100}
+  .nav-inner{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:68px}
+  .nav-logo{display:flex;flex-direction:column;gap:3px;text-decoration:none}
+  .nav-badge{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;background:var(--gold-light);color:var(--gold-dark);border:1px solid #e0c870;padding:3px 10px;border-radius:100px}
+
+  /* PAGE */
+  .page{max-width:860px;margin:0 auto;padding:2.5rem 2rem 4rem}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;margin-bottom:1.5rem}
+  .card-title{font-size:18px;font-weight:600;color:var(--ink);margin-bottom:0.4rem;letter-spacing:-0.01em}
+  .card-sub{font-size:14px;color:var(--ink-muted);line-height:1.6;margin-bottom:1.5rem}
+
+  /* STEPPER */
+  .stepper{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.5rem;margin-bottom:2rem;overflow-x:auto;gap:0}
+  .step-item{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .step-dot{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+  .step-dot.done{background:var(--green);color:#fff}
+  .step-dot.active{background:var(--ink);color:#fff}
+  .step-dot.pending{background:var(--surface-soft);color:var(--ink-faint);border:1.5px solid var(--border-strong)}
+  .step-text{font-size:13px;font-weight:500}
+  .step-item.done .step-text{color:var(--green)}
+  .step-item.active .step-text{color:var(--ink)}
+  .step-item.pending .step-text{color:var(--ink-faint)}
+  .step-arrow{margin:0 0.75rem;color:var(--border-strong);font-size:14px;flex-shrink:0}
+
+  /* PRACTITIONER STRIP */
+  .prac-strip{display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1.25rem}
+  .prac-name{font-size:15px;font-weight:600;color:var(--ink)}
+  .prac-meta{font-size:12.5px;color:var(--ink-muted)}
+  .ref-badge{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold-dark);background:var(--gold-light);border:1px solid #e0c870;padding:4px 12px;border-radius:100px;white-space:nowrap}
+
+  /* SESSION BAND */
+  .session-band{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;background:var(--surface-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1.5rem}
+  .sf-label{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px}
+  .sf-value{font-size:13.5px;font-weight:500;color:var(--ink)}
+
+  /* STORAGE NOTICE */
+  .storage-notice{background:var(--gold-light);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:0.85rem 1rem;font-size:13px;color:var(--gold-dark);line-height:1.6;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:9px}
+  .storage-notice svg{flex-shrink:0;margin-top:2px}
+  .storage-notice strong{color:var(--gold-dark)}
+
+  /* SHOT CHECKLIST */
+  .section-label{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:0.75rem}
+  .shot-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:1.5rem}
+  .shot-item{display:flex;align-items:flex-start;gap:10px;background:var(--surface-soft);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer;transition:all 0.15s}
+  .shot-item:hover{border-color:var(--gold);background:var(--gold-light)}
+  .shot-item.checked{background:var(--green-light);border-color:#b8d98a}
+  .shot-item input{accent-color:var(--green);flex-shrink:0;width:15px;height:15px;margin-top:2px}
+  .shot-label{font-size:13px;color:var(--ink-muted);cursor:pointer;line-height:1.45}
+  .shot-item.checked .shot-label{color:var(--green);font-weight:500}
+  .shot-note{font-size:11px;color:var(--ink-faint);margin-top:2px}
+
+  /* UPLOAD AREA */
+  .upload-area{border:1.5px dashed rgba(201,152,42,0.4);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface-soft);margin-bottom:0.75rem}
+  .upload-area:hover{border-color:var(--gold);background:var(--gold-light)}
+  .upload-icon{color:var(--gold-dark);margin-bottom:10px}
+  .upload-title{font-size:14px;font-weight:500;color:var(--ink);margin-bottom:4px}
+  .upload-hint{font-size:12px;color:var(--ink-faint)}
+  .file-count{font-size:13px;color:var(--green);font-weight:500;text-align:center;min-height:20px;margin-bottom:1rem}
+
+  /* CONSENT */
+  .consent-box{display:flex;align-items:flex-start;gap:12px;background:var(--surface-soft);border:1.5px solid var(--border-strong);border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem}
+  .consent-box input{accent-color:var(--gold);flex-shrink:0;width:16px;height:16px;margin-top:3px}
+  .consent-text{font-size:13px;color:var(--ink-muted);line-height:1.6}
+
+  /* SUBMIT BUTTON */
+  .btn-submit{width:100%;background:var(--ink);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:15px;border-radius:100px;border:none;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-submit:hover{opacity:0.87}
+  .btn-fine{font-size:12px;color:var(--ink-faint);text-align:center;margin-top:0.75rem;line-height:1.5}
+
+  /* SUCCESS */
+  #success-screen{display:none}
+  .success-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3rem 2rem;text-align:center;margin-top:2rem}
+  .success-tick{width:72px;height:72px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;color:var(--green)}
+  .success-title{font-size:24px;font-weight:600;color:var(--ink);margin-bottom:0.5rem;letter-spacing:-0.01em}
+  .success-sub{font-size:15px;color:var(--ink-muted);margin-bottom:2rem;line-height:1.65;max-width:480px;margin-left:auto;margin-right:auto}
+  .receipt-box{background:var(--surface-soft);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;max-width:480px;margin:0 auto 1.25rem;text-align:left}
+  .receipt-row{display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:13px}
+  .receipt-row:last-child{border-bottom:none}
+  .receipt-label{color:var(--ink-faint)}
+  .receipt-value{font-weight:500;color:var(--ink)}
+  .receipt-value.green{color:var(--green)}
+  .storage-receipt{font-size:12px;color:var(--ink-faint);text-align:center;max-width:480px;margin:0 auto;line-height:1.55}
+
+  @media (max-width:600px){
+    .shot-grid{grid-template-columns:1fr}
+    .session-band{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="iqcommune-empanelment.html">
+      <span style="display:flex;align-items:baseline;gap:0;line-height:1">
+        <span style="color:var(--gold);font-weight:700;font-size:24px;letter-spacing:-0.04em">iq</span><span style="color:var(--ink);font-weight:300;font-size:24px;letter-spacing:-0.04em">commune</span>
+      </span>
+      <span style="font-size:9.5px;font-weight:500;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase">Practitioner Network</span>
+    </a>
+    <span class="nav-badge">Post-Session</span>
+  </div>
+</nav>
+
+<!-- ── FORM SCREEN ── -->
+<div class="page" id="form-screen">
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step-item done">
+      <div class="step-dot done">✓</div>
+      <span class="step-text">Link received ahead of session</span>
+    </div>
+    <span class="step-arrow">›</span>
+    <div class="step-item active">
+      <div class="step-dot active">2</div>
+      <span class="step-text">Capture & submit during/after session</span>
+    </div>
+    <span class="step-arrow">›</span>
+    <div class="step-item pending">
+      <div class="step-dot pending">3</div>
+      <span class="step-text">Reviewed &amp; published</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Your session photo link</div>
+    <div class="card-sub">Bookmark or save this page — come back to it during your session or right after to submit your photos. Eight standard angles, all on your phone. Once submitted, your photos sit in our review queue; we'll process and publish the confirmed ones, and anything not selected is automatically deleted after 30 days.</div>
+
+    <!-- PRACTITIONER STRIP — pre-filled, non-editable -->
+    <div class="prac-strip">
+      <div>
+        <div class="prac-name" id="disp-name">Vikram Kulkarni</div>
+        <div class="prac-meta" id="disp-meta">Equity Analyst · Kotak Securities · Mumbai</div>
+      </div>
+      <div class="ref-badge" id="disp-ref">Ref: IQC-EMP-0042</div>
+    </div>
+
+    <!-- SESSION BAND — pre-filled from params -->
+    <div class="session-band">
+      <div><div class="sf-label">Session date</div><div class="sf-value" id="disp-date">20 Jun 2025</div></div>
+      <div><div class="sf-label">Module</div><div class="sf-value" id="disp-module">Equity Investing Simplified</div></div>
+      <div><div class="sf-label">City</div><div class="sf-value" id="disp-city">Mumbai</div><div style="font-size:11px;color:var(--ink-faint);margin-top:2px" id="disp-state">Maharashtra</div></div>
+      <div><div class="sf-label">Session ID</div><div class="sf-value" id="disp-session" style="font-family:monospace;font-size:12px">IQC-S003</div></div>
+    </div>
+
+    <!-- STORAGE NOTICE -->
+    <div class="storage-notice">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span><strong>Storage policy:</strong> All photos are stored securely for 30 days from the date of submission. Anything not approved for publication within that window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No action needed from you after submission.</span>
+    </div>
+
+    <!-- SHOT CHECKLIST -->
+    <div class="section-label">Shot checklist — tick what you captured</div>
+    <div class="shot-grid">
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Back of room — trainer in focus</div>
+          <div class="shot-note">Full audience visible in background</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">From trainer's position</div>
+          <div class="shot-note">Audience facing the screen</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Front-left corner</div>
+          <div class="shot-note">Wide view of the full room</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Front-right corner</div>
+          <div class="shot-note">Trainer and session materials visible</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Candid — working through numbers</div>
+          <div class="shot-note">Participant engaged with content</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Candid — Q&amp;A or discussion moment</div>
+          <div class="shot-note">Natural interaction</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Candid — notes or worksheet close-up</div>
+          <div class="shot-note">In-session working material</div>
+        </div>
+      </div>
+      <div class="shot-item" onclick="toggleShot(this)">
+        <input type="checkbox">
+        <div>
+          <div class="shot-label">Group photo</div>
+          <div class="shot-note">Trainer and all participants</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div class="upload-area" onclick="document.getElementById('photo-upload').click()">
+      <div class="upload-icon">
+        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="upload-title">Tap to upload photos</div>
+      <div class="upload-hint">JPEG or PNG · Up to 10 photos · Max 25MB per photo</div>
+      <input type="file" id="photo-upload" multiple accept="image/*" style="display:none" onchange="handleFiles(this)">
+    </div>
+    <div class="file-count" id="file-count"></div>
+
+    <!-- CONSENT -->
+    <div class="consent-box">
+      <input type="checkbox" id="consent-check">
+      <div class="consent-text">
+        All session participants were informed that photos would be taken and may appear on iqcommune's website and social media. I confirm participant consent on their behalf, and take responsibility for any tagging or attribution requests related to these photos.
+      </div>
+    </div>
+
+    <button class="btn-submit" onclick="submitPhotos()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submit photos for review
+    </button>
+    <div class="btn-fine">Nothing is published automatically. Every photo is reviewed by iqcommune before appearing anywhere.</div>
+  </div>
+</div>
+
+<!-- ── SUCCESS SCREEN ── -->
+<div class="page" id="success-screen">
+  <div class="success-card">
+    <div class="success-tick">
+      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="success-title">Photos received. Thank you.</div>
+    <div class="success-sub">We'll review and process them within 30 days. Confirmed photos will appear on the iqcommune sessions gallery. If you included an organisation name, we'll confirm with you before any public tagging.</div>
+    <div class="receipt-box">
+      <div class="receipt-row"><span class="receipt-label">Submitted by</span><span class="receipt-value" id="r-name">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Practitioner ref.</span><span class="receipt-value" id="r-ref">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Session</span><span class="receipt-value" id="r-session">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Submitted at</span><span class="receipt-value green" id="r-ts">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Storage expiry</span><span class="receipt-value" id="r-expiry">—</span></div>
+      <div class="receipt-row"><span class="receipt-label">Status</span><span class="receipt-value green">✓ Received — pending review</span></div>
+    </div>
+    <div class="storage-receipt">Photos are stored for 30 days from the submission timestamp above. Unprocessed photos are deleted automatically at expiry — no action needed from you.</div>
+  </div>
+</div>
+
+<script>
+// ── URL PARAMS ──────────────────────────────────────────────────────────────
+// All fields are pre-populated from the coordinator-generated link.
+// Link pattern:
+//   iqcommune-postsession-photos.html?ref=0042&session=IQC-S003
+//   &module=Equity+Investing+Simplified&name=Vikram+Kulkarni
+//   &role=Equity+Analyst&org=Kotak+Securities&city=Mumbai&state=Maharashtra&date=2025-06-20
+//
+// The ref + session combination authenticates the submission — a public visitor
+// without the link cannot submit meaningfully as all fields are pre-filled and
+// the ref ties back to a practitioner record on the backend.
+
+const params  = new URLSearchParams(window.location.search);
+const pRef    = params.get('ref')     || '0042';
+const pName   = params.get('name')    || 'Practitioner Name';
+const pRole   = params.get('role')    || 'Role';
+const pOrg    = params.get('org')     || 'Organisation';
+const pCity   = params.get('city')    || 'City';
+const pState  = params.get('state')   || '';
+const pModule = params.get('module')  || 'Module';
+const pSession= params.get('session') || 'IQC-S001';
+const pDate   = params.get('date')    || '';
+
+// Populate identity strip
+document.getElementById('disp-name').textContent = pName;
+document.getElementById('disp-meta').textContent = `${pRole} · ${pOrg} · ${pCity}`;
+document.getElementById('disp-ref').textContent  = `Ref: IQC-EMP-${pRef}`;
+
+// Populate session band
+const dateDisplay = pDate
+  ? new Date(pDate + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+  : '—';
+document.getElementById('disp-date').textContent   = dateDisplay;
+document.getElementById('disp-module').textContent = pModule;
+document.getElementById('disp-city').textContent   = pCity;
+document.getElementById('disp-state').textContent  = pState;
+document.getElementById('disp-session').textContent= pSession;
+
+// ── SHOT CHECKLIST ─────────────────────────────────────────────────────────
+function toggleShot(item) {
+  const cb = item.querySelector('input');
+  cb.checked = !cb.checked;
+  item.classList.toggle('checked', cb.checked);
+}
+
+// ── FILE UPLOAD ─────────────────────────────────────────────────────────────
+function handleFiles(input) {
+  const n = input.files.length;
+  const fc = document.getElementById('file-count');
+  fc.textContent = n > 0 ? `${n} photo${n > 1 ? 's' : ''} selected` : '';
+}
+
+// NOTE: This is a static, client-only page — there is no backend here to write
+// photo submissions back into the admin console automatically. In production,
+// submitPhotos() below would POST the actual photo files to a real storage/
+// moderation API, and the admin console would pick up the update from there
+// (webhook/websocket/polling a real endpoint). Until that backend exists,
+// this writes a record (not the actual photo files, which stay local to this
+// browser tab) to localStorage — the admin console can read the same key and
+// treat a match there exactly like it would treat a real webhook firing. This
+// only works because both pages are opened in the same browser; swap this
+// block for a real fetch() POST once a backend exists.
+function submitPhotos() {
+  if (!document.getElementById('consent-check').checked) {
+    alert('Please confirm participant consent before submitting.'); return;
+  }
+  const fileInput = document.getElementById('photo-upload');
+  const photoCount = fileInput.files.length;
+  const ts = new Date();
+  const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) +
+    '  ' + ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  const expiry = new Date(ts.getTime() + 30 * 24 * 60 * 60 * 1000)
+    .toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+
+  try {
+    const key = 'iqcommune_photo_submissions';
+    const existing = JSON.parse(localStorage.getItem(key) || '{}');
+    existing[pSession] = {
+      submitted: true,
+      photoCount: photoCount || 0,
+      submittedAt: ts.toISOString(),
+      practitionerRef: pRef,
+    };
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch (e) { /* localStorage unavailable — submission still succeeds visually below */ }
+
+  document.getElementById('r-name').textContent    = pName;
+  document.getElementById('r-ref').textContent     = `IQC-EMP-${pRef}`;
+  document.getElementById('r-session').textContent = `${pSession} · ${pModule} · ${pCity}`;
+  document.getElementById('r-ts').textContent      = tsStr;
+  document.getElementById('r-expiry').textContent  = expiry;
+
+  document.getElementById('form-screen').style.display    = 'none';
+  document.getElementById('success-screen').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

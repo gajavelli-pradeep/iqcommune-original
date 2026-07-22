@@ -18,7 +18,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const V7_DIR = path.join(here, "..", "..", "client_requirements", "thefinalfinalfiles (V7)");
+// The tracked spec, not the delivery folder beside the checkout: that folder
+// is untracked, so a fresh clone could not run this at all.
+const V7_DIR = path.join(here, "..", "spec", "v7");
 
 const FILES = [
   "iqcommune-main-landing-page.html",
