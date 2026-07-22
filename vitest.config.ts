@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+      // `server-only` throws outside a React Server Component context; stub it so
+      // service unit tests can run in jsdom. The guard still holds in the build.
+      "server-only": fileURLToPath(new URL("./tests/server-only-stub.ts", import.meta.url)),
+    },
   },
   test: {
     environment: "jsdom",

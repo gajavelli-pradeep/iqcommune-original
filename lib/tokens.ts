@@ -64,12 +64,27 @@ export function verifyToken(kind: TokenKind, token: string | undefined): TokenRe
     return { ok: false, reason: "bad-signature" };
   }
 
-  let payload: TokenPayload;
+  let parsed: unknown;
   try {
-    payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
     return { ok: false, reason: "malformed" };
   }
+
+  // Validate the shape rather than trusting the parse (audit L3). Not
+  // attacker-reachable — the payload is HMAC-gated and mintToken always sets the
+  // fields — but a non-number `exp` from a future mint bug would slip past
+  // `exp <= now` and never expire. A bad shape is a malformed token.
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    typeof (parsed as Record<string, unknown>).k !== "string" ||
+    typeof (parsed as Record<string, unknown>).id !== "string" ||
+    typeof (parsed as Record<string, unknown>).exp !== "number"
+  ) {
+    return { ok: false, reason: "malformed" };
+  }
+  const payload = parsed as TokenPayload;
 
   if (payload.k !== kind) return { ok: false, reason: "wrong-kind" };
   if (payload.exp <= Math.floor(Date.now() / 1000)) return { ok: false, reason: "expired" };

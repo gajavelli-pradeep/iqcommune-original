@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SessionRequestInput } from "@/lib/schemas/session-request";
 

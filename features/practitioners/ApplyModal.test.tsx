@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApplyModal } from "./ApplyModal";
+import { ApplyModal } from "./ApplyModalBody";
 
 /** The component's contract is with the HTTP route, so that is the seam held still. */
 function mockFetch(status: number, body: unknown) {

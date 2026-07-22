@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 
 import { ConsoleShell } from "@/features/console/ConsoleShell";
-import { PractitionersPanel } from "@/features/console/panels/PractitionersPanel";
+import { loadConsolePanels } from "@/features/console/panels/loadPanels";
 import { requireRole } from "@/features/console/requireRole";
-import { listPractitioners } from "@/services/console";
 
 /** The console is never indexable — it is behind a login and about real people. */
 export const metadata: Metadata = {
@@ -13,13 +12,7 @@ export const metadata: Metadata = {
 
 export default async function UserConsole() {
   const { role, email } = await requireRole("user");
-  const practitioners = await listPractitioners();
+  const panels = await loadConsolePanels(role);
 
-  return (
-    <ConsoleShell
-      role={role}
-      email={email}
-      panels={{ practitioners: <PractitionersPanel rows={practitioners} role={role} /> }}
-    />
-  );
+  return <ConsoleShell role={role} email={email} panels={panels} />;
 }

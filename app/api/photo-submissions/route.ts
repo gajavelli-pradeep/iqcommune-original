@@ -17,7 +17,15 @@ export async function POST(request: Request) {
       return fail("RATE_LIMITED", "Too many uploads. Please try again shortly.", traceId);
     }
 
-    const form = await request.formData();
+    // Guard the multipart parse (audit M1, multipart variant): a non-form body
+    // makes formData() throw, which the generic catch would report as a 500 —
+    // a client error dressed as a server fault. Return 400 instead.
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      return fail("VALIDATION_FAILED", "Expected a multipart form upload.", traceId);
+    }
 
     // Two callers: the public landing-page modal, where a stranger types their
     // own details, and the tokenised page, where the link already names the

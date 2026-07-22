@@ -2,21 +2,20 @@
 
 import { useRef, useState } from "react";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TextField } from "@/components/ui/Field";
+import { Stepper } from "@/components/ui/Stepper";
+import { useApiSubmit } from "@/hooks/useApiSubmit";
+import { useFocusWhen } from "@/hooks/useFocusWhen";
+import type { OnboardingPractitioner } from "@/types/link-pages";
 
 import { AGREEMENT_CLAUSES } from "./agreement";
 import { SignaturePad, type Signature } from "./SignaturePad";
 
 /** P6 — review and sign the empanelment agreement. */
 
-export interface OnboardingPractitioner {
-  name: string;
-  role: string;
-  organisation: string;
-  module: string;
-  city: string;
-  agreementReference: string;
-}
+// Shape lives in types/, out of the client graph (audit H6); re-exported here.
+export type { OnboardingPractitioner };
 
 const STEPS = [
   "Application submitted",
@@ -32,81 +31,38 @@ const CONFIRMATIONS = [
   "You understand this agreement is legally binding and digitally timestamped.",
 ] as const;
 
-function Stepper({ current }: { current: number }) {
-  return (
-    <ol className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
-      {STEPS.map((step, index) => (
-        <li key={step} className="flex items-center gap-2">
-          <span
-            className={`flex items-center gap-1.5 text-sm ${
-              index <= current ? "font-medium text-gold-dark" : "text-ink-faint"
-            }`}
-          >
-            {index < current ? (
-              <span aria-hidden>✓</span>
-            ) : (
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-            )}
-            {step}
-          </span>
-          {index < STEPS.length - 1 ? (
-            <span aria-hidden className="text-ink-faint">
-              ›
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function OnboardingForm({
   practitioner,
   token,
+  agreementDate,
 }: {
   practitioner: OnboardingPractitioner;
   token: string;
+  /**
+   * The on-screen "Date:" line, computed once on the server in IST (audit M7).
+   * Deriving it in the client render body made the server (UTC) and client (IST)
+   * disagree at the day boundary — a hydration mismatch, and a wrong date on a
+   * legally-binding agreement. The authoritative signing time is the server's
+   * `signedAt`; this is display only.
+   */
+  agreementDate: string;
 }) {
   const [readToEnd, setReadToEnd] = useState(false);
   const [fullName, setFullName] = useState(practitioner.name);
   const [designation, setDesignation] = useState(practitioner.role);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
+  // `error` is client-side confirmation validation; `submitError` is the
+  // network/route path, now shared (audit H8).
   const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState<string>();
-
-  /** Posts to the route, which re-verifies the token before writing. */
-  async function send(endpoint: string, payload: Record<string, unknown>) {
-    setBusy(true);
-    setSubmitError(undefined);
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ t: token, ...payload }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
-        return null;
-      }
-      // The receipt timestamp comes back from the server, not from this clock.
-      return body.data as { at: string };
-    } catch {
-      setSubmitError("We could not reach the server. Check your connection and try again.");
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { submit, busy, error: submitError } = useApiSubmit(token);
+  const successRef = useFocusWhen<HTMLHeadingElement>(Boolean(signedAt));
 
   const agreementRef = useRef<HTMLDivElement>(null);
-  const agreementDate = new Date().toLocaleDateString("en-IN", { dateStyle: "long" });
 
   if (signedAt) {
     return (
-      <section className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
+      <section role="status" className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
         <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-green-light text-green">
           <svg
             width="34"
@@ -121,7 +77,11 @@ export function OnboardingForm({
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h1 className="mb-1 text-2xl font-semibold text-ink">
+        <h1
+          ref={successRef}
+          tabIndex={-1}
+          className="mb-1 text-2xl font-semibold text-ink outline-none"
+        >
           Agreement signed. Welcome to iqcommune.
         </h1>
         <p className="mb-5 text-base leading-[1.6] text-ink-muted">
@@ -154,7 +114,7 @@ export function OnboardingForm({
   return (
     <>
       <section className="rounded-lg border border-border bg-surface p-8">
-        <Stepper current={2} />
+        <Stepper steps={STEPS} current={2} />
         <p className="mb-1 text-2xs font-semibold uppercase tracking-caps text-gold-dark">
           Step 2 of 2
         </p>
@@ -291,7 +251,7 @@ export function OnboardingForm({
           if (!fullName.trim()) return setError("Your full name is required.");
           if (!signature) return setError("Please draw or type your signature.");
           setError(undefined);
-          const receipt = await send("/api/agreements", {
+          const receipt = await submit("/api/agreements", {
             fullName,
             designation,
             signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
@@ -334,7 +294,9 @@ export function OnboardingForm({
           hint="As per your current employment."
         />
 
-        <SignaturePad fullName={fullName} onChange={setSignature} />
+        <ErrorBoundary label="signature-pad">
+          <SignaturePad fullName={fullName} onChange={setSignature} />
+        </ErrorBoundary>
 
         <p className="mb-4 text-sm text-ink-faint">
           Digital timestamp: Auto-captured at submission

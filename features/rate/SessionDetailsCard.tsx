@@ -1,13 +1,10 @@
 /** The session being rated. Values come from the database, never from the URL. */
 
-export interface RatedSession {
-  practitioner: string;
-  module: string;
-  sessionDate: string;
-  city: string;
-  reference: string;
-  requestedBy: string;
-}
+import type { RatedSession } from "@/types/link-pages";
+
+// Re-exported so existing call sites keep importing it from here (audit H6:
+// the shape now lives in types/, out of the client graph).
+export type { RatedSession };
 
 export function SessionDetailsCard({ session }: { session: RatedSession }) {
   const rows: ReadonlyArray<[string, string]> = [

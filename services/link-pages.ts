@@ -1,9 +1,13 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ConsentSession } from "@/features/consent/SessionSummary";
-import type { AdminInvite } from "@/features/join-admin/AccountSetupForm";
-import type { OnboardingPractitioner } from "@/features/onboarding/OnboardingForm";
-import type { PhotoSession } from "@/features/photos/PhotoSubmissionForm";
-import type { RatedSession } from "@/features/rate/SessionDetailsCard";
+import type {
+  AdminInvite,
+  ConsentSession,
+  OnboardingPractitioner,
+  PhotoSession,
+  RatedSession,
+} from "@/types/link-pages";
 
 /**
  * Loaders for the five tokenised pages.
@@ -182,6 +186,9 @@ export async function getAdminInvite(inviteId: string): Promise<AdminInvite | nu
     .eq("id", inviteId)
     .is("consumed_at", null)
     .is("deleted_at", null)
+    // Align with getOpenInvite (audit L2): an expired invite must render the
+    // invalid-link state, not a live password-setup form whose submit then fails.
+    .gt("expires_at", new Date().toISOString())
     .maybeSingle();
 
   if (error) throw new Error(`admin_invites read failed: ${error.message}`);

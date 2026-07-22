@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordActivity } from "@/services/console";
 
 /**
  * The writes the five tokenised pages perform.
@@ -25,19 +28,51 @@ export class AlreadyRecordedError extends Error {
   }
 }
 
+/**
+ * Thrown when the target row is soft-deleted or gone (audit H1). A token can
+ * outlive its row — e.g. an admin cancels a session assignment after the email
+ * went out — and the write must refuse rather than record a legally-binding
+ * consent/signature/rating against a dead row. Distinct from AlreadyRecorded so
+ * the route can answer "this link is no longer valid" instead of "already done".
+ */
+export class LinkNoLongerValidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LinkNoLongerValidError";
+  }
+}
+
 /** One rating per assignment — the unique constraint is the guard, not a check. */
 export async function recordRating(
   assignmentId: string,
   rating: number,
   comments: string | undefined,
+  ip: string,
 ): Promise<Receipt> {
   const supabase = createAdminClient();
+
+  // The assignment must still be live (audit H1): the loader checks this at
+  // render, but the route writes straight from the verified token id and never
+  // calls the loader, so a rating could land against a cancelled assignment.
+  const { data: assignment } = await supabase
+    .from("session_practitioners")
+    .select("id")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!assignment) {
+    throw new LinkNoLongerValidError("This session is no longer available.");
+  }
+
   const { data, error } = await supabase
     .from("session_ratings")
     .insert({
       session_practitioner_id: assignmentId,
       rating,
       comments: comments?.trim() || null,
+      // Origin evidence (audit H5): the column exists as the audit trail; the
+      // route already computes this for rate limiting, then used to discard it.
+      submitted_ip: ip,
     })
     .select("submitted_at")
     .single();
@@ -51,12 +86,15 @@ export async function recordRating(
   return { at: data.submitted_at };
 }
 
-export async function recordConsent(assignmentId: string): Promise<Receipt> {
+export async function recordConsent(assignmentId: string, ip: string): Promise<Receipt> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_practitioners")
-    .update({ consent_given_at: new Date().toISOString() })
+    // consent_ip is origin evidence for a binding consent (audit H5).
+    .update({ consent_given_at: new Date().toISOString(), consent_ip: ip })
     .eq("id", assignmentId)
+    // Never write to a cancelled/removed assignment (audit H1).
+    .is("deleted_at", null)
     // Consent is given once. A second submission must not silently overwrite
     // the first, which is the timestamp of record.
     .is("consent_given_at", null)
@@ -64,8 +102,19 @@ export async function recordConsent(assignmentId: string): Promise<Receipt> {
     .maybeSingle();
 
   if (error) throw new Error(`session_practitioners consent update failed: ${error.message}`);
-  if (!data) throw new AlreadyRecordedError("Consent for this session has already been recorded.");
-  return { at: data.consent_given_at };
+  if (data) return { at: data.consent_given_at };
+
+  // 0 rows updated: either consent already given, or the assignment is
+  // soft-deleted/gone. Distinguish so a dead link isn't reported as "already
+  // recorded" (audit L1).
+  const { data: live } = await supabase
+    .from("session_practitioners")
+    .select("consent_given_at")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (live) throw new AlreadyRecordedError("Consent for this session has already been recorded.");
+  throw new LinkNoLongerValidError("This session is no longer available.");
 }
 
 export interface SignedAgreement {
@@ -78,6 +127,7 @@ export interface SignedAgreement {
 export async function signAgreement(
   agreementId: string,
   input: SignedAgreement,
+  ip: string,
 ): Promise<Receipt> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -88,8 +138,12 @@ export async function signAgreement(
       signed_designation: input.designation,
       signature_data: input.signature,
       signature_mode: input.signatureMode,
+      // Origin evidence for a legally-binding e-signature (audit H5).
+      signed_ip: ip,
     })
     .eq("id", agreementId)
+    // Never sign a withdrawn/removed agreement (audit H1).
+    .is("deleted_at", null)
     // An agreement is signed once. Re-signing would replace the record of what
     // was agreed and when.
     .is("signed_at", null)
@@ -97,8 +151,61 @@ export async function signAgreement(
     .maybeSingle();
 
   if (error) throw new Error(`practitioner_agreements sign failed: ${error.message}`);
-  if (!data) throw new AlreadyRecordedError("This agreement has already been signed.");
-  return { at: data.signed_at };
+  if (data) return { at: data.signed_at };
+
+  // 0 rows: already signed, or the agreement is soft-deleted/gone (audit L1).
+  const { data: live } = await supabase
+    .from("practitioner_agreements")
+    .select("signed_at")
+    .eq("id", agreementId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (live) throw new AlreadyRecordedError("This agreement has already been signed.");
+  throw new LinkNoLongerValidError("This onboarding link is no longer valid.");
+}
+
+/**
+ * The automatic transition a signature triggers (audit G3, step 5): signing the
+ * empanelment agreement empanels the practitioner. Runs after `signAgreement`
+ * from the agreements route. Best-effort and idempotent — it only promotes a
+ * practitioner who is not already Empanelled, and a failure here must not undo a
+ * signature that succeeded. Returns the practitioner's contact so the caller can
+ * send the welcome email; null if nothing changed.
+ */
+export async function empanelBySignature(
+  agreementId: string,
+): Promise<{ email: string; firstName: string } | null> {
+  const supabase = createAdminClient();
+
+  const { data: agreement } = await supabase
+    .from("practitioner_agreements")
+    .select("practitioner_id")
+    .eq("id", agreementId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!agreement) return null;
+
+  const { data: practitioner } = await supabase
+    .from("practitioners")
+    .update({ status: "Empanelled" })
+    .eq("id", agreement.practitioner_id)
+    .is("deleted_at", null)
+    .neq("status", "Empanelled")
+    .select("email, full_name")
+    .maybeSingle();
+  if (!practitioner) return null;
+
+  await recordActivity({
+    action: "practitioner.empanelled",
+    entityType: "practitioner",
+    entityRef: agreement.practitioner_id as string,
+    detail: "Automatic — empanelment agreement signed.",
+  });
+
+  return {
+    email: practitioner.email as string,
+    firstName: (practitioner.full_name as string).split(" ")[0],
+  };
 }
 
 /**

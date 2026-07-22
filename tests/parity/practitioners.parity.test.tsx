@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { ApplyModal } from "@/features/practitioners/ApplyModal";
+import { ApplyModal } from "@/features/practitioners/ApplyModalBody";
 import { PractitionerSections } from "@/features/practitioners/PractitionerSections";
 
 import { extractSpecEntries, readSpec, renderedHaystack } from "./extract";

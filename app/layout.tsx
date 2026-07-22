@@ -17,9 +17,54 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-/** Per-route metadata is set by each page; this is only the fallback title. */
+const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+/**
+ * Site-wide metadata defaults (audit H6). Each page still sets its own full
+ * `title` (the established " — iqcommune" convention, so no template here to
+ * avoid double-suffixing); this supplies `metadataBase` for absolute OG/canonical
+ * URLs plus the OpenGraph/Twitter card every page inherits. The default OG image
+ * comes from `app/opengraph-image.tsx`.
+ */
 export const metadata: Metadata = {
-  title: "iqcommune",
+  metadataBase: new URL(siteUrl),
+  title: "iqcommune — financial intelligence connects",
+  description:
+    "iqcommune connects you with working finance professionals for small, in-person sessions.",
+  applicationName: "iqcommune",
+  openGraph: {
+    type: "website",
+    siteName: "iqcommune",
+    url: siteUrl,
+    title: "iqcommune — financial intelligence connects",
+    description:
+      "Real financial insight from active professionals — small, in-person sessions.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "iqcommune — financial intelligence connects",
+    description:
+      "Real financial insight from active professionals — small, in-person sessions.",
+  },
+};
+
+/** Organization + WebSite structured data (audit M10). */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      name: "iqcommune",
+      url: siteUrl,
+      description:
+        "Connects working finance professionals with small, in-person learning groups.",
+    },
+    {
+      "@type": "WebSite",
+      name: "iqcommune",
+      url: siteUrl,
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -27,7 +72,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={dmSans.variable}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </body>
     </html>
   );
 }

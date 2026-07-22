@@ -3,9 +3,12 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    Design tokens — the single source of truth for colour, type, space and motion.
 
-   Every value below is measured from the seven public V7 spec files, not chosen:
-   the `:root` block is byte-identical across all of them, and the scales are
-   derived from actual usage frequency. Raw hex and raw size literals are blocked
+   Every value below is measured from the seven public V7 spec files, not chosen,
+   and the scales are derived from actual usage frequency. (The spec claims its
+   `:root` is byte-identical across those files; it is not — `user-setup.html`
+   adds a red pair and omits `--border-strong`, audit S6 — so this is the
+   reconciled superset, not a literal copy.) Raw hex and raw size literals are
+   blocked
    by eslint (`no-restricted-syntax`, see eslint.config.mjs) — if a value is
    missing here, add a token rather than inlining one.
 
@@ -154,12 +157,14 @@
   --spacing: 4px;
 
   /* ── Radius ──────────────────────────────────────────────────────────────
-     12px across all seven public files. The admin console uses 10px/6px — a
-     denser scale for a denser UI — and those steps get added at P8. */
+     Measured across all eight V7 files: 8px is the default corner (44 uses),
+     with 6px/10px/20px for smaller/larger steps. 12px appears ZERO times — the
+     old --radius-lg:12px had no spec basis yet backed `rounded-lg` at 47 sites
+     (audit H4). The admin console uses a denser 10px/6px scale, added at P8. */
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 12px;
+  --radius-lg: 8px;
   --radius-xl: 20px;   /* raised cards — the hero's practitioner-pool panel */
   --radius-full: 9999px;
 
@@ -194,6 +199,26 @@
   --container-reading: 780px;
   --container-wide: 860px;
   --container-page: 1100px;
+
+  /* ── Z-index ─────────────────────────────────────────────────────────────
+     One scale (audit C1). Before this the whole codebase held three z values
+     picked months apart — a z-100 sticky header and a z-50 modal — so the
+     header painted over its own dialog. Semantic, not numeric, so a new layer
+     slots in without renumbering. Consumers use `z-[var(--z-overlay)]`. */
+  --z-header: 100;    /* sticky SiteHeader */
+  --z-sticky: 200;    /* in-page sticky sub-bars */
+  --z-overlay: 300;   /* modals, drawers — above the header */
+  --z-toast: 400;     /* transient toasts — above everything */
+
+  /* ── Breakpoints ─────────────────────────────────────────────────────────
+     The eight V7 files use exactly three widths: 480 / 600 / 720 (audit H9).
+     Declared here as the named scale; consumers migrate off the ad-hoc
+     `min-[480px]`/`sm:`(640) values in the Wave-4 pass, after which Tailwind's
+     defaults can be retired. Kept additive for now so the 46 existing `sm:`/
+     `md:` utilities keep resolving until that migration lands. */
+  --breakpoint-mobile: 480px;
+  --breakpoint-tablet: 600px;
+  --breakpoint-wide: 720px;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────
@@ -254,14 +279,26 @@ body {
 }
 
 /* Touch targets. Enforced by pointer type, not by breakpoint — a small window
-   on a desktop is still a mouse. */
+   on a desktop is still a mouse.
+
+   Checkbox/radio are deliberately NOT clamped here (audit H10): forcing a 15px
+   control to 44×44 fought their own design, and every call site already wraps
+   them in a ≥44px label that carries the tap area. Buttons and links keep the
+   floor; where a control must stay visually small (the calculator pills), it
+   provides its own hit-area expander that this no longer overrides. */
 @media (any-pointer: coarse) {
   button,
   [role="button"],
-  a[href],
-  input[type="checkbox"],
-  input[type="radio"] {
+  a[href] {
     min-block-size: 44px;
-    min-inline-size: 44px;
+  }
+
+  /* 16px on form controls so iOS Safari does not auto-zoom on focus (audit
+     H11) — it zooms for any control under 16px, and the shared control is 13px.
+     Scoped to coarse pointers so the desktop type scale is untouched. */
+  input,
+  textarea,
+  select {
+    font-size: var(--text-xl);
   }
 }

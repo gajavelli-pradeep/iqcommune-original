@@ -102,7 +102,9 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-scrim p-4 sm:p-6"
+      // Overlay layer of the z-scale — above the sticky header (audit C1). At
+      // z-50 the header painted over the scrim and the top of the dialog.
+      className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center overflow-y-auto overscroll-contain bg-scrim p-4 sm:p-6"
       // Clicking the backdrop closes; clicking inside must not. The check is on
       // the target rather than a stopPropagation inside the panel, so a drag
       // that ends outside the panel does not close it either.

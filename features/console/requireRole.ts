@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import { ROLE_ROUTES, toConsoleRole, type ConsoleRole } from "./roles";
+import { ROLE_ROUTES, can, toConsoleRole, type Capability, type ConsoleRole } from "./roles";
 
 /**
  * The console's authorization boundary.
@@ -34,4 +34,31 @@ export async function requireRole(allowed: ConsoleRole): Promise<{
   if (role !== allowed) redirect(ROLE_ROUTES[role]);
 
   return { role, email: data.user.email ?? "" };
+}
+
+/** The signed-in console session, or a redirect to /login. Role-agnostic. */
+export async function getConsoleSession(): Promise<{ role: ConsoleRole; email: string }> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data.user) redirect("/login");
+  const role = toConsoleRole(data.user.app_metadata?.role);
+  if (!role) redirect("/login");
+
+  return { role, email: data.user.email ?? "" };
+}
+
+/**
+ * The authorization boundary for a mutation (audit C6). A server action must
+ * re-check the capability server-side — the client controls that trigger it are
+ * gated for UX, not security, and can be forged. Throws if the role lacks it.
+ */
+export async function requireCapability(
+  capability: Capability,
+): Promise<{ role: ConsoleRole; email: string }> {
+  const session = await getConsoleSession();
+  if (!can(session.role, capability)) {
+    throw new Error(`forbidden: role ${session.role} lacks capability ${capability}`);
+  }
+  return session;
 }

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { SESSION_SHOTS as SHOTS } from "@/constants/photo-shots";
+
 /**
  * The eight angles, each tickable.
  *
@@ -10,21 +12,9 @@ import { useState } from "react";
  * lives here and is never submitted, which is also why nothing about it is
  * required to send the form.
  *
- * Deliberately NOT shared with P1's `PostSessionModal`: the landing page's list
- * is worded differently and the two are meant to read differently in their own
- * contexts. Merging them would silently rewrite one of the two specs.
+ * The list lives in `constants/photo-shots` because the photo-guide email needs
+ * the same shot ideas ahead of the session (audit G4b).
  */
-
-const SHOTS: ReadonlyArray<{ label: string; note: string }> = [
-  { label: "Back of room — trainer in focus", note: "Full audience visible in background" },
-  { label: "From trainer's position", note: "Audience facing the screen" },
-  { label: "Front-left corner", note: "Wide view of the full room" },
-  { label: "Front-right corner", note: "Trainer and session materials visible" },
-  { label: "Candid — working through numbers", note: "Participant engaged with content" },
-  { label: "Candid — Q&A or discussion moment", note: "Natural interaction" },
-  { label: "Candid — notes or worksheet close-up", note: "In-session working material" },
-  { label: "Group photo", note: "Trainer and all participants" },
-];
 
 export function ShotChecklist() {
   const [captured, setCaptured] = useState<readonly string[]>([]);

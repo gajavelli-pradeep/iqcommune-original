@@ -43,7 +43,7 @@ describe("PhotoSubmissionForm", () => {
 
   it("refuses to submit without photos or without consent", async () => {
     const user = userEvent.setup();
-    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z", expiryDate: "2026-08-20" }, error: null });
     render(<PhotoSubmissionForm session={SESSION} token="test-token" />);
 
     await user.click(screen.getByRole("button", { name: "Submit photos for review" }));
@@ -55,7 +55,7 @@ describe("PhotoSubmissionForm", () => {
 
   it("keeps the shot checklist out of the submission", async () => {
     const user = userEvent.setup();
-    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z", expiryDate: "2026-08-20" }, error: null });
     render(<PhotoSubmissionForm session={SESSION} token="test-token" />);
 
     // Ticking is a memory aid, not data — it must not gate the submit.
@@ -68,7 +68,7 @@ describe("PhotoSubmissionForm", () => {
 
   it("states retention and status on the receipt", async () => {
     const user = userEvent.setup();
-    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z", expiryDate: "2026-08-20" }, error: null });
     render(<PhotoSubmissionForm session={SESSION} token="test-token" />);
 
     await user.upload(screen.getByLabelText("Choose session photos"), photo());

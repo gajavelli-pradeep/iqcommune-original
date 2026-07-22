@@ -31,6 +31,8 @@ export function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const drew = useRef(false);
+  // Resolved once per stroke in start(), not on every pointermove (audit L9).
+  const strokeColor = useRef("currentColor");
 
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -45,6 +47,12 @@ export function SignaturePad({
     const context = canvasRef.current?.getContext("2d");
     if (!context) return;
     drawing.current = true;
+    // Read the ink token once here — canvas takes a colour string, so it is the
+    // one place a hex could slip past the design system, but reading it on every
+    // pointermove (many/sec) is wasted work.
+    strokeColor.current =
+      getComputedStyle(document.documentElement).getPropertyValue("--color-ink").trim() ||
+      "currentColor";
     const { x, y } = positionOf(event);
     context.beginPath();
     context.moveTo(x, y);
@@ -58,11 +66,7 @@ export function SignaturePad({
     const { x, y } = positionOf(event);
     context.lineWidth = 2;
     context.lineCap = "round";
-    // Read from the token rather than hard-coding ink: canvas takes a colour
-    // string, so it is the one place a hex could slip past the design system.
-    context.strokeStyle =
-      getComputedStyle(document.documentElement).getPropertyValue("--color-ink").trim() ||
-      "currentColor";
+    context.strokeStyle = strokeColor.current;
     context.lineTo(x, y);
     context.stroke();
     drew.current = true;
@@ -87,13 +91,17 @@ export function SignaturePad({
     <div className="mb-5">
       <p className="mb-2 text-sm font-medium text-ink">Your signature</p>
 
-      <div role="tablist" aria-label="Signature method" className="mb-2 flex gap-1">
+      {/*
+        Toggle buttons, not ARIA tabs (audit A11Y-4): a real tablist owes the
+        user arrow-key roving and tabpanel wiring, which these don't implement.
+        aria-pressed is the honest role for a two-way mode toggle.
+      */}
+      <div role="group" aria-label="Signature method" className="mb-2 flex gap-1">
         {(["drawn", "typed"] as const).map((option) => (
           <button
             key={option}
             type="button"
-            role="tab"
-            aria-selected={mode === option}
+            aria-pressed={mode === option}
             onClick={() => {
               setMode(option);
               clear();

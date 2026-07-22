@@ -58,6 +58,8 @@ interface BaseProps {
   hint?: ReactNode;
   optional?: boolean;
   placeholder?: string;
+  /** Maps to the input's autocomplete token (audit M12, WCAG 1.3.5). */
+  autoComplete?: string;
 }
 
 export function TextField({
@@ -72,6 +74,7 @@ export function TextField({
         type={type}
         value={props.value}
         placeholder={props.placeholder}
+        autoComplete={props.autoComplete}
         aria-invalid={props.error ? true : undefined}
         aria-describedby={props.error ? `${id}-error` : undefined}
         onChange={(event) => props.onChange(event.target.value)}

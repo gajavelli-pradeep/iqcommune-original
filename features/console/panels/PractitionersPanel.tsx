@@ -1,4 +1,6 @@
+import { deactivatePractitioner, empanelPractitioner } from "../actions";
 import { CellStack, ConsoleTable, type ColumnDef } from "../ConsoleTable";
+import { RowAction } from "../RowAction";
 import { PRACTITIONER_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
 import type { PractitionerRow } from "@/services/console";
@@ -32,6 +34,31 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
       // the console does not know about is a thing to notice, not to swallow.
       return meta ? <StatusPill {...meta} /> : <StatusPill label={row.status} tone="neutral" />;
     },
+  },
+  {
+    key: "actions",
+    header: "",
+    align: "right",
+    requires: "mutate",
+    render: (row) => (
+      <div className="flex justify-end gap-1">
+        {row.status !== "Empanelled" ? (
+          <RowAction
+            action={empanelPractitioner.bind(null, row.id)}
+            label="Empanel"
+            pendingMessage={`Empanelling ${row.name}…`}
+          />
+        ) : null}
+        {row.status !== "Deactivated" ? (
+          <RowAction
+            action={deactivatePractitioner.bind(null, row.id)}
+            label="Deactivate"
+            pendingMessage={`Deactivating ${row.name}…`}
+            tone="danger"
+          />
+        ) : null}
+      </div>
+    ),
   },
 ];
 

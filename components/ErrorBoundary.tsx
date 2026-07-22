@@ -2,6 +2,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { ErrorNotice } from "./ErrorNotice";
+import { log, newTraceId } from "@/lib/logger";
 
 /**
  * Wraps a client widget so its crash takes down only that widget, not the page.
@@ -24,7 +25,7 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("Widget error", {
+    log.error(newTraceId(), "widget error", {
       label: this.props.label,
       message: error.message,
       componentStack: info.componentStack,

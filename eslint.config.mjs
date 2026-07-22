@@ -45,6 +45,28 @@ const eslintConfig = defineConfig([
     rules: tokenGuards,
   },
   {
+    // Dependency direction (audit H6): the server core (`lib`, `services`) must
+    // not import from the client/UI layers (`features`, `app`). A shared shape
+    // belongs in `types/` or `constants/`, which both sides may import. Keeps a
+    // type-only edge from becoming a value edge that drags the service-role
+    // client into the browser bundle.
+    files: ["lib/**/*.{ts,tsx}", "services/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/app/*", "**/features/*", "**/app/*"],
+              message:
+                "lib and services must not import from features or app — the dependency points inward (audit H6). Put the shared type in types/ or constants/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Satori (OG image generation) cannot resolve CSS custom properties, so
     // literals there are correct rather than sloppy.
     files: ["app/**/opengraph-image.tsx", "app/**/twitter-image.tsx"],

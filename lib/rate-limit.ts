@@ -41,8 +41,28 @@ export async function checkRateLimit(identifier: string): Promise<RateLimitResul
   return { allowed: success, enforced: true };
 }
 
-/** Best-effort client identity for limiting. Proxies vary; order matters. */
+/**
+ * Client identity for limiting (audit H3).
+ *
+ * `x-real-ip` is set by the platform proxy (Vercel) to the true client IP and
+ * cannot be forged by the caller — prefer it. A caller-supplied
+ * `x-forwarded-for` is only trustworthy at its RIGHT-most hop, the one appended
+ * by the last trusted proxy; the LEFT-most entry is attacker-controlled, so
+ * keying the limiter on it lets anyone mint a fresh bucket per request and
+ * defeat the limit entirely. Never trust the left-most XFF value.
+ */
 export function clientIdentifier(request: Request): string {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
   const forwarded = request.headers.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((hop) => hop.trim())
+      .filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
+
+  return "unknown";
 }

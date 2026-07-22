@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/Button";
 import { CheckboxField } from "@/components/ui/Field";
+import { FormError } from "@/components/ui/FormError";
+import { SuccessPanel } from "@/components/ui/SuccessPanel";
+import { useApiSubmit } from "@/hooks/useApiSubmit";
+import { formatDateTimeIST } from "@/utils/format";
 
 import { SessionSummary, type ConsentSession } from "./SessionSummary";
 
@@ -17,58 +22,16 @@ const DECLARATIONS = [
 export function ConsentForm({ session, token }: { session: ConsentSession; token: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [recordedAt, setRecordedAt] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState<string>();
-
-  /** Posts to the route, which re-verifies the token before writing. */
-  async function send(endpoint: string, payload: Record<string, unknown>) {
-    setBusy(true);
-    setSubmitError(undefined);
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ t: token, ...payload }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
-        return null;
-      }
-      // The receipt timestamp comes back from the server, not from this clock.
-      return body.data as { at: string };
-    } catch {
-      setSubmitError("We couldn't reach the server. Check your connection and try again.");
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const { submit, busy, error: submitError } = useApiSubmit(token);
 
   if (recordedAt) {
     return (
-      <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-light text-green">
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            aria-hidden
-            focusable="false"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <h1 className="mb-1 text-2xl font-semibold text-ink">Consent recorded</h1>
-        <p className="text-base leading-[1.6] text-ink-muted">
-          Thank you — your session is now fully confirmed. iqcommune has been notified.
-        </p>
+      <SuccessPanel
+        title="Consent recorded"
+        lede="Thank you — your session is now fully confirmed. iqcommune has been notified."
+      >
         <p className="mt-4 text-sm text-ink-faint">Digital consent timestamp: {recordedAt}</p>
-      </section>
+      </SuccessPanel>
     );
   }
 
@@ -81,15 +44,8 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
         onSubmit={async (event) => {
           event.preventDefault();
           if (!confirmed) return;
-          const receipt = await send("/api/consents", {});
-          if (receipt) {
-            setRecordedAt(
-              new Date(receipt.at).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }),
-            );
-          }
+          const receipt = await submit("/api/consents");
+          if (receipt) setRecordedAt(formatDateTimeIST(receipt.at));
         }}
       >
         <div className="mb-5 rounded-lg border border-border bg-surface-soft px-5 py-4">
@@ -113,22 +69,11 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
           I confirm the above and provide my digital consent to this session.
         </CheckboxField>
 
-        {submitError ? (
-          <p
-            role="alert"
-            className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
-          >
-            {submitError}
-          </p>
-        ) : null}
+        <FormError message={submitError} />
 
-        <button
-          type="submit"
-          disabled={!confirmed || busy}
-          className="min-h-11 w-full rounded-md bg-ink px-5 py-3.5 text-lg font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? "Recording…" : "Provide consent"}
-        </button>
+        <Button type="submit" variant="submit" busy={busy} busyLabel="Recording…" disabled={!confirmed}>
+          Provide consent
+        </Button>
       </form>
     </>
   );

@@ -7,22 +7,11 @@
  * showing none.
  */
 
-export interface ConsentSession {
-  reference: string;
-  agreementReference: string;
-  issuedOn: string;
-  firstName: string;
-  module: string;
-  date: string;
-  startTime: string;
-  duration: string;
-  venue: string;
-  cityState: string;
-  audience: string;
-  participants: string;
-  spoc: string;
-  grossPayout: string;
-}
+import type { ConsentSession } from "@/types/link-pages";
+
+// Shape now lives in types/, out of the client graph (audit H6); re-exported so
+// existing call sites keep importing it from here.
+export type { ConsentSession };
 
 /**
  * The spec's `.kv-grid`: two columns of label-over-value, no rules between
