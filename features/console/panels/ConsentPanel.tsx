@@ -138,7 +138,7 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
     key: "sessionStatus",
     header: "Session status",
     requires: "mutate",
-    render: (row) => <SessionStatusSelect row={row} />,
+    render: (row) => <SessionStatusSelect key={row.id} row={row} />,
   },
 ];
 

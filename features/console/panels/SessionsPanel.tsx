@@ -174,7 +174,7 @@ function columns(role: ConsoleRole): ReadonlyArray<ColumnDef<SessionRow>> {
       header: "Status",
       width: "140px",
       requires: "mutate",
-      render: (row) => <StatusSelect row={row} />,
+      render: (row) => <StatusSelect key={row.id} row={row} />,
     },
     {
       key: "seekFeedback",
@@ -219,7 +219,9 @@ function columns(role: ConsoleRole): ReadonlyArray<ColumnDef<SessionRow>> {
         return (
           <div>
             <Stars value={0} />
-            {mayOverride && row.assignmentId ? <ManualRating assignmentId={row.assignmentId} /> : null}
+            {mayOverride && row.assignmentId ? (
+              <ManualRating key={row.assignmentId} assignmentId={row.assignmentId} />
+            ) : null}
           </div>
         );
       },

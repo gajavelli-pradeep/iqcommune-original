@@ -934,6 +934,79 @@ export async function recordRatingManually(
   return { ok: true };
 }
 
+// ── Payouts ─────────────────────────────────────────────────────────────────
+
+/** The finance team's own reference for this payment. */
+export async function setInvoiceReference(
+  assignmentId: string,
+  reference: string,
+): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+  const trimmed = reference.trim();
+
+  const { error } = await supabase
+    .from("session_practitioners")
+    .update({ invoice_reference: trimmed || null })
+    .eq("id", assignmentId)
+    .is("deleted_at", null);
+
+  if (error) {
+    // The reference is unique across live assignments: quoting one number for
+    // two payments is how a reconciliation goes wrong, so the collision is
+    // reported rather than swallowed.
+    if (error.code === "23505") {
+      return { ok: false, message: `${trimmed} is already used by another payout.` };
+    }
+    throw new Error(`saving the invoice reference failed: ${error.message}`);
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "payout.invoice_set",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: trimmed ? `Invoice ref. ${trimmed}.` : "Invoice ref. cleared.",
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
+/**
+ * Marks a payout paid, or reverses it.
+ *
+ * "Paid" here means the bank transfer has happened — the platform does not move
+ * money, it records that someone did. So the date is what matters and it is set
+ * to today rather than asked for: an admin marking it paid is asserting it
+ * happened now.
+ */
+export async function setPayoutStatus(assignmentId: string, status: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  if (status !== "Paid" && status !== "Pending") {
+    throw new Error(`unknown payout status: ${status}`);
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("session_practitioners")
+    .update({ paid_on: status === "Paid" ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .select("confirmation_reference, gross_payout, currency")
+    .maybeSingle();
+  if (error) throw new Error(`payout update failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: status === "Paid" ? "payout.paid" : "payout.reopened",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: data ? `${data.confirmation_reference} — ${data.currency} ${data.gross_payout}.` : undefined,
+  });
+  revalidateConsole();
+  return { ok: true };
+}
+
 // ── Photos ──────────────────────────────────────────────────────────────────
 
 /**

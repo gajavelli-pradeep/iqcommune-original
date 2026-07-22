@@ -10,6 +10,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * who is asking. They use the service-role client because the console shows
  * data across every practitioner and session — RLS scoped to a single user is
  * the wrong shape for an admin view, and the route is the boundary.
+ *
+ * Every list ends `.order("id")`. That is not decoration: the visible sort keys
+ * here are dates and integers that rows routinely SHARE — two payouts issued
+ * the same day, two sessions on the same date — and rows tied on the sort key
+ * have no defined order in SQL. Without a unique tiebreaker the table quietly
+ * reshuffles between reads, so an edit typed into "the second row" can be saved
+ * against whichever record has drifted into that position. That is how a payout
+ * gets another payout's invoice reference.
  */
 
 /**
@@ -112,6 +120,7 @@ export async function listPractitioners(): Promise<PractitionerRow[]> {
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
+      .order("id")
       .limit(500),
     supabase
       .from("practitioners")
@@ -120,6 +129,7 @@ export async function listPractitioners(): Promise<PractitionerRow[]> {
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
+      .order("id")
       .limit(500),
     averageRatings(supabase),
   ]);
@@ -227,7 +237,11 @@ export async function listPractitioners(): Promise<PractitionerRow[]> {
     });
   }
 
-  return sortable.sort((a, b) => b.at.localeCompare(a.at)).map((entry) => entry.row);
+  // Tie-broken on the id for the same reason the SQL orderings are: two people
+  // who applied at the same moment must not swap places between reads.
+  return sortable
+    .sort((a, b) => b.at.localeCompare(a.at) || a.row.id.localeCompare(b.row.id))
+    .map((entry) => entry.row);
 }
 
 // ── Session requests ────────────────────────────────────────────────────────
@@ -272,6 +286,7 @@ export async function listSessionRequests(): Promise<SessionRequestRow[]> {
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+    .order("id")
     .limit(500);
 
   if (error) throw new Error(`session_requests read failed: ${error.message}`);
@@ -326,7 +341,8 @@ export async function listAssignablePractitioners(): Promise<AssignablePractitio
       .select("id, full_name")
       .eq("status", "Empanelled")
       .is("deleted_at", null)
-      .order("full_name"),
+      .order("full_name")
+      .order("id"),
     averageRatings(supabase),
   ]);
 
@@ -375,6 +391,7 @@ export async function listAgreements(): Promise<AgreementRow[]> {
     )
     .is("deleted_at", null)
     .order("issued_on", { ascending: false })
+    .order("id")
     .limit(500);
 
   if (error) throw new Error(`practitioner_agreements read failed: ${error.message}`);
@@ -438,6 +455,7 @@ export async function listSessions(): Promise<SessionRow[]> {
     // The delivery view: a Pending session has nothing to report yet.
     .in("status", ["Confirmed", "Completed", "Delivered", "Scheduled"])
     .order("session_date", { ascending: false, nullsFirst: false })
+    .order("id")
     .limit(500);
 
   if (error) throw new Error(`sessions read failed: ${error.message}`);
@@ -518,6 +536,7 @@ export async function listConsents(): Promise<ConsentRow[]> {
     // until someone produces it.
     .not("confirmation_generated_at", "is", null)
     .order("confirmation_generated_at", { ascending: false })
+    .order("id")
     .limit(500);
 
   if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
@@ -650,34 +669,56 @@ export interface PayoutRow {
   reference: string;
   practitioner: string;
   session: string;
+  sessionDate: string;
   grossPayout: string;
-  status: "Pending";
+  /** The raw figure, for the "amount pending" total the panel adds up. */
+  grossAmount: number;
+  invoiceReference: string | null;
+  paidOn: string | null;
+  status: "Paid" | "Pending";
 }
 
 export async function listPayouts(): Promise<PayoutRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_practitioners")
-    .select("id, confirmation_reference, gross_payout, currency, practitioners ( full_name ), sessions ( reference )")
+    .select(
+      "id, confirmation_reference, gross_payout, currency, invoice_reference, paid_on, sessions ( reference, session_date, status, deleted_at ), practitioners ( full_name )",
+    )
     .is("deleted_at", null)
-    .order("confirmation_issued_on", { ascending: false });
+    .order("confirmation_issued_on", { ascending: false })
+    .order("id")
+    .limit(500);
 
   if (error) throw new Error(`payouts read failed: ${error.message}`);
 
-  return (data ?? []).map((row) => {
-    const practitioner = one<{ full_name: string }>(row.practitioners);
-    const session = one<{ reference: string }>(row.sessions);
-    return {
-      id: row.id,
-      reference: row.confirmation_reference,
-      practitioner: practitioner?.full_name ?? "—",
-      session: session?.reference ?? "—",
-      grossPayout: money(row.gross_payout, row.currency),
-      // Paid state (invoice_reference/paid_on) is not in the schema yet — every
-      // payout reads Pending until that column lands (audit M10). Tab 7.
-      status: "Pending",
-    };
-  });
+  return (data ?? [])
+    .map((row) => {
+      const practitioner = one<{ full_name: string }>(row.practitioners);
+      const session = one<{
+        reference: string;
+        session_date: string | null;
+        status: string;
+        deleted_at: string | null;
+      }>(row.sessions);
+
+      // A withdrawn session owes nobody anything.
+      if (!session || session.deleted_at) return null;
+
+      return {
+        id: row.id,
+        reference: row.confirmation_reference,
+        practitioner: practitioner?.full_name ?? "—",
+        session: session.reference,
+        sessionDate: date(session.session_date),
+        grossPayout: money(row.gross_payout, row.currency),
+        grossAmount: Number(row.gross_payout),
+        invoiceReference: row.invoice_reference,
+        paidOn: row.paid_on ? date(row.paid_on) : null,
+        status: row.paid_on ? ("Paid" as const) : ("Pending" as const),
+      };
+    })
+    .filter((row): row is PayoutRow => row !== null);
 }
 
 // ── Photo submissions ───────────────────────────────────────────────────────
@@ -728,6 +769,7 @@ export async function listPhotoSubmissions(): Promise<PhotoRow[]> {
     .eq("status", "Completed")
     .is("deleted_at", null)
     .order("session_date", { ascending: false, nullsFirst: false })
+    .order("id")
     .limit(500);
 
   if (error) throw new Error(`sessions read failed: ${error.message}`);
@@ -783,7 +825,8 @@ export async function listGallery(): Promise<GalleryRow[]> {
     .from("gallery_photos")
     .select("id, caption, city, sort_order, published, created_at")
     .is("deleted_at", null)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("id");
 
   if (error) throw new Error(`gallery_photos read failed: ${error.message}`);
 
@@ -819,6 +862,7 @@ export async function listActivity(limit = 200): Promise<ActivityRow[]> {
     .from("activity_log")
     .select("id, actor_email, action, entity_type, entity_ref, detail, created_at")
     .order("created_at", { ascending: false })
+    .order("id")
     .limit(limit);
 
   if (error) {
