@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { type ConsoleRole } from "@/constants/roles";
 
 import { AlreadyRecordedError } from "./link-writes";
 
@@ -9,9 +12,10 @@ import { AlreadyRecordedError } from "./link-writes";
  * writable by the user themselves, so a permission stored there could be raised
  * by the account it governs. This is the whole reason the invite decides the
  * role rather than the person accepting it.
+ *
+ * The role type is `ConsoleRole` — the single declaration (audit C3/0D): a
+ * second `AdminRole` enum could drift from it with no compile error.
  */
-
-export type AdminRole = "global_admin" | "admin" | "user";
 
 export interface CreatedAccount {
   userId: string;
@@ -21,7 +25,7 @@ export interface CreatedAccount {
 export async function createInvitedAccount(
   email: string,
   password: string,
-  role: AdminRole,
+  role: ConsoleRole,
 ): Promise<CreatedAccount> {
   const supabase = createAdminClient();
 
