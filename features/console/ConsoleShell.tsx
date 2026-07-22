@@ -37,7 +37,7 @@ export function ConsoleShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
-      <header className="sticky top-0 z-100 border-b border-border bg-surface px-4 sm:px-6">
+      <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface px-4 sm:px-6">
         <div className="flex h-[60px] items-center justify-between gap-4">
           <span className="flex items-baseline leading-none">
             <span className="text-4xl font-bold tracking-display text-gold">iq</span>

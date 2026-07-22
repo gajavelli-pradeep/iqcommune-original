@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
+
 import { can, type Capability, type ConsoleRole } from "./roles";
 
 /**
@@ -46,17 +49,14 @@ export function ConsoleTable<Row>({
   const visible = columns.filter((column) => !column.requires || can(role, column.requires));
 
   if (rows.length === 0) {
-    return (
-      <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
-        {empty}
-      </p>
-    );
+    return <EmptyState title={empty} />;
   }
 
   return (
-    // Tables are the one place horizontal scroll is correct rather than a bug:
-    // a ten-column console table cannot reflow to 320px without losing columns.
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+    // Tables are the one place horizontal scroll is correct rather than a bug: a
+    // ten-column console table cannot reflow to 320px without losing columns.
+    // ScrollRegion makes that overflow keyboard-reachable (audit A11Y-3).
+    <ScrollRegion ariaLabel={caption} axis="x" className="bg-surface">
       <table className="w-full min-w-[720px] border-collapse text-left">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -92,7 +92,7 @@ export function ConsoleTable<Row>({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }
 

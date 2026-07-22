@@ -24,8 +24,12 @@
  * ability to overwrite a system-derived value.
  */
 
-export const CONSOLE_ROLES = ["user", "admin", "global_admin"] as const;
-export type ConsoleRole = (typeof CONSOLE_ROLES)[number];
+import type { ConsoleRole } from "@/constants/roles";
+
+// Re-exported so existing call sites keep importing the role primitives from
+// here; the single declaration now lives in constants/ (audit H6).
+export { CONSOLE_ROLES, toConsoleRole } from "@/constants/roles";
+export type { ConsoleRole };
 
 /** The route each role signs in to. */
 export const ROLE_ROUTES: Record<ConsoleRole, string> = {
@@ -89,9 +93,4 @@ export const CONSOLE_TABS: readonly ConsoleTab[] = [
 
 export function tabsFor(role: ConsoleRole): readonly ConsoleTab[] {
   return CONSOLE_TABS.filter((tab) => !tab.requires || can(role, tab.requires));
-}
-
-/** Maps the role stored in `app_metadata` onto a console role. */
-export function toConsoleRole(value: unknown): ConsoleRole | null {
-  return CONSOLE_ROLES.includes(value as ConsoleRole) ? (value as ConsoleRole) : null;
 }

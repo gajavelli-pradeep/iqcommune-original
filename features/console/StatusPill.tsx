@@ -83,3 +83,33 @@ export const CONSENT_STATUS: PillMap<"Received" | "Pending"> = {
   Received: { label: "Received", tone: "success" },
   Pending: { label: "Pending", tone: "warning" },
 };
+
+/**
+ * Sessions. Carries both the current DB enum (Scheduled/Delivered/Cancelled)
+ * and the V7 redesign values (Pending/Confirmed/Completed) so the pill renders
+ * correctly before and after the H2 status migration.
+ */
+export const SESSION_STATUS: PillMap<
+  "Scheduled" | "Delivered" | "Cancelled" | "Pending" | "Confirmed" | "Completed"
+> = {
+  Pending: { label: "Pending", tone: "warning" },
+  Scheduled: { label: "Scheduled", tone: "progress" },
+  Confirmed: { label: "Confirmed", tone: "progress" },
+  Delivered: { label: "Delivered", tone: "success" },
+  Completed: { label: "Completed", tone: "success" },
+  Cancelled: { label: "Cancelled", tone: "danger" },
+};
+
+/** Photo submissions — the review pipeline. */
+export const PHOTO_STATUS: PillMap<"Pending" | "Approved" | "Rejected" | "Expired"> = {
+  Pending: { label: "Pending", tone: "warning" },
+  Approved: { label: "Approved", tone: "success" },
+  Rejected: { label: "Rejected", tone: "danger" },
+  Expired: { label: "Expired", tone: "neutral" },
+};
+
+/** Gallery — whether a photo is live on the public site. */
+export const GALLERY_STATUS: PillMap<"Published" | "Draft"> = {
+  Published: { label: "Published", tone: "success" },
+  Draft: { label: "Draft", tone: "neutral" },
+};
