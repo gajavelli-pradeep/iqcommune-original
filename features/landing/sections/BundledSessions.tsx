@@ -32,7 +32,7 @@ const BUNDLES: ReadonlyArray<{ modules: readonly string[]; note: string }> = [
 export function BundledSessions() {
   return (
     <section className="bg-surface px-8 pt-6 pb-20">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tag="Bundled Sessions"
           headline="Book one module or bundle two into one sitting."

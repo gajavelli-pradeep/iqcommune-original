@@ -75,7 +75,7 @@ function Column({
 export function DivisionOfWork() {
   return (
     <section className="bg-surface px-8 py-20">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tag="Division of work"
           headline={

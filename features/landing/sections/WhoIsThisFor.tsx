@@ -66,7 +66,7 @@ const AUDIENCES: ReadonlyArray<{
 export function WhoIsThisFor() {
   return (
     <section className="bg-surface px-8 pt-20 pb-8">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tag="Who is this for"
           headline={

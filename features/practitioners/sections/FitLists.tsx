@@ -84,7 +84,7 @@ function FitList({
 export function FitLists() {
   return (
     <section className="bg-ink px-8 py-16">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tone="dark"
           tag="Before you apply"

@@ -28,7 +28,7 @@ const STEPS: ReadonlyArray<{ title: string; description: string }> = [
 export function ProcessSteps() {
   return (
     <section className="bg-surface px-8 py-20">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tag="The process"
           headline={

@@ -100,7 +100,7 @@ const FAQS: ReadonlyArray<Faq> = [
 export function Faqs() {
   return (
     <section className="bg-surface-soft px-8 py-20">
-      <div className="mx-auto max-w-page">
+      <div className="mx-auto max-w-page px-8">
         <SectionHeading
           tag="FAQs"
           headline="Things people ask before they sign up."
