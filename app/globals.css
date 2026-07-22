@@ -45,6 +45,9 @@
 
   --color-green: #2a6b2a;        /* success only */
   --color-green-light: #eef7ee;
+  --color-fit-good: #6fcf6f;                     /* good-fit head + check on the dark honest section */
+  --color-fit-good-surface: rgba(42, 107, 42, 0.15);
+  --color-fit-good-edge: rgba(42, 107, 42, 0.25);
 
   /* Modal backdrop. Ink at 55% keeps the page legible behind the dialog while
      still pushing it back — a pure-black scrim reads as a page change. */

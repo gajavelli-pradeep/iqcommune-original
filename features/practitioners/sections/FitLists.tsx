@@ -36,17 +36,21 @@ function FitList({
   const isGood = tone === "good";
   return (
     <div
-      className={`rounded-lg border p-6 ${isGood ? "border-flag-good-edge bg-flag-good" : "border-tool-edge bg-tool-card"}`}
+      className={`rounded-[12px] border px-6 py-5 ${isGood ? "border-fit-good-edge bg-fit-good-surface" : "border-tool-edge bg-tool-card"}`}
     >
-      <h3 className={`mb-4 text-md font-semibold ${isGood ? "text-result-good" : "text-on-dark-muted"}`}>
+      <h3
+        className={`mb-3 text-sm font-semibold uppercase tracking-eyebrow ${
+          isGood ? "text-fit-good" : "text-on-dark-faint"
+        }`}
+      >
         {title}
       </h3>
       <ul>
         {items.map((item) => (
           <li
             key={item}
-            className={`mb-3 flex items-start gap-2.5 text-base leading-[1.55] last:mb-0 ${
-              isGood ? "text-on-dark-bright" : "text-on-dark-muted"
+            className={`mb-[0.55rem] flex items-start gap-2.5 text-base leading-[1.55] last:mb-0 ${
+              isGood ? "text-on-dark-bright" : "text-on-dark-faint"
             }`}
           >
             <svg
@@ -55,12 +59,19 @@ function FitList({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth={2.5}
+              strokeWidth={isGood ? 2.5 : 2}
               aria-hidden
               focusable="false"
-              className={`mt-[4px] shrink-0 ${isGood ? "text-result-good" : "text-result-bad"}`}
+              className={`mt-[3px] shrink-0 ${isGood ? "text-fit-good" : "text-on-dark-faint"}`}
             >
-              {isGood ? <polyline points="20 6 9 17 4 12" /> : <path d="M18 6 6 18M6 6l12 12" />}
+              {isGood ? (
+                <polyline points="20 6 9 17 4 12" />
+              ) : (
+                <>
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M15 9l-6 6M9 9l6 6" />
+                </>
+              )}
             </svg>
             {item}
           </li>
@@ -85,7 +96,7 @@ export function FitLists() {
             </>
           }
         />
-        <div className="mt-10 grid gap-4 min-[720px]:grid-cols-2">
+        <div className="mx-auto mt-10 grid max-w-[820px] gap-4 min-[720px]:grid-cols-2">
           <FitList title="This is a good fit if you…" items={GOOD_FIT} tone="good" />
           <FitList title="This is not for you if you…" items={POOR_FIT} tone="poor" />
         </div>
