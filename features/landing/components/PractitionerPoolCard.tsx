@@ -1,3 +1,4 @@
+import { CountUp } from "@/components/ui/CountUp";
 import { InfoCircleIcon } from "@/components/ui/icons";
 
 /**
@@ -57,9 +58,13 @@ export function PractitionerPoolCard() {
             key={stat.label}
             className="border-r border-border px-2 py-[0.65rem] text-center last:border-r-0"
           >
-            <div className="text-6xl font-semibold leading-[1.1] tracking-tight text-ink">
-              {stat.figure}
-            </div>
+            {/* `tabular-nums` so the digits do not jostle the layout as they
+                count — proportional figures change width between 1 and 2, and
+                the three columns would twitch for the whole animation. */}
+            <CountUp
+              value={stat.figure}
+              className="block text-6xl font-semibold leading-[1.1] tracking-tight tabular-nums text-ink"
+            />
             <div className="mt-0.5 text-xs leading-[1.3] text-ink-muted">{stat.label}</div>
           </div>
         ))}
