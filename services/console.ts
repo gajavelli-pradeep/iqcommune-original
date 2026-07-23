@@ -873,10 +873,22 @@ export interface TeamMemberRow {
   role: ConsoleRole;
   roleLabel: string;
   lastActive: string;
-  /** A sent invite rather than an account. */
+  /** An outstanding invite rather than an account. */
   pending: boolean;
   /** A pending invite past its expiry — the link no longer works. */
   expired: boolean;
+  /**
+   * Did the invite email actually go out?
+   *
+   * The row used to read "Invite sent" purely because the invite row existed,
+   * which is a claim about the database, not about anyone's inbox. With
+   * EMAIL_DELIVERY unset the banner said no email was sent and the row beneath
+   * it said the opposite, on the same screen. `null` for accounts, and for
+   * invites created before the email log existed — unknown is not the same as
+   * failed, and saying "not delivered" about a historic invite would be its own
+   * lie.
+   */
+  emailDelivered: boolean | null;
 }
 
 const ROLE_LABEL: Record<ConsoleRole, string> = {
@@ -888,7 +900,7 @@ const ROLE_LABEL: Record<ConsoleRole, string> = {
 export async function listTeam(): Promise<TeamMemberRow[]> {
   const supabase = createAdminClient();
 
-  const [accounts, invites] = await Promise.all([
+  const [accounts, invites, invititeMail] = await Promise.all([
     supabase.auth.admin.listUsers({ page: 1, perPage: 200 }),
     supabase
       .from("admin_invites")
@@ -898,6 +910,14 @@ export async function listTeam(): Promise<TeamMemberRow[]> {
       .order("created_at", { ascending: false })
       .order("id")
       .limit(200),
+    // Whether each invite's email left the building. Newest first, so the first
+    // row seen for an address is its latest attempt.
+    supabase
+      .from("email_log")
+      .select("recipient, status, created_at")
+      .eq("template", "admin-invite")
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
 
   if (accounts.error) throw new Error(`team read failed: ${accounts.error.message}`);
@@ -920,7 +940,17 @@ export async function listTeam(): Promise<TeamMemberRow[]> {
       lastActive: user.last_sign_in_at ? dateTime(user.last_sign_in_at) : "Never signed in",
       pending: false,
       expired: false,
+      emailDelivered: null,
     });
+  }
+
+  // Latest attempt per address. Mirrors lib/email/outcome.ts: only these three
+  // statuses mean a message actually reached the recipient — a dry run is a
+  // perfectly healthy outcome that sends nothing.
+  const DELIVERED = new Set(["sent", "queued", "duplicate"]);
+  const latestAttempt = new Map<string, string>();
+  for (const row of invititeMail.data ?? []) {
+    if (!latestAttempt.has(row.recipient)) latestAttempt.set(row.recipient, row.status);
   }
 
   const now = Date.now();
@@ -935,6 +965,9 @@ export async function listTeam(): Promise<TeamMemberRow[]> {
       lastActive: "—",
       pending: true,
       expired: new Date(invite.expires_at).getTime() < now,
+      emailDelivered: latestAttempt.has(invite.email)
+        ? DELIVERED.has(latestAttempt.get(invite.email)!)
+        : null,
     });
   }
 

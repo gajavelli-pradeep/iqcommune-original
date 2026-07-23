@@ -286,9 +286,24 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
       render: (row) =>
         // An invite nobody accepted is why a colleague "can't get in", so it
         // says so rather than showing an empty cell.
+        //
+        // It used to say "Invite sent" whenever the invite row existed, which
+        // is a fact about the database and not about anyone's inbox: with
+        // delivery switched off the banner above said no email was sent and
+        // this said the opposite, on the same screen. It now reads the delivery
+        // the email log recorded. Amber, not red — the invite is real and
+        // recoverable, it just has not reached anyone yet.
         row.pending ? (
-          <span className={`text-xs ${row.expired ? "text-red" : "text-gold-dark"}`}>
-            {row.expired ? "Invite expired" : "Invite sent — not yet accepted"}
+          <span
+            className={`text-xs ${
+              row.expired ? "text-red" : row.emailDelivered === false ? "text-attention" : "text-gold-dark"
+            }`}
+          >
+            {row.expired
+              ? "Invite expired"
+              : row.emailDelivered === false
+                ? "Created — email not sent"
+                : "Invite sent — not yet accepted"}
           </span>
         ) : (
           <span className="text-xs text-ink-muted">{row.lastActive}</span>
