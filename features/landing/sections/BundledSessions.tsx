@@ -53,7 +53,11 @@ export function BundledSessions() {
                     key={name}
                     className="flex items-center justify-between gap-2.5 border-b border-border py-[0.6rem] last:border-b-0"
                   >
-                    <span className="flex items-start gap-2">
+                    {/* `min-w-0` so the title can wrap. A flex item's floor is
+                        its content width unless told otherwise, so the longest
+                        module name pushed the "3 hrs" pill past the right edge
+                        and put the whole page into horizontal scroll at 480px. */}
+                    <span className="flex min-w-0 items-start gap-2">
                       <span className="mt-0.5 shrink-0 text-xs font-bold text-gold-dark">
                         {String(index + 1).padStart(2, "0")}
                       </span>
