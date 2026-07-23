@@ -7,32 +7,23 @@ import { Gallery } from "./Gallery";
 const withProvider = (ui: React.ReactNode) => render(ui);
 
 /**
- * The gallery distinguishes an outage from an empty database on purpose: a
- * failed read must state the problem, never render as "no photos" and hide an
- * outage behind a plausible page. The Suspense fallback also renders this same
- * component in its `photos=[] failed=false` placeholder state.
+ * No photo has ever been published, so an empty read and a broken one show the
+ * same thing: the illustrative artwork. The section never alarms a visitor —
+ * a failed read is reported to the server log by GallerySection instead. The
+ * Suspense fallback renders this same component in its `photos=[]` state.
  */
 describe("Gallery", () => {
-  it("announces an outage as an alert when the read failed", () => {
-    withProvider(<Gallery photos={[]} failed />);
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(/couldn.t load the session photos/i);
-  });
-
-  it("shows illustrative placeholders (not an error) when the DB is empty", () => {
-    withProvider(<Gallery photos={[]} failed={false} />);
+  it("shows illustrative placeholders, never an alarm, when the DB is empty", () => {
+    withProvider(<Gallery photos={[]} />);
     expect(screen.queryByRole("alert")).toBeNull();
-    // A designed empty state, not an outage. The caption reaches the reader as
-    // the artwork's alt text, since the artwork prints the caption itself.
+    // The caption reaches the reader as the artwork's alt text, since the
+    // artwork prints the caption itself.
     expect(screen.getByAltText("Deep in a foundations session")).toBeInTheDocument();
   });
 
   it("renders published photos with their captions and alt text", () => {
     withProvider(
-      <Gallery
-        photos={[{ id: "1", url: "/x.jpg", caption: "A live session", city: "Pune" }]}
-        failed={false}
-      />,
+      <Gallery photos={[{ id: "1", url: "/x.jpg", caption: "A live session", city: "Pune" }]} />,
     );
     expect(screen.getByAltText("A live session")).toBeInTheDocument();
     expect(screen.getByText("Pune")).toBeInTheDocument();

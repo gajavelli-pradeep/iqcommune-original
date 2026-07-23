@@ -6,9 +6,16 @@ import { listPublishedPhotos, type GalleryPhoto } from "@/services/gallery";
  *
  * Until photos are published from the admin console (P8) the spec itself says
  * this section shows illustrative placeholders, so an empty database is a
- * designed state rather than a hole. A *failed* read is not: it renders as a
- * stated problem, never as "no photos", because silently showing an empty
- * gallery would hide an outage behind a plausible-looking page.
+ * designed state rather than a hole.
+ *
+ * A failed read lands in that same state. It used to raise an alert on the
+ * landing page instead, on the reasoning that an outage must never hide behind
+ * a plausible-looking page — right for a section whose content is the product,
+ * wrong for this one. There is nothing to hide: no photo has ever been
+ * published, so a working read and a broken one both show the artwork. All the
+ * alert did was tell a first-time visitor that the site is broken. The outage
+ * still has to be loud, so it goes to the server log, where whoever can act on
+ * it is looking.
  *
  * V7 renders this as a full-bleed carousel with a bespoke (pill-less) header —
  * see GalleryCarousel for the slider itself.
@@ -61,16 +68,16 @@ const PLACEHOLDERS: readonly GallerySlide[] = [
  */
 export async function GallerySection() {
   let photos: GalleryPhoto[] = [];
-  let failed = false;
   try {
     photos = await listPublishedPhotos();
-  } catch {
-    failed = true;
+  } catch (error) {
+    // Loud here, silent on the page — see the note above.
+    console.error("[gallery] published-photo read failed, falling back to artwork:", error);
   }
-  return <Gallery photos={photos} failed={failed} />;
+  return <Gallery photos={photos} />;
 }
 
-export function Gallery({ photos, failed }: { photos: GalleryPhoto[]; failed: boolean }) {
+export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
   const slides: readonly GallerySlide[] =
     photos.length > 0
       ? photos.map((p) => ({ caption: p.caption, city: p.city, url: p.url }))
@@ -91,16 +98,7 @@ export function Gallery({ photos, failed }: { photos: GalleryPhoto[]; failed: bo
         </p>
       </div>
 
-      {failed ? (
-        <p
-          role="alert"
-          className="mx-auto mb-8 max-w-[560px] rounded-md border border-flag-warn-edge bg-flag-warn px-4 py-3 text-center text-base text-gold"
-        >
-          We couldn&apos;t load the session photos just now. Please refresh in a moment.
-        </p>
-      ) : (
-        <GalleryCarousel slides={slides} />
-      )}
+      <GalleryCarousel slides={slides} />
 
       <p className="px-8 pb-2 text-center text-[12.5px] text-surface/30">
         Attended a session? Share it on social media and tag{" "}

@@ -30,12 +30,12 @@ function requestButtons() {
 
 describe("Request a Session — control contract", () => {
   it("renders one per spec call site: header, hero, closing CTA", () => {
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     expect(requestButtons()).toHaveLength(3);
   });
 
   it("gives the header the ink variant, never gold", () => {
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     // The header's button is the first in document order.
     const header = requestButtons()[0];
     expect(header).toHaveClass("bg-ink");
@@ -46,14 +46,14 @@ describe("Request a Session — control contract", () => {
   it("gives the hero the ink primary variant, not gold", () => {
     // The spec uses .btn-primary here and .btn-gold only in the closing CTA.
     // Reusing gold for both was a real defect the fidelity audit caught.
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     const hero = requestButtons()[1];
     expect(hero).toHaveClass("bg-ink");
     expect(hero).not.toHaveClass("bg-gold");
   });
 
   it("gives the closing CTA the gold variant, with its glow", () => {
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     const cta = requestButtons()[2];
     expect(cta).toHaveClass("bg-gold");
     expect(cta).toHaveClass("shadow-gold");
@@ -61,7 +61,7 @@ describe("Request a Session — control contract", () => {
   });
 
   it("keeps every variant a pill, as the spec's 100px radius requires", () => {
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     for (const button of requestButtons()) {
       expect(button).toHaveClass("rounded-full");
     }
@@ -71,7 +71,7 @@ describe("Request a Session — control contract", () => {
     // Client exact-match directive: V7 .btn-gold uses a #fff label. This test
     // exists so the white label cannot be silently reverted to ink (the earlier
     // AA-driven treatment). White on ink is separately correct at 18:1.
-    render(<LandingSections gallery={<Gallery photos={[]} failed={false} />} />);
+    render(<LandingSections gallery={<Gallery photos={[]} />} />);
     for (const button of requestButtons().filter((b) => b.classList.contains("bg-gold"))) {
       expect(button).toHaveClass("text-surface");
       expect(button).not.toHaveClass("text-ink");

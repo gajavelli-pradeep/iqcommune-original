@@ -57,7 +57,7 @@ export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
             the pure Gallery in its designed placeholder state — identical
             chrome, so no layout shift when the real photos arrive.
           */}
-          <Suspense fallback={<Gallery photos={[]} failed={false} />}>{gallery}</Suspense>
+          <Suspense fallback={<Gallery photos={[]} />}>{gallery}</Suspense>
         </main>
         <SiteFooter />
       </div>

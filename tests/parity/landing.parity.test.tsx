@@ -32,7 +32,7 @@ function report(label: string, items: readonly string[]): string {
 describe("content parity — P1 `/` against iqcommune-main-landing-page.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-main-landing-page.html"));
   const { container } = render(
-    <LandingSections gallery={<Gallery photos={[]} failed={false} />} />,
+    <LandingSections gallery={<Gallery photos={[]} />} />,
   );
   // Copy inside a dialog exists in the product but not in a closed one, and
   // several blocks appear only for a given audience. The gate opens the dialogs
