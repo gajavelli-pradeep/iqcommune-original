@@ -4,7 +4,13 @@ import { useRef, useState, useTransition, type DragEvent } from "react";
 
 import { controlClass } from "@/components/ui/control";
 
-import { publishGalleryDrafts, removeGalleryPhoto, updateGalleryPhoto } from "../actions";
+import {
+  moveGalleryPhoto,
+  publishGalleryDrafts,
+  removeGalleryPhoto,
+  unpublishGalleryPhoto,
+  updateGalleryPhoto,
+} from "../actions";
 import { can, type ConsoleRole } from "../roles";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import type { GalleryRow } from "@/services/console";
@@ -39,6 +45,77 @@ function RemovePhoto({ id, label }: { id: string; label: string }) {
     >
       <span aria-hidden>✕</span>
     </button>
+  );
+}
+
+/**
+ * The controls on a live tile: where it sits in the carousel, and the way off
+ * the landing page that is not deletion.
+ *
+ * Drawn as a strip under the photo rather than floating on it: three 44px
+ * targets do not fit across a tile this size without overlapping, the caption
+ * wash stays readable, and the destructive control keeps its distance from the
+ * two that are not.
+ */
+function LiveControls({
+  id,
+  label,
+  isFirst,
+  isLast,
+  onError,
+}: {
+  id: string;
+  label: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onError: (message: string) => void;
+}) {
+  const [pending, start] = useTransition();
+
+  const move = (direction: "up" | "down") =>
+    start(async () => {
+      const result = await moveGalleryPhoto(id, direction);
+      if (!result.ok) onError(result.message);
+    });
+
+  const button =
+    "flex h-11 min-w-11 flex-1 items-center justify-center text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-30";
+
+  return (
+    <div className="flex items-stretch border-t border-border">
+      <button
+        type="button"
+        aria-label={`Move ${label} earlier`}
+        disabled={isFirst || pending}
+        onClick={() => move("up")}
+        className={button}
+      >
+        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden>
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label={`Move ${label} later`}
+        disabled={isLast || pending}
+        onClick={() => move("down")}
+        className={`${button} border-x border-border`}
+      >
+        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label={`Unpublish ${label}`}
+        title="Back to draft — keeps the photo, its caption and the file"
+        disabled={pending}
+        onClick={() => start(async () => { await unpublishGalleryPhoto(id); })}
+        className={`${button} flex-[2] text-3xs font-semibold uppercase tracking-caps`}
+      >
+        {pending ? "…" : "Unpublish"}
+      </button>
+    </div>
   );
 }
 
@@ -229,34 +306,59 @@ export function GalleryPanel({ rows, role }: { rows: readonly GalleryRow[]; role
           {live.map((photo, index) => (
             <li
               key={photo.id}
-              className="relative aspect-square overflow-hidden rounded-lg border border-border-strong"
+              className="overflow-hidden rounded-lg border border-border-strong"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.url} alt={photo.caption ?? ""} className="block h-full w-full object-cover" />
+              <div className="relative aspect-square">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.caption ?? ""} className="block h-full w-full object-cover" />
 
-              {/* Publishing past the limit drops the oldest, so say which. */}
-              {index === 0 && live.length >= GALLERY_LIMIT ? (
-                <span className="absolute inset-x-0 top-0 bg-ink/70 py-0.5 text-center text-3xs text-surface">
-                  oldest — next to go
+                {/* Publishing past the limit drops the oldest, so say which. */}
+                {index === 0 && live.length >= GALLERY_LIMIT ? (
+                  <span className="absolute inset-x-0 top-0 bg-ink/70 py-0.5 text-center text-3xs text-surface">
+                    oldest — next to go
+                  </span>
+                ) : null}
+
+                {/* Position, so the panel's order is legible as the carousel's. */}
+                <span className="absolute left-[5px] bottom-[5px] rounded-full bg-ink/75 px-1.5 py-px text-3xs font-semibold text-surface">
+                  {index + 1}
                 </span>
+
+                {/* V7's caption wash. Written as a style rather than gradient
+                    utilities so the colour comes from a token — the token guard
+                    reads `bg-*` as a colour reference, and `from-black` is not
+                    one. */}
+                <span
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(transparent, var(--color-photo-caption-scrim))",
+                  }}
+                  className="absolute inset-x-0 bottom-0 px-1.5 pb-1 pl-7 pt-3 text-3xs text-surface"
+                >
+                  {photo.caption ? <span className="block font-medium">{photo.caption}</span> : null}
+                  {photo.city ? <span className="block opacity-85">{photo.city}</span> : null}
+                </span>
+
+                {mayEdit ? (
+                  <RemovePhoto
+                    id={photo.id}
+                    label={`Delete ${photo.caption ?? "this photo"} permanently`}
+                  />
+                ) : null}
+              </div>
+
+              {/* Controls sit under the photo, not on it: three 44px targets do
+                  not fit across a tile this size without overlapping, and one
+                  of them deletes. */}
+              {mayEdit ? (
+                <LiveControls
+                  id={photo.id}
+                  label={photo.caption ?? "this photo"}
+                  isFirst={index === 0}
+                  isLast={index === live.length - 1}
+                  onError={setError}
+                />
               ) : null}
-
-              {/* V7's caption wash. Written as a style rather than gradient
-                  utilities so the colour comes from a token — the token guard
-                  reads `bg-*` as a colour reference, and `from-black` is not
-                  one. */}
-              <span
-                style={{
-                  backgroundImage:
-                    "linear-gradient(transparent, var(--color-photo-caption-scrim))",
-                }}
-                className="absolute inset-x-0 bottom-0 px-1.5 pb-1 pt-3 text-3xs text-surface"
-              >
-                {photo.caption ? <span className="block font-medium">{photo.caption}</span> : null}
-                {photo.city ? <span className="block opacity-85">{photo.city}</span> : null}
-              </span>
-
-              {mayEdit ? <RemovePhoto id={photo.id} label={`Remove ${photo.caption ?? "this photo"}`} /> : null}
             </li>
           ))}
         </ul>

@@ -827,10 +827,13 @@ export async function listGallery(): Promise<GalleryRow[]> {
     .from("gallery_photos")
     .select("id, storage_path, caption, city, sort_order, published, created_at")
     .is("deleted_at", null)
-    // Oldest first: the panel shows which photo is next to be evicted, and
-    // that only reads correctly if the eviction order is the display order.
+    // GALLERY_ORDER — must match services/gallery.ts exactly, or the panel
+    // shows one order and the landing page renders another. Oldest first
+    // within a sort_order also keeps the panel's "next to be evicted" marker
+    // honest, since eviction is by created_at.
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
-    .order("id")
+    .order("id", { ascending: true })
     .limit(200);
 
   if (error) throw new Error(`gallery_photos read failed: ${error.message}`);

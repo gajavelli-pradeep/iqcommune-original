@@ -1108,7 +1108,103 @@ export async function updateGalleryPhoto(
     entityType: "gallery",
     entityRef: photoId,
   });
+  // The landing page renders both fields, so editing a live photo's caption or
+  // city changes a public page. Only the console was revalidated here, and the
+  // correction sat invisible behind the static render until something else
+  // published.
+  revalidatePath("/");
   revalidateConsole();
+}
+
+/**
+ * Takes a live photo back to draft.
+ *
+ * Distinct from removing it: the photo, its caption and its stored object all
+ * survive, so a photo pulled to fix a typo goes back up without re-uploading.
+ * The brief asks for publish *and* unpublish; before this the only way off the
+ * landing page was deletion, which also destroys the object.
+ */
+export async function unpublishGalleryPhoto(photoId: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("gallery_photos")
+    .update({ published: false })
+    .eq("id", photoId)
+    .eq("published", true)
+    .is("deleted_at", null);
+  if (error) throw new Error(`unpublish failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "gallery.unpublished",
+    entityType: "gallery",
+    entityRef: photoId,
+  });
+  revalidatePath("/");
+  revalidateConsole();
+}
+
+/**
+ * Moves a live photo one place earlier or later in the landing-page carousel.
+ *
+ * `sort_order` defaults to 0 on every row, so the first move has nothing to
+ * swap with — every photo compares equal and the order is decided by the
+ * created_at tiebreak. So the whole live set is numbered by its current
+ * displayed order first, and only then are two neighbours exchanged. That makes
+ * the first move behave like every later one instead of silently doing nothing.
+ */
+export async function moveGalleryPhoto(
+  photoId: string,
+  direction: "up" | "down",
+): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("mutate");
+  const supabase = createAdminClient();
+
+  const { data: live, error: readError } = await supabase
+    .from("gallery_photos")
+    .select("id, sort_order")
+    .eq("published", true)
+    .is("deleted_at", null)
+    // GALLERY_ORDER — the order the landing page renders, so "up" means up.
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+  if (readError) throw new Error(`gallery read failed: ${readError.message}`);
+
+  const order = live ?? [];
+  const from = order.findIndex((photo) => photo.id === photoId);
+  if (from === -1) return { ok: false, message: "That photo is no longer live." };
+
+  const to = direction === "up" ? from - 1 : from + 1;
+  if (to < 0 || to >= order.length) {
+    return { ok: false, message: `That photo is already ${direction === "up" ? "first" : "last"}.` };
+  }
+
+  const moved = [...order];
+  [moved[from], moved[to]] = [moved[to], moved[from]];
+
+  // Renumber densely from the new arrangement — cheap at twenty rows, and it
+  // leaves the column in a state where the next move is a plain swap.
+  const writes = moved.map((photo, index) =>
+    supabase.from("gallery_photos").update({ sort_order: index }).eq("id", photo.id),
+  );
+  for (const write of writes) {
+    const { error } = await write;
+    if (error) throw new Error(`reorder failed: ${error.message}`);
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "gallery.reordered",
+    entityType: "gallery",
+    entityRef: photoId,
+    detail: `Moved ${direction} to position ${to + 1} of ${moved.length}.`,
+  });
+  revalidatePath("/");
+  revalidateConsole();
+  return { ok: true };
 }
 
 /**

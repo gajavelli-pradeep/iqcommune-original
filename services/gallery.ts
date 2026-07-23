@@ -27,8 +27,13 @@ export async function listPublishedPhotos(limit = GALLERY_LIMIT): Promise<Galler
     .select("id, storage_path, caption, city")
     .eq("published", true)
     .is("deleted_at", null)
+    // GALLERY_ORDER — the same three keys the console lists by, so what an
+    // admin sees in the panel is the order a visitor gets. It read
+    // created_at DESC here and ASC there, which meant reordering in the console
+    // moved a photo the other way on the landing page.
     .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
     .limit(limit);
 
   if (error) throw new Error(`gallery_photos read failed: ${error.message}`);
