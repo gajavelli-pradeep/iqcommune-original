@@ -1,5 +1,13 @@
 import { log } from "@/lib/logger";
 
+import {
+  classifyStatus,
+  classifyThrown,
+  isSendableAddress,
+  result,
+  type EmailResult,
+} from "./outcome";
+
 /**
  * Outbound email — F2.
  *
@@ -13,6 +21,13 @@ import { log } from "@/lib/logger";
  * Delivery is best-effort by design: a request that was written must not fail
  * because a mail provider was slow. Callers pass a trace id so a missing email
  * can be traced back to the request that should have sent it.
+ *
+ * Every attempt ends in a named `EmailResult` and a row in `email_log` —
+ * including the ones that never reach Brevo, which are precisely the failures
+ * Brevo's own dashboard cannot show you. Transient outcomes are retried with
+ * backoff; permanent ones are not, because re-posting a malformed message or a
+ * bad credential fails identically forever and spends the rate limit a real
+ * transient failure will need.
  */
 
 /**
@@ -36,6 +51,13 @@ export interface EmailMessage {
   body: string;
   /** Defaults to `platform` — the shared sender — when a template omits it. */
   stream?: EmailStream;
+  /**
+   * Stable slug identifying which template this is, e.g. `practitioner-welcome`.
+   * It is what makes the log answerable ("did the onboarding link go out?") and
+   * what the duplicate check keys on, so it is required rather than derived — a
+   * name inferred from a subject line changes the moment the copy does.
+   */
+  template: string;
 }
 
 /** The env var holding each stream's From address. */
@@ -61,46 +83,48 @@ export function senderFor(stream: EmailStream = "platform"): string | undefined 
 
 const ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 const TIMEOUT_MS = 8000;
+/** Attempts after the first. Three calls is the most a request should wait through. */
+const MAX_RETRIES = 2;
+const BACKOFF_MS = [400, 1200];
 
-export type SendOutcome =
-  | { delivered: true; messageId: string | null }
-  | { delivered: false; reason: "dry-run" | "not-configured" | "failed" };
+/**
+ * Seams so the sender can be exercised without a network or a database. The
+ * defaults are the real ones; tests pass fakes.
+ */
+export interface SendDeps {
+  fetch: typeof globalThis.fetch;
+  sleep: (ms: number) => Promise<void>;
+  alreadySent: (traceId: string, template: string, recipient: string) => Promise<boolean>;
+  record: (attempt: {
+    traceId: string;
+    template: string;
+    recipient: string;
+    stream: string;
+    result: EmailResult;
+  }) => Promise<void>;
+}
 
-export async function sendEmail(traceId: string, message: EmailMessage): Promise<SendOutcome> {
-  const apiKey = process.env.BREVO_API_KEY;
-  const sender = senderFor(message.stream);
+const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-  if (process.env.EMAIL_DELIVERY !== "live") {
-    // The rendered body + recipient are what make the link checkable without
-    // sending — but only log them OUTSIDE production (audit M9). In production
-    // this branch means EMAIL_DELIVERY was left unset by mistake, and the logger
-    // contract forbids spilling addresses/names into those logs.
-    const inspectable = process.env.NODE_ENV !== "production";
-    log.info(traceId, "email not sent — dry run", {
-      subject: message.subject,
-      // The stream and resolved sender are logged even in production: they
-      // carry no personal data, and they are the only way to confirm the
-      // routing is right before the mailboxes are live.
-      stream: message.stream ?? "platform",
-      from: sender ?? "(no sender configured)",
-      ...(inspectable ? { to: message.to, body: message.body } : {}),
-    });
-    return { delivered: false, reason: "dry-run" };
-  }
+async function defaultDeps(): Promise<SendDeps> {
+  // Imported lazily so this module stays loadable from a unit test, which
+  // cannot pull in `server-only`.
+  const { alreadySent, recordEmailAttempt } = await import("@/services/email-log");
+  return { fetch: globalThis.fetch, sleep: realSleep, alreadySent, record: recordEmailAttempt };
+}
 
-  if (!apiKey || !sender) {
-    log.warn(traceId, "email not sent — BREVO_API_KEY or a sender address is missing", {
-      subject: message.subject,
-      stream: message.stream ?? "platform",
-    });
-    return { delivered: false, reason: "not-configured" };
-  }
+/** One call to Brevo. Never throws — every failure comes back as a result. */
+async function attempt(
+  deps: SendDeps,
+  message: EmailMessage,
+  sender: string,
+  apiKey: string,
+): Promise<EmailResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    const response = await fetch(ENDPOINT, {
+    const response = await deps.fetch(ENDPOINT, {
       method: "POST",
       headers: { "api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -111,23 +135,139 @@ export async function sendEmail(traceId: string, message: EmailMessage): Promise
       }),
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
-    if (!response.ok) {
-      log.error(traceId, "email rejected by provider", {
-        status: response.status,
-        subject: message.subject,
-      });
-      return { delivered: false, reason: "failed" };
+    const status = classifyStatus(response.status);
+    if (status === "sent" || status === "queued") {
+      const payload = (await response.json().catch(() => ({}))) as { messageId?: string };
+      return result(status, { providerMessageId: payload.messageId ?? null });
     }
 
-    const result = (await response.json()) as { messageId?: string };
+    // Brevo describes its own refusals, and that text is the difference between
+    // "rejected" and "rejected because the sender is unverified".
+    const detail = await response.text().catch(() => "");
+    return result(status, {
+      errorCode: String(response.status),
+      errorMessage: detail.slice(0, 500) || null,
+    });
+  } catch (cause) {
+    return result(classifyThrown(cause), {
+      errorCode: cause instanceof Error ? cause.name : "UnknownError",
+      errorMessage: String(cause).slice(0, 500),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function sendEmail(
+  traceId: string,
+  message: EmailMessage,
+  overrides?: Partial<SendDeps>,
+): Promise<EmailResult> {
+  const deps = { ...(await defaultDeps()), ...overrides };
+  const stream = message.stream ?? "platform";
+  const finish = async (outcome: EmailResult) => {
+    await deps.record({
+      traceId,
+      template: message.template,
+      recipient: message.to,
+      stream,
+      result: outcome,
+    });
+    return outcome;
+  };
+
+  // 1. The message itself, before anything external is consulted. An address
+  //    with a newline in it is header injection, not a typo.
+  if (!isSendableAddress(message.to)) {
+    log.warn(traceId, "email not sent — recipient is not a sendable address", {
+      template: message.template,
+      stream,
+    });
+    return finish(result("invalid-recipient", { errorCode: "INVALID_RECIPIENT" }));
+  }
+
+  const apiKey = process.env.BREVO_API_KEY;
+  const sender = senderFor(message.stream);
+
+  // 2. Dry run, checked before configuration: a developer with no Brevo key
+  //    should see "not sent — dry run", which is true, rather than a
+  //    misconfiguration they do not have.
+  if (process.env.EMAIL_DELIVERY !== "live") {
+    // The rendered body + recipient are what make the link checkable without
+    // sending — but only log them OUTSIDE production (audit M9). In production
+    // this branch means EMAIL_DELIVERY was left unset by mistake, and the logger
+    // contract forbids spilling addresses/names into those logs.
+    const inspectable = process.env.NODE_ENV !== "production";
+    log.info(traceId, "email not sent — dry run", {
+      subject: message.subject,
+      template: message.template,
+      // The stream and resolved sender are logged even in production: they
+      // carry no personal data, and they are the only way to confirm the
+      // routing is right before the mailboxes are live.
+      stream,
+      from: sender ?? "(no sender configured)",
+      ...(inspectable ? { to: message.to, body: message.body } : {}),
+    });
+    return finish(result("dry-run"));
+  }
+
+  if (!apiKey || !sender) {
+    log.error(traceId, "email not sent — BREVO_API_KEY or a sender address is missing", {
+      template: message.template,
+      stream,
+      missing: !apiKey ? "BREVO_API_KEY" : SENDER_ENV[stream],
+    });
+    return finish(
+      result("not-configured", {
+        errorCode: "NOT_CONFIGURED",
+        errorMessage: !apiKey ? "BREVO_API_KEY is unset" : "no sender address for this stream",
+      }),
+    );
+  }
+
+  // 3. Already done? Only a *successful* recent attempt counts — a previous
+  //    failure is exactly the case where a second try is wanted.
+  if (await deps.alreadySent(traceId, message.template, message.to)) {
+    log.info(traceId, "email skipped — an identical one was sent recently", {
+      template: message.template,
+      stream,
+    });
+    return finish(result("duplicate"));
+  }
+
+  // 4. Send, retrying only what a retry could fix.
+  let outcome = await attempt(deps, message, sender, apiKey);
+  let retries = 0;
+  while (outcome.retryable && retries < MAX_RETRIES) {
+    await deps.sleep(BACKOFF_MS[retries] ?? BACKOFF_MS[BACKOFF_MS.length - 1]);
+    retries += 1;
+    log.warn(traceId, "email attempt failed, retrying", {
+      template: message.template,
+      status: outcome.status,
+      attempt: retries + 1,
+    });
+    outcome = await attempt(deps, message, sender, apiKey);
+  }
+  outcome = { ...outcome, retryCount: retries };
+
+  if (outcome.ok) {
     // A 201 means accepted for delivery, not delivered. Anything downstream
     // that treats this as proof the person read it will be wrong.
-    log.info(traceId, "email accepted by provider", { subject: message.subject });
-    return { delivered: true, messageId: result.messageId ?? null };
-  } catch (cause) {
-    log.error(traceId, "email send failed", { cause: String(cause) });
-    return { delivered: false, reason: "failed" };
+    log.info(traceId, "email accepted by provider", {
+      template: message.template,
+      status: outcome.status,
+      retries,
+    });
+  } else {
+    log.error(traceId, "email failed", {
+      template: message.template,
+      status: outcome.status,
+      code: outcome.errorCode,
+      detail: outcome.errorMessage,
+      retries,
+    });
   }
+
+  return finish(outcome);
 }

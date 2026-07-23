@@ -22,6 +22,7 @@ const lines = (...parts: string[]) => parts.join("\n");
 
 export function sessionRequestReceived(to: string, firstName: string): EmailMessage {
   return {
+    template: "session-request-received",
     stream: "session",
     to,
     subject: "We have your session request",
@@ -49,6 +50,7 @@ export function sessionRequestFollowUp(
   outstanding: readonly string[],
 ): EmailMessage {
   return {
+    template: "session-request-follow-up",
     stream: "session",
     to,
     subject: "Following up on your session request",
@@ -69,6 +71,7 @@ export function sessionRequestFollowUp(
 /** The console's "Send cancellation message" for a request that fell through. */
 export function sessionRequestCancelled(to: string, firstName: string): EmailMessage {
   return {
+    template: "session-request-cancelled",
     stream: "session",
     to,
     subject: "Your session request",
@@ -86,6 +89,7 @@ export function sessionRequestCancelled(to: string, firstName: string): EmailMes
 
 export function newSessionRequestForAdmin(to: string, summary: string): EmailMessage {
   return {
+    template: "new-session-request-admin",
     stream: "session",
     to,
     subject: "New session request",
@@ -95,6 +99,7 @@ export function newSessionRequestForAdmin(to: string, summary: string): EmailMes
 
 export function ratingRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
+    template: "rating-request",
     stream: "session",
     to,
     subject: "How was your session?",
@@ -112,6 +117,7 @@ export function ratingRequest(to: string, firstName: string, assignmentId: strin
 
 export function consentRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
+    template: "consent-request",
     stream: "session",
     to,
     subject: "Confirm your session details",
@@ -132,6 +138,7 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
   // the procedure wants the practitioner to have them ready before they need them.
   const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label} — ${shot.note}`);
   return {
+    template: "photo-reminder",
     // Sent to a practitioner, but about a session — and the reply ("which
     // session is this?") belongs with whoever runs sessions.
     stream: "session",
@@ -156,6 +163,7 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
 
 export function onboardingLink(to: string, firstName: string, agreementId: string): EmailMessage {
   return {
+    template: "onboarding-link",
     stream: "practitioner",
     to,
     subject: "Welcome to the iqcommune practitioner network",
@@ -173,6 +181,7 @@ export function onboardingLink(to: string, firstName: string, agreementId: strin
 
 export function adminInvite(to: string, inviteId: string): EmailMessage {
   return {
+    template: "admin-invite",
     to,
     subject: "Set up your iqcommune account",
     body: lines(
@@ -198,6 +207,7 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
 
 export function practitionerWelcome(to: string, firstName: string): EmailMessage {
   return {
+    template: "practitioner-welcome",
     stream: "practitioner",
     to,
     subject: "You're empanelled with iqcommune",
@@ -214,6 +224,7 @@ export function practitionerWelcome(to: string, firstName: string): EmailMessage
 
 export function applicationRejected(to: string, firstName: string): EmailMessage {
   return {
+    template: "application-rejected",
     stream: "practitioner",
     to,
     subject: "An update on your iqcommune application",
@@ -231,6 +242,7 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
 
 export function practitionerDeactivated(to: string, firstName: string): EmailMessage {
   return {
+    template: "practitioner-deactivated",
     stream: "practitioner",
     to,
     subject: "Your iqcommune empanelment status",

@@ -60,15 +60,28 @@ describe("emailed links", () => {
 });
 
 describe("email delivery", () => {
+  // The log and the duplicate check are stubbed out: this describe is about
+  // what the sender decides, not about what it writes down. The persistence is
+  // covered in email-outcomes.test.ts.
+  const noPersistence = {
+    alreadySent: async () => false,
+    record: async () => {},
+    sleep: async () => {},
+  };
+
   it("sends nothing unless delivery is explicitly live", async () => {
     // A dev database full of test rows would otherwise mail real people.
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubEnv("EMAIL_DELIVERY", "");
 
-    const outcome = await sendEmail("trace", { to: "a@b.com", subject: "s", body: "b" });
+    const outcome = await sendEmail(
+      "trace",
+      { to: "a@b.com", subject: "s", body: "b", template: "t" },
+      noPersistence,
+    );
 
-    expect(outcome).toEqual({ delivered: false, reason: "dry-run" });
+    expect(outcome.status).toBe("dry-run");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -77,10 +90,13 @@ describe("email delivery", () => {
     vi.stubEnv("BREVO_API_KEY", "");
     vi.stubEnv("BREVO_SENDER_EMAIL", "");
 
-    expect(await sendEmail("trace", { to: "a@b.com", subject: "s", body: "b" })).toEqual({
-      delivered: false,
-      reason: "not-configured",
-    });
+    const outcome = await sendEmail(
+      "trace",
+      { to: "a@b.com", subject: "s", body: "b", template: "t" },
+      noPersistence,
+    );
+    expect(outcome.status).toBe("not-configured");
+    expect(outcome.message).toBe("Missing configuration.");
   });
 });
 

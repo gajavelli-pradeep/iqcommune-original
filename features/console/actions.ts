@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { sendEmail } from "@/lib/email/send";
 import {
   adminInvite,
   applicationRejected,
@@ -1004,17 +1005,31 @@ export async function inviteTeamMember(email: string, role: string): Promise<Act
     .single();
   if (error) throw new Error(`invite failed: ${error.message}`);
 
-  dispatchEmail(newTraceId(), adminInvite(address, invite.id as string));
+  // Awaited, unlike every other send in this file, because this one IS the
+  // action: an invite whose email never left is an invite that does not exist,
+  // and the admin is standing there waiting to know. Everywhere else the email
+  // is a side effect of a state change that has already succeeded, and blocking
+  // the response on a mail provider would be the wrong trade.
+  const delivery = await sendEmail(newTraceId(), adminInvite(address, invite.id as string));
 
   await recordActivity({
     actorEmail: actor,
     action: "team.invited",
     entityType: "invite",
     entityRef: invite.id as string,
-    detail: `${address} as ${ROLE_WORD[consoleRole]}`,
+    detail: `${address} as ${ROLE_WORD[consoleRole]} — ${delivery.message}`,
   });
   revalidateConsole();
-  return { ok: true };
+
+  // The invite row exists either way, so this is not a failure of the action —
+  // it is a partial success the admin has to know about, because the next step
+  // is theirs (resend, or send the link another way).
+  return delivery.ok
+    ? { ok: true }
+    : {
+        ok: false,
+        message: `Invite created, but the email did not go out — ${delivery.message} You can resend it from the team list.`,
+      };
 }
 
 /**
