@@ -84,7 +84,8 @@ test.describe("/practitioners", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/practitioners");
 
-    const opener = page.getByRole("button", { name: "Apply to Join the Network", exact: true });
+    // Both the hero and the closing CTA carry this label; the hero opens first.
+    const opener = page.getByRole("button", { name: "Apply to Join the Network", exact: true }).first();
     await opener.click();
 
     const dialog = page.getByRole("dialog");

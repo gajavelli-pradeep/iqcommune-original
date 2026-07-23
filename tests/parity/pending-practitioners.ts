@@ -42,6 +42,15 @@ export const PRACTITIONERS_PENDING: PendingUnit[] = [
     matches: (text) => text.includes("financial intelligence connects"),
   },
   {
+    unit: "Deviation · one capitalisation for the apply CTA",
+    reason:
+      "The spec labels the same control two ways — 'Apply to Join the Network' in the hero " +
+      "(598) and 'Apply to join the Network' in the closing CTA (974). One button, one label: " +
+      "both render the title-case version.",
+    kind: "deviation",
+    lines: [974, 974],
+  },
+  {
     unit: "Deviation · single contact inbox",
     reason:
       "Client copy change (2026-07-23): every footer points at hello@iqcommune.com. The spec's " +

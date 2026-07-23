@@ -69,7 +69,10 @@ export function PractitionerSections() {
         <ModulesGrid />
         <FitLists />
         <DisclosureCards />
-        <ApplyCta apply={<ApplyButton label="Apply to join the Network" icon="arrow" />} />
+        {/* The spec writes this CTA "Apply to join the Network" and the hero's
+            "Apply to Join the Network" — the same control, two capitalisations.
+            Both take the title-case default; see pending-practitioners.ts. */}
+        <ApplyCta apply={<ApplyButton icon="arrow" />} />
         <Faqs />
       </main>
       <SiteFooter
