@@ -34,6 +34,14 @@ export const PRACTITIONERS_PENDING: PendingUnit[] = [
     lines: [6, 6],
   },
   {
+    unit: "Deviation · brand tagline replaced",
+    reason:
+      "Client copy change (2026-07-23): the header strapline reads 'Insight Quotient - " +
+      "Unleashed' on every surface. See SiteHeader's default.",
+    kind: "deviation",
+    matches: (text) => text.includes("financial intelligence connects"),
+  },
+  {
     unit: "Deviation · single contact inbox",
     reason:
       "Client copy change (2026-07-23): every footer points at hello@iqcommune.com. The spec's " +

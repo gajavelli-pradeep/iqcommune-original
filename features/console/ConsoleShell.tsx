@@ -283,7 +283,7 @@ export function ConsoleShell({
               <span className="text-4xl font-light tracking-display text-ink">commune</span>
             </span>
             <span className="hidden truncate text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-              Where financial intelligence connects
+              Insight Quotient - Unleashed
             </span>
           </div>
           <span aria-hidden className="hidden h-8 w-px bg-border-strong sm:block" />

@@ -23,7 +23,7 @@ export function OnboardingPage({
       width="860px"
       badge={["Practitioner", "Network"]}
       badgeStyle="lockup"
-      strapline="Where financial intelligence connects"
+      strapline="Insight Quotient - Unleashed"
       right={
         <>
           <span className="hidden text-md text-ink-muted sm:inline">Onboarding</span>

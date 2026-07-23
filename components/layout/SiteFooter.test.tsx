@@ -24,18 +24,18 @@ describe("SiteFooter", () => {
     render(<SiteFooter />);
     expect(screen.getByText("Are you a finance professional?")).toBeInTheDocument();
     expect(
-      screen.getByText(/Where financial intelligence connects\./),
+      screen.getByText(/Insight Quotient - Unleashed\./),
     ).toBeInTheDocument();
   });
 
   it("keeps the space before the em dash", () => {
-    // Regression: written as loose JSX text, `</strong> — Where` renders as
-    // "iqcommune— Where". Invisible in a screenshot, caught by measurement.
+    // Regression: written as loose JSX text, `</strong> — Insight` renders as
+    // "iqcommune— Insight". Invisible in a screenshot, caught by measurement.
     const { container } = render(<SiteFooter />);
     const tagline = [...container.querySelectorAll("p")].find((p) =>
-      p.textContent?.includes("financial intelligence"),
+      p.textContent?.includes("Insight Quotient"),
     );
-    expect(tagline?.textContent).toMatch(/iqcommune — Where financial intelligence connects\./);
+    expect(tagline?.textContent).toMatch(/iqcommune — Insight Quotient - Unleashed\./);
   });
 
   it("renders the current year, so the footer never looks abandoned", () => {

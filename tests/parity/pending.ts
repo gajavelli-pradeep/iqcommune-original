@@ -84,4 +84,14 @@ export const LANDING_PENDING: PendingUnit[] = [
     kind: "deviation",
     matches: containing("iqcommune. All rights reserved."),
   },
+  {
+    unit: "Deviation · brand tagline replaced",
+    reason:
+      "Client copy change (2026-07-23): the header strapline and footer tagline now read " +
+      "'Insight Quotient - Unleashed', decoding the brand name. Supersedes the spec's " +
+      "'Where financial intelligence connects' on every surface — SiteHeader and SiteFooter " +
+      "defaults, so the page title and footer sentence move with it.",
+    kind: "deviation",
+    matches: containing("financial intelligence connects"),
+  },
 ];

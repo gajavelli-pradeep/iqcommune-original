@@ -25,7 +25,7 @@ export function SiteHeader({
   badgeStyle = "lockup",
   right,
   width = "var(--container-page)",
-  strapline = "Where financial intelligence connects",
+  strapline = "Insight Quotient - Unleashed",
   compact = false,
 }: {
   /**

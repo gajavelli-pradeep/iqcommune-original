@@ -77,10 +77,9 @@ for (const tier of TIERS) {
 
     // The strapline is decoration and is dropped below 640px so the header
     // cannot overflow. It must be present everywhere else.
-    // Scoped to the header: the footer tagline contains the same phrase.
     const strapline = page
       .locator("header")
-      .getByText("Where financial intelligence connects");
+      .getByText("Insight Quotient - Unleashed");
     if (tier.w >= 640) {
       await expect(strapline).toBeVisible();
     } else {

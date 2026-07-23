@@ -26,7 +26,7 @@ describe("SiteHeader", () => {
     // parity gate must still find it.
     render(<SiteHeader />);
     expect(
-      screen.getByText("Where financial intelligence connects"),
+      screen.getByText("Insight Quotient - Unleashed"),
     ).toBeInTheDocument();
   });
 

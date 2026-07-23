@@ -27,4 +27,12 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
     kind: "state",
     lines: [1, 8],
   },
+  {
+    unit: "Deviation · brand tagline replaced",
+    reason:
+      "Client copy change (2026-07-23): the header strapline reads 'Insight Quotient - " +
+      "Unleashed' on every surface. See SiteHeader's default.",
+    kind: "deviation",
+    matches: (text) => text.includes("financial intelligence connects"),
+  },
 ];

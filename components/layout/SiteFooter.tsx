@@ -14,7 +14,7 @@ import { ArrowRightIcon } from "@/components/ui/ArrowRightIcon";
  *    0.3 measures 2.60:1 on this background and fails WCAG AA. See globals.css.
  */
 export function SiteFooter({
-  tagline = "Where financial intelligence connects.",
+  tagline = "Insight Quotient - Unleashed.",
   email = "hello@iqcommune.com",
   top = true,
 }: {
