@@ -75,12 +75,16 @@ for (const tier of TIERS) {
     expect(logoBox!.x).toBeGreaterThanOrEqual(0);
     expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(tier.w + 1);
 
-    // The strapline is decoration and is dropped below 640px so the header
-    // cannot overflow. It must be present everywhere else.
+    // The strapline is decoration, dropped only below 360px where the lockup
+    // plus the header's control overflows the viewport. V7 keeps it on every
+    // phone above that, and SiteHeader's `min-[360px]:block` is the rule this
+    // mirrors — the threshold was 640 here while the component said 360, and
+    // the assertion only passed because it was searching for the pre-rename
+    // copy and finding nothing.
     const strapline = page
       .locator("header")
       .getByText("Insight Quotient - Unleashed");
-    if (tier.w >= 640) {
+    if (tier.w >= 360) {
       await expect(strapline).toBeVisible();
     } else {
       await expect(strapline).toBeHidden();
