@@ -81,12 +81,11 @@ export function SiteFooter({
         <p>
           <LegalLinks />
           <Separator />
-          <a
-            href={`mailto:${email}`}
-            className="tap-44 underline-offset-2 transition-colors hover:text-on-dark-bright hover:underline focus-visible:text-on-dark-bright focus-visible:underline"
-          >
-            {email}
-          </a>
+          {/* Plain text, not a mailto (client, 2026-07-23). So no hover, no
+              underline and no tap-44 either — those are affordances promising a
+              click, and there is nothing here to click. The address is still
+              selectable and copyable. */}
+          <span>{email}</span>
         </p>
         <p className="mt-2">
           © {new Date().getFullYear()}. InvestQ Commune. All Rights Reserved

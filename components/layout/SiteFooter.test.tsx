@@ -13,12 +13,12 @@ describe("SiteFooter", () => {
     ).toHaveAttribute("href", "/practitioners");
   });
 
-  it("exposes the contact address as a mailto link", () => {
+  it("shows the contact address as plain text, not a link", () => {
+    // Client, 2026-07-23. Asserted rather than left implicit: it was a mailto
+    // for eight pages' worth of history, and a stray re-link would look right.
     render(<SiteFooter />);
-    expect(screen.getByRole("link", { name: "hello@iqcommune.com" })).toHaveAttribute(
-      "href",
-      "mailto:hello@iqcommune.com",
-    );
+    expect(screen.getByText("hello@iqcommune.com")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "hello@iqcommune.com" })).toBeNull();
   });
 
   it("carries the spec copy verbatim", () => {
