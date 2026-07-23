@@ -23,8 +23,9 @@ import { listPublishedPhotos, type GalleryPhoto } from "@/services/gallery";
  * caption still travels as the image's alt text, so the spec's copy stays in
  * the DOM for a screen reader and for the parity gate.
  *
- * The first seven captions are the spec's; slides 8-10 have no spec counterpart
- * and take the line printed on their own artwork.
+ * The first seven captions are the spec's; the rest have no spec counterpart and
+ * take the line printed on their own artwork. Slides 11-20 were drawn to match
+ * by scripts/generate-gallery-placeholders.mjs.
  */
 const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Deep in a foundations session" },
@@ -37,6 +38,16 @@ const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Finance, explained by someone still in it" },
   { caption: "Pan-India reach — metros to tier 2 cities" },
   { caption: "No funnel. No upsell. Just knowledge shared." },
+  { caption: "Questions you were told were too basic" },
+  { caption: "Twenty-five people, one room, no jargon" },
+  { caption: "The person teaching still does the job" },
+  { caption: "Bring your actual numbers. We'll work through them." },
+  { caption: "No commission. No product. No catch." },
+  { caption: "Money talk, without the sales pitch" },
+  { caption: "Learn it once, use it for life" },
+  { caption: "Weekends well spent, in a room that gets it" },
+  { caption: "Every session ends with what to do next" },
+  { caption: "Built for people, not for portfolios" },
 ].map((slide, i) => ({
   ...slide,
   url: `/gallery/gallery-placeholder-${i + 1}.png`,
