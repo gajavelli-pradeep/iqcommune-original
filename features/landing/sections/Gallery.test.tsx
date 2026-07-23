@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Gallery } from "./Gallery";
@@ -21,11 +21,29 @@ describe("Gallery", () => {
     expect(screen.getByAltText("Deep in a foundations session")).toBeInTheDocument();
   });
 
-  it("renders published photos with their captions and alt text", () => {
+  it("renders all twenty placeholder slides", () => {
+    withProvider(<Gallery photos={[]} />);
+    expect(screen.getAllByRole("button", { name: /^Go to photo/ })).toHaveLength(20);
+  });
+
+  it("tops up a partly-filled gallery with artwork, keeping twenty slides", () => {
     withProvider(
       <Gallery photos={[{ id: "1", url: "/x.jpg", caption: "A live session", city: "Pune" }]} />,
     );
+    expect(screen.getAllByRole("button", { name: /^Go to photo/ })).toHaveLength(20);
+    // The real photo leads; the artwork picks up from slide two.
     expect(screen.getByAltText("A live session")).toBeInTheDocument();
-    expect(screen.getByText("Pune")).toBeInTheDocument();
+    expect(screen.getByAltText("Full house for equity investing")).toBeInTheDocument();
+    expect(screen.queryByAltText("Deep in a foundations session")).toBeNull();
+  });
+
+  it("captions a published photo on the slide itself, since its pixels carry none", () => {
+    withProvider(
+      <Gallery photos={[{ id: "1", url: "/x.jpg", caption: "A live session", city: "Pune" }]} />,
+    );
+    // Scoped to its own slide: an artwork slide further along is also Pune.
+    const slide = screen.getByAltText("A live session").closest("li")!;
+    expect(within(slide).getByText("A live session")).toBeInTheDocument();
+    expect(within(slide).getByText("Pune")).toBeInTheDocument();
   });
 });

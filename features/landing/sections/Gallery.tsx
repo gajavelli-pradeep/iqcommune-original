@@ -78,10 +78,14 @@ export async function GallerySection() {
 }
 
 export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
-  const slides: readonly GallerySlide[] =
-    photos.length > 0
-      ? photos.map((p) => ({ caption: p.caption, city: p.city, url: p.url }))
-      : PLACEHOLDERS;
+  // Real photos first, artwork filling whatever is left. Publishing the first
+  // photo used to replace all twenty slides with a one-slide carousel, so the
+  // section got worse the moment it got its first real content — and stayed
+  // worse until the twentieth.
+  const slides: readonly GallerySlide[] = [
+    ...photos.map((p) => ({ caption: p.caption, city: p.city, url: p.url })),
+    ...PLACEHOLDERS.slice(photos.length),
+  ];
 
   return (
     <section className="overflow-hidden bg-gallery-bg pt-16">

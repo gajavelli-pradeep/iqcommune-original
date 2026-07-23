@@ -1,5 +1,6 @@
 import "server-only";
 
+import { GALLERY_LIMIT } from "@/constants/gallery";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Published gallery photos for the public landing page. */
@@ -13,7 +14,12 @@ export interface GalleryPhoto {
 
 const BUCKET = "gallery";
 
-export async function listPublishedPhotos(limit = 12): Promise<GalleryPhoto[]> {
+/**
+ * Reads what the console guarantees. This was hardcoded to 12 while the publish
+ * action evicted down to GALLERY_LIMIT (20), so eight published photos could be
+ * carried, counted in the console's "N / 20", and never shown.
+ */
+export async function listPublishedPhotos(limit = GALLERY_LIMIT): Promise<GalleryPhoto[]> {
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
