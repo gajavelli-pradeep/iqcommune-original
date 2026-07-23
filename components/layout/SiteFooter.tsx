@@ -4,7 +4,12 @@ import { ArrowRightIcon } from "@/components/ui/ArrowRightIcon";
 import { LegalLinks, Separator } from "@/components/legal/LegalLinks";
 
 /**
- * Shared site footer — used by all eight public pages.
+ * Shared site footer — the landing page, the practitioner site and /login.
+ *
+ * Not the five emailed link pages: those use LinkPageShell, whose foot is a
+ * "Confidential · questions?" line rather than a site footer. So "standard"
+ * here means the three pages that have a footer at all, which is what the
+ * client's "both footers" asked for.
  *
  * The bottom two lines are the client's standard (2026-07-23) and are the same
  * on every page: Privacy Policy · Terms of Use · inbox, then the copyright.
