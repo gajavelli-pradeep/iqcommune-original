@@ -14,6 +14,18 @@ import { listPublishedPhotos, type GalleryPhoto } from "@/services/gallery";
  * see GalleryCarousel for the slider itself.
  */
 
+/**
+ * The client's illustrative artwork, one file per slide.
+ *
+ * Each image already carries its own caption bar, printed in the same place the
+ * carousel draws one — so these slides set `captionInArt` and let the artwork
+ * speak, rather than stacking a translucent bar on top of a painted one. The
+ * caption still travels as the image's alt text, so the spec's copy stays in
+ * the DOM for a screen reader and for the parity gate.
+ *
+ * The first seven captions are the spec's; slides 8-10 have no spec counterpart
+ * and take the line printed on their own artwork.
+ */
 const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Deep in a foundations session" },
   { caption: "Full house for equity investing", city: "Mumbai" },
@@ -22,7 +34,14 @@ const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Building out a portfolio, live" },
   { caption: "Great question from the back row", city: "Pune" },
   { caption: "Foundations, session two", city: "Delhi" },
-];
+  { caption: "Finance, explained by someone still in it" },
+  { caption: "Pan-India reach — metros to tier 2 cities" },
+  { caption: "No funnel. No upsell. Just knowledge shared." },
+].map((slide, i) => ({
+  ...slide,
+  url: `/gallery/gallery-placeholder-${i + 1}.png`,
+  captionInArt: true,
+}));
 
 /**
  * The async read lives in this wrapper, not in `Gallery`, so the section itself

@@ -17,7 +17,17 @@ const SLIDE_W = 332; // 320px slide + 12px gap
 const VISIBLE = 3;
 const AUTOPLAY_MS = 4500;
 
-export type GallerySlide = { caption: string; city?: string; url?: string };
+export type GallerySlide = {
+  caption: string;
+  city?: string;
+  url?: string;
+  /**
+   * The artwork already prints this caption, so the overlay bar is skipped —
+   * two bars in the same corner render as one smudge. Only the illustrative
+   * placeholders set it; a published photo is never captioned in the pixels.
+   */
+  captionInArt?: boolean;
+};
 
 export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] }) {
   const total = slides.length;
@@ -75,9 +85,11 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
                   </svg>
                 </div>
               )}
-              <p className="absolute inset-x-2.5 top-2.5 rounded-sm bg-gallery-slide/55 px-2.5 py-[5px] text-xs font-medium leading-[1.35] text-surface/85">
-                {slide.caption}
-              </p>
+              {slide.captionInArt ? null : (
+                <p className="absolute inset-x-2.5 top-2.5 rounded-sm bg-gallery-slide/55 px-2.5 py-[5px] text-xs font-medium leading-[1.35] text-surface/85">
+                  {slide.caption}
+                </p>
+              )}
               {slide.city ? (
                 <p className="absolute right-2.5 bottom-2.5 text-2xs text-surface/20">{slide.city}</p>
               ) : null}

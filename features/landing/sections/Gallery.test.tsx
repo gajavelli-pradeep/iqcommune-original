@@ -22,8 +22,9 @@ describe("Gallery", () => {
   it("shows illustrative placeholders (not an error) when the DB is empty", () => {
     withProvider(<Gallery photos={[]} failed={false} />);
     expect(screen.queryByRole("alert")).toBeNull();
-    // A designed empty state, not an outage.
-    expect(screen.getByText("Deep in a foundations session")).toBeInTheDocument();
+    // A designed empty state, not an outage. The caption reaches the reader as
+    // the artwork's alt text, since the artwork prints the caption itself.
+    expect(screen.getByAltText("Deep in a foundations session")).toBeInTheDocument();
   });
 
   it("renders published photos with their captions and alt text", () => {
