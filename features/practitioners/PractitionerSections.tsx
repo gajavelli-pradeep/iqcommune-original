@@ -106,7 +106,6 @@ export function PractitionerSections() {
         </div>
       </main>
       <SiteFooter
-        tagline="practitioner network"
         // Client override of the V7 spec's practitioners@ address: every footer
         // across the site points at the one inbox.
         email="hello@iqcommune.com"

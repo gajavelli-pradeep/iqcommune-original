@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { SiteFooter } from "./SiteFooter";
 
@@ -23,26 +24,48 @@ describe("SiteFooter", () => {
   it("carries the spec copy verbatim", () => {
     render(<SiteFooter />);
     expect(screen.getByText("Are you a finance professional?")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Insight Quotient - Unleashed\./),
-    ).toBeInTheDocument();
   });
 
-  it("keeps the space before the em dash", () => {
-    // Regression: written as loose JSX text, `</strong> — Insight` renders as
-    // "iqcommune— Insight". Invisible in a screenshot, caught by measurement.
+  /**
+   * The client's standard footer (2026-07-23). Asserted as the whole line, not
+   * as three separate elements, because the requirement is the line — an
+   * earlier footer had the right words in the wrong order and read fine in
+   * isolation.
+   */
+  it("renders the standard first line: both documents, then the inbox", () => {
     const { container } = render(<SiteFooter />);
-    const tagline = [...container.querySelectorAll("p")].find((p) =>
-      p.textContent?.includes("Insight Quotient"),
+    const line = [...container.querySelectorAll("p")].find((p) =>
+      p.textContent?.includes("Privacy Policy"),
     );
-    expect(tagline?.textContent).toMatch(/iqcommune — Insight Quotient - Unleashed\./);
+    expect(line?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Privacy Policy · Terms of Use · hello@iqcommune.com",
+    );
   });
 
   it("renders the current year, so the footer never looks abandoned", () => {
     render(<SiteFooter />);
     const year = new Date().getFullYear();
     expect(
-      screen.getByText(`© ${year} iqcommune. All rights reserved.`),
+      screen.getByText(`© ${year}. InvestQ Commune. All Rights Reserved`),
     ).toBeInTheDocument();
+  });
+
+  it("opens each document in a dialog and closes it again", async () => {
+    const user = userEvent.setup();
+    render(<SiteFooter />);
+
+    for (const title of ["Privacy Policy", "Terms of Use"]) {
+      await user.click(screen.getByRole("button", { name: title }));
+
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByRole("heading", { name: title })).toBeInTheDocument();
+      // The document body actually arrived, not just the chrome. `getAll`
+      // because the prose names the company throughout — a unique match here
+      // would be asserting that it does not.
+      expect(within(dialog).getAllByText(/InvestQ Commune/).length).toBeGreaterThan(3);
+
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    }
   });
 });

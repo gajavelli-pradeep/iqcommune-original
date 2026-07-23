@@ -51,6 +51,15 @@ export const PRACTITIONERS_PENDING: PendingUnit[] = [
     lines: [974, 974],
   },
   {
+    unit: "Deviation · standard footer on every page",
+    reason:
+      "Client change (2026-07-23): both footers carry one standard pair of lines — " +
+      "Privacy Policy · Terms of Use · inbox, then the copyright. The spec's per-page " +
+      "wordmark line, which said 'practitioner network' here, is what 'standard' replaced.",
+    kind: "deviation",
+    matches: (text) => text.includes("practitioner network ·"),
+  },
+  {
     unit: "Deviation · single contact inbox",
     reason:
       "Client copy change (2026-07-23): every footer points at hello@iqcommune.com. The spec's " +

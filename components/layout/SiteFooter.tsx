@@ -1,25 +1,30 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRightIcon } from "@/components/ui/ArrowRightIcon";
+import { LegalLinks, Separator } from "@/components/legal/LegalLinks";
 
 /**
  * Shared site footer — used by all eight public pages.
  *
- * Two deviations from the V7 HTML, both deliberate:
+ * The bottom two lines are the client's standard (2026-07-23) and are the same
+ * on every page: Privacy Policy · Terms of Use · inbox, then the copyright.
+ * This replaced a per-page wordmark-and-tagline line, which is why the
+ * practitioner site no longer says "practitioner network" here — "standard"
+ * was the requirement, so the variation went.
+ *
+ * Three deviations from the V7 HTML, all deliberate:
  *
  * 1. The year is computed, not the literal "2025" in the spec. A footer showing
  *    last year reads as an abandoned site, and the spec was authored in 2025.
  *    The content-parity gate allowlists this line for that reason.
  * 2. Body text uses --color-on-dark-muted (0.5 alpha) where the spec has 0.3.
  *    0.3 measures 2.60:1 on this background and fails WCAG AA. See globals.css.
+ * 3. The legal links and the "InvestQ Commune" wording postdate the spec.
  */
 export function SiteFooter({
-  tagline = "Insight Quotient - Unleashed.",
   email = "hello@iqcommune.com",
   top = true,
 }: {
-  /** Follows the wordmark. The practitioner site says "practitioner network". */
-  tagline?: string;
   /** Public pages and the practitioner site use different inboxes. */
   email?: string;
   /**
@@ -63,20 +68,24 @@ export function SiteFooter({
         </div>
         )}
 
+        {/* The client's standard footer, identical on every page: the two legal
+            documents and the inbox on one line, the copyright on the next.
+            Inline flow rather than flex — it wraps on its own at 320px, and the
+            spaces around each separator stay real text rather than padding a
+            screen reader cannot hear. */}
         <p>
-          {/* Explicit string literals, not loose JSX text: JSX strips the space
-              that should sit between </strong> and the em dash, silently
-              rendering "iqcommune— Where". Caught by measurement, not by eye. */}
-          <strong className="font-medium text-on-dark-strong">iqcommune</strong>
-          {` — ${tagline}  ·  `}
+          <LegalLinks />
+          <Separator />
           <a
             href={`mailto:${email}`}
-            className="tap-44 transition-colors hover:text-on-dark-bright focus-visible:text-on-dark-bright"
+            className="tap-44 underline-offset-2 transition-colors hover:text-on-dark-bright hover:underline focus-visible:text-on-dark-bright focus-visible:underline"
           >
             {email}
           </a>
         </p>
-        <p className="mt-2">© {new Date().getFullYear()} iqcommune. All rights reserved.</p>
+        <p className="mt-2">
+          © {new Date().getFullYear()}. InvestQ Commune. All Rights Reserved
+        </p>
       </div>
     </footer>
   );
