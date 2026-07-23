@@ -1021,14 +1021,21 @@ export async function inviteTeamMember(email: string, role: string): Promise<Act
   });
   revalidateConsole();
 
+  // Keyed on `delivered`, not `ok`. A dry run is a perfectly fine outcome and
+  // sends nothing, and reporting "Invite sent" for it is how two real invites
+  // went out as "sent" while EMAIL_DELIVERY was unset and no mail existed.
+  //
   // The invite row exists either way, so this is not a failure of the action —
   // it is a partial success the admin has to know about, because the next step
-  // is theirs (resend, or send the link another way).
-  return delivery.ok
+  // is theirs (resend, or pass the link on another way).
+  return delivery.delivered
     ? { ok: true }
     : {
         ok: false,
-        message: `Invite created, but the email did not go out — ${delivery.message} You can resend it from the team list.`,
+        // Says "withdraw and invite again", not "resend": the team list has a
+        // Withdraw invite control and no resend, and an instruction naming a
+        // button that does not exist is worse than none.
+        message: `Invite created for ${address}, but no email was sent — ${delivery.message} Withdraw the invite below and send it again once that is fixed.`,
       };
 }
 

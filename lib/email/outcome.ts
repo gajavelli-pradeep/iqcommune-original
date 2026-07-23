@@ -29,32 +29,50 @@ export type EmailStatus =
   | "unknown";
 
 export interface OutcomeShape {
-  /** Did the message reach the provider, or is it deliberately not going? */
+  /**
+   * Is this an outcome anyone needs to chase? A dry run is `ok` — the system
+   * did exactly what it was configured to do — and it is emphatically NOT
+   * delivered. Keeping these apart matters: the invite UI reported "Invite
+   * sent" for every dry run because it keyed off `ok`, which is the one thing
+   * a person reading that sentence needs it not to mean.
+   */
   ok: boolean;
+  /** Did this message actually go out to the recipient? Only this may say "sent". */
+  delivered: boolean;
   /** Worth another attempt with the same input. */
   retryable: boolean;
   /** Shown to a person in the console. No stack traces, no provider jargon. */
   message: string;
 }
 
+const fail = (message: string, retryable = false): OutcomeShape => ({
+  ok: false,
+  delivered: false,
+  retryable,
+  message,
+});
+
 export const OUTCOMES: Record<EmailStatus, OutcomeShape> = {
-  sent: { ok: true, retryable: false, message: "Email sent successfully." },
-  queued: { ok: true, retryable: false, message: "Email queued successfully." },
-  duplicate: { ok: true, retryable: false, message: "Email already sent." },
+  sent: { ok: true, delivered: true, retryable: false, message: "Email sent successfully." },
+  queued: { ok: true, delivered: true, retryable: false, message: "Email queued successfully." },
+  // Delivered, just not by this attempt — the earlier one is why we stopped.
+  duplicate: { ok: true, delivered: true, retryable: false, message: "Email already sent." },
+  // The only outcome that is fine AND did not go out. EMAIL_DELIVERY is unset.
   "dry-run": {
     ok: true,
+    delivered: false,
     retryable: false,
-    message: "Email not sent — delivery is off in this environment.",
+    message: "Email not sent — delivery is switched off in this environment (EMAIL_DELIVERY).",
   },
-  "invalid-recipient": { ok: false, retryable: false, message: "Invalid recipient email." },
-  "not-configured": { ok: false, retryable: false, message: "Missing configuration." },
-  "auth-failed": { ok: false, retryable: false, message: "Authentication failed." },
-  rejected: { ok: false, retryable: false, message: "The provider rejected this message." },
-  "rate-limited": { ok: false, retryable: true, message: "Rate limit exceeded." },
-  "server-error": { ok: false, retryable: true, message: "Temporary server error." },
-  "network-unavailable": { ok: false, retryable: true, message: "Network unavailable." },
-  timeout: { ok: false, retryable: true, message: "The provider did not respond in time." },
-  unknown: { ok: false, retryable: false, message: "Unknown error." },
+  "invalid-recipient": fail("Invalid recipient email."),
+  "not-configured": fail("Missing configuration."),
+  "auth-failed": fail("Authentication failed."),
+  rejected: fail("The provider rejected this message."),
+  "rate-limited": fail("Rate limit exceeded.", true),
+  "server-error": fail("Temporary server error.", true),
+  "network-unavailable": fail("Network unavailable.", true),
+  timeout: fail("The provider did not respond in time.", true),
+  unknown: fail("Unknown error."),
 };
 
 export interface EmailResult extends OutcomeShape {

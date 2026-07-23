@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isSendableAddress } from "@/lib/email/outcome";
+import { isSendableAddress, OUTCOMES, type EmailStatus } from "@/lib/email/outcome";
 import { sendEmail, type SendDeps } from "@/lib/email/send";
 
 /**
@@ -49,6 +49,35 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+/**
+ * The distinction that caused a real incident: two admin invites were reported
+ * to the console as "Invite sent" while EMAIL_DELIVERY was unset and no mail
+ * was ever dispatched. The caller keyed on `ok`, and a dry run is `ok` — it is
+ * the system doing exactly what it was configured to do. Only `delivered` may
+ * be read as "this reached someone".
+ */
+describe("ok is not delivered", () => {
+  const DELIVERED: EmailStatus[] = ["sent", "queued", "duplicate"];
+
+  it.each(Object.keys(OUTCOMES) as EmailStatus[])(
+    "%s claims delivery only if it really sent something",
+    (status) => {
+      expect(OUTCOMES[status].delivered).toBe(DELIVERED.includes(status));
+    },
+  );
+
+  it("a dry run is fine and is not delivery", () => {
+    expect(OUTCOMES["dry-run"]).toMatchObject({ ok: true, delivered: false });
+    expect(OUTCOMES["dry-run"].message).toContain("not sent");
+  });
+
+  it("nothing that failed claims delivery", () => {
+    for (const [status, shape] of Object.entries(OUTCOMES)) {
+      if (!shape.ok) expect(shape.delivered, `${status} must not claim delivery`).toBe(false);
+    }
+  });
 });
 
 describe("recipient validation", () => {
