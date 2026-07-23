@@ -33,4 +33,12 @@ export const PRACTITIONERS_PENDING: PendingUnit[] = [
     kind: "state",
     lines: [6, 6],
   },
+  {
+    unit: "Deviation · single contact inbox",
+    reason:
+      "Client copy change (2026-07-23): every footer points at hello@iqcommune.com. The spec's " +
+      "practitioners@ address is no longer used anywhere.",
+    kind: "deviation",
+    matches: (text) => text.includes("practitioners@iqcommune.com"),
+  },
 ];
