@@ -1032,10 +1032,14 @@ export async function inviteTeamMember(email: string, role: string): Promise<Act
     ? { ok: true }
     : {
         ok: false,
+        // The outcome sentence already says what happened, so this does not
+        // restate it — composing "but no email was sent" around a message that
+        // opens "Email not sent" read as a stutter.
+        //
         // Says "withdraw and invite again", not "resend": the team list has a
         // Withdraw invite control and no resend, and an instruction naming a
         // button that does not exist is worse than none.
-        message: `Invite created for ${address}, but no email was sent — ${delivery.message} Withdraw the invite below and send it again once that is fixed.`,
+        message: `Invite created for ${address}. ${delivery.message} Withdraw the invite below and send it again once that is sorted.`,
       };
 }
 
