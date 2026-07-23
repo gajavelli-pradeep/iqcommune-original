@@ -303,6 +303,24 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* Hand cursor on anything clickable.
+
+   Tailwind v4's Preflight dropped the `cursor: pointer` v3 gave buttons, so
+   every <button> in the app fell back to the UA arrow — the CTAs looked inert
+   on hover. Defined once here rather than adding `cursor-pointer` to each call
+   site, which only fixes the buttons someone remembers. Disabled controls keep
+   the not-allowed cursor. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* Entrance motion, opt-in.
 
    The spec writes `animation: fadeUp .5s ease both` with `from { opacity: 0 }`.
