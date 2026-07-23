@@ -24,6 +24,7 @@ export function SiteHeader({
   badge,
   badgeStyle = "lockup",
   right,
+  menu,
   width = "var(--container-page)",
   strapline = "Insight Quotient - Unleashed",
   compact = false,
@@ -44,6 +45,12 @@ export function SiteHeader({
    */
   badgeStyle?: "pill" | "lockup";
   right?: ReactNode;
+  /**
+   * Small-screen navigation. Rendered below `sm`, where `right` is often the
+   * only control and a long page has no other way around itself. The emailed
+   * flow pages pass nothing: they are one screen with one action.
+   */
+  menu?: ReactNode;
   /**
    * Wordmark sub-line. Defaults to the public strapline; the emailed flow pages
    * pass `null` — their V7 nav has no strapline at all.
@@ -101,8 +108,8 @@ export function SiteHeader({
 
         {/* Right cluster — the pill badge (V7 places it top-right) and whatever
             call-to-action the page supplies. */}
-        {(right || (badge && badgeStyle === "pill")) && (
-          <div className="flex min-w-0 items-center gap-[0.6rem]">
+        {(right || menu || (badge && badgeStyle === "pill")) && (
+          <div className="flex min-w-0 shrink-0 items-center gap-[0.6rem]">
             {/* Hidden below 640px: the wordmark, this badge and the right slot
                 together overflow 320px. The page's own h1 also names the sub-site. */}
             {badge && badgeStyle === "pill" ? (
@@ -110,7 +117,13 @@ export function SiteHeader({
                 {badge.join(" ")}
               </span>
             ) : null}
-            {right}
+            {/* The action and the menu swap at the same breakpoint rather than
+                stacking: at 320px the wordmark plus both of them overflows, and
+                a header that wraps to two lines is the P1 this file already
+                guards against. The action is the first item inside the drawer,
+                so nothing is lost by moving it there. */}
+            {menu ? <span className="sm:hidden">{menu}</span> : null}
+            {right ? <span className={menu ? "hidden sm:inline-flex" : undefined}>{right}</span> : null}
           </div>
         )}
       </div>

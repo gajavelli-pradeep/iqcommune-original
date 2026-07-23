@@ -43,10 +43,13 @@ export function ApplyProvider({ children }: { children: ReactNode }) {
 export function ApplyButton({
   label = "Apply to Join the Network",
   icon = "users",
+  className = "",
 }: {
   label?: string;
   /** V7 uses a leading users icon on the hero button, a trailing arrow on the closing CTA. */
   icon?: "users" | "arrow";
+  /** Size overrides for the mobile drawer, where the button spans the panel. */
+  className?: string;
 }) {
   const { openApply } = useApplyDialog();
   return (
@@ -55,7 +58,7 @@ export function ApplyButton({
       onClick={openApply}
       // White label on gold, matching V7 exactly (the client requires the visual
       // match over the AA contrast note that previously kept this ink).
-      className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-full bg-gold px-9 py-4 text-xl font-semibold text-surface shadow-gold transition-[filter,transform] duration-200 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:translate-y-0"
+      className={`inline-flex min-h-11 items-center justify-center gap-2.5 rounded-full bg-gold px-9 py-4 text-xl font-semibold text-surface shadow-gold transition-[filter,transform] duration-200 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:hover:translate-y-0 ${className}`}
     >
       {icon === "users" ? (
         <svg

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { MobileNav, type NavLink } from "@/components/layout/MobileNav";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { BundledSessions } from "@/features/landing/sections/BundledSessions";
@@ -28,27 +29,72 @@ import { RequestSessionButton, RequestSessionProvider } from "./RequestSession";
  * same section with fixed data. One list, two callers, no drift between what
  * ships and what is verified.
  */
+/**
+ * The drawer's contents. Anchors to the sections a visitor on a phone would
+ * otherwise have to scroll eleven screens to find, plus the one page this site
+ * links out to.
+ */
+const MOBILE_LINKS: readonly NavLink[] = [
+  { href: "#who-its-for", label: "Who it's for" },
+  { href: "#topics", label: "What we cover" },
+  { href: "#how-it-works", label: "How it works" },
+  { href: "#tools", label: "Free calculators" },
+  { href: "#sessions", label: "Sessions in the room" },
+  { href: "#faqs", label: "FAQs" },
+  { href: "/practitioners", label: "For practitioners" },
+];
+
+/**
+ * Anchor target for a section that owns its own `<section>` element.
+ *
+ * A transparent wrapper rather than an id on each section component: the id is
+ * a property of the page's navigation, not of the section, and threading one
+ * through six components to serve one drawer is the wrong trade. `scroll-mt`
+ * clears the sticky header, which would otherwise cover the heading a visitor
+ * just jumped to.
+ */
+function Anchor({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <div id={id} className="scroll-mt-[68px]">
+      {children}
+    </div>
+  );
+}
+
 export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
   return (
     <RequestSessionProvider>
       <div className="flex min-h-dvh flex-col">
-        <SiteHeader right={<RequestSessionButton variant="nav" />} />
+        <SiteHeader
+          right={<RequestSessionButton variant="nav" />}
+          menu={<MobileNav links={MOBILE_LINKS} action={<RequestSessionButton variant="gold" className="w-full justify-center px-5 py-3 text-md" />} />}
+        />
         <main className="flex-1">
           <Hero />
           <TrustBar />
           <AudienceRibbon />
           <TrainerComparison />
-          <WhoIsThisFor />
-          <TrainingTopics />
+          <Anchor id="who-its-for">
+            <WhoIsThisFor />
+          </Anchor>
+          <Anchor id="topics">
+            <TrainingTopics />
+          </Anchor>
           <BundledSessions />
-          <HowItWorks />
+          <Anchor id="how-it-works">
+            <HowItWorks />
+          </Anchor>
           <Takeaways />
-          <Faqs />
+          <Anchor id="faqs">
+            <Faqs />
+          </Anchor>
           {/* Audit M6: an isolated crash in a calculator stays inside this
               boundary instead of blanking the whole landing page. */}
-          <ErrorBoundary label="tools-calculators">
-            <ToolsCalculators />
-          </ErrorBoundary>
+          <Anchor id="tools">
+            <ErrorBoundary label="tools-calculators">
+              <ToolsCalculators />
+            </ErrorBoundary>
+          </Anchor>
           <CtaSection />
           {/*
             Audit H2: the gallery is the only section that reads the database.
@@ -57,7 +103,9 @@ export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
             the pure Gallery in its designed placeholder state — identical
             chrome, so no layout shift when the real photos arrive.
           */}
-          <Suspense fallback={<Gallery photos={[]} />}>{gallery}</Suspense>
+          <Anchor id="sessions">
+            <Suspense fallback={<Gallery photos={[]} />}>{gallery}</Suspense>
+          </Anchor>
         </main>
         <SiteFooter />
       </div>
