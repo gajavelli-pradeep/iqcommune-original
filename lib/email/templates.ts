@@ -103,6 +103,32 @@ export function newSessionRequestForAdmin(to: string, summary: string): EmailMes
   };
 }
 
+/** Exact copy from the client's request-acknowledgment spec, same as
+ *  `sessionRequestReceived` above — plus a status link the spec did not ask
+ *  for but the client separately requested: somewhere to check back rather
+ *  than wait on the next email. */
+export function applicationReceived(to: string, firstName: string, applicationId: string): EmailMessage {
+  return {
+    template: "application-received",
+    stream: "practitioner",
+    to,
+    subject: "iqcommune — we've received your application",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+      "",
+      "We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.",
+      "",
+      "Track your application:",
+      buildLink("status", applicationId),
+      "",
+      "Regards,",
+      "The iqcommune Team",
+    ),
+  };
+}
+
 export function ratingRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
     template: "rating-request",
@@ -210,27 +236,6 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
  * hold (audit G4c), unlike the external link emails. They carry no tokenised
  * link, just news of a decision.
  */
-
-/** Exact copy from the client's request-acknowledgment spec, same as
- *  `sessionRequestReceived` above. */
-export function applicationReceived(to: string, firstName: string): EmailMessage {
-  return {
-    template: "application-received",
-    stream: "practitioner",
-    to,
-    subject: "iqcommune — we've received your application",
-    body: lines(
-      `Hi ${firstName},`,
-      "",
-      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
-      "",
-      "We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.",
-      "",
-      "Regards,",
-      "The iqcommune Team",
-    ),
-  };
-}
 
 export function practitionerWelcome(to: string, firstName: string): EmailMessage {
   return {

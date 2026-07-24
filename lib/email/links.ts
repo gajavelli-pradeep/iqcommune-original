@@ -14,15 +14,20 @@ const PATHS: Record<TokenKind, string> = {
   photos: "/submit-photos",
   onboarding: "/onboarding",
   invite: "/join-admin",
+  status: "/status",
 };
 
-/** Days, not months — a token cannot be revoked before it expires. */
+/** Days, not months — a token cannot be revoked before it expires.
+ *  `status` is the long one on purpose: empanelment review can take weeks,
+ *  and the one link an applicant gets is in the acknowledgment email they
+ *  received on day one — it has to still work whenever they come back to it. */
 const TTL_DAYS: Record<TokenKind, number> = {
   rate: 14,
   consent: 7,
   photos: 30,
   onboarding: 14,
   invite: 7,
+  status: 60,
 };
 
 export function buildLink(kind: TokenKind, id: string): string {

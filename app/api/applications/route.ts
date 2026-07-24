@@ -47,7 +47,10 @@ export async function POST(request: Request) {
     // Off the response path via dispatchEmail → after() (audit C2): the
     // application is already saved, and a slow or failing mail provider must
     // not turn a successful submission into an error the person sees.
-    dispatchEmail(traceId, applicationReceived(parsed.data.email, parsed.data.firstName));
+    dispatchEmail(
+      traceId,
+      applicationReceived(parsed.data.email, parsed.data.firstName, created.id),
+    );
     return ok(created, 201);
   } catch (cause) {
     log.error(traceId, "application failed", { cause: String(cause) });

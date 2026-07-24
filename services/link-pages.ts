@@ -3,6 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   AdminInvite,
+  ApplicationStatus,
   ConsentSession,
   OnboardingPractitioner,
   PhotoSession,
@@ -268,4 +269,61 @@ export async function getOpenInvite(
   // or predate the link that points at it.
   if (new Date(data.expires_at) <= new Date()) return null;
   return { email: data.email, role: data.role };
+}
+
+/** The pipeline status a track-your-application page can show, restated in
+ *  plain language — an applicant sees "you're empanelled", never the raw
+ *  "Empanelled" enum value a console operator works with. Anything not in
+ *  the active pipeline (a legacy value, or none of the below) gets the same
+ *  generic "still with us" line rather than guessing at what an unfamiliar
+ *  status means. */
+const STATUS_COPY: Record<string, { headline: string; detail: string }> = {
+  Applied: {
+    headline: "We've received your application",
+    detail: "It's next in line for review — we'll be in touch within 2–3 working days.",
+  },
+  "Screening Done": {
+    headline: "Your application has been reviewed",
+    detail: "We've had our informal chat and are finalising next steps. We'll follow up shortly.",
+  },
+  "Agreement Sent": {
+    headline: "You're almost there",
+    detail: "We've sent your empanelment agreement — check your email to review and sign it.",
+  },
+  Empanelled: {
+    headline: "You're empanelled!",
+    detail:
+      "Welcome to the iqcommune practitioner network — we'll be in touch with your first session details soon.",
+  },
+  Rejected: {
+    headline: "An update on your application",
+    detail:
+      "We're not able to move forward with your application at this time. We genuinely appreciate the time you took to apply.",
+  },
+};
+
+const DEFAULT_STATUS_COPY = {
+  headline: "Your application is with us",
+  detail: "It's in our pipeline and being reviewed. We'll be in touch as things progress.",
+};
+
+export async function getApplicationStatus(applicationId: string): Promise<ApplicationStatus | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("practitioner_applications")
+    .select("first_name, status, created_at")
+    .eq("id", applicationId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(`practitioner_applications read failed: ${error.message}`);
+  if (!data) return null;
+
+  const copy = STATUS_COPY[data.status] ?? DEFAULT_STATUS_COPY;
+  return {
+    firstName: data.first_name,
+    headline: copy.headline,
+    detail: copy.detail,
+    appliedOn: date(data.created_at),
+  };
 }

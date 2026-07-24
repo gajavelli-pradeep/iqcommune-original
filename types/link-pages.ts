@@ -61,3 +61,12 @@ export interface AdminInvite {
   email: string;
   role: string;
 }
+
+export interface ApplicationStatus {
+  firstName: string;
+  /** Short, public-facing restatement of the raw pipeline status — never the
+   *  enum value itself (see `services/link-pages.ts`). */
+  headline: string;
+  detail: string;
+  appliedOn: string;
+}

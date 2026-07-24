@@ -15,7 +15,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * Server-only: this reads HMAC_SECRET and must never reach the browser.
  */
 
-export const TOKEN_KINDS = ["rate", "consent", "photos", "onboarding", "invite"] as const;
+export const TOKEN_KINDS = ["rate", "consent", "photos", "onboarding", "invite", "status"] as const;
 export type TokenKind = (typeof TOKEN_KINDS)[number];
 
 export interface TokenPayload {

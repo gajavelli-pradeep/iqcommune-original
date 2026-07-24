@@ -51,6 +51,7 @@ describe("emailed links", () => {
       templates.photoReminder("a@b.com", "Vikram", ID),
       templates.onboardingLink("a@b.com", "Vikram", ID),
       templates.adminInvite("a@b.com", ID),
+      templates.applicationReceived("a@b.com", "Vikram", ID),
     ];
     for (const message of cases) {
       expect(message.body).toContain("https://iqcommune.example/");
@@ -114,7 +115,7 @@ describe("email sender routing", () => {
   // describe body runs.
   const practitionerMail = () => [
     templates.onboardingLink("a@b.com", "Vikram", ID),
-    templates.applicationReceived("a@b.com", "Vikram"),
+    templates.applicationReceived("a@b.com", "Vikram", ID),
     templates.practitionerWelcome("a@b.com", "Vikram"),
     templates.applicationRejected("a@b.com", "Vikram"),
     templates.practitionerDeactivated("a@b.com", "Vikram"),
@@ -193,12 +194,14 @@ describe("email sender routing", () => {
  */
 describe("submission acknowledgment emails match the client's exact copy", () => {
   it("application acknowledgment", () => {
-    const message = templates.applicationReceived("a@b.com", "Ananya");
+    const message = templates.applicationReceived("a@b.com", "Ananya", ID);
 
     expect(message.subject).toBe("iqcommune — we've received your application");
     expect(message.body).toContain(
       "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
     );
+    expect(message.body).toContain("Track your application:");
+    expect(message.body).toContain("https://iqcommune.example/status?t=");
     expect(message.body).toContain("Regards,\nThe iqcommune Team");
   });
 
