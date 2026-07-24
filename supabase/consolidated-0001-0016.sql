@@ -54,7 +54,7 @@ $$;
 -- Written by the public "Request a Session" modal.
 
 do $$ begin
-  create type session_request_status as enum ('New', 'Contacted', 'Scheduled', 'Closed', 'Cancelled''New', 'Contacted', 'Scheduled', 'Closed', 'Cancelled', 'Matched');
+  create type session_request_status as enum ('New', 'Contacted', 'Scheduled', 'Closed', 'Cancelled', 'Matched');
 exception when duplicate_object then null;
 end $$;
 do $$ begin
@@ -203,7 +203,7 @@ create policy gallery_photos_public_read on gallery_photos
 -- Written by the public "Apply to Join the Network" modal (P2).
 
 do $$ begin
-  create type practitioner_application_status as enum ('New', 'Screening', 'Empanelled', 'Declined', 'Withdrawn''New', 'Screening', 'Empanelled', 'Declined', 'Withdrawn', 'Applied', 'Screening Done', 'Agreement Sent', 'Rejected');
+  create type practitioner_application_status as enum ('New', 'Screening', 'Empanelled', 'Declined', 'Withdrawn', 'Applied', 'Screening Done', 'Agreement Sent', 'Rejected');
 exception when duplicate_object then null;
 end $$;
 
@@ -263,7 +263,7 @@ create index if not exists practitioner_applications_email_idx
 -- ── PRACTITIONERS ───────────────────────────────────────────────────────────
 
 do $$ begin
-  create type practitioner_status as enum ('Empanelled', 'Paused', 'Deactivated''Empanelled', 'Paused', 'Deactivated', 'Pending');
+  create type practitioner_status as enum ('Empanelled', 'Paused', 'Deactivated', 'Pending');
 exception when duplicate_object then null;
 end $$;
 
@@ -329,7 +329,7 @@ create index if not exists practitioner_agreements_practitioner_idx
 -- ── SESSIONS ────────────────────────────────────────────────────────────────
 
 do $$ begin
-  create type session_status as enum ('Scheduled', 'Delivered', 'Cancelled''Scheduled', 'Delivered', 'Cancelled', 'Pending', 'Confirmed', 'Completed');
+  create type session_status as enum ('Scheduled', 'Delivered', 'Cancelled', 'Pending', 'Confirmed', 'Completed');
 exception when duplicate_object then null;
 end $$;
 
