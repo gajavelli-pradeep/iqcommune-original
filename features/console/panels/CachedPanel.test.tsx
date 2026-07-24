@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CachedPanel } from "./CachedPanel";
@@ -29,11 +29,17 @@ vi.mock("./renderers", () => ({
 }));
 
 describe("CachedPanel — live read succeeded", () => {
-  it("renders the panel from the live rows and caches them", async () => {
+  it("renders the panel from the live rows", () => {
     render(<CachedPanel tabId="demo" role="admin" rows={[{ id: "1" }, { id: "2" }]} failed={false} />);
 
     expect(screen.getByText("Live rows: 2")).toBeInTheDocument();
-    await waitFor(() => expect(saveTab).toHaveBeenCalledWith("demo", [{ id: "1" }, { id: "2" }]));
+  });
+
+  it("does not write to the cache itself — CacheAllTabs owns that, for every tab, not just the active one", async () => {
+    render(<CachedPanel tabId="demo" role="admin" rows={[{ id: "1" }, { id: "2" }]} failed={false} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(saveTab).not.toHaveBeenCalled();
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { loadTab, saveTab } from "@/lib/consoleCache";
+import { loadTab } from "@/lib/consoleCache";
 
 import type { ConsoleRole } from "../roles";
 import { PanelError } from "./PanelError";
@@ -35,6 +35,11 @@ type Cached = { rows: readonly unknown[]; savedAt: number } | null;
  * actual panel markup is `PANEL_RENDERERS`, shared with nothing else — there
  * is nothing else that renders these panels — so a live read and a cached one
  * always look identical apart from the note above them.
+ *
+ * Writing to the cache is NOT this component's job, deliberately — only the
+ * active tab ever mounts one of these, so a save-on-success effect here would
+ * only ever cache whichever tab happens to be open. `CacheAllTabs` does that
+ * for every tab, mounted once regardless of which is active.
  */
 export function CachedPanel({
   tabId,
@@ -54,11 +59,7 @@ export function CachedPanel({
   const [cached, setCached] = useState<Cached | undefined>(undefined);
 
   useEffect(() => {
-    if (!failed) {
-      // Fire-and-forget: caching is a nice-to-have, the panel already rendered.
-      if (rows) void saveTab(tabId, rows);
-      return;
-    }
+    if (!failed) return;
 
     let cancelled = false;
     void loadTab<readonly unknown[]>(tabId).then((result) => {
@@ -67,7 +68,7 @@ export function CachedPanel({
     return () => {
       cancelled = true;
     };
-  }, [tabId, failed, rows]);
+  }, [tabId, failed]);
 
   const render = PANEL_RENDERERS[tabId];
 
@@ -89,8 +90,11 @@ export function CachedPanel({
         role="status"
         className="mb-3 rounded-lg border border-flag-warn-edge bg-flag-warn px-4 py-2 text-sm text-gold-dark"
       >
-        Showing saved data from {relativeTime(cached.savedAt)} — this section isn&apos;t updating right
-        now.
+        {/* {" "} forces a real space here — JSX trims the leading space off a
+            text child that itself wraps to a new line, silently joining
+            "ago" and "—" with nothing between them otherwise. */}
+        Showing saved data from {relativeTime(cached.savedAt)}{" "}
+        — this section isn&apos;t updating right now.
       </div>
       {render(cached.rows, role, extra ?? {})}
     </div>

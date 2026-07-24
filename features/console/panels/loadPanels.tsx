@@ -23,6 +23,7 @@ import {
 import { can, tabsFor, type ConsoleRole } from "../roles";
 import { hit, type SearchHit } from "../search";
 import { ActivityPanel } from "./ActivityPanel";
+import { type TabRead } from "./CacheAllTabs";
 import { CachedPanel } from "./CachedPanel";
 import { PanelError } from "./PanelError";
 import { SettingsPanel } from "./SettingsPanel";
@@ -91,6 +92,10 @@ export interface LoadedConsole {
   /** Tab ids whose live read failed this request — drives the "known issue"
    *  banner in `ConsoleShell`, regardless of whether a cache exists for them. */
   failedTabs: readonly string[];
+  /** Every simple-row tab's read result, win or lose — feeds `CacheAllTabs` so
+   *  every tab gets a client-side fallback the first time the console loads
+   *  clean, not only the ones an admin happens to click into. */
+  tabReads: readonly TabRead[];
 }
 
 /**
@@ -254,23 +259,28 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     .flatMap((panel) => panel.hits)
     .filter((entry) => openable.has(entry.tab));
 
+  const simpleRowTabs = [
+    ["practitioners", practitioners],
+    ["agreements", agreements],
+    ["requests", requests],
+    ["confirmations", confirmations],
+    ["sessions", sessions],
+    ["photos", photos],
+    ["payouts", payouts],
+    ["gallery", gallery],
+  ] as const;
+
   /** Every simple-row tab whose live read failed, regardless of whether a
    *  cache exists for it — `ConsoleShell`'s banner does not need to know
    *  which, only that the backend has a known problem right now. */
-  const failedTabs = (
-    [
-      ["practitioners", practitioners],
-      ["agreements", agreements],
-      ["requests", requests],
-      ["confirmations", confirmations],
-      ["sessions", sessions],
-      ["photos", photos],
-      ["payouts", payouts],
-      ["gallery", gallery],
-    ] as const
-  )
-    .filter(([, panel]) => panel.failed)
-    .map(([id]) => id);
+  const failedTabs = simpleRowTabs.filter(([, panel]) => panel.failed).map(([id]) => id);
 
-  return { panels, counts, search, failedTabs };
+  /** Every simple-row tab's read result, win or lose — see `LoadedConsole`. */
+  const tabReads: TabRead[] = simpleRowTabs.map(([tabId, panel]) => ({
+    tabId,
+    rows: panel.rows,
+    failed: panel.failed,
+  }));
+
+  return { panels, counts, search, failedTabs, tabReads };
 }

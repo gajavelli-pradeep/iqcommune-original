@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { selectClass } from "@/components/ui/control";
 
 import { ConsoleSearch } from "./ConsoleSearch";
+import { CacheAllTabs, type TabRead } from "./panels/CacheAllTabs";
 import { RowFocusContext } from "./RowFocusContext";
 import { CONSOLE_ROLES, ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
 import type { RowFocus, SearchHit } from "./search";
@@ -103,6 +104,7 @@ export function ConsoleShell({
   counts,
   search = [],
   failedTabs = [],
+  tabReads = [],
 }: {
   role: ConsoleRole;
   email: string;
@@ -121,6 +123,11 @@ export function ConsoleShell({
    *  Non-empty renders a slim "known issue" strip above the header — this is
    *  a backend problem, not something the admin broke. */
   failedTabs?: readonly string[];
+  /** Every simple-row tab's read result, win or lose — mirrored into the
+   *  client cache regardless of which tab is currently open (see
+   *  `CacheAllTabs`), so a tab nobody has clicked into yet still has a
+   *  same-session fallback the day its own read fails. */
+  tabReads?: readonly TabRead[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -252,6 +259,7 @@ export function ConsoleShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
+      <CacheAllTabs tabs={tabReads} />
       {failedTabs.length > 0 ? (
         <div
           role="status"

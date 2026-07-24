@@ -18,6 +18,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+const saveTab = vi.fn<(tabId: string, rows: unknown) => Promise<void>>(async () => undefined);
+
+vi.mock("@/lib/consoleCache", () => ({
+  saveTab: (...args: unknown[]) => saveTab(...(args as [string, unknown])),
+  loadTab: async () => null,
+}));
+
 /** `useState`'s initializer only runs on mount, never on a prop-only update —
  *  so this reads back the label it was FIRST mounted with unless the caller
  *  actually remounted it. Stands in for `CachedPanel`'s `cached` state, which
@@ -66,6 +73,28 @@ describe("ConsoleShell — sidebar badge on a failed tab", () => {
     );
     expect(screen.queryByText("0")).not.toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+describe("ConsoleShell — caches every tab, not just the active one", () => {
+  it("mirrors an unopened tab's rows into the cache from tabReads alone", async () => {
+    // Practitioners is the default active tab; Payouts is never clicked in
+    // this test. Only ConsoleShell's always-mounted CacheAllTabs — not the
+    // Payouts CachedPanel, which never mounts — can be responsible for this.
+    render(
+      <ConsoleShell
+        role="admin"
+        email="admin@example.com"
+        tabReads={[
+          { tabId: "practitioners", rows: [{ id: "p1" }], failed: false },
+          { tabId: "payouts", rows: [{ id: "pay1" }], failed: false },
+        ]}
+      />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(saveTab).toHaveBeenCalledWith("payouts", [{ id: "pay1" }]);
   });
 });
 

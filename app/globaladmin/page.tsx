@@ -40,9 +40,9 @@ async function loadGlobalAdminConsole(searchParams: Promise<{ as?: string }>) {
   const previewing = role === "global_admin" ? toConsoleRole(as) : null;
   const viewing = previewing ?? role;
 
-  const { panels, counts, search, failedTabs } = await loadConsolePanels(viewing);
+  const { panels, counts, search, failedTabs, tabReads } = await loadConsolePanels(viewing);
 
-  return { role: viewing, actualRole: role, email, panels, counts, search, failedTabs };
+  return { role: viewing, actualRole: role, email, panels, counts, search, failedTabs, tabReads };
 }
 
 export default async function GlobalAdminConsole({
