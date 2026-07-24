@@ -4,6 +4,29 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import { ROLE_ROUTES, can, toConsoleRole, type Capability, type ConsoleRole } from "./roles";
 
+/** Thrown when the auth check itself couldn't reach Supabase — distinct from
+ *  a legitimate "no session" (which still redirects to /login). Callers use
+ *  this to show a "we're reconnecting" screen instead of crashing the route. */
+export class BackendUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super("console auth check could not reach the backend");
+    this.cause = cause;
+  }
+}
+
+/** The one place `supabase.auth.getUser()` is called. A total outage throws
+ *  there rather than resolving with `{ error }`, and an uncaught throw from a
+ *  Server Component takes down the whole route — this turns that throw into
+ *  a typed, catchable `BackendUnavailableError` instead of letting a network
+ *  blip masquerade as an application crash. */
+async function getVerifiedUser(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
+  try {
+    return await supabase.auth.getUser();
+  } catch (cause) {
+    throw new BackendUnavailableError(cause);
+  }
+}
+
 /**
  * The console's authorization boundary.
  *
@@ -22,7 +45,7 @@ export async function requireRole(allowed: ConsoleRole): Promise<{
   email: string;
 }> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await getVerifiedUser(supabase);
 
   if (error || !data.user) redirect("/login");
 
@@ -39,7 +62,7 @@ export async function requireRole(allowed: ConsoleRole): Promise<{
 /** The signed-in console session, or a redirect to /login. Role-agnostic. */
 export async function getConsoleSession(): Promise<{ role: ConsoleRole; email: string }> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await getVerifiedUser(supabase);
 
   if (error || !data.user) redirect("/login");
   const role = toConsoleRole(data.user.app_metadata?.role);
