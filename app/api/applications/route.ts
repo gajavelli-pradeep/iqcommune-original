@@ -55,10 +55,17 @@ export async function POST(request: Request) {
     if (adminInbox) {
       dispatchEmail(
         traceId,
-        newApplicationForAdmin(
-          adminInbox,
-          `${parsed.data.firstName} ${parsed.data.lastName} - ${parsed.data.city}, ${parsed.data.state} - Modules: ${parsed.data.modules.join(", ")}`,
-        ),
+        newApplicationForAdmin(adminInbox, {
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          jobTitle: parsed.data.jobTitle,
+          experience: parsed.data.experience,
+          city: parsed.data.city,
+          state: parsed.data.state,
+          modules: parsed.data.modules,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+        }),
       );
     }
     return ok(created, 201);

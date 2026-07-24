@@ -1,10 +1,13 @@
 import { SESSION_SHOTS } from "@/constants/photo-shots";
+import { siteUrl } from "@/lib/siteUrl";
 
+import { escapeHtml, safeHref } from "./html";
 import { buildLink } from "./links";
 import type { EmailMessage } from "./send";
 
 /**
- * Plain-text templates.
+ * Plain-text templates — plus, where a template carries a link worth turning
+ * into a real call to action, an `html` counterpart (see `applicationReceived`).
  *
  * Every link is built by `buildLink`, never assembled here — a template that
  * concatenated an id would put a guessable identifier in a URL, which is the
@@ -19,6 +22,38 @@ import type { EmailMessage } from "./send";
  */
 
 const lines = (...parts: string[]) => parts.join("\n");
+
+/** components/ui/Button.tsx's `gold` variant (rounded-full bg-gold text-ink),
+ *  inlined: email clients don't run Tailwind or resolve CSS custom properties,
+ *  the same reason app/opengraph-image.tsx keeps its own literals. */
+const GOLD_BUTTON_STYLE =
+  "display:inline-block;background:#c9982a;color:#0f1117;padding:13px 28px;" +
+  "border-radius:100px;text-decoration:none;font-weight:600;font-size:15px;" +
+  "font-family:Arial,Helvetica,sans-serif";
+
+/** A centered button, table-wrapped: Outlook's Word rendering engine drops
+ *  padding on a bare inline `<a>`, but respects it on a table cell. */
+function goldButton(href: string, label: string): string {
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>` +
+    `<td align="center" style="padding:24px 0 28px 0">` +
+    `<a href="${safeHref(href)}" style="${GOLD_BUTTON_STYLE}">${escapeHtml(label)}</a>` +
+    `</td></tr></table>`
+  );
+}
+
+const TABLE_CELL_LABEL = "padding:7px 12px;background:#f5e9c8;font-weight:600;font-size:13px;width:40%";
+const TABLE_CELL_VALUE = "padding:7px 12px;background:#f8f7f4;font-size:13px";
+
+/** One label/value row in an admin summary table. The tints are literal
+ *  because email clients don't resolve custom properties (see
+ *  GOLD_BUTTON_STYLE above) — they match --color-gold-light/--color-surface-soft. */
+function detailRow(label: string, value: string): string {
+  return (
+    `<tr><td style="${TABLE_CELL_LABEL}">${escapeHtml(label)}</td>` +
+    `<td style="${TABLE_CELL_VALUE}">${escapeHtml(value)}</td></tr>`
+  );
+}
 
 /** Exact copy from the client's request-acknowledgment spec — subject, body
  *  and sign-off all specified verbatim, not the house style used elsewhere
@@ -93,13 +128,65 @@ export function sessionRequestCancelled(to: string, firstName: string): EmailMes
   };
 }
 
-export function newSessionRequestForAdmin(to: string, summary: string): EmailMessage {
+export interface SessionRequestSummary {
+  firstName: string;
+  lastName: string;
+  /** Friendly label — the caller resolves the enum via AUDIENCE_LABELS, this
+   *  template only ever shows what a person submitted. */
+  audience: string;
+  topic: string;
+  organisationName?: string;
+  groupSize?: string;
+  city: string;
+  state: string;
+  preferredWindow?: string;
+  email: string;
+  phone: string;
+}
+
+export function newSessionRequestForAdmin(to: string, request: SessionRequestSummary): EmailMessage {
+  const name = `${request.firstName} ${request.lastName}`;
+  const consoleUrl = `${siteUrl()}/console?tab=requests`;
+
   return {
     template: "new-session-request-admin",
     stream: "session",
     to,
-    subject: "New session request",
-    body: lines("A new session request has come in:", "", summary),
+    subject: `New session request: ${request.topic}`,
+    body: lines(
+      "A new session request was submitted.",
+      "",
+      `Requester: ${name}`,
+      `Topic: ${request.topic}`,
+      `Audience: ${request.audience}`,
+      ...(request.organisationName ? [`Organisation: ${request.organisationName}`] : []),
+      ...(request.groupSize ? [`Group size: ${request.groupSize}`] : []),
+      `Location: ${request.city}, ${request.state}`,
+      ...(request.preferredWindow ? [`Preferred dates: ${request.preferredWindow}`] : []),
+      `Email: ${request.email}`,
+      `Phone: ${request.phone}`,
+      "",
+      `Review in console: ${consoleUrl}`,
+      "",
+      "- iqcommune",
+    ),
+    html:
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
+      `<p>A new session request was submitted.</p>` +
+      `<table style="border-collapse:collapse;width:100%;margin:1rem 0">` +
+      detailRow("Requester", name) +
+      detailRow("Topic", request.topic) +
+      detailRow("Audience", request.audience) +
+      (request.organisationName ? detailRow("Organisation", request.organisationName) : "") +
+      (request.groupSize ? detailRow("Group size", request.groupSize) : "") +
+      detailRow("Location", `${request.city}, ${request.state}`) +
+      (request.preferredWindow ? detailRow("Preferred dates", request.preferredWindow) : "") +
+      detailRow("Email", request.email) +
+      detailRow("Phone", request.phone) +
+      `</table>` +
+      goldButton(consoleUrl, "Review in console →") +
+      `<p style="font-size:12px;color:#6f7180">Automated notification — no reply needed.</p>` +
+      `</div>`,
   };
 }
 
@@ -108,6 +195,7 @@ export function newSessionRequestForAdmin(to: string, summary: string): EmailMes
  *  for but the client separately requested: somewhere to check back rather
  *  than wait on the next email. */
 export function applicationReceived(to: string, firstName: string, applicationId: string): EmailMessage {
+  const link = buildLink("status", applicationId);
   return {
     template: "application-received",
     stream: "practitioner",
@@ -121,23 +209,74 @@ export function applicationReceived(to: string, firstName: string, applicationId
       "We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.",
       "",
       "Track your application:",
-      buildLink("status", applicationId),
+      link,
       "",
       "Regards,",
       "The iqcommune Team",
     ),
+    html:
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
+      `<p>Hi ${escapeHtml(firstName)},</p>` +
+      `<p>Thanks for applying to join the iqcommune practitioner network — we've received your application.</p>` +
+      `<p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. ` +
+      `Nothing to prepare — just a chance for us to understand each other a little better.</p>` +
+      goldButton(link, "Track your application →") +
+      `<p>Regards,<br>The iqcommune Team</p>` +
+      `</div>`,
   };
 }
 
-/** Mirrors `newSessionRequestForAdmin`: one summary line built by the caller,
- *  who has the typed fields — the template only wraps it. */
-export function newApplicationForAdmin(to: string, summary: string): EmailMessage {
+export interface ApplicationSummary {
+  firstName: string;
+  lastName: string;
+  jobTitle: string;
+  experience: string;
+  city: string;
+  state: string;
+  modules: string[];
+  email: string;
+  phone: string;
+}
+
+export function newApplicationForAdmin(to: string, application: ApplicationSummary): EmailMessage {
+  const name = `${application.firstName} ${application.lastName}`;
+  const consoleUrl = `${siteUrl()}/console?tab=practitioners`;
+
   return {
     template: "new-application-admin",
     stream: "practitioner",
     to,
-    subject: "New practitioner application",
-    body: lines("A new practitioner application has come in:", "", summary),
+    subject: `New practitioner application: ${name}`,
+    body: lines(
+      "A new practitioner application was submitted.",
+      "",
+      `Applicant: ${name}`,
+      `Role: ${application.jobTitle}`,
+      `Experience: ${application.experience}`,
+      `Location: ${application.city}, ${application.state}`,
+      `Modules: ${application.modules.join(", ")}`,
+      `Email: ${application.email}`,
+      `Phone: ${application.phone}`,
+      "",
+      `Review in console: ${consoleUrl}`,
+      "",
+      "- iqcommune",
+    ),
+    html:
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
+      `<p>A new practitioner application was submitted.</p>` +
+      `<table style="border-collapse:collapse;width:100%;margin:1rem 0">` +
+      detailRow("Applicant", name) +
+      detailRow("Role", application.jobTitle) +
+      detailRow("Experience", application.experience) +
+      detailRow("Location", `${application.city}, ${application.state}`) +
+      detailRow("Modules", application.modules.join(", ")) +
+      detailRow("Email", application.email) +
+      detailRow("Phone", application.phone) +
+      `</table>` +
+      goldButton(consoleUrl, "Review in console →") +
+      `<p style="font-size:12px;color:#6f7180">Automated notification — no reply needed.</p>` +
+      `</div>`,
   };
 }
 

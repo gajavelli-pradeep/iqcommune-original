@@ -1,7 +1,7 @@
 import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
-import { sessionRequestSubmission } from "@/lib/schemas/session-request";
+import { AUDIENCE_LABELS, sessionRequestSubmission } from "@/lib/schemas/session-request";
 import { dispatchEmail } from "@/lib/email/dispatch";
 import { newSessionRequestForAdmin, sessionRequestReceived } from "@/lib/email/templates";
 import { createSessionRequest } from "@/services/session-requests";
@@ -47,10 +47,19 @@ export async function POST(request: Request) {
     if (adminInbox) {
       dispatchEmail(
         traceId,
-        newSessionRequestForAdmin(
-          adminInbox,
-          `${parsed.data.topic} - ${parsed.data.city}, ${parsed.data.state} (${parsed.data.audience})`,
-        ),
+        newSessionRequestForAdmin(adminInbox, {
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          audience: AUDIENCE_LABELS[parsed.data.audience],
+          topic: parsed.data.topic,
+          organisationName: parsed.data.organisationName,
+          groupSize: parsed.data.groupSize,
+          city: parsed.data.city,
+          state: parsed.data.state,
+          preferredWindow: parsed.data.preferredWindow,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+        }),
       );
     }
     return ok(created, 201);

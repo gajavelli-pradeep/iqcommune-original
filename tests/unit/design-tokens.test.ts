@@ -21,6 +21,15 @@ import { describe, expect, it } from "vitest";
 
 const SOURCE_DIRS = ["app", "components", "features", "hooks", "lib", "services", "utils"];
 
+/**
+ * Files containing literal CSS text rather than Tailwind classes — HTML email
+ * bodies are real markup with a real `style="..."` attribute string, which
+ * Tailwind never touches. `border-radius`/`text-decoration` inside it read as
+ * `border-radius`/`text-decoration` utilities to this scanner and fail for a
+ * token that was never meant to exist.
+ */
+const RAW_CSS_FILES = new Set([join("lib", "email", "templates.ts")]);
+
 /** Utility prefix → the `--<namespace>-*` variables Tailwind resolves it against. */
 const NAMESPACES: Record<string, string[]> = {
   bg: ["color"],
@@ -95,6 +104,7 @@ describe("design tokens", () => {
 
     for (const dir of SOURCE_DIRS) {
       for (const file of sourceFiles(dir)) {
+        if (RAW_CSS_FILES.has(file)) continue;
         // Comments discuss CSS properties in prose ("border-radius: 100px");
         // only real class lists are being checked here.
         const source = readFileSync(file, "utf8")

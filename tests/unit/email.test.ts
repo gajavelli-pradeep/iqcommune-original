@@ -9,6 +9,31 @@ import { verifyToken } from "@/lib/tokens";
 
 const ID = "a4a7e0eb-dc63-4ca3-b779-2bd1a57f318e";
 
+const APPLICATION_SUMMARY: templates.ApplicationSummary = {
+  firstName: "Ananya",
+  lastName: "Rao",
+  jobTitle: "Equity Analyst",
+  experience: "5 – 8 years",
+  city: "Mumbai",
+  state: "Maharashtra",
+  modules: ["Equity Investing Simplified", "Foundations of Personal Finance"],
+  email: "ananya@example.com",
+  phone: "+91 98765 43210",
+};
+
+const SESSION_SUMMARY: templates.SessionRequestSummary = {
+  firstName: "Rahul",
+  lastName: "Mehta",
+  audience: "Group (register as SPOC)",
+  topic: "Equity Investing Simplified",
+  groupSize: "20",
+  city: "Pune",
+  state: "Maharashtra",
+  preferredWindow: "Weekday mornings",
+  email: "rahul@example.com",
+  phone: "+91 98765 43211",
+};
+
 beforeEach(() => {
   vi.stubEnv("HMAC_SECRET", "test-secret-at-least-32-characters-long");
   vi.stubEnv("NEXT_PUBLIC_BASE_URL", "https://iqcommune.example");
@@ -57,6 +82,27 @@ describe("emailed links", () => {
       expect(message.body).toContain("https://iqcommune.example/");
       expect(message.body).not.toContain(ID);
     }
+  });
+
+  it("gives the application-received link a styled button, not just a bare URL", () => {
+    const message = templates.applicationReceived("a@b.com", "Vikram", ID);
+
+    expect(message.html).toContain("https://iqcommune.example/status?t=");
+    expect(message.html).not.toContain(ID);
+    expect(message.html).toContain("Track your application →");
+    // components/ui/Button.tsx's `gold` variant: gold fill, ink label — never
+    // white-on-gold (CLAUDE.md contrast rule).
+    expect(message.html).toContain("background:#c9982a");
+    expect(message.html).toContain("color:#0f1117");
+  });
+
+  it("escapes a first name before it reaches the HTML body", () => {
+    // A form field, not a trusted string — the plain-text version needs no
+    // escaping, but the HTML one renders it as markup if it isn't.
+    const message = templates.applicationReceived("a@b.com", "<script>alert(1)</script>", ID);
+
+    expect(message.html).not.toContain("<script>");
+    expect(message.html).toContain("&lt;script&gt;");
   });
 });
 
@@ -116,7 +162,7 @@ describe("email sender routing", () => {
   const practitionerMail = () => [
     templates.onboardingLink("a@b.com", "Vikram", ID),
     templates.applicationReceived("a@b.com", "Vikram", ID),
-    templates.newApplicationForAdmin("a@b.com", "summary"),
+    templates.newApplicationForAdmin("a@b.com", APPLICATION_SUMMARY),
     templates.practitionerWelcome("a@b.com", "Vikram"),
     templates.applicationRejected("a@b.com", "Vikram"),
     templates.practitionerDeactivated("a@b.com", "Vikram"),
@@ -126,7 +172,7 @@ describe("email sender routing", () => {
     templates.sessionRequestReceived("a@b.com", "Asha", "Equity Investing Simplified"),
     templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."]),
     templates.sessionRequestCancelled("a@b.com", "Asha"),
-    templates.newSessionRequestForAdmin("a@b.com", "summary"),
+    templates.newSessionRequestForAdmin("a@b.com", SESSION_SUMMARY),
     templates.consentRequest("a@b.com", "Vikram", ID),
     templates.photoReminder("a@b.com", "Vikram", ID),
     templates.ratingRequest("a@b.com", "Asha", ID),
@@ -204,17 +250,63 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
     expect(message.body).toContain("Regards,\nThe iqcommune Team");
+
+    // The HTML version carries the same client-approved wording — only the
+    // link's presentation (a button, not a bare URL) differs.
+    expect(message.html).toContain(
+      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+    );
+    expect(message.html).toContain("Regards,<br>The iqcommune Team");
   });
 
-  it("admin notification for a new application names the applicant and modules", () => {
-    const message = templates.newApplicationForAdmin(
-      "admin@iqcommune.com",
-      "Ananya Rao - Mumbai, Maharashtra - Modules: Equity Investing Simplified, Foundations of Personal Finance",
-    );
+  it("admin notification for a new application names the applicant, modules and a console link", () => {
+    const message = templates.newApplicationForAdmin("admin@iqcommune.com", APPLICATION_SUMMARY);
 
-    expect(message.subject).toBe("New practitioner application");
-    expect(message.body).toContain("Ananya Rao");
+    expect(message.subject).toBe("New practitioner application: Ananya Rao");
     expect(message.body).toContain("Modules: Equity Investing Simplified, Foundations of Personal Finance");
+    expect(message.body).toContain("https://iqcommune.example/console?tab=practitioners");
+
+    expect(message.html).toContain("Ananya Rao");
+    expect(message.html).toContain("Equity Investing Simplified, Foundations of Personal Finance");
+    expect(message.html).toContain("Review in console →");
+    expect(message.html).toContain("https://iqcommune.example/console?tab=practitioners");
+  });
+
+  it("admin notification for a new session request names the requester, topic and a console link", () => {
+    const message = templates.newSessionRequestForAdmin("admin@iqcommune.com", SESSION_SUMMARY);
+
+    expect(message.subject).toBe("New session request: Equity Investing Simplified");
+    expect(message.body).toContain("Requester: Rahul Mehta");
+    expect(message.body).toContain("https://iqcommune.example/console?tab=requests");
+
+    expect(message.html).toContain("Rahul Mehta");
+    expect(message.html).toContain("Group (register as SPOC)");
+    expect(message.html).toContain("Review in console →");
+  });
+
+  it("omits the optional organisation/group-size/preferred-dates rows when the request has none", () => {
+    const message = templates.newSessionRequestForAdmin("admin@iqcommune.com", {
+      ...SESSION_SUMMARY,
+      organisationName: undefined,
+      groupSize: undefined,
+      preferredWindow: undefined,
+    });
+
+    expect(message.body).not.toContain("Organisation:");
+    expect(message.body).not.toContain("Group size:");
+    expect(message.body).not.toContain("Preferred dates:");
+    expect(message.html).not.toContain("Organisation");
+    expect(message.html).not.toContain("Group size");
+  });
+
+  it("escapes admin-notification fields — they're user input, not trusted strings", () => {
+    const message = templates.newApplicationForAdmin("admin@iqcommune.com", {
+      ...APPLICATION_SUMMARY,
+      jobTitle: "<img src=x onerror=alert(1)>",
+    });
+
+    expect(message.html).not.toContain("<img src=x");
+    expect(message.html).toContain("&lt;img");
   });
 
   it("session-request acknowledgment, including the topic", () => {

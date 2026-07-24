@@ -47,8 +47,12 @@ export type EmailStream = "practitioner" | "session" | "platform";
 export interface EmailMessage {
   to: string;
   subject: string;
-  /** Plain text. HTML templates arrive with the admin console's drafts (P8). */
+  /** Plain text. Always sent, even when `html` is also set — some clients
+   *  and previews render text-only. */
   body: string;
+  /** Optional rich version, e.g. a styled button in place of a bare link.
+   *  Templates that need one build it with `lib/email/html.ts`'s escaping. */
+  html?: string;
   /** Defaults to `platform` — the shared sender — when a template omits it. */
   stream?: EmailStream;
   /**
@@ -132,6 +136,7 @@ async function attempt(
         to: [{ email: message.to }],
         subject: message.subject,
         textContent: message.body,
+        ...(message.html ? { htmlContent: message.html } : {}),
       }),
       signal: controller.signal,
     });
@@ -207,6 +212,7 @@ export async function sendEmail(
       // routing is right before the mailboxes are live.
       stream,
       from: sender ?? "(no sender configured)",
+      hasHtml: Boolean(message.html),
       ...(inspectable ? { to: message.to, body: message.body } : {}),
     });
     return finish(result("dry-run"));
