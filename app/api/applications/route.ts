@@ -1,6 +1,6 @@
 import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { dispatchEmail } from "@/lib/email/dispatch";
-import { applicationReceived } from "@/lib/email/templates";
+import { applicationReceived, newApplicationForAdmin } from "@/lib/email/templates";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 // `applicationSchema` directly, with no `applicationSubmission` sibling: unlike
@@ -51,6 +51,16 @@ export async function POST(request: Request) {
       traceId,
       applicationReceived(parsed.data.email, parsed.data.firstName, created.id),
     );
+    const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    if (adminInbox) {
+      dispatchEmail(
+        traceId,
+        newApplicationForAdmin(
+          adminInbox,
+          `${parsed.data.firstName} ${parsed.data.lastName} - ${parsed.data.city}, ${parsed.data.state} - Modules: ${parsed.data.modules.join(", ")}`,
+        ),
+      );
+    }
     return ok(created, 201);
   } catch (cause) {
     log.error(traceId, "application failed", { cause: String(cause) });

@@ -116,6 +116,7 @@ describe("email sender routing", () => {
   const practitionerMail = () => [
     templates.onboardingLink("a@b.com", "Vikram", ID),
     templates.applicationReceived("a@b.com", "Vikram", ID),
+    templates.newApplicationForAdmin("a@b.com", "summary"),
     templates.practitionerWelcome("a@b.com", "Vikram"),
     templates.applicationRejected("a@b.com", "Vikram"),
     templates.practitionerDeactivated("a@b.com", "Vikram"),
@@ -203,6 +204,17 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
     expect(message.body).toContain("Regards,\nThe iqcommune Team");
+  });
+
+  it("admin notification for a new application names the applicant and modules", () => {
+    const message = templates.newApplicationForAdmin(
+      "admin@iqcommune.com",
+      "Ananya Rao - Mumbai, Maharashtra - Modules: Equity Investing Simplified, Foundations of Personal Finance",
+    );
+
+    expect(message.subject).toBe("New practitioner application");
+    expect(message.body).toContain("Ananya Rao");
+    expect(message.body).toContain("Modules: Equity Investing Simplified, Foundations of Personal Finance");
   });
 
   it("session-request acknowledgment, including the topic", () => {

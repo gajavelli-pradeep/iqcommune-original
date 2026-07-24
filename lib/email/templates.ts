@@ -129,6 +129,18 @@ export function applicationReceived(to: string, firstName: string, applicationId
   };
 }
 
+/** Mirrors `newSessionRequestForAdmin`: one summary line built by the caller,
+ *  who has the typed fields — the template only wraps it. */
+export function newApplicationForAdmin(to: string, summary: string): EmailMessage {
+  return {
+    template: "new-application-admin",
+    stream: "practitioner",
+    to,
+    subject: "New practitioner application",
+    body: lines("A new practitioner application has come in:", "", summary),
+  };
+}
+
 export function ratingRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
   return {
     template: "rating-request",
