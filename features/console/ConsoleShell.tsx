@@ -102,6 +102,7 @@ export function ConsoleShell({
   panels,
   counts,
   search = [],
+  failedTabs = [],
 }: {
   role: ConsoleRole;
   email: string;
@@ -116,6 +117,10 @@ export function ConsoleShell({
   counts?: Record<string, number>;
   /** What the header search can find, already scoped to this role. */
   search?: readonly SearchHit[];
+  /** Tab ids whose live read failed this request (see `loadConsolePanels`).
+   *  Non-empty renders a slim "known issue" strip above the header — this is
+   *  a backend problem, not something the admin broke. */
+  failedTabs?: readonly string[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -247,6 +252,18 @@ export function ConsoleShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-soft">
+      {failedTabs.length > 0 ? (
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 border-b border-flag-warn-edge bg-flag-warn px-4 py-2 text-center text-sm text-gold-dark"
+        >
+          <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-gold" />
+          <span>
+            We&apos;re having a technical issue on our end — our team is already fixing it. You can keep
+            working; some data may be a little out of date until it&apos;s resolved.
+          </span>
+        </div>
+      ) : null}
       <header className="sticky top-0 z-[var(--z-header)] flex h-16 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-[12px] sm:gap-6 sm:px-7">
         {/* The console menu, left of the wordmark — below 900px it owns the
             navigation and the actions that do not fit the bar. */}
@@ -480,7 +497,19 @@ export function ConsoleShell({
                             // gold-fill-takes-an-ink-label rule); green and red
                             // carry white legibly. Fill and shape are V7's.
                             // Do not "fix" the gold one back.
+                            //
+                            // A failed live read reports `count: 0` — showing
+                            // that as-is would read as "queue cleared" on the
+                            // exact red/gold tabs this badge exists to flag as
+                            // urgent, during the one moment (a backend outage)
+                            // an operator most needs the real number. An em
+                            // dash says "unknown", not "empty".
                             <span
+                              title={
+                                failedTabs.includes(tab.id)
+                                  ? "Last count unavailable — backend issue"
+                                  : undefined
+                              }
                               className={`ml-auto rounded-full px-[7px] py-px text-2xs font-semibold ${
                                 tab.badge === "green"
                                   ? "bg-green text-surface"
@@ -489,7 +518,7 @@ export function ConsoleShell({
                                     : "bg-gold text-ink"
                               }`}
                             >
-                              {count}
+                              {failedTabs.includes(tab.id) ? "—" : count}
                             </span>
                           ) : null}
                         </button>
@@ -533,8 +562,18 @@ export function ConsoleShell({
             {/* Panels arrive as server-rendered nodes, so they cannot be handed
                 the focus target as a prop from here — they were built before
                 this component ran. Context reaches them because they render
-                inside it. */}
-            <RowFocusContext.Provider value={focus?.tab === current.id ? focus : null}>
+                inside it.
+
+                `key={current.id}` forces a remount on every tab switch. Every
+                simple-row tab renders through the same `CachedPanel` component
+                type now (see `loadPanels.tsx`) — without a key, React reconciles
+                tab B's props onto tab A's fiber instead of remounting, so tab
+                B's first render briefly runs with tab A's still-cached state
+                and can feed one tab's rows into another tab's panel. */}
+            <RowFocusContext.Provider
+              key={current.id}
+              value={focus?.tab === current.id ? focus : null}
+            >
               {panels?.[current.id] ?? (
                 <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
                   This panel is not built yet.

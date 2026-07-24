@@ -23,14 +23,8 @@ import {
 import { can, tabsFor, type ConsoleRole } from "../roles";
 import { hit, type SearchHit } from "../search";
 import { ActivityPanel } from "./ActivityPanel";
-import { AgreementsPanel } from "./AgreementsPanel";
-import { ConsentPanel } from "./ConsentPanel";
-import { GalleryPanel } from "./GalleryPanel";
-import { PayoutsPanel } from "./PayoutsPanel";
-import { PhotosPanel } from "./PhotosPanel";
-import { PractitionersPanel } from "./PractitionersPanel";
-import { RequestsPanel } from "./RequestsPanel";
-import { SessionsPanel } from "./SessionsPanel";
+import { CachedPanel } from "./CachedPanel";
+import { PanelError } from "./PanelError";
 import { SettingsPanel } from "./SettingsPanel";
 
 /**
@@ -41,15 +35,38 @@ import { SettingsPanel } from "./SettingsPanel";
  * The reads run in parallel. The activity log is a privileged read, so it is
  * fetched only for a role that can open the tab — a `user` never triggers it.
  */
-/** A panel whose data read failed — shown in place of that one panel so a
- *  single unmigrated table or bad read never takes the whole console down. */
-function PanelError({ message }: { message: string }) {
-  return (
-    <div role="alert" className="rounded-lg border border-flag-warn-edge bg-flag-warn px-6 py-8 text-center">
-      <p className="text-base font-medium text-gold-dark">This section couldn&apos;t load.</p>
-      <p className="mt-1 text-sm text-ink-muted">{message}</p>
-    </div>
-  );
+
+/** One of the 8 simple-row tabs' read result. Unlike the old shape, this
+ *  carries the raw rows (or `null` on failure) rather than a pre-rendered
+ *  node — `CachedPanel` does the rendering client-side now, since it is the
+ *  one that can also reach for a cached fallback. `failed` is carried
+ *  alongside `rows` (rather than only encoded as `rows === null`) so the
+ *  intent at each call site is explicit. */
+interface PanelRead<T> {
+  rows: readonly T[] | null;
+  failed: boolean;
+  count: number;
+  /** This panel's contribution to the global search index. */
+  hits: readonly SearchHit[];
+}
+
+/** Loads one panel's rows in isolation: on any read failure `rows` is `null`
+ *  and `failed` is `true`, so the caller can wrap it in `CachedPanel` (which
+ *  falls back to a client-side cache) instead of losing the read outright.
+ *
+ *  `index` is optional and is applied to the SAME rows returned, which is
+ *  what makes search free: no second query, and a panel whose read failed
+ *  contributes nothing rather than contributing stale entries. */
+async function loadPanel<T>(
+  load: () => Promise<readonly T[]>,
+  index?: (rows: readonly T[]) => readonly SearchHit[],
+): Promise<PanelRead<T>> {
+  try {
+    const rows = await load();
+    return { rows, failed: false, count: rows.length, hits: index?.(rows) ?? [] };
+  } catch {
+    return { rows: null, failed: true, count: 0, hits: [] };
+  }
 }
 
 interface LoadedPanel {
@@ -57,30 +74,6 @@ interface LoadedPanel {
   count: number;
   /** This panel's contribution to the global search index. */
   hits: readonly SearchHit[];
-}
-
-/** Loads one panel in isolation: on any read failure it renders PanelError
- *  instead of rejecting, so the rest of the console still loads. Returns the
- *  node plus the row count for the sidebar badge.
- *
- *  `index` is optional and is applied to the SAME rows the panel rendered from,
- *  which is what makes search free: no second query, and a panel whose read
- *  failed contributes nothing rather than contributing stale entries. */
-async function loadPanel<T>(
-  load: () => Promise<readonly T[]>,
-  render: (rows: readonly T[]) => ReactNode,
-  index?: (rows: readonly T[]) => readonly SearchHit[],
-): Promise<LoadedPanel> {
-  try {
-    const rows = await load();
-    return { node: render(rows), count: rows.length, hits: index?.(rows) ?? [] };
-  } catch (error) {
-    return {
-      node: <PanelError message={error instanceof Error ? error.message : "Read failed."} />,
-      count: 0,
-      hits: [],
-    };
-  }
 }
 
 export interface LoadedConsole {
@@ -95,6 +88,9 @@ export interface LoadedConsole {
    * refused if they opened the panel directly.
    */
   search: readonly SearchHit[];
+  /** Tab ids whose live read failed this request — drives the "known issue"
+   *  banner in `ConsoleShell`, regardless of whether a cache exists for them. */
+  failedTabs: readonly string[];
 }
 
 /**
@@ -142,93 +138,94 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
 
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
     await Promise.all([
-      loadPanel(
-        listPractitioners,
-        (rows) => <PractitionersPanel rows={rows} role={role} />,
-        (rows) =>
-          rows.map((row) =>
-            hit("practitioners", row.id, row.name, `Practitioner · ${row.status}`, [
-              row.reference,
-              row.email,
-              row.phone,
-              row.city,
-              row.state,
-              row.organisation,
-              row.module,
-              row.role,
-            ]),
-          ),
+      loadPanel(listPractitioners, (rows) =>
+        rows.map((row) =>
+          hit("practitioners", row.id, row.name, `Practitioner · ${row.status}`, [
+            row.reference,
+            row.email,
+            row.phone,
+            row.city,
+            row.state,
+            row.organisation,
+            row.module,
+            row.role,
+          ]),
+        ),
       ),
-      loadPanel(
-        listAgreements,
-        (rows) => <AgreementsPanel rows={rows} role={role} />,
-        (rows) =>
-          rows.map((row) =>
-            hit("agreements", row.id, row.practitioner, `Agreement ${row.reference} · ${row.status}`, [
-              row.reference,
-              row.modules,
-              row.method,
-            ]),
-          ),
+      loadPanel(listAgreements, (rows) =>
+        rows.map((row) =>
+          hit("agreements", row.id, row.practitioner, `Agreement ${row.reference} · ${row.status}`, [
+            row.reference,
+            row.modules,
+            row.method,
+          ]),
+        ),
       ),
-      loadPanel(
-        listSessionRequests,
-        (rows) => <RequestsPanel rows={rows} role={role} practitioners={assignable} />,
-        (rows) =>
-          rows.map((row) =>
-            hit("requests", row.id, row.name, `Session request · ${row.city} · ${row.status}`, [
-              row.organisation,
-              row.email,
-              row.phone,
-              row.topic,
-              row.audience,
-              row.city,
-              row.state,
-              row.venue,
-              row.assignedTo,
-            ]),
-          ),
+      loadPanel(listSessionRequests, (rows) =>
+        rows.map((row) =>
+          hit("requests", row.id, row.name, `Session request · ${row.city} · ${row.status}`, [
+            row.organisation,
+            row.email,
+            row.phone,
+            row.topic,
+            row.audience,
+            row.city,
+            row.state,
+            row.venue,
+            row.assignedTo,
+          ]),
+        ),
       ),
-      loadPanel(listConsents, (rows) => (
-        <ConsentPanel
-          rows={rows}
-          role={role}
-          confirmable={confirmable}
-          photoGuideSessions={photoGuideSessions}
-        />
-      )),
-      loadPanel(
-        listSessions,
-        (rows) => <SessionsPanel rows={rows} role={role} />,
-        (rows) =>
-          rows.map((row) =>
-            hit("sessions", row.id, row.reference, `Session · ${row.sessionDate} · ${row.status}`, [
-              row.module,
-              row.requester,
-              row.requesterOrganisation,
-              row.practitioner,
-              row.audience,
-              row.sessionDate,
-            ]),
-          ),
+      loadPanel(listConsents),
+      loadPanel(listSessions, (rows) =>
+        rows.map((row) =>
+          hit("sessions", row.id, row.reference, `Session · ${row.sessionDate} · ${row.status}`, [
+            row.module,
+            row.requester,
+            row.requesterOrganisation,
+            row.practitioner,
+            row.audience,
+            row.sessionDate,
+          ]),
+        ),
       ),
-      loadPanel(listPhotoSubmissions, (rows) => <PhotosPanel rows={rows} role={role} />),
-      loadPanel(listPayouts, (rows) => <PayoutsPanel rows={rows} role={role} />),
-      loadPanel(listGallery, (rows) => <GalleryPanel rows={rows} role={role} />),
+      loadPanel(listPhotoSubmissions),
+      loadPanel(listPayouts),
+      loadPanel(listGallery),
       can(role, "viewActivity")
         ? loadActivity(role)
         : Promise.resolve<LoadedPanel>({ node: null, count: 0, hits: [] }),
     ]);
 
   const panels: Record<string, ReactNode> = {
-    practitioners: practitioners.node,
-    agreements: agreements.node,
-    requests: requests.node,
-    confirmations: confirmations.node,
-    sessions: sessions.node,
-    photos: photos.node,
-    payouts: payouts.node,
-    gallery: gallery.node,
+    practitioners: (
+      <CachedPanel tabId="practitioners" role={role} rows={practitioners.rows} failed={practitioners.failed} />
+    ),
+    agreements: (
+      <CachedPanel tabId="agreements" role={role} rows={agreements.rows} failed={agreements.failed} />
+    ),
+    requests: (
+      <CachedPanel
+        tabId="requests"
+        role={role}
+        rows={requests.rows}
+        failed={requests.failed}
+        extra={{ assignable }}
+      />
+    ),
+    confirmations: (
+      <CachedPanel
+        tabId="confirmations"
+        role={role}
+        rows={confirmations.rows}
+        failed={confirmations.failed}
+        extra={{ confirmable, photoGuideSessions }}
+      />
+    ),
+    sessions: <CachedPanel tabId="sessions" role={role} rows={sessions.rows} failed={sessions.failed} />,
+    photos: <CachedPanel tabId="photos" role={role} rows={photos.rows} failed={photos.failed} />,
+    payouts: <CachedPanel tabId="payouts" role={role} rows={payouts.rows} failed={payouts.failed} />,
+    gallery: <CachedPanel tabId="gallery" role={role} rows={gallery.rows} failed={gallery.failed} />,
     settings: <SettingsPanel role={role} team={team} masterData={masterData} />,
   };
   const counts: Record<string, number> = {
@@ -257,5 +254,23 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     .flatMap((panel) => panel.hits)
     .filter((entry) => openable.has(entry.tab));
 
-  return { panels, counts, search };
+  /** Every simple-row tab whose live read failed, regardless of whether a
+   *  cache exists for it — `ConsoleShell`'s banner does not need to know
+   *  which, only that the backend has a known problem right now. */
+  const failedTabs = (
+    [
+      ["practitioners", practitioners],
+      ["agreements", agreements],
+      ["requests", requests],
+      ["confirmations", confirmations],
+      ["sessions", sessions],
+      ["photos", photos],
+      ["payouts", payouts],
+      ["gallery", gallery],
+    ] as const
+  )
+    .filter(([, panel]) => panel.failed)
+    .map(([id]) => id);
+
+  return { panels, counts, search, failedTabs };
 }
