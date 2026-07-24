@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 
+import { siteUrl } from "@/lib/siteUrl";
+
 /**
  * DM Sans, self-hosted by next/font — no external request, so it survives the
  * CSP and costs no extra round trip.
@@ -17,8 +19,6 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
 /**
  * Site-wide metadata defaults (audit H6). Each page still sets its own full
  * `title` (the established " — iqcommune" convention, so no template here to
@@ -27,7 +27,7 @@ const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
  * comes from `app/opengraph-image.tsx`.
  */
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(siteUrl()),
   title: "iqcommune — financial intelligence connects",
   description:
     "iqcommune connects you with working finance professionals for small, in-person sessions.",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "iqcommune",
-    url: siteUrl,
+    url: siteUrl(),
     title: "iqcommune — financial intelligence connects",
     description:
       "Real financial insight from active professionals — small, in-person sessions.",
@@ -55,14 +55,14 @@ const jsonLd = {
     {
       "@type": "Organization",
       name: "iqcommune",
-      url: siteUrl,
+      url: siteUrl(),
       description:
         "Connects working finance professionals with small, in-person learning groups.",
     },
     {
       "@type": "WebSite",
       name: "iqcommune",
-      url: siteUrl,
+      url: siteUrl(),
     },
   ],
 };
