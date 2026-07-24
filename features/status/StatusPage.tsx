@@ -1,6 +1,6 @@
-import { Stepper } from "@/components/ui/Stepper";
 import { LinkPageShell } from "@/components/layout/LinkPageShell";
 import { InvalidLink } from "@/features/link/InvalidLink";
+import { PipelineStepper } from "@/features/status/PipelineStepper";
 import { PIPELINE_STEPS } from "@/constants/pipeline";
 import type { TokenFailure } from "@/lib/tokens";
 import type { ApplicationStatus } from "@/types/link-pages";
@@ -40,7 +40,7 @@ export function StatusPage({
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-eyebrow text-ink-faint">
                 Pipeline progress
               </h2>
-              <Stepper
+              <PipelineStepper
                 steps={PIPELINE_STEPS}
                 // Empanelled is a completed outcome, not an in-progress step —
                 // pushing `current` past the final index makes every step
