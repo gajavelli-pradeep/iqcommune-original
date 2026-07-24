@@ -69,4 +69,8 @@ export interface ApplicationStatus {
   headline: string;
   detail: string;
   appliedOn: string;
+  /** Index into `PIPELINE_STEPS` (features/status/PipelineStepper), or `null`
+   *  when the status isn't one of the four forward-moving stages — Rejected
+   *  has no step to highlight, and the stepper does not render for it. */
+  pipelineStep: number | null;
 }

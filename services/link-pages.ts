@@ -1,5 +1,6 @@
 import "server-only";
 
+import { pipelineStepFor } from "@/constants/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   AdminInvite,
@@ -322,6 +323,7 @@ export async function getApplicationStatus(applicationId: string): Promise<Appli
   const copy = STATUS_COPY[data.status] ?? DEFAULT_STATUS_COPY;
   return {
     firstName: data.first_name,
+    pipelineStep: pipelineStepFor(data.status),
     headline: copy.headline,
     detail: copy.detail,
     appliedOn: date(data.created_at),
