@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -14,17 +15,27 @@ export class BackendUnavailableError extends Error {
   }
 }
 
-/** The one place `supabase.auth.getUser()` is called. A total outage throws
- *  there rather than resolving with `{ error }`, and an uncaught throw from a
- *  Server Component takes down the whole route — this turns that throw into
- *  a typed, catchable `BackendUnavailableError` instead of letting a network
- *  blip masquerade as an application crash. */
+/** The one place `supabase.auth.getUser()` is called.
+ *
+ * Verified against the real SDK (not assumed): a DNS-level outage does NOT
+ * throw — `auth-js` catches the fetch failure itself and resolves with
+ * `{ error: AuthRetryableFetchError }`, which is indistinguishable from "no
+ * session" unless checked for explicitly. `isAuthRetryableFetchError` is the
+ * SDK's own way of naming that case; an actual throw (a rarer path — a bad
+ * client construction, for instance) is still caught as a second line of
+ * defense. Either way becomes the same typed `BackendUnavailableError` rather
+ * than a network blip masquerading as "log in again" or an application crash. */
 async function getVerifiedUser(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
+  let result: Awaited<ReturnType<typeof supabase.auth.getUser>>;
   try {
-    return await supabase.auth.getUser();
+    result = await supabase.auth.getUser();
   } catch (cause) {
     throw new BackendUnavailableError(cause);
   }
+  if (result.error && isAuthRetryableFetchError(result.error)) {
+    throw new BackendUnavailableError(result.error);
+  }
+  return result;
 }
 
 /**

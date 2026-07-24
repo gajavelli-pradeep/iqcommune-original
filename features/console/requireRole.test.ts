@@ -24,6 +24,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 import { BackendUnavailableError, getConsoleSession, requireRole } from "./requireRole";
@@ -74,6 +75,21 @@ describe("requireRole", () => {
     await expect(requireRole("admin")).rejects.toBeInstanceOf(BackendUnavailableError);
     expect(redirect).not.toHaveBeenCalled();
   });
+
+  it("rejects with BackendUnavailableError, not a /login redirect, when getUser resolves with a retryable fetch error", async () => {
+    // The real failure mode for a network-level Supabase outage: verified
+    // directly against @supabase/supabase-js (a DNS failure resolves with
+    // this error rather than throwing) rather than assumed. Getting this
+    // wrong sends an admin to the login page during an outage with no signal
+    // that anything is actually broken.
+    getUser.mockResolvedValue({
+      data: { user: null },
+      error: new AuthRetryableFetchError("fetch failed", 0),
+    });
+
+    await expect(requireRole("admin")).rejects.toBeInstanceOf(BackendUnavailableError);
+    expect(redirect).not.toHaveBeenCalled();
+  });
 });
 
 describe("getConsoleSession", () => {
@@ -94,6 +110,16 @@ describe("getConsoleSession", () => {
 
   it("rejects with BackendUnavailableError, not a redirect, when getUser throws", async () => {
     getUser.mockRejectedValue(new Error("network down"));
+
+    await expect(getConsoleSession()).rejects.toBeInstanceOf(BackendUnavailableError);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("rejects with BackendUnavailableError, not a /login redirect, when getUser resolves with a retryable fetch error", async () => {
+    getUser.mockResolvedValue({
+      data: { user: null },
+      error: new AuthRetryableFetchError("fetch failed", 0),
+    });
 
     await expect(getConsoleSession()).rejects.toBeInstanceOf(BackendUnavailableError);
     expect(redirect).not.toHaveBeenCalled();

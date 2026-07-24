@@ -32,8 +32,15 @@ export async function proxy(request: NextRequest) {
 
   // The call that performs the refresh. Do not gate the console on its result —
   // the page's own `requireRole` is the authorization boundary; this only keeps
-  // a valid session from lapsing.
-  await supabase.auth.getUser();
+  // a valid session from lapsing. A Supabase outage can make this throw (a
+  // fetch-level failure, not just a resolved `{ error }`) — swallowed here
+  // rather than left to crash the edge middleware for every console request;
+  // `requireRole` on the page itself still surfaces the outage properly.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    /* best-effort refresh only — see above */
+  }
 
   return response;
 }
