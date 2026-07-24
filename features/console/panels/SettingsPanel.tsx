@@ -124,7 +124,12 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
         <label className="sr-only" htmlFor="master-city">
           Filter by city
         </label>
-        <select id="master-city" value={city} onChange={(event) => setCity(event.target.value)} className={PICKER}>
+        <select
+          id="master-city"
+          value={city}
+          onChange={(event) => setCity(event.target.value)}
+          className={`${PICKER} !w-auto shrink-0`}
+        >
           <option value="">All cities</option>
           {cities.map((value) => (
             <option key={value}>{value}</option>
@@ -133,7 +138,12 @@ function MasterData({ rows }: { rows: readonly MasterDataRow[] }) {
         <label className="sr-only" htmlFor="master-state">
           Filter by state
         </label>
-        <select id="master-state" value={state} onChange={(event) => setState(event.target.value)} className={PICKER}>
+        <select
+          id="master-state"
+          value={state}
+          onChange={(event) => setState(event.target.value)}
+          className={`${PICKER} !w-auto shrink-0`}
+        >
           <option value="">All states</option>
           {states.map((value) => (
             <option key={value}>{value}</option>
