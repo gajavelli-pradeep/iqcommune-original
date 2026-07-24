@@ -8,7 +8,7 @@ import { selectClass } from "@/components/ui/control";
 import { ConsoleSearch } from "./ConsoleSearch";
 import { CacheAllTabs, type TabRead } from "./panels/CacheAllTabs";
 import { RowFocusContext } from "./RowFocusContext";
-import { CONSOLE_ROLES, ROLE_LABELS, can, tabsFor, type ConsoleRole } from "./roles";
+import { CONSOLE_ROLES, can, tabsFor, type ConsoleRole } from "./roles";
 import type { RowFocus, SearchHit } from "./search";
 
 /**
@@ -362,21 +362,9 @@ export function ConsoleShell({
                 ))}
               </select>
             </>
-          ) : (
-            // Same chip as the Global Admin's <select> above (border, fill,
-            // radius, padding) — an Admin/User has no lower role to preview,
-            // so this states the role rather than offering a choice of one,
-            // but it should still read as the same family of control, not a
-            // second, visually unrelated badge next to it.
-            <span
-              title={ROLE_LABELS[role]}
-              className={selectClass({ tone: "inline", size: "sm", className: "hidden w-auto !cursor-default sm:block" })}
-            >
-              <span className="sr-only">Signed in as: </span>
-              Viewing as: {SHORT_ROLE[role]}
-              <span className="sr-only"> — {ROLE_LABELS[role]}</span>
-            </span>
-          )}
+          ) : null /* Admin/User: no switch, no label — nothing to preview,
+                       nothing to state here. The role is still visible in the
+                       sidebar footer's identity block. */}
           <button
             type="button"
             onClick={() => waiting && openTab(waiting.id)}
@@ -451,13 +439,8 @@ export function ConsoleShell({
                   ))}
                 </select>
               </>
-            ) : (
-              // Matches the Global Admin's <select> immediately above — same
-              // reasoning as the desktop header's span variant.
-              <p className={selectClass({ tone: "inline", size: "sm", className: "!cursor-default" })}>
-                Viewing as: {SHORT_ROLE[role]}
-              </p>
-            )}
+            ) : null /* Admin/User: nothing here either — see the desktop
+                        header variant above. */}
 
             {waiting ? (
               <button
