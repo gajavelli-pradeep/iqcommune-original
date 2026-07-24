@@ -19,7 +19,10 @@ describe("StatusPage", () => {
 
     expect(screen.getByText("You're empanelled!")).toBeInTheDocument();
     expect(screen.getByText(/Welcome to the iqcommune practitioner network\./)).toBeInTheDocument();
-    expect(screen.getByText(/Hi Ananya — applied on 12 Jul 2026\./)).toBeInTheDocument();
+    // One <p> with a <br/> between the two lines — an element match, not a
+    // node match, so a regex substring is what finds it, not an exact string.
+    expect(screen.getByText(/Hi Ananya/)).toBeInTheDocument();
+    expect(screen.getByText(/Applied on 12 Jul 2026/)).toBeInTheDocument();
   });
 
   it("shows the pipeline stepper with the terminal step marked done, not active", () => {

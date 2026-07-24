@@ -23,15 +23,21 @@ export function StatusPage({
   return (
     <LinkPageShell width="720px" badge="Application Status">
       {status ? (
-        <section className="rounded-lg border border-border bg-surface p-8 text-center">
-          <h1 className="mb-2 text-2xl font-semibold text-ink">{status.headline}</h1>
-          <p className="text-base leading-[1.6] text-ink-muted">{status.detail}</p>
-          <p className="mt-6 text-sm text-ink-faint">
-            Hi {status.firstName} — applied on {status.appliedOn}.
-          </p>
+        <section className="rounded-lg border border-border bg-surface p-8">
+          <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+            <div>
+              <h1 className="mb-1.5 text-2xl font-semibold text-ink">{status.headline}</h1>
+              <p className="text-base leading-[1.6] text-ink-muted">{status.detail}</p>
+            </div>
+            <p className="shrink-0 text-sm leading-[1.6] text-ink-faint sm:text-right">
+              {`Hi ${status.firstName}`}
+              <br />
+              {`Applied on ${status.appliedOn}`}
+            </p>
+          </div>
           {status.pipelineStep !== null ? (
-            <div className="mt-8 text-left">
-              <h2 className="mb-3 text-center text-sm font-semibold uppercase tracking-eyebrow text-ink-faint">
+            <div className="pt-6">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-eyebrow text-ink-faint">
                 Pipeline progress
               </h2>
               <Stepper
