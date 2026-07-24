@@ -73,4 +73,8 @@ export interface ApplicationStatus {
    *  when the status isn't one of the four forward-moving stages — Rejected
    *  has no step to highlight, and the stepper does not render for it. */
   pipelineStep: number | null;
+  /** What was applied with — reminds the applicant what they submitted. */
+  modules: string;
+  cityState: string;
+  experience: string;
 }

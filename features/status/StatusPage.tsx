@@ -23,7 +23,11 @@ export function StatusPage({
   return (
     <LinkPageShell width="720px" badge="Application Status">
       {status ? (
-        <section className="rounded-lg border border-border bg-surface p-8">
+        <section
+          className={`rounded-lg border border-t-4 border-border bg-surface p-8 ${
+            status.pipelineStep === PIPELINE_STEPS.length - 1 ? "border-t-green" : "border-t-gold"
+          }`}
+        >
           <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
             <div>
               <h1 className="mb-1.5 text-2xl font-semibold text-ink">{status.headline}</h1>
@@ -35,6 +39,22 @@ export function StatusPage({
               {`Applied on ${status.appliedOn}`}
             </p>
           </div>
+
+          <dl className="flex flex-col gap-2 border-b border-border py-6">
+            {(
+              [
+                ["Module(s)", status.modules],
+                ["City", status.cityState],
+                ["Experience", status.experience],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="flex gap-3 text-sm">
+                <dt className="w-24 shrink-0 text-ink-faint">{label}</dt>
+                <dd className="font-medium text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
           {status.pipelineStep !== null ? (
             <div className="pt-6">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-eyebrow text-ink-faint">

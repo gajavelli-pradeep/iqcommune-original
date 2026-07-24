@@ -312,7 +312,7 @@ export async function getApplicationStatus(applicationId: string): Promise<Appli
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioner_applications")
-    .select("first_name, status, created_at")
+    .select("first_name, status, created_at, modules, city, state, experience_band")
     .eq("id", applicationId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -327,5 +327,8 @@ export async function getApplicationStatus(applicationId: string): Promise<Appli
     headline: copy.headline,
     detail: copy.detail,
     appliedOn: date(data.created_at),
+    modules: (data.modules as string[]).join(", "),
+    cityState: `${data.city}, ${data.state}`,
+    experience: data.experience_band,
   };
 }
