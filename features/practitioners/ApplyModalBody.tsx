@@ -28,13 +28,16 @@ const EMPTY: ApplicationInput = {
   email: "",
   phone: "",
   jobTitle: "",
-  experience: EXPERIENCE_BANDS[0],
+  // Deliberately not a real band/size/frequency: pre-selecting one reads as an
+  // answer the applicant never gave. Same cast trick as the consent booleans
+  // below — the schema's `z.enum` correctly rejects "" as unanswered.
+  experience: "" as ApplicationInput["experience"],
   city: "",
   state: "",
   address: "",
-  tshirtSize: TSHIRT_SIZES[2],
+  tshirtSize: "" as ApplicationInput["tshirtSize"],
   modules: [],
-  frequency: TEACHING_FREQUENCIES[0],
+  frequency: "" as ApplicationInput["frequency"],
   // Deliberately false: a pre-ticked consent box is not consent. The schema
   // types these as `true`, so the cast is where that intent is recorded.
   consentDisclosure: false as true,
@@ -112,10 +115,26 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
       }
     >
       {status === "sent" ? (
-        <p className="py-6 text-center text-lg text-ink-muted">
-          Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick,
-          informal chat.
-        </p>
+        <div className="py-6 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-light text-green">
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.2}
+              aria-hidden
+              focusable="false"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <p className="text-lg text-ink-muted">
+            Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick,
+            informal chat.
+          </p>
+        </div>
       ) : (
         <form
           noValidate

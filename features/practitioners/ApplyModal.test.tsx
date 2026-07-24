@@ -47,6 +47,15 @@ describe("ApplyModal", () => {
     for (const box of screen.getAllByRole("checkbox")) expect(box).not.toBeChecked();
   });
 
+  it("ships its required selects unselected, not defaulted to a real answer", () => {
+    // An untouched "T-shirt size"/"Years of experience"/"How often could you
+    // teach?" must not silently submit a value the applicant never chose.
+    render(<ApplyModal open onClose={() => {}} />);
+    for (const label of ["Years of experience", "T-shirt size", "How often could you teach?"]) {
+      expect(screen.getByLabelText(label)).toHaveValue("");
+    }
+  });
+
   it("shows the receipt once a complete application is submitted", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch(201, { data: { id: "abc", createdAt: "now" }, error: null });
@@ -62,6 +71,9 @@ describe("ApplyModal", () => {
     fill("Communication address (include PIN code)", "12 Marine Drive, Mumbai — 400020");
     fill(/why do you want to do this/, "I want a room that is already interested.");
 
+    await user.selectOptions(screen.getByLabelText("Years of experience"), "5 – 8 years");
+    await user.selectOptions(screen.getByLabelText("T-shirt size"), "M");
+    await user.selectOptions(screen.getByLabelText("How often could you teach?"), "Once a month");
     await user.click(screen.getByRole("checkbox", { name: /Equity Investing Simplified/ }));
     for (const consent of screen.getAllByRole("checkbox", {
       name: /I understand|I confirm|I acknowledge/,
