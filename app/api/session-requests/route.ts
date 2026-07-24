@@ -39,7 +39,10 @@ export async function POST(request: Request) {
     // Off the response path via dispatchEmail → after() (audit C2): the request
     // is already saved, and a slow or failing mail provider must not turn a
     // successful submission into an error the person sees.
-    dispatchEmail(traceId, sessionRequestReceived(parsed.data.email, parsed.data.firstName));
+    dispatchEmail(
+      traceId,
+      sessionRequestReceived(parsed.data.email, parsed.data.firstName, parsed.data.topic),
+    );
     const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
     if (adminInbox) {
       dispatchEmail(

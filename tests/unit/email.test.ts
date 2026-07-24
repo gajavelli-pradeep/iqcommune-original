@@ -114,13 +114,14 @@ describe("email sender routing", () => {
   // describe body runs.
   const practitionerMail = () => [
     templates.onboardingLink("a@b.com", "Vikram", ID),
+    templates.applicationReceived("a@b.com", "Vikram"),
     templates.practitionerWelcome("a@b.com", "Vikram"),
     templates.applicationRejected("a@b.com", "Vikram"),
     templates.practitionerDeactivated("a@b.com", "Vikram"),
   ];
 
   const sessionMail = () => [
-    templates.sessionRequestReceived("a@b.com", "Asha"),
+    templates.sessionRequestReceived("a@b.com", "Asha", "Equity Investing Simplified"),
     templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."]),
     templates.sessionRequestCancelled("a@b.com", "Asha"),
     templates.newSessionRequestForAdmin("a@b.com", "summary"),
@@ -180,5 +181,34 @@ describe("email sender routing", () => {
     await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"));
 
     expect(sent?.sender?.email).toBe("practitioner@iqcommune.com");
+  });
+});
+
+/**
+ * The client's acknowledgment spec (client_requirements/.../client_email.txt)
+ * asked for both submission flows to send an immediate acknowledgment email —
+ * only the session-request one did. Pinned by content, not just by stream:
+ * the failure mode here is an email that still sends but says the wrong
+ * thing, which nothing else in this file would catch.
+ */
+describe("submission acknowledgment emails match the client's exact copy", () => {
+  it("application acknowledgment", () => {
+    const message = templates.applicationReceived("a@b.com", "Ananya");
+
+    expect(message.subject).toBe("iqcommune — we've received your application");
+    expect(message.body).toContain(
+      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+    );
+    expect(message.body).toContain("Regards,\nThe iqcommune Team");
+  });
+
+  it("session-request acknowledgment, including the topic", () => {
+    const message = templates.sessionRequestReceived("a@b.com", "Rahul", "Equity Investing Simplified");
+
+    expect(message.subject).toBe("iqcommune — your session request has been received");
+    expect(message.body).toContain(
+      "we've received your request for a session on Equity Investing Simplified.",
+    );
+    expect(message.body).toContain("Regards,\nThe iqcommune Team");
   });
 });

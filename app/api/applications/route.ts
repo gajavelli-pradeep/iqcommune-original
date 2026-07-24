@@ -1,4 +1,6 @@
 import { fail, ok, readJsonBody } from "@/lib/api/response";
+import { dispatchEmail } from "@/lib/email/dispatch";
+import { applicationReceived } from "@/lib/email/templates";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 // `applicationSchema` directly, with no `applicationSubmission` sibling: unlike
@@ -41,6 +43,11 @@ export async function POST(request: Request) {
       id: created.id,
       moduleCount: parsed.data.modules.length,
     });
+
+    // Off the response path via dispatchEmail → after() (audit C2): the
+    // application is already saved, and a slow or failing mail provider must
+    // not turn a successful submission into an error the person sees.
+    dispatchEmail(traceId, applicationReceived(parsed.data.email, parsed.data.firstName));
     return ok(created, 201);
   } catch (cause) {
     log.error(traceId, "application failed", { cause: String(cause) });

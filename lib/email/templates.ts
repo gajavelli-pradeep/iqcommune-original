@@ -20,18 +20,24 @@ import type { EmailMessage } from "./send";
 
 const lines = (...parts: string[]) => parts.join("\n");
 
-export function sessionRequestReceived(to: string, firstName: string): EmailMessage {
+/** Exact copy from the client's request-acknowledgment spec — subject, body
+ *  and sign-off all specified verbatim, not the house style used elsewhere
+ *  in this file. */
+export function sessionRequestReceived(to: string, firstName: string, topic: string): EmailMessage {
   return {
     template: "session-request-received",
     stream: "session",
     to,
-    subject: "We have your session request",
+    subject: "iqcommune — your session request has been received",
     body: lines(
       `Hi ${firstName},`,
       "",
-      "Thanks - your session request is in. We'll be in touch within 2-3 working days.",
+      `Thanks for reaching out to iqcommune — we've received your request for a session on ${topic}.`,
       "",
-      "- iqcommune",
+      "We'll get in touch within 2–3 working days to understand your group's needs a little better and take things forward from there.",
+      "",
+      "Regards,",
+      "The iqcommune Team",
     ),
   };
 }
@@ -204,6 +210,27 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
  * hold (audit G4c), unlike the external link emails. They carry no tokenised
  * link, just news of a decision.
  */
+
+/** Exact copy from the client's request-acknowledgment spec, same as
+ *  `sessionRequestReceived` above. */
+export function applicationReceived(to: string, firstName: string): EmailMessage {
+  return {
+    template: "application-received",
+    stream: "practitioner",
+    to,
+    subject: "iqcommune — we've received your application",
+    body: lines(
+      `Hi ${firstName},`,
+      "",
+      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+      "",
+      "We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.",
+      "",
+      "Regards,",
+      "The iqcommune Team",
+    ),
+  };
+}
 
 export function practitionerWelcome(to: string, firstName: string): EmailMessage {
   return {
