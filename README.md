@@ -54,3 +54,5 @@ docs/           ADRs, ENVIRONMENT contract, build plan, tool specs
 Vercel (production branch: `main`). Set the production Supabase project's keys + `HMAC_SECRET` +
 `NEXT_PUBLIC_BASE_URL` in the Vercel dashboard — never point a local run at the production
 service-role key (it bypasses RLS). See `docs/ENVIRONMENT.md` and `docs/adr/0003-*`.
+
+<!-- deploy-access-test: confirming this commit's author can trigger a Vercel deployment -->
