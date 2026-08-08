@@ -78,6 +78,17 @@ export const FEATURE_ENV = {
   EMAIL_DELIVERY: "outbound email delivery mode",
   /** Where new-session-request notifications go. */
   ADMIN_NOTIFY_EMAIL: "admin new-request notification",
+  /**
+   * The address the request form offers a visitor when their submission cannot
+   * be saved — the mailto fallback's recipient.
+   *
+   * Its own variable rather than `BREVO_SENDER_SESSION`, which was doing two
+   * jobs: that one is the `From:` Brevo sends session mail as, and it can only
+   * hold a mailbox Brevo has verified. Pointing it at a plain inbox to change
+   * where visitors write would silently break every outbound session email. The
+   * two addresses are usually the same and are free not to be.
+   */
+  SESSION_CONTACT_EMAIL: "mailto fallback on the request form",
   /** Display name on outbound Brevo email. */
   BREVO_SENDER_NAME: "outbound email",
 } as const;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import {
   AUDIENCES,
@@ -147,6 +148,66 @@ const AUDIENCE_RULES: Record<
   },
 };
 
+/** Longest a free-text field may run inside the draft. */
+const DRAFT_FIELD_LIMIT = 400;
+
+/**
+ * The fallback email, drafted from what the visitor already typed so the only
+ * thing left to do in their mail client is press send.
+ *
+ * Re-asking for thirteen fields is how a recovery path ends up worse than the
+ * failure it recovers from, so everything on the form is carried over.
+ *
+ * ponytail: free text is clamped rather than paginated — `notes` (1000) and
+ * `venueDetails` (500) together can push the encoded href past the ~2,048
+ * characters Windows' mailto handler truncates at, and a truncated href loses
+ * the end of the message silently. Raise the clamp only behind a length check
+ * on the final href.
+ */
+export function draftFallbackEmail(
+  form: SessionRequestInput,
+  audience: Audience | undefined,
+): { subject: string; body: string } {
+  const clamp = (value: string) =>
+    value.length > DRAFT_FIELD_LIMIT ? `${value.slice(0, DRAFT_FIELD_LIMIT)}…` : value;
+
+  const name = `${form.firstName} ${form.lastName}`.trim();
+  const details: Array<[string, string | undefined]> = [
+    ["Who this is for", audience ? AUDIENCE_LABELS[audience] : undefined],
+    ["Name", name],
+    ["Email", form.email],
+    ["Phone", form.phone],
+    ["City / State", [form.city, form.state].filter(Boolean).join(", ")],
+    ["Organisation", form.organisationName],
+    ["Topic", form.topic],
+    ["Group size", GROUP_SIZES.find((size) => size.value === form.groupSize)?.label],
+    ["Preferred window", form.preferredWindow],
+    ["Venue", form.venueDetails && clamp(form.venueDetails)],
+    ["Notes", form.notes && clamp(form.notes)],
+  ];
+
+  return {
+    subject: `Session request${name ? ` — ${name}` : ""}`,
+    // CRLF: the line break mailto bodies are specified in, and the one every
+    // mail client agrees on once percent-encoded.
+    body: [
+      "Hi iqcommune team,",
+      "",
+      "I tried to send a session request from your website, but the form couldn't go through. Here are my details:",
+      "",
+      ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
+      "",
+      ...(form.spocConfirmed
+        ? ["I confirm I am registering as the primary contact (SPOC) for this request.", ""]
+        : []),
+      "Please get in touch when you can.",
+      "",
+      "Thanks,",
+      name,
+    ].join("\r\n"),
+  };
+}
+
 const EMPTY: SessionRequestInput = {
   audience: "individual",
   firstName: "",
@@ -166,15 +227,35 @@ const EMPTY: SessionRequestInput = {
 
 type Status = "editing" | "submitting" | "sent";
 
-export function RequestModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RequestModal({
+  open,
+  onClose,
+  /**
+   * Where the mailto fallback points. Optional because the address behind it
+   * (`BREVO_SENDER_SESSION`, falling back to `BREVO_SENDER_EMAIL`) is
+   * FEATURE-tier — unset, the offer is simply not made, rather than rendering a
+   * `mailto:undefined`.
+   */
+  sessionEmail,
+}: {
+  open: boolean;
+  onClose: () => void;
+  sessionEmail?: string;
+}) {
   const [audience, setAudience] = useState<Audience | undefined>();
   const [form, setForm] = useState<SessionRequestInput>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("editing");
-  const [submitError, setSubmitError] = useState<string>();
+  const [submitError, setSubmitError] = useState<{ message: string; offerEmail: boolean }>();
 
   const rules = audience ? AUDIENCE_RULES[audience] : undefined;
   const selectedSize = GROUP_SIZES.find((size) => size.value === form.groupSize);
+
+  const draft =
+    submitError?.offerEmail && sessionEmail ? draftFallbackEmail(form, audience) : undefined;
+  const mailtoHref = draft
+    ? `mailto:${sessionEmail}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`
+    : undefined;
   const set = <K extends keyof SessionRequestInput>(key: K, value: SessionRequestInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -216,14 +297,25 @@ export function RequestModal({ open, onClose }: { open: boolean; onClose: () => 
         // Field errors from the server win: it is the authority, and it may
         // know things the client cannot.
         if (body?.error?.fields) setErrors(body.error.fields);
-        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        setSubmitError({
+          message: body?.error?.message ?? "Something went wrong. Please try again in a few minutes.",
+          // Only a server fault earns the escape hatch. A validation error is
+          // the visitor's own to fix, and a rate limit exists precisely to not
+          // be routed around.
+          offerEmail: body?.error?.code === "INTERNAL",
+        });
         setStatus("editing");
         return;
       }
 
       setStatus("sent");
     } catch {
-      setSubmitError("We couldn't reach the server. Check your connection and try again.");
+      // Composing a mailto needs no network, so this failure — the one where the
+      // server is unreachable — is exactly when the offer is worth the most.
+      setSubmitError({
+        message: "We couldn't reach the server. Check your connection and try again.",
+        offerEmail: true,
+      });
       setStatus("editing");
     }
   }
@@ -429,12 +521,38 @@ export function RequestModal({ open, onClose }: { open: boolean; onClose: () => 
           ) : null}
 
           {submitError ? (
-            <p
-              role="alert"
-              className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
-            >
-              {submitError}
-            </p>
+            <FormError>
+              <p>{submitError.message}</p>
+              {mailtoHref ? (
+                <>
+                  <p className="mt-1.5">
+                    Or send it straight to us at {sessionEmail} — everything you filled in is
+                    already in the message, so you only need to press send.
+                  </p>
+                  {/*
+                    An anchor rather than <Button>: `mailto:` must stay a real link so the
+                    browser hands it to the mail client, and so right-click → copy address
+                    still rescues anyone with no mail client registered. The address is in
+                    the sentence above for the same reason — a button label carrying it
+                    wraps to two lines on a 320px screen.
+
+                    Mirrors `.btn-nav-ghost`'s outlined treatment at this modal's radius:
+                    the secondary way out, never a second filled button competing with the
+                    gold submit.
+                  */}
+                  <a
+                    href={mailtoHref}
+                    // `w-full sm:w-auto` + `whitespace-nowrap`: at 320px the alert is
+                    // only ~191px of content width, and shrink-to-fit wrapped the label
+                    // across two lines inside its own border. Full-width on phones is
+                    // both the larger tap target and the layout that cannot wrap.
+                    className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-md border-[1.5px] border-border-strong bg-surface px-[18px] py-2.5 text-md font-medium text-ink transition-colors hover:border-gold hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold sm:w-auto"
+                  >
+                    Open pre-filled email
+                  </a>
+                </>
+              ) : null}
+            </FormError>
           ) : null}
 
           <button

@@ -67,6 +67,13 @@ export async function POST(request: Request) {
     // Never surface the underlying message: it can carry column names and
     // constraint text. The trace id is what ties this reply to the detail.
     log.error(traceId, "session request failed", { cause: String(cause) });
-    return fail("INTERNAL", "Something went wrong sending your request. Please try again.", traceId);
+    // "in a few minutes", not "again": what reaches this catch is a dependency
+    // being down, and an immediate retry fails identically. The modal pairs this
+    // with a mailto fallback so the visitor is not left with only the retry.
+    return fail(
+      "INTERNAL",
+      "Something went wrong sending your request. Please try again in a few minutes.",
+      traceId,
+    );
   }
 }

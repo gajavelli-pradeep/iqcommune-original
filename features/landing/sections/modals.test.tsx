@@ -96,6 +96,52 @@ describe("RequestModal", () => {
     expect(screen.queryByRole("heading", { name: "Request received!" })).not.toBeInTheDocument();
   });
 
+  it("offers a drafted mailto on a server fault, carrying what was typed", async () => {
+    const user = userEvent.setup();
+    mockFetch(500, {
+      data: null,
+      error: { code: "INTERNAL", message: "Something went wrong sending your request.", traceId: "t-1" },
+    });
+
+    render(<RequestModal open onClose={() => {}} sessionEmail="session@iqcommune.com" />);
+    await fillRequestForm(user);
+    await user.click(screen.getByRole("button", { name: "Send Request" }));
+
+    const link = await screen.findByRole("link", { name: "Open pre-filled email" });
+    // The address stays readable as text: right-click → copy is the only rescue
+    // when no mail client is registered for mailto:.
+    expect(screen.getByText(/session@iqcommune\.com/)).toBeInTheDocument();
+
+    const href = decodeURIComponent(link.getAttribute("href") ?? "");
+    expect(href).toContain("mailto:session@iqcommune.com");
+    expect(href).toContain("Session request — Rohan Mehta");
+    // The point of the draft: the details survive the failure.
+    expect(href).toContain("Email: rohan@example.com");
+    expect(href).toContain("Organisation: TechCorp India");
+    expect(href).toContain("Topic: Equity Investing Simplified");
+    expect(href).toContain("Who this is for: Organisations & Institutions");
+  });
+
+  it("does not offer the mailto for a validation failure", async () => {
+    const user = userEvent.setup();
+    mockFetch(400, {
+      data: null,
+      error: {
+        code: "VALIDATION_FAILED",
+        message: "Please check the highlighted fields.",
+        traceId: "t-2",
+        fields: { topic: "Topic of interest is required" },
+      },
+    });
+
+    render(<RequestModal open onClose={() => {}} sessionEmail="session@iqcommune.com" />);
+    await fillRequestForm(user);
+    await user.click(screen.getByRole("button", { name: "Send Request" }));
+
+    expect(await screen.findByText("Please check the highlighted fields.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
+  });
+
   it("asks groups for venue details, and does not ask anyone else", async () => {
     const user = userEvent.setup();
     render(<RequestModal open onClose={() => {}} />);

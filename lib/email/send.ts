@@ -85,6 +85,38 @@ export function senderFor(stream: EmailStream = "platform"): string | undefined 
   return process.env[SENDER_ENV[stream]] || process.env.BREVO_SENDER_EMAIL;
 }
 
+/**
+ * Where replies to each stream belong — the other half of the routing above.
+ *
+ * `senderFor` only decides which mailbox mail leaves FROM, and it falls back to
+ * the shared sender until a dedicated mailbox is verified. With no Reply-To,
+ * that fallback silently routes the return trip too: every reply to a session
+ * confirmation lands in the shared inbox — the human one printed on the site —
+ * burying real enquiries under answers to automated mail. That is the stream
+ * rule broken in the direction nobody inspects, because nothing about the
+ * outgoing message looks wrong.
+ *
+ * Constants rather than env vars, deliberately. Brevo validates the *sender*
+ * and never Reply-To, so this header carries no verification dependency and can
+ * be correct from the first deploy — through the whole window where
+ * `BREVO_SENDER_SESSION` cannot safely be set yet. Deriving it from that same
+ * variable would be worse than useless: the variable is what makes `senderFor`
+ * return the dedicated address, so the two could never disagree, and a Reply-To
+ * equal to the From routes nothing.
+ */
+const REPLY_TO: Record<EmailStream, string | undefined> = {
+  practitioner: "practitioner@iqcommune.com",
+  session: "session@iqcommune.com",
+  // Platform mail already leaves from the shared inbox replies should reach.
+  platform: undefined,
+};
+
+/** The stream's reply mailbox, omitted once it is already the From address. */
+export function replyToFor(stream: EmailStream = "platform"): string | undefined {
+  const address = REPLY_TO[stream];
+  return address && address !== senderFor(stream) ? address : undefined;
+}
+
 const ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 const TIMEOUT_MS = 8000;
 /** Attempts after the first. Three calls is the most a request should wait through. */
@@ -122,6 +154,7 @@ async function attempt(
   deps: SendDeps,
   message: EmailMessage,
   sender: string,
+  replyTo: string | undefined,
   apiKey: string,
 ): Promise<EmailResult> {
   const controller = new AbortController();
@@ -134,6 +167,7 @@ async function attempt(
       body: JSON.stringify({
         sender: { email: sender, name: process.env.BREVO_SENDER_NAME || "iqcommune" },
         to: [{ email: message.to }],
+        ...(replyTo ? { replyTo: { email: replyTo } } : {}),
         subject: message.subject,
         textContent: message.body,
         ...(message.html ? { htmlContent: message.html } : {}),
@@ -194,6 +228,7 @@ export async function sendEmail(
 
   const apiKey = process.env.BREVO_API_KEY;
   const sender = senderFor(message.stream);
+  const replyTo = replyToFor(message.stream);
 
   // 2. Dry run, checked before configuration: a developer with no Brevo key
   //    should see "not sent — dry run", which is true, rather than a
@@ -212,6 +247,9 @@ export async function sendEmail(
       // routing is right before the mailboxes are live.
       stream,
       from: sender ?? "(no sender configured)",
+      // Carries no personal data either, and it is the half of the routing that
+      // is live before the mailboxes are — so it is the half worth checking.
+      replyTo: replyTo ?? "(same as from)",
       hasHtml: Boolean(message.html),
       ...(inspectable ? { to: message.to, body: message.body } : {}),
     });
@@ -243,7 +281,7 @@ export async function sendEmail(
   }
 
   // 4. Send, retrying only what a retry could fix.
-  let outcome = await attempt(deps, message, sender, apiKey);
+  let outcome = await attempt(deps, message, sender, replyTo, apiKey);
   let retries = 0;
   while (outcome.retryable && retries < MAX_RETRIES) {
     await deps.sleep(BACKOFF_MS[retries] ?? BACKOFF_MS[BACKOFF_MS.length - 1]);
@@ -253,7 +291,7 @@ export async function sendEmail(
       status: outcome.status,
       attempt: retries + 1,
     });
-    outcome = await attempt(deps, message, sender, apiKey);
+    outcome = await attempt(deps, message, sender, replyTo, apiKey);
   }
   outcome = { ...outcome, retryCount: retries };
 
