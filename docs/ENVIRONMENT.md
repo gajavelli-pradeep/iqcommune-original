@@ -57,6 +57,15 @@ is a property of the email.
 `BREVO_SENDER_EMAIL`, so the app is already correct today and moves to the dedicated mailboxes the
 moment they exist. Adding them is a Vercel env change and a redeploy; no code change.
 
+**Replies route separately, and are already correct.** That fallback decides only which mailbox mail
+leaves *from*; on its own it would take replies with it, landing answers to automated session mail in
+the shared human inbox. So `replyToFor()` sets `Reply-To` to the stream's own mailbox from a constant
+in `lib/email/send.ts` — **not** from the variables above, and this is deliberate: Brevo validates the
+sender and never `Reply-To`, so this half needs no mailbox verification and holds through the whole
+window where the variables cannot safely be set. It is omitted once a stream sends from its own
+address, where it would duplicate the `From`. Do not env-gate it — that reintroduces the dependency
+it exists to avoid.
+
 ### Before setting them
 
 Google Workspace giving you the mailbox is not enough. **Brevo rejects a send from an address it has

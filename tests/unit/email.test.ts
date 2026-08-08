@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildLink } from "@/lib/email/links";
-import { sendEmail, senderFor } from "@/lib/email/send";
+import { replyToFor, sendEmail, senderFor } from "@/lib/email/send";
 import * as templates from "@/lib/email/templates";
 import { verifyToken } from "@/lib/tokens";
 
@@ -229,6 +229,48 @@ describe("email sender routing", () => {
     await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"));
 
     expect(sent?.sender?.email).toBe("practitioner@iqcommune.com");
+  });
+
+  /**
+   * The return trip. `senderFor` falling back to the shared inbox used to take
+   * replies with it, because nothing set Reply-To — so an answer to an
+   * automated session email landed in the human enquiries box. Brevo verifies
+   * the sender and never Reply-To, so this half of the routing is correct from
+   * the first deploy, months before the mailboxes can send.
+   */
+  it("routes replies to the stream's mailbox even while sending from the shared one", async () => {
+    vi.stubEnv("EMAIL_DELIVERY", "live");
+    vi.stubEnv("BREVO_API_KEY", "key");
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    // Unverified, so unset: the From must still fall back.
+    vi.stubEnv("BREVO_SENDER_SESSION", "");
+
+    let sent: { sender?: { email?: string }; replyTo?: { email?: string } } | undefined;
+    vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ messageId: "1" }));
+    });
+
+    await sendEmail(
+      "trace",
+      templates.sessionRequestReceived("a@b.com", "Asha", "Equity Investing Simplified"),
+    );
+
+    expect(sent?.sender?.email).toBe("hello@iqcommune.com");
+    expect(sent?.replyTo?.email).toBe("session@iqcommune.com");
+  });
+
+  it("omits Reply-To once the stream sends from its own mailbox", () => {
+    // Equal to the From, so it would route nothing and only add a header.
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_SESSION", "session@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "");
+
+    expect(replyToFor("session")).toBeUndefined();
+    expect(replyToFor("practitioner")).toBe("practitioner@iqcommune.com");
+    // Platform mail already leaves from the inbox replies should reach.
+    expect(replyToFor("platform")).toBeUndefined();
+    expect(replyToFor()).toBeUndefined();
   });
 });
 
