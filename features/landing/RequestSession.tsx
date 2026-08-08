@@ -34,7 +34,14 @@ function useLandingDialogs(): LandingDialogs {
   return context;
 }
 
-export function RequestSessionProvider({ children }: { children: ReactNode }) {
+export function RequestSessionProvider({
+  children,
+  /** Passed through to the request modal's mailto fallback. Optional — see there. */
+  sessionEmail,
+}: {
+  children: ReactNode;
+  sessionEmail?: string;
+}) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
 
@@ -48,7 +55,9 @@ export function RequestSessionProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Rendered only once opened, so the dynamic chunk (and zod) loads on
           demand rather than at first paint. */}
-      {requestOpen ? <RequestModal open onClose={() => setRequestOpen(false)} /> : null}
+      {requestOpen ? (
+        <RequestModal open onClose={() => setRequestOpen(false)} sessionEmail={sessionEmail} />
+      ) : null}
       {photosOpen ? <PostSessionModal open onClose={() => setPhotosOpen(false)} /> : null}
     </Context.Provider>
   );

@@ -17,6 +17,7 @@ import { AudienceRibbon, TrustBar } from "@/features/landing/sections/TrustStrip
 import { WhoIsThisFor } from "@/features/landing/sections/WhoIsThisFor";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { senderFor } from "@/lib/email/send";
 
 import { RequestSessionButton, RequestSessionProvider } from "./RequestSession";
 
@@ -63,7 +64,10 @@ function Anchor({ id, children }: { id: string; children: React.ReactNode }) {
 
 export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
   return (
-    <RequestSessionProvider>
+    // Resolved here rather than in the modal: this is the last server component
+    // in the chain, and `senderFor` is the one place that knows which address
+    // the session stream sends as.
+    <RequestSessionProvider sessionEmail={senderFor("session")}>
       <div className="flex min-h-dvh flex-col">
         <SiteHeader
           right={<RequestSessionButton variant="nav" />}
