@@ -107,7 +107,11 @@ describe("RequestModal", () => {
     await fillRequestForm(user);
     await user.click(screen.getByRole("button", { name: "Send Request" }));
 
-    const link = await screen.findByRole("link", { name: /email session@iqcommune\.com/ });
+    const link = await screen.findByRole("link", { name: "Open pre-filled email" });
+    // The address stays readable as text: right-click → copy is the only rescue
+    // when no mail client is registered for mailto:.
+    expect(screen.getByText(/session@iqcommune\.com/)).toBeInTheDocument();
+
     const href = decodeURIComponent(link.getAttribute("href") ?? "");
     expect(href).toContain("mailto:session@iqcommune.com");
     expect(href).toContain("Session request — Rohan Mehta");
@@ -135,7 +139,7 @@ describe("RequestModal", () => {
     await user.click(screen.getByRole("button", { name: "Send Request" }));
 
     expect(await screen.findByText("Please check the highlighted fields.")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /email session@/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
   });
 
   it("asks groups for venue details, and does not ask anyone else", async () => {

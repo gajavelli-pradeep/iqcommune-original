@@ -57,6 +57,14 @@ is a property of the email.
 `BREVO_SENDER_EMAIL`, so the app is already correct today and moves to the dedicated mailboxes the
 moment they exist. Adding them is a Vercel env change and a redeploy; no code change.
 
+**`SESSION_CONTACT_EMAIL` is where visitors write, not where mail sends from.** When a session
+request cannot be saved, the form offers a `mailto:` with the whole submission pre-drafted; this is
+its recipient, read on the server and passed down as a prop. It is deliberately *not*
+`BREVO_SENDER_SESSION`: that one is the `From:` Brevo sends as and may only hold a mailbox Brevo has
+verified, so repointing it to change where visitors write would break every outbound session email.
+Unset, it falls back to the session sender. The two are usually the same address and are free not to
+be.
+
 **Replies route separately, and are already correct.** That fallback decides only which mailbox mail
 leaves *from*; on its own it would take replies with it, landing answers to automated session mail in
 the shared human inbox. So `replyToFor()` sets `Reply-To` to the stream's own mailbox from a constant

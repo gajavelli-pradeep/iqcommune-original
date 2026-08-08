@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import {
   AUDIENCES,
@@ -520,24 +521,38 @@ export function RequestModal({
           ) : null}
 
           {submitError ? (
-            <div
-              role="alert"
-              className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
-            >
+            <FormError>
               <p>{submitError.message}</p>
               {mailtoHref ? (
-                <p className="mt-2">
-                  Or send it straight to us —{" "}
+                <>
+                  <p className="mt-1.5">
+                    Or send it straight to us at {sessionEmail} — everything you filled in is
+                    already in the message, so you only need to press send.
+                  </p>
+                  {/*
+                    An anchor rather than <Button>: `mailto:` must stay a real link so the
+                    browser hands it to the mail client, and so right-click → copy address
+                    still rescues anyone with no mail client registered. The address is in
+                    the sentence above for the same reason — a button label carrying it
+                    wraps to two lines on a 320px screen.
+
+                    Mirrors `.btn-nav-ghost`'s outlined treatment at this modal's radius:
+                    the secondary way out, never a second filled button competing with the
+                    gold submit.
+                  */}
                   <a
                     href={mailtoHref}
-                    className="font-medium text-ink underline underline-offset-4 transition-colors hover:text-gold-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                    // `w-full sm:w-auto` + `whitespace-nowrap`: at 320px the alert is
+                    // only ~191px of content width, and shrink-to-fit wrapped the label
+                    // across two lines inside its own border. Full-width on phones is
+                    // both the larger tap target and the layout that cannot wrap.
+                    className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-md border-[1.5px] border-border-strong bg-surface px-[18px] py-2.5 text-md font-medium text-ink transition-colors hover:border-gold hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold sm:w-auto"
                   >
-                    email {sessionEmail}
+                    Open pre-filled email
                   </a>
-                  . Everything you filled in is already in the message; you only need to press send.
-                </p>
+                </>
               ) : null}
-            </div>
+            </FormError>
           ) : null}
 
           <button
