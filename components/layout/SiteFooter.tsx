@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRightIcon } from "@/components/ui/ArrowRightIcon";
 import { LegalLinks, Separator } from "@/components/legal/LegalLinks";
+import { contactEmail } from "@/lib/env";
 
 /**
  * Shared site footer — the landing page, the practitioner site and /login.
@@ -27,10 +28,14 @@ import { LegalLinks, Separator } from "@/components/legal/LegalLinks";
  * 3. The legal links and the "InvestQ Commune" wording postdate the spec.
  */
 export function SiteFooter({
-  email = "hello@iqcommune.com",
+  email = contactEmail(),
   top = true,
 }: {
-  /** Public pages and the practitioner site use different inboxes. */
+  /**
+   * The inbox printed on the bottom line. Defaults to the site's, from
+   * `CONTACT_EMAIL`, so changing it is an env edit rather than a deploy — the
+   * prop stays because a page is still free to override it.
+   */
   email?: string;
   /**
    * The footer's call-to-action. `true` renders the learner-site default (join

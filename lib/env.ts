@@ -89,6 +89,16 @@ export const FEATURE_ENV = {
    * two addresses are usually the same and are free not to be.
    */
   SESSION_CONTACT_EMAIL: "mailto fallback on the request form",
+  /**
+   * The inbox the site prints — the footer on every page, and the "questions?"
+   * line under each emailed link page.
+   *
+   * Its own variable for the same reason as the one above: `BREVO_SENDER_EMAIL`
+   * is a `From:` Brevo accepts only once it has verified that mailbox, so
+   * repointing it to change what the website displays would break outbound
+   * platform mail. This address is never sent from, only rendered.
+   */
+  CONTACT_EMAIL: "public inbox shown on the site",
   /** Display name on outbound Brevo email. */
   BREVO_SENDER_NAME: "outbound email",
 } as const;
@@ -132,4 +142,22 @@ export function requireEnv(key: FeatureEnvKey): string {
     throw new Error(`Missing ${key} — required for ${FEATURE_ENV[key]}. Add it to .env.local.`);
   }
   return value;
+}
+
+/**
+ * The address the site has always printed, and the fallback when the variable
+ * is unset. Legal copy holds this same string as a literal — see the guard in
+ * `tests/unit/env-contract.test.ts` for why it is not templated there.
+ */
+export const CONTACT_EMAIL_DEFAULT = "hello@iqcommune.com";
+
+/**
+ * The public inbox, for rendering.
+ *
+ * A literal fallback rather than `requireEnv`: this string goes into the page
+ * chrome, so an unset variable has to degrade to the right address — never to a
+ * thrown request, and never to a footer reading `undefined`.
+ */
+export function contactEmail(): string {
+  return process.env.CONTACT_EMAIL || CONTACT_EMAIL_DEFAULT;
 }

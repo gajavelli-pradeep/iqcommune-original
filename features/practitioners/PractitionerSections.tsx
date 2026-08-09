@@ -106,9 +106,9 @@ export function PractitionerSections() {
         </div>
       </main>
       <SiteFooter
-        // Client override of the V7 spec's practitioners@ address: every footer
-        // across the site points at the one inbox.
-        email="hello@iqcommune.com"
+        // No `email` override on purpose. The V7 spec puts practitioners@ here;
+        // the client replaced that with the one shared inbox, which is now the
+        // footer's own default — so this page takes it rather than restating it.
         top={
           <Link
             href="/"

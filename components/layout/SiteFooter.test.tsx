@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SiteFooter } from "./SiteFooter";
 
 describe("SiteFooter", () => {
@@ -19,6 +19,19 @@ describe("SiteFooter", () => {
     render(<SiteFooter />);
     expect(screen.getByText("hello@iqcommune.com")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "hello@iqcommune.com" })).toBeNull();
+  });
+
+  it("takes the displayed inbox from CONTACT_EMAIL", () => {
+    // The address was a literal in this file until the client's mailboxes went
+    // live. Asserting the variable reaches the render is the difference between
+    // "no hardcode remains" and "changing the inbox actually works".
+    vi.stubEnv("CONTACT_EMAIL", "desk@iqcommune.com");
+    try {
+      render(<SiteFooter />);
+      expect(screen.getByText("desk@iqcommune.com")).toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("carries the spec copy verbatim", () => {

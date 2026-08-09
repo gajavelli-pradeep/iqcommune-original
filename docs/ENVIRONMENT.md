@@ -33,6 +33,8 @@ BREVO_API_KEY=
 BREVO_SENDER_EMAIL=                           # fallback / platform sender (console invites)
 BREVO_SENDER_PRACTITIONER=                    # optional — e.g. practitioner@iqcommune.com
 BREVO_SENDER_SESSION=                         # optional — e.g. session@iqcommune.com
+CONTACT_EMAIL=                                # optional — inbox the site prints, not a sender
+SESSION_CONTACT_EMAIL=                        # optional — mailto fallback on the request form
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 SUPABASE_PHOTOS_BUCKET=session-photos
@@ -56,6 +58,37 @@ is a property of the email.
 **Both per-stream variables are optional, and that is the point.** Each falls back to
 `BREVO_SENDER_EMAIL`, so the app is already correct today and moves to the dedicated mailboxes the
 moment they exist. Adding them is a Vercel env change and a redeploy; no code change.
+
+## Addresses the site displays
+
+Two variables hold addresses that are only ever *rendered*. Neither is a Brevo sender, so neither
+carries the verification dependency above — each may be any mailbox someone actually reads, and each
+can change with an env edit and a restart.
+
+**`CONTACT_EMAIL` is the inbox the site prints**: the bottom line of the footer on every page, and
+the closing "Confidential · Questions?" line under each of the six emailed link pages. It is resolved
+on the server by `contactEmail()` in `lib/env.ts` and taken as the default of the `email` prop on
+`SiteFooter` and `LinkPageShell`, so a page may still override it. Unset, it falls back to
+`hello@iqcommune.com` — the address the site has always shown — so leaving it unset changes nothing.
+
+It is deliberately *not* `BREVO_SENDER_EMAIL`: that one is a `From:` Brevo accepts only for a mailbox
+it has verified, so repointing it to change what the website displays would break outbound platform
+mail.
+
+**Changing it needs a redeploy, not just an env edit.** `/`, `/login` and `/practitioners` are
+statically prerendered, so their footer address is resolved at build time; the six emailed link pages
+are server-rendered per request and pick it up on restart. Set the variable and redeploy, and both
+halves agree. This is the same rule as the senders above and is Vercel's model for env vars anyway —
+it is called out here only because the footer is the half that looks unchanged if you skip the
+rebuild.
+
+**The legal documents keep the address as a literal, on purpose.** `content/legal.ts`, the
+end-of-agreement line in `OnboardingForm.tsx`, and the archived `docs/legal/privacy-policy.md` are
+not templated from `CONTACT_EMAIL`. An unset variable rendering "write to us at undefined" inside a
+privacy policy is a worse failure than a stale address; the rendered policy has to stay
+word-identical to the archived copy; and changing a contact address in a legal document is a reviewed
+commit, not an ops flip. A test in `tests/unit/env-contract.test.ts` asserts all three still carry
+the same address as the fallback, so the two cannot drift apart silently.
 
 **`SESSION_CONTACT_EMAIL` is where visitors write, not where mail sends from.** When a session
 request cannot be saved, the form offers a `mailto:` with the whole submission pre-drafted; this is

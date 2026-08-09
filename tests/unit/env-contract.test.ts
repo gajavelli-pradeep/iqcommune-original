@@ -69,6 +69,42 @@ describe("env contract", () => {
     expect(featureKeys()).toContain("BREVO_SENDER_SESSION");
   });
 
+  it("keeps the inbox the site displays changeable without a code change", () => {
+    // The same rule as the senders below, for the address the site prints. It
+    // was hardcoded in both chrome components, so changing the public inbox
+    // meant editing components and shipping a deploy.
+    expect(ENV_SOURCE).toMatch(/process\.env\.CONTACT_EMAIL \|\| CONTACT_EMAIL_DEFAULT/);
+
+    for (const file of [
+      "components/layout/SiteFooter.tsx",
+      "components/layout/LinkPageShell.tsx",
+    ]) {
+      expect(readFileSync(file, "utf8")).not.toMatch(/@iqcommune\.com/);
+    }
+  });
+
+  it("keeps the legal documents on the same inbox as the site", () => {
+    // Legal copy keeps the address as a literal deliberately, so it is NOT in
+    // the loop above. An unset variable rendering "write to us at undefined"
+    // inside a privacy policy is a worse failure than a stale address; the
+    // rendered policy has to stay word-identical to the archived markdown; and
+    // changing a contact address in a legal document is a reviewed commit
+    // rather than an ops flip.
+    //
+    // Literal is right. Drifting from the configured inbox silently is not —
+    // which is what this assertion prevents.
+    const fallback = ENV_SOURCE.match(/CONTACT_EMAIL_DEFAULT = "([^"]+)"/)?.[1];
+    expect(fallback).toBeTruthy();
+
+    for (const file of [
+      "content/legal.ts",
+      "docs/legal/privacy-policy.md",
+      "features/onboarding/OnboardingForm.tsx",
+    ]) {
+      expect(readFileSync(file, "utf8")).toContain(fallback);
+    }
+  });
+
   it("keeps both per-stream senders changeable without a code change", () => {
     // The client's addresses may change again. Nothing may hardcode one: the
     // sender is resolved from env per stream, so switching mailbox is an env
