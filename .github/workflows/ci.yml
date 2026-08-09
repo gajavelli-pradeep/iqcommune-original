@@ -20,14 +20,32 @@ jobs:
     # NEXT_PUBLIC_SUPABASE_URL alone is missing (audit C7), and validateEnv()
     # throws on any of the other six the first time something reads `env.*`.
     # Job-level, not per-step: harmless for Lint/Typecheck, which never touch it.
+    #
+    # Placeholders, not `${{ secrets.* }}`, and deliberately so.
+    #
+    # These were secret references and every one resolved to an empty string,
+    # because the secrets had never been created — so the build died on the
+    # audit-C7 guard. Creating them would have fixed today's run and left the
+    # real hole open: GitHub withholds secrets from `pull_request` runs on forks,
+    # so a secrets-based job fails identically for every outside contributor, and
+    # the failure looks like a broken PR rather than a missing setting.
+    #
+    # Nothing this job runs reaches Supabase or Upstash. The suite stubs its own
+    # env, and next.config.ts only parses the URL for `images.remotePatterns` and
+    # the CSP origin — never connects — so a well-formed dummy satisfies it. The
+    # artifact is thrown away; Vercel builds what ships, with the real values.
+    #
+    # If a step is ever added that genuinely talks to a live service, give that
+    # step real secrets and skip it when `github.event.pull_request.head.repo`
+    # is a fork. Do not move this whole block back to secrets.
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
-      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-      NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-not-a-real-credential
+      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-not-a-real-credential
+      HMAC_SECRET: placeholder-hmac-secret-at-least-32-characters-long
+      UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder-upstash-token-not-a-real-credential
+      NEXT_PUBLIC_BASE_URL: https://iqcommune.com
     steps:
       - uses: actions/checkout@v4
 
