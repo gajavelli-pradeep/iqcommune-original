@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { contactEmail } from "@/lib/env";
+
 import { SiteHeader } from "./SiteHeader";
 
 /**
@@ -18,6 +20,7 @@ export function LinkPageShell({
   right,
   width,
   strapline = null,
+  email = contactEmail(),
   children,
 }: {
   badge: string | readonly string[];
@@ -33,6 +36,8 @@ export function LinkPageShell({
   width: string;
   /** Wordmark sub-line. Rate/consent/user-setup have none; photos/onboarding pass theirs. */
   strapline?: string | null;
+  /** The inbox the closing "questions?" line points at. Defaults to the site's. */
+  email?: string;
   children: ReactNode;
 }) {
   return (
@@ -55,11 +60,11 @@ export function LinkPageShell({
           <p className="mt-8 text-center text-sm leading-[1.6] text-ink-faint">
             Confidential · Questions? Reply to the email this link was sent from, or write to{" "}
             <a
-              href="mailto:hello@iqcommune.com"
+              href={`mailto:${email}`}
               /* Inline link: `min-block-size` cannot grow it, so `tap-44` does. */
               className="tap-44 underline underline-offset-2 transition-colors hover:text-ink-muted"
             >
-              hello@iqcommune.com
+              {email}
             </a>
           </p>
         </div>
