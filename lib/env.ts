@@ -90,6 +90,17 @@ export const FEATURE_ENV = {
    */
   SESSION_CONTACT_EMAIL: "mailto fallback on the request form",
   /**
+   * The same offer on the empanelment application, whose recipient is the
+   * practitioner inbox rather than the session one — the two forms are answered
+   * by different people, which is the whole point of the per-stream mailboxes.
+   *
+   * Not `BREVO_SENDER_PRACTITIONER`, for the reason given just above: that one
+   * is a verified `From:`, and repointing it to change where applicants write
+   * would break every outbound practitioner email. Unset, it falls back to that
+   * sender, so the offer works before this variable exists.
+   */
+  PRACTITIONER_CONTACT_EMAIL: "mailto fallback on the application form",
+  /**
    * The inbox the site prints — the footer on every page, and the "questions?"
    * line under each emailed link page.
    *

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import {
   EXPERIENCE_BANDS,
@@ -48,11 +49,108 @@ const EMPTY: ApplicationInput = {
 
 const asOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
 
-export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * Windows' shell handler truncates a `mailto:` past roughly 2,048 characters,
+ * and does it *silently* — the tail of the message simply never arrives, which
+ * is the worst possible failure for a draft whose whole job is to lose nothing.
+ *
+ * Measured: with every field at its schema maximum the encoded href reaches
+ * 2,819 characters, so clamping each field to one fixed length does not settle
+ * it. The draft measures itself instead. `HREF_BUDGET` leaves room under the
+ * ceiling for a longer recipient address than the one shipped today.
+ */
+const HREF_BUDGET = 1900;
+
+/** Tried in order; the first that fits wins, so a short application keeps everything. */
+const FIELD_LIMITS = [400, 200, 120, 60];
+
+const clampTo = (limit: number) => (value: string) =>
+  value.length > limit ? `${value.slice(0, limit)}…` : value;
+
+/**
+ * The fallback email, drafted from what the applicant already typed so the only
+ * thing left to do in their mail client is press send.
+ *
+ * Re-asking for thirteen fields is how a recovery path ends up worse than the
+ * failure it recovers from, so the whole form is carried over. This form is the
+ * longer of the site's two, which is exactly why losing it hurts more.
+ */
+function composeBody(form: ApplicationInput, name: string, clamp: (value: string) => string) {
+  const details: Array<[string, string | undefined]> = [
+    ["Name", name],
+    ["Email", form.email],
+    ["Phone", form.phone],
+    ["Current job title", form.jobTitle],
+    ["Years of experience", form.experience],
+    ["City / State", [form.city, form.state].filter(Boolean).join(", ")],
+    ["Communication address", form.address && clamp(form.address)],
+    ["T-shirt size", form.tshirtSize],
+    ["Modules", form.modules.length ? clamp(form.modules.join(", ")) : undefined],
+    ["Could teach", form.frequency],
+    ["Why they want to teach", form.motivation && clamp(form.motivation)],
+  ];
+
+  // CRLF: the line break mailto bodies are specified in, and the one every mail
+  // client agrees on once percent-encoded.
+  return [
+    "Hi iqcommune team,",
+    "",
+    "I tried to send my practitioner application from your website, but the form couldn't go through. Here are my details:",
+    "",
+    ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
+    "",
+    // All three are `z.literal(true)`, so a draft only ever exists once they are
+    // ticked — but stating them keeps the emailed copy a faithful record of what
+    // was agreed, which a blanket "I agree" would not be.
+    ...(form.consentDisclosure && form.consentNoCrossSell && form.consentEmployer
+      ? ["I confirm the disclosure, no-cross-selling and employer-disclosure terms.", ""]
+      : []),
+    "Please get in touch when you can.",
+    "",
+    "Thanks,",
+    name,
+  ].join("\r\n");
+}
+
+/** The complete `mailto:` href, composed at the most generous length that fits. */
+export function draftApplicationMailto(form: ApplicationInput, address: string): string {
+  const name = `${form.firstName} ${form.lastName}`.trim();
+  const subject = `Practitioner application${name ? ` — ${name}` : ""}`;
+  const build = (limit: number) =>
+    `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      composeBody(form, name, clampTo(limit)),
+    )}`;
+
+  return (
+    FIELD_LIMITS.map(build).find((href) => href.length <= HREF_BUDGET) ??
+    build(FIELD_LIMITS[FIELD_LIMITS.length - 1])
+  );
+}
+
+export function ApplyModal({
+  open,
+  onClose,
+  /**
+   * Where the mailto fallback points. Optional because the address behind it
+   * (`BREVO_SENDER_PRACTITIONER`, falling back to `BREVO_SENDER_EMAIL`) is
+   * FEATURE-tier — unset, the offer is simply not made, rather than rendering a
+   * `mailto:undefined`.
+   */
+  practitionerEmail,
+}: {
+  open: boolean;
+  onClose: () => void;
+  practitionerEmail?: string;
+}) {
   const [form, setForm] = useState<ApplicationInput>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("editing");
-  const [submitError, setSubmitError] = useState<string>();
+  const [submitError, setSubmitError] = useState<{ message: string; offerEmail: boolean }>();
+
+  const mailtoHref =
+    submitError?.offerEmail && practitionerEmail
+      ? draftApplicationMailto(form, practitionerEmail)
+      : undefined;
 
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -91,14 +189,25 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
 
       if (!response.ok) {
         if (body?.error?.fields) setErrors(body.error.fields);
-        setSubmitError(body?.error?.message ?? "Something went wrong. Please try again.");
+        setSubmitError({
+          message: body?.error?.message ?? "Something went wrong. Please try again.",
+          // Only a server fault earns the escape hatch. A validation error is
+          // the applicant's own to fix and emailing it would bypass the schema;
+          // a rate limit exists precisely to not be routed around.
+          offerEmail: body?.error?.code === "INTERNAL",
+        });
         setStatus("editing");
         return;
       }
 
       setStatus("sent");
     } catch {
-      setSubmitError("We couldn't reach the server. Check your connection and try again.");
+      // Composing a mailto needs no network, so this failure — the one where the
+      // server is unreachable — is exactly when the offer is worth the most.
+      setSubmitError({
+        message: "We couldn't reach the server. Check your connection and try again.",
+        offerEmail: true,
+      });
       setStatus("editing");
     }
   }
@@ -325,12 +434,38 @@ export function ApplyModal({ open, onClose }: { open: boolean; onClose: () => vo
           </fieldset>
 
           {submitError ? (
-            <p
-              role="alert"
-              className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red"
-            >
-              {submitError}
-            </p>
+            <FormError>
+              <p>{submitError.message}</p>
+              {mailtoHref ? (
+                <>
+                  <p className="mt-1.5">
+                    Or send it straight to us at {practitionerEmail} — everything you filled in
+                    is already in the message, so you only need to press send.
+                  </p>
+                  {/*
+                    An anchor rather than <Button>: `mailto:` must stay a real link so the
+                    browser hands it to the mail client, and so right-click → copy address
+                    still rescues anyone with no mail client registered. The address is in
+                    the sentence above for the same reason — a button label carrying it
+                    wraps to two lines on a 320px screen.
+
+                    Mirrors `.btn-nav-ghost`'s outlined treatment at this modal's radius:
+                    the secondary way out, never a second filled button competing with the
+                    gold submit.
+                  */}
+                  <a
+                    href={mailtoHref}
+                    // `w-full sm:w-auto` + `whitespace-nowrap`: at 320px the alert is
+                    // only ~191px of content width, and shrink-to-fit wrapped the label
+                    // across two lines inside its own border. Full-width on phones is
+                    // both the larger tap target and the layout that cannot wrap.
+                    className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-md border-[1.5px] border-border-strong bg-surface px-[18px] py-2.5 text-md font-medium text-ink transition-colors hover:border-gold hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold sm:w-auto"
+                  >
+                    Open pre-filled email
+                  </a>
+                </>
+              ) : null}
+            </FormError>
           ) : null}
 
           <button

@@ -28,14 +28,27 @@ function useApplyDialog(): ApplyDialog {
   return context;
 }
 
-export function ApplyProvider({ children }: { children: ReactNode }) {
+export function ApplyProvider({
+  children,
+  /** Passed through to the application's mailto fallback. Optional — see there. */
+  practitionerEmail,
+}: {
+  children: ReactNode;
+  practitionerEmail?: string;
+}) {
   const [open, setOpen] = useState(false);
   const value = useMemo(() => ({ openApply: () => setOpen(true) }), []);
 
   return (
     <Context.Provider value={value}>
       {children}
-      {open ? <ApplyModal open onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <ApplyModal
+          open
+          onClose={() => setOpen(false)}
+          practitionerEmail={practitionerEmail}
+        />
+      ) : null}
     </Context.Provider>
   );
 }
