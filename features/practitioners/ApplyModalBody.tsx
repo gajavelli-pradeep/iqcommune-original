@@ -49,8 +49,23 @@ const EMPTY: ApplicationInput = {
 
 const asOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
 
-/** Longest a free-text field may run inside the draft. */
-const DRAFT_FIELD_LIMIT = 400;
+/**
+ * Windows' shell handler truncates a `mailto:` past roughly 2,048 characters,
+ * and does it *silently* — the tail of the message simply never arrives, which
+ * is the worst possible failure for a draft whose whole job is to lose nothing.
+ *
+ * Measured: with every field at its schema maximum the encoded href reaches
+ * 2,819 characters, so clamping each field to one fixed length does not settle
+ * it. The draft measures itself instead. `HREF_BUDGET` leaves room under the
+ * ceiling for a longer recipient address than the one shipped today.
+ */
+const HREF_BUDGET = 1900;
+
+/** Tried in order; the first that fits wins, so a short application keeps everything. */
+const FIELD_LIMITS = [400, 200, 120, 60];
+
+const clampTo = (limit: number) => (value: string) =>
+  value.length > limit ? `${value.slice(0, limit)}…` : value;
 
 /**
  * The fallback email, drafted from what the applicant already typed so the only
@@ -59,21 +74,8 @@ const DRAFT_FIELD_LIMIT = 400;
  * Re-asking for thirteen fields is how a recovery path ends up worse than the
  * failure it recovers from, so the whole form is carried over. This form is the
  * longer of the site's two, which is exactly why losing it hurts more.
- *
- * ponytail: free text is clamped rather than paginated — `motivation` (1500)
- * and `address` (400) together can push the encoded href past the ~2,048
- * characters Windows' mailto handler truncates at, and a truncated href loses
- * the end of the message silently. Raise the clamp only behind a length check
- * on the final href.
  */
-export function draftApplicationEmail(form: ApplicationInput): {
-  subject: string;
-  body: string;
-} {
-  const clamp = (value: string) =>
-    value.length > DRAFT_FIELD_LIMIT ? `${value.slice(0, DRAFT_FIELD_LIMIT)}…` : value;
-
-  const name = `${form.firstName} ${form.lastName}`.trim();
+function composeBody(form: ApplicationInput, name: string, clamp: (value: string) => string) {
   const details: Array<[string, string | undefined]> = [
     ["Name", name],
     ["Email", form.email],
@@ -88,29 +90,41 @@ export function draftApplicationEmail(form: ApplicationInput): {
     ["Why they want to teach", form.motivation && clamp(form.motivation)],
   ];
 
-  return {
-    subject: `Practitioner application${name ? ` — ${name}` : ""}`,
-    // CRLF: the line break mailto bodies are specified in, and the one every
-    // mail client agrees on once percent-encoded.
-    body: [
-      "Hi iqcommune team,",
-      "",
-      "I tried to send my practitioner application from your website, but the form couldn't go through. Here are my details:",
-      "",
-      ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
-      "",
-      // All three are `z.literal(true)`, so a draft only ever exists once they
-      // are ticked — but stating them keeps the emailed copy a faithful record
-      // of what was agreed, which a blanket "I agree" would not be.
-      ...(form.consentDisclosure && form.consentNoCrossSell && form.consentEmployer
-        ? ["I confirm the disclosure, no-cross-selling and employer-disclosure terms.", ""]
-        : []),
-      "Please get in touch when you can.",
-      "",
-      "Thanks,",
-      name,
-    ].join("\r\n"),
-  };
+  // CRLF: the line break mailto bodies are specified in, and the one every mail
+  // client agrees on once percent-encoded.
+  return [
+    "Hi iqcommune team,",
+    "",
+    "I tried to send my practitioner application from your website, but the form couldn't go through. Here are my details:",
+    "",
+    ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
+    "",
+    // All three are `z.literal(true)`, so a draft only ever exists once they are
+    // ticked — but stating them keeps the emailed copy a faithful record of what
+    // was agreed, which a blanket "I agree" would not be.
+    ...(form.consentDisclosure && form.consentNoCrossSell && form.consentEmployer
+      ? ["I confirm the disclosure, no-cross-selling and employer-disclosure terms.", ""]
+      : []),
+    "Please get in touch when you can.",
+    "",
+    "Thanks,",
+    name,
+  ].join("\r\n");
+}
+
+/** The complete `mailto:` href, composed at the most generous length that fits. */
+export function draftApplicationMailto(form: ApplicationInput, address: string): string {
+  const name = `${form.firstName} ${form.lastName}`.trim();
+  const subject = `Practitioner application${name ? ` — ${name}` : ""}`;
+  const build = (limit: number) =>
+    `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      composeBody(form, name, clampTo(limit)),
+    )}`;
+
+  return (
+    FIELD_LIMITS.map(build).find((href) => href.length <= HREF_BUDGET) ??
+    build(FIELD_LIMITS[FIELD_LIMITS.length - 1])
+  );
 }
 
 export function ApplyModal({
@@ -133,11 +147,10 @@ export function ApplyModal({
   const [status, setStatus] = useState<Status>("editing");
   const [submitError, setSubmitError] = useState<{ message: string; offerEmail: boolean }>();
 
-  const draft =
-    submitError?.offerEmail && practitionerEmail ? draftApplicationEmail(form) : undefined;
-  const mailtoHref = draft
-    ? `mailto:${practitionerEmail}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`
-    : undefined;
+  const mailtoHref =
+    submitError?.offerEmail && practitionerEmail
+      ? draftApplicationMailto(form, practitionerEmail)
+      : undefined;
 
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));

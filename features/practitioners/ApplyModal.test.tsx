@@ -1,7 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApplyModal } from "./ApplyModalBody";
+import { MODULES, type ApplicationInput } from "@/lib/schemas/application";
+
+import { ApplyModal, draftApplicationMailto } from "./ApplyModalBody";
 
 /** The component's contract is with the HTTP route, so that is the seam held still. */
 function mockFetch(status: number, body: unknown) {
@@ -192,6 +194,37 @@ describe("ApplyModal", () => {
 
     expect(await screen.findByText(/Too many requests/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the longest possible application inside the mailto ceiling", () => {
+    // Windows' shell handler truncates a mailto past ~2,048 characters and says
+    // nothing, so the tail of the draft would vanish exactly when it matters.
+    // Every field at its schema maximum reached 2,819 with a single per-field
+    // clamp, which is why the draft now measures itself.
+    const longest: ApplicationInput = {
+      firstName: "F".repeat(80),
+      lastName: "L".repeat(80),
+      email: `${"a".repeat(50)}@example.com`,
+      phone: "+91 98765 43210 000",
+      jobTitle: "J".repeat(120),
+      experience: "13 – 18 years",
+      city: "C".repeat(80),
+      state: "S".repeat(80),
+      address: "A".repeat(400),
+      tshirtSize: "3XL",
+      modules: [...MODULES],
+      frequency: "Flexible — depends on my schedule",
+      motivation: "M".repeat(1500),
+      consentDisclosure: true,
+      consentNoCrossSell: true,
+      consentEmployer: true,
+    };
+
+    const href = draftApplicationMailto(longest, "practitioner@iqcommune.com");
+    expect(href.length).toBeLessThanOrEqual(2048);
+    // Still a usable draft, not a stub: the identifying fields survive the fit.
+    expect(decodeURIComponent(href)).toContain("Email: aaaaa");
+    expect(decodeURIComponent(href)).toContain("Why they want to teach: MMMMM");
   });
 
   it("says nothing about email when no address is configured", async () => {
