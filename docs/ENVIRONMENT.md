@@ -61,9 +61,9 @@ moment they exist. Adding them is a Vercel env change and a redeploy; no code ch
 
 ## Addresses the site displays
 
-Two variables hold addresses that are only ever *rendered*. Neither is a Brevo sender, so neither
-carries the verification dependency above — each may be any mailbox someone actually reads, and each
-can change with an env edit and a restart.
+Three variables hold addresses that are only ever *rendered*. None is a Brevo sender, so none carries
+the verification dependency above — each may be any mailbox someone actually reads, and each can
+change with an env edit and a restart.
 
 **`CONTACT_EMAIL` is the inbox the site prints**: the bottom line of the footer on every page, and
 the closing "Confidential · Questions?" line under each of the six emailed link pages. It is resolved
@@ -75,11 +75,12 @@ It is deliberately *not* `BREVO_SENDER_EMAIL`: that one is a `From:` Brevo accep
 it has verified, so repointing it to change what the website displays would break outbound platform
 mail.
 
-**Changing it needs a redeploy, not just an env edit.** `/`, `/login` and `/practitioners` are
-statically prerendered, so their footer address is resolved at build time; the six emailed link pages
-are server-rendered per request and pick it up on restart. Set the variable and redeploy, and both
-halves agree. This is the same rule as the senders above and is Vercel's model for env vars anyway —
-it is called out here only because the footer is the half that looks unchanged if you skip the
+**Changing any of the three needs a redeploy, not just an env edit.** `/`, `/login` and
+`/practitioners` are statically prerendered, so anything resolved on them — the footer address, and
+both `mailto:` fallback recipients — is fixed at build time; the six emailed link pages are
+server-rendered per request and pick up a change on restart. Set the variable and redeploy, and every
+surface agrees. This is the same rule as the senders above and is Vercel's model for env vars anyway
+— it is called out here only because the statically rendered half looks unchanged if you skip the
 rebuild.
 
 **The legal documents keep the address as a literal, on purpose.** `content/legal.ts`, the
@@ -89,6 +90,17 @@ privacy policy is a worse failure than a stale address; the rendered policy has 
 word-identical to the archived copy; and changing a contact address in a legal document is a reviewed
 commit, not an ops flip. A test in `tests/unit/env-contract.test.ts` asserts all three still carry
 the same address as the fallback, so the two cannot drift apart silently.
+
+**`PRACTITIONER_CONTACT_EMAIL` is the same offer on the empanelment application.** When an
+application cannot be saved, the apply dialog offers a `mailto:` with the whole application
+pre-drafted; this is its recipient, resolved in `PractitionerSections` and passed down through
+`ApplyProvider`. Unset, it falls back to the practitioner sender.
+
+A separate variable from the one below because the two forms are answered by different people — that
+separation is the entire reason the per-stream mailboxes exist. The offer is made **only** when the
+server actually failed (`INTERNAL`, or an unreachable server); a validation error is the applicant's
+own to fix and emailing it would bypass the schema, and a rate limit exists precisely so it is not
+routed around.
 
 **`SESSION_CONTACT_EMAIL` is where visitors write, not where mail sends from.** When a session
 request cannot be saved, the form offers a `mailto:` with the whole submission pre-drafted; this is

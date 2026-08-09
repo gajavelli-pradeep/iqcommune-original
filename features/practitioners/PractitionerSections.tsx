@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MobileNav, type NavLink } from "@/components/layout/MobileNav";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { senderFor } from "@/lib/email/send";
 
 import { ApplyButton, ApplyProvider } from "./ApplyModal";
 import { ApplyCta } from "./sections/ApplyCta";
@@ -37,7 +38,15 @@ const PRACTITIONER_LINKS: readonly NavLink[] = [
 
 export function PractitionerSections() {
   return (
-    <ApplyProvider>
+    // Resolved here, the last server component in the chain, and handed down as
+    // a plain prop — never a NEXT_PUBLIC_ variable baked into the bundle, which
+    // would need a rebuild to change and would ship `mailto:undefined` unset.
+    //
+    // Falls back to the practitioner sender so the offer works before anyone
+    // sets the dedicated variable; see FEATURE_ENV for why they are separate.
+    <ApplyProvider
+      practitionerEmail={process.env.PRACTITIONER_CONTACT_EMAIL || senderFor("practitioner")}
+    >
       <div className="flex min-h-dvh flex-col">
       <SiteHeader
         badge={["Practitioner", "Network"] as const}

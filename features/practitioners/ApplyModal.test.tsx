@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApplyModal } from "./ApplyModalBody";
@@ -11,29 +10,67 @@ function mockFetch(status: number, body: unknown) {
   return fetchMock;
 }
 
+/** The other failure the fallback exists for: the request never lands at all. */
+function mockUnreachableServer() {
+  const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+const serverFault = {
+  data: null,
+  error: { code: "INTERNAL", message: "Something went wrong sending your application.", traceId: "t-1" },
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 /**
- * The states the parity gate cannot drive: a rejected form, and the receipt.
+ * The states the parity gate cannot drive: a rejected form, the receipt, and
+ * the mailto fallback offered when the server itself fails.
  *
- * Text fields are filled with change events rather than `user.type`. Typing
+ * Every field is set with change events rather than `user.type`. Typing
  * character by character through a fourteen-field form pushed this test past
- * the 5s limit under full-suite load — the assertion is about the receipt, not
- * about keystroke handling, which the shorter tests already cover.
+ * the 5s limit under full-suite load — these assertions are about what happens
+ * after submit, not about keystroke handling, which shorter tests already cover.
  */
 
 const fill = (label: string | RegExp, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
+const submit = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Submit Application" }));
+
+/** A complete, valid application — the shortest route to a server response. */
+function fillApplication() {
+  fill("First name", "Vikram");
+  fill("Last name", "Kulkarni");
+  fill("Personal email address", "vikram@gmail.com");
+  fill("Phone number", "+91 98765 43210");
+  fill("Current job title", "Equity Analyst");
+  fill("City you're based in", "Mumbai");
+  fill("State", "Maharashtra");
+  fill("Communication address (include PIN code)", "12 Marine Drive, Mumbai — 400020");
+  fill(/why do you want to do this/, "I want a room that is already interested.");
+  fill("Years of experience", "5 – 8 years");
+  fill("T-shirt size", "M");
+  fill("How often could you teach?", "Once a month");
+
+  fireEvent.click(screen.getByRole("checkbox", { name: /Equity Investing Simplified/ }));
+  for (const consent of screen.getAllByRole("checkbox", {
+    name: /I understand|I confirm|I acknowledge/,
+  })) {
+    fireEvent.click(consent);
+  }
+}
+
 describe("ApplyModal", () => {
   it("refuses to submit until every consent is given", async () => {
-    const user = userEvent.setup();
     const fetchMock = mockFetch(201, {});
     render(<ApplyModal open onClose={() => {}} />);
 
-    await user.click(screen.getByRole("button", { name: "Submit Application" }));
+    submit();
 
     expect(await screen.findByText("First name is required")).toBeInTheDocument();
     expect(screen.getByText("Please confirm the disclosure terms")).toBeInTheDocument();
@@ -57,36 +94,116 @@ describe("ApplyModal", () => {
   });
 
   it("shows the receipt once a complete application is submitted", async () => {
-    const user = userEvent.setup();
     const fetchMock = mockFetch(201, { data: { id: "abc", createdAt: "now" }, error: null });
     render(<ApplyModal open onClose={() => {}} />);
 
-    fill("First name", "Vikram");
-    fill("Last name", "Kulkarni");
-    fill("Personal email address", "vikram@gmail.com");
-    fill("Phone number", "+91 98765 43210");
-    fill("Current job title", "Equity Analyst");
-    fill("City you're based in", "Mumbai");
-    fill("State", "Maharashtra");
-    fill("Communication address (include PIN code)", "12 Marine Drive, Mumbai — 400020");
-    fill(/why do you want to do this/, "I want a room that is already interested.");
-
-    await user.selectOptions(screen.getByLabelText("Years of experience"), "5 – 8 years");
-    await user.selectOptions(screen.getByLabelText("T-shirt size"), "M");
-    await user.selectOptions(screen.getByLabelText("How often could you teach?"), "Once a month");
-    await user.click(screen.getByRole("checkbox", { name: /Equity Investing Simplified/ }));
-    for (const consent of screen.getAllByRole("checkbox", {
-      name: /I understand|I confirm|I acknowledge/,
-    })) {
-      await user.click(consent);
-    }
-
-    await user.click(screen.getByRole("button", { name: "Submit Application" }));
+    fillApplication();
+    submit();
 
     expect(
       await screen.findByRole("heading", { name: "Application received!" }),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/applications", expect.anything());
     expect(screen.getByText(/we'll reach out within 2–3 working days/)).toBeInTheDocument();
+  });
+
+  it("offers a drafted mailto on a server fault, carrying what was typed", async () => {
+    mockFetch(500, serverFault);
+    render(
+      <ApplyModal open onClose={() => {}} practitionerEmail="practitioner@iqcommune.com" />,
+    );
+
+    fillApplication();
+    submit();
+
+    const link = await screen.findByRole("link", { name: "Open pre-filled email" });
+    // The address stays readable as text: right-click → copy is the only rescue
+    // when no mail client is registered for mailto:.
+    expect(screen.getByText(/practitioner@iqcommune\.com/)).toBeInTheDocument();
+
+    const href = decodeURIComponent(link.getAttribute("href") ?? "");
+    expect(href).toContain("mailto:practitioner@iqcommune.com");
+    expect(href).toContain("Practitioner application — Vikram Kulkarni");
+    // The point of the draft: this form is the longer of the two, and every
+    // answer survives the failure.
+    expect(href).toContain("Email: vikram@gmail.com");
+    expect(href).toContain("Current job title: Equity Analyst");
+    expect(href).toContain("Years of experience: 5 – 8 years");
+    expect(href).toContain("Modules: Equity Investing Simplified");
+    expect(href).toContain("Could teach: Once a month");
+    expect(href).toContain("I confirm the disclosure, no-cross-selling and employer-disclosure");
+  });
+
+  it("offers the mailto when the server cannot be reached at all", async () => {
+    // Composing a mailto needs no network, so this is when the offer is worth
+    // the most — and it is the one path no HTTP status can describe.
+    mockUnreachableServer();
+    render(
+      <ApplyModal open onClose={() => {}} practitionerEmail="practitioner@iqcommune.com" />,
+    );
+
+    fillApplication();
+    submit();
+
+    expect(
+      await screen.findByRole("link", { name: "Open pre-filled email" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer the mailto for a validation failure", async () => {
+    // The applicant's own to fix. Emailing it would route around the schema and
+    // land a malformed application in a human inbox.
+    mockFetch(400, {
+      data: null,
+      error: {
+        code: "VALIDATION_FAILED",
+        message: "Please check the highlighted fields.",
+        traceId: "t-2",
+        fields: { phone: "Enter a valid phone number" },
+      },
+    });
+    render(
+      <ApplyModal open onClose={() => {}} practitionerEmail="practitioner@iqcommune.com" />,
+    );
+
+    fillApplication();
+    submit();
+
+    expect(await screen.findByText("Please check the highlighted fields.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
+  });
+
+  it("does not offer the mailto for a rate limit", async () => {
+    // A rate limit exists precisely so it is not routed around.
+    mockFetch(429, {
+      data: null,
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many requests. Please try again shortly.",
+        traceId: "t-3",
+      },
+    });
+    render(
+      <ApplyModal open onClose={() => {}} practitionerEmail="practitioner@iqcommune.com" />,
+    );
+
+    fillApplication();
+    submit();
+
+    expect(await screen.findByText(/Too many requests/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
+  });
+
+  it("says nothing about email when no address is configured", async () => {
+    // The variable is FEATURE-tier. Unset, the offer is withheld rather than
+    // rendering `mailto:undefined` — a dead link is worse than no link.
+    mockFetch(500, serverFault);
+    render(<ApplyModal open onClose={() => {}} />);
+
+    fillApplication();
+    submit();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Something went wrong/);
+    expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
   });
 });
