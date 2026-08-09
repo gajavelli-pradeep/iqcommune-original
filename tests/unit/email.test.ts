@@ -34,6 +34,26 @@ const SESSION_SUMMARY: templates.SessionRequestSummary = {
   phone: "+91 98765 43211",
 };
 
+/**
+ * The log and the duplicate check, stubbed out. These tests are about what the
+ * sender decides, not what it writes down; persistence is covered in
+ * email-outcomes.test.ts.
+ *
+ * Every `sendEmail` call here must pass this. Without it `defaultDeps()` loads
+ * `services/email-log`, which builds a real Supabase client — and the routing
+ * tests below then hang until vitest's 5s timeout instead of asserting on a
+ * payload. That was invisible for as long as the environment was *broken*:
+ * with the required vars unset, `validateEnv()` threw first and the duplicate
+ * check was skipped, so the suite passed for the wrong reason. Supply valid env
+ * vars, as CI does, and the same tests fail. A unit test must not depend on a
+ * database being unreachable.
+ */
+const noPersistence = {
+  alreadySent: async () => false,
+  record: async () => {},
+  sleep: async () => {},
+};
+
 beforeEach(() => {
   vi.stubEnv("HMAC_SECRET", "test-secret-at-least-32-characters-long");
   vi.stubEnv("NEXT_PUBLIC_BASE_URL", "https://iqcommune.example");
@@ -107,15 +127,6 @@ describe("emailed links", () => {
 });
 
 describe("email delivery", () => {
-  // The log and the duplicate check are stubbed out: this describe is about
-  // what the sender decides, not about what it writes down. The persistence is
-  // covered in email-outcomes.test.ts.
-  const noPersistence = {
-    alreadySent: async () => false,
-    record: async () => {},
-    sleep: async () => {},
-  };
-
   it("sends nothing unless delivery is explicitly live", async () => {
     // A dev database full of test rows would otherwise mail real people.
     const fetchMock = vi.fn();
@@ -226,7 +237,7 @@ describe("email sender routing", () => {
       return new Response(JSON.stringify({ messageId: "1" }));
     });
 
-    await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"));
+    await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"), noPersistence);
 
     expect(sent?.sender?.email).toBe("practitioner@iqcommune.com");
   });
@@ -254,6 +265,7 @@ describe("email sender routing", () => {
     await sendEmail(
       "trace",
       templates.sessionRequestReceived("a@b.com", "Asha", "Equity Investing Simplified"),
+      noPersistence,
     );
 
     expect(sent?.sender?.email).toBe("hello@iqcommune.com");
