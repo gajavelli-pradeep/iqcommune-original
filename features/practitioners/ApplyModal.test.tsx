@@ -136,15 +136,20 @@ describe("ApplyModal", () => {
 
     const href = decodeURIComponent(link.getAttribute("href") ?? "");
     expect(href).toContain("mailto:practitioner@iqcommune.com");
-    expect(href).toContain("Practitioner application — Vikram Kulkarni");
+    // Client subject format, MOM 2026-08-10: first name and city, not full name.
+    expect(href).toContain("New Practitioner Request - Vikram - Mumbai (offline request)");
     // The point of the draft: this form is the longer of the two, and every
     // answer survives the failure.
     expect(href).toContain("Email: vikram@gmail.com");
     expect(href).toContain("Current job title: Equity Analyst");
     expect(href).toContain("Years of experience: 5 – 8 years");
     expect(href).toContain("Modules: Equity Investing Simplified");
-    expect(href).toContain("Could teach: Once a month");
-    expect(href).toContain("I confirm the disclosure, no-cross-selling and employer-disclosure");
+    // First person — the applicant is writing about themselves.
+    expect(href).toContain("How often I could teach: Once a month");
+    expect(href).toContain("Why I want to teach:");
+    expect(href).toContain(
+      'my agreement with all the disclosures appearing under "Disclosure Consent" section',
+    );
   });
 
   it("offers the mailto when the server cannot be reached at all", async () => {
@@ -235,7 +240,7 @@ describe("ApplyModal", () => {
     expect(href.length).toBeLessThanOrEqual(2048);
     // Still a usable draft, not a stub: the identifying fields survive the fit.
     expect(decodeURIComponent(href)).toContain("Email: aaaaa");
-    expect(decodeURIComponent(href)).toContain("Why they want to teach: MMMMM");
+    expect(decodeURIComponent(href)).toContain("Why I want to teach: MMMMM");
   });
 
   it("says nothing about email when no address is configured", async () => {
