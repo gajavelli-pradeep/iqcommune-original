@@ -17,7 +17,7 @@ import { AudienceRibbon, TrustBar } from "@/features/landing/sections/TrustStrip
 import { WhoIsThisFor } from "@/features/landing/sections/WhoIsThisFor";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { senderFor } from "@/lib/email/send";
+import { contactEmail } from "@/lib/env";
 
 import { RequestSessionButton, RequestSessionProvider } from "./RequestSession";
 
@@ -69,10 +69,14 @@ export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
     // a plain prop — never a NEXT_PUBLIC_ variable baked into the bundle, which
     // would need a rebuild to change and would ship `mailto:undefined` when unset.
     //
-    // Falls back to the session sender so the offer still appears before anyone
-    // sets the dedicated variable; see FEATURE_ENV for why they are separate.
+    // Falls back to the public inbox, NOT to the session sender. This is a
+    // contact address printed for a visitor, and `BREVO_SENDER_EMAIL` is a
+    // mail-sending account — chaining to it published a personal Gmail on the
+    // page the moment the dedicated variables were unset, which is exactly what
+    // happened. An unconfigured contact surface shows the public inbox or
+    // nothing; it never borrows whatever the mailer happens to authenticate as.
     <RequestSessionProvider
-      sessionEmail={process.env.SESSION_CONTACT_EMAIL || senderFor("session")}
+      sessionEmail={process.env.SESSION_CONTACT_EMAIL || contactEmail()}
     >
       <div className="flex min-h-dvh flex-col">
         <SiteHeader

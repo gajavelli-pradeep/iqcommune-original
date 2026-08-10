@@ -120,7 +120,8 @@ the same address as the fallback, so the two cannot drift apart silently.
 **`PRACTITIONER_CONTACT_EMAIL` is the same offer on the empanelment application.** When an
 application cannot be saved, the apply dialog offers a `mailto:` with the whole application
 pre-drafted; this is its recipient, resolved in `PractitionerSections` and passed down through
-`ApplyProvider`. Unset, it falls back to the practitioner sender.
+`ApplyProvider`. Unset, it falls back to **`CONTACT_EMAIL`** — the public inbox — never to
+`BREVO_SENDER_PRACTITIONER`.
 
 A separate variable from the one below because the two forms are answered by different people — that
 separation is the entire reason the per-stream mailboxes exist. The offer is made **only** when the
@@ -133,8 +134,13 @@ request cannot be saved, the form offers a `mailto:` with the whole submission p
 its recipient, read on the server and passed down as a prop. It is deliberately *not*
 `BREVO_SENDER_SESSION`: that one is the `From:` Brevo sends as and may only hold a mailbox Brevo has
 verified, so repointing it to change where visitors write would break every outbound session email.
-Unset, it falls back to the session sender. The two are usually the same address and are free not to
-be.
+Unset, it falls back to **`CONTACT_EMAIL`** — the public inbox — never to `BREVO_SENDER_SESSION`.
+
+**Why neither falls back to a sender.** They used to, and it published a personal Gmail. With the
+dedicated variables unset, both chains ran on to `BREVO_SENDER_EMAIL` and the forms told visitors to
+write to whatever address Brevo happened to be authenticating as. A sending account is not a contact
+address — that distinction is the whole reason `CONTACT_EMAIL` exists — so an unconfigured contact
+surface now shows the company inbox and nothing else.
 
 **Replies route separately, and are already correct.** That fallback decides only which mailbox mail
 leaves *from*; on its own it would take replies with it, landing answers to automated session mail in
