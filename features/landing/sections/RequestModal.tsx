@@ -186,14 +186,19 @@ function composeBody(
 ) {
   const details: Array<[string, string | undefined]> = [
     ["Who this is for", audience ? AUDIENCE_LABELS[audience] : undefined],
-    ["Name", name],
+    // See the same note in ApplyModalBody: clamped only for the absurd case
+    // where the schema's 80 + 80 characters are actually used.
+    ["Name", clamp(name)],
     ["Email", form.email],
     ["Phone", form.phone],
     // Every free-text field is clamped, not just the long ones — see the same
     // note in ApplyModalBody: the client's prose leaves less room for fields.
     ["City / State", clamp([form.city, form.state].filter(Boolean).join(", "))],
     ["Organisation", form.organisationName && clamp(form.organisationName)],
-    ["Topic", form.topic && clamp(form.topic)],
+    // NOT clamped, deliberately: the topic is chosen from a fixed list, so it is
+    // bounded (a bundle is the longest at ~110 characters) and it is the whole
+    // subject of the request. Truncating it would lose what the session is for.
+    ["Topic", form.topic],
     ["Group size", GROUP_SIZES.find((size) => size.value === form.groupSize)?.label],
     ["Preferred window", form.preferredWindow && clamp(form.preferredWindow)],
     ["Venue", form.venueDetails && clamp(form.venueDetails)],
@@ -221,7 +226,7 @@ function composeBody(
     "Awaiting to hear from you on the next steps.",
     "",
     "Thanks,",
-    name,
+    clamp(name),
   ].join("\r\n");
 }
 

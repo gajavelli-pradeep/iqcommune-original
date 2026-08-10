@@ -83,7 +83,11 @@ const clampTo = (limit: number) => (value: string) =>
  */
 function composeBody(form: ApplicationInput, name: string, clamp: (value: string) => string) {
   const details: Array<[string, string | undefined]> = [
-    ["Name", name],
+    // Clamped only because the schema allows 80 + 80 characters and the name is
+    // printed three times — field, sign-off and subject. At any real length the
+    // limits never bite; at the absurd one, a shortened name beats a truncated
+    // message.
+    ["Name", clamp(name)],
     ["Email", form.email],
     ["Phone", form.phone],
     // Every free-text field is clamped, not just the long ones: the client's
@@ -95,7 +99,12 @@ function composeBody(form: ApplicationInput, name: string, clamp: (value: string
     ["City / State", clamp([form.city, form.state].filter(Boolean).join(", "))],
     ["Communication address", form.address && clamp(form.address)],
     ["T-shirt size", form.tshirtSize],
-    ["Modules", form.modules.length ? clamp(form.modules.join(", ")) : undefined],
+    // NOT clamped, deliberately. This is the answer the application exists to
+    // collect, and it is a chosen list rather than prose: all six modules come
+    // to 223 characters, so it is bounded and small. Clamping it at 60 left two
+    // of six and silently dropped the rest — losing what someone can teach to
+    // save room for what they wrote about themselves.
+    ["Modules", form.modules.length ? form.modules.join(", ") : undefined],
     // First person: the applicant is writing this about themselves. The earlier
     // labels ("Could teach", "Why they want to teach") read as a case file.
     ["How often I could teach", form.frequency],
@@ -124,7 +133,7 @@ function composeBody(form: ApplicationInput, name: string, clamp: (value: string
     "Awaiting to hear from you on the next steps.",
     "",
     "Thanks,",
-    name,
+    clamp(name),
   ].join("\r\n");
 }
 

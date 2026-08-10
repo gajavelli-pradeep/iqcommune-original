@@ -243,6 +243,33 @@ describe("ApplyModal", () => {
     expect(decodeURIComponent(href)).toContain("Why I want to teach: MMMMM");
   });
 
+  it("never drops a module to make room, even at the tightest fit", () => {
+    // The answer the application exists to collect. Clamping it with the prose
+    // left two of six and said nothing — so an applicant who writes a long note
+    // would have arrived looking like they teach a third of what they do.
+    const longest: ApplicationInput = {
+      firstName: "F".repeat(80),
+      lastName: "L".repeat(80),
+      email: `${"a".repeat(50)}@example.com`,
+      phone: "+91 98765 43210 000",
+      jobTitle: "J".repeat(120),
+      experience: "13 – 18 years",
+      city: "C".repeat(80),
+      state: "S".repeat(80),
+      address: "A".repeat(400),
+      tshirtSize: "3XL",
+      modules: [...MODULES],
+      frequency: "Flexible — depends on my schedule",
+      motivation: "M".repeat(1500),
+      consentDisclosure: true,
+      consentNoCrossSell: true,
+      consentEmployer: true,
+    };
+
+    const body = decodeURIComponent(draftApplicationMailto(longest, "a@b.com"));
+    for (const moduleName of MODULES) expect(body).toContain(moduleName);
+  });
+
   it("says nothing about email when no address is configured", async () => {
     // The variable is FEATURE-tier. Unset, the offer is withheld rather than
     // rendering `mailto:undefined` — a dead link is worse than no link.
