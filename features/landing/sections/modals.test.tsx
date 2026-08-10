@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 
+import type { SessionRequestInput } from "@/lib/schemas/session-request";
+
 import { PostSessionModal } from "./PostSessionModal";
-import { RequestModal } from "./RequestModal";
+import { RequestModal, draftSessionMailto } from "./RequestModal";
 
 /**
  * The two dialogs, and specifically the states the content-parity gate cannot
@@ -117,12 +119,21 @@ describe("RequestModal", () => {
 
     const href = decodeURIComponent(link.getAttribute("href") ?? "");
     expect(href).toContain("mailto:session@iqcommune.com");
-    expect(href).toContain("Session request — Rohan Mehta");
-    // The point of the draft: the details survive the failure.
+    // Client subject format, MOM 2026-08-10: first name and the topic, which is
+    // what "Module Name" refers to — the topic options are the module names.
+    expect(href).toContain(
+      "New Session Request - Rohan - Equity Investing Simplified (offline request)",
+    );
+    // The point of the draft: the details survive the failure. These are the
+    // SESSION form's fields — an earlier proposal pasted the practitioner list
+    // here, which would have arrived useless.
     expect(href).toContain("Email: rohan@example.com");
     expect(href).toContain("Organisation: TechCorp India");
     expect(href).toContain("Topic: Equity Investing Simplified");
     expect(href).toContain("Who this is for: Organisations & Institutions");
+    // None of the practitioner form's questions belong here.
+    expect(href).not.toContain("T-shirt size");
+    expect(href).not.toContain("Years of experience");
   });
 
   it("does not offer the mailto for a validation failure", async () => {
@@ -193,5 +204,66 @@ describe("PostSessionModal", () => {
 
     expect(await screen.findByText("Add at least one photo")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("session offline draft", () => {
+  const FORM: SessionRequestInput = {
+    audience: "individual",
+    firstName: "Asha",
+    lastName: "Kulkarni",
+    email: "asha@example.com",
+    phone: "+91 98765 43210",
+    city: "Pune",
+    state: "Maharashtra",
+    organisationName: "",
+    topic: "Equity Investing Simplified",
+    groupSize: "",
+    preferredWindow: "",
+    venueDetails: "",
+    notes: "",
+    spocConfirmed: false,
+  };
+
+  it("states the SPOC agreement only when that box was actually ticked", () => {
+    // The consent sentence is the client's, but it may not be printed for
+    // someone who never saw the box — the checkbox renders only for audiences
+    // that have one. Asserting an agreement nobody gave is the opposite of what
+    // a consent record is for.
+    const withoutSpoc = decodeURIComponent(
+      draftSessionMailto(FORM, "individual", "session@iqcommune.com"),
+    );
+    expect(withoutSpoc).not.toContain("responsibility of a SPOC");
+
+    const withSpoc = decodeURIComponent(
+      draftSessionMailto({ ...FORM, spocConfirmed: true }, "corporate", "session@iqcommune.com"),
+    );
+    expect(withSpoc).toContain("responsibility of a SPOC");
+    expect(withSpoc).toContain("minimum attendance commitment");
+  });
+
+  it("keeps the longest possible request inside the mailto ceiling", () => {
+    // Same silent truncation as the application draft: past ~2,048 characters
+    // Windows' handler drops the tail without saying so.
+    const longest: SessionRequestInput = {
+      ...FORM,
+      firstName: "F".repeat(80),
+      lastName: "L".repeat(80),
+      email: `${"a".repeat(50)}@example.com`,
+      city: "C".repeat(80),
+      state: "S".repeat(80),
+      organisationName: "O".repeat(160),
+      topic: "T".repeat(160),
+      groupSize: "G".repeat(40),
+      preferredWindow: "P".repeat(160),
+      venueDetails: "V".repeat(500),
+      notes: "N".repeat(1000),
+      spocConfirmed: true,
+    };
+
+    const href = draftSessionMailto(longest, "corporate", "session@iqcommune.com");
+    expect(href.length).toBeLessThanOrEqual(2048);
+    // Still a usable draft, not a stub.
+    expect(decodeURIComponent(href)).toContain("Email: aaaaa");
   });
 });

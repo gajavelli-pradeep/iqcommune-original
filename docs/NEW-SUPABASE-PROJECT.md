@@ -200,6 +200,14 @@ that is wrong. Only the first three change in this exercise.
 | `BREVO_SENDER_EMAIL` | for email | Must be a **verified sender** in Brevo |
 | `EMAIL_DELIVERY` | for email | `live` sends. Anything else logs and sends nothing |
 | `ADMIN_NOTIFY_EMAIL` | optional | Where new-request alerts go |
+| `CRON_SECRET` | for keepalive | Guards `/api/keepalive`. ≥16 chars: `openssl rand -base64 24` |
+| `BREVO_SENDER_NAME_SESSION` | optional | Overrides the "Session Commune" display name |
+| `BREVO_SENDER_NAME_PRACTITIONER` | optional | Overrides the "Practitioner Commune" display name |
+
+> **Set `CRON_SECRET`, or the project will pause.** A free-tier Supabase project sleeps after about a
+> week with no database activity, and `/api/keepalive` is what prevents that — but it refuses to run
+> without this variable, by design, so an unset value means the protection silently does nothing. See
+> `docs/ENVIRONMENT.md` → "Keeping Supabase awake".
 
 > `HMAC_SECRET` is not cosmetic: it signs the onboarding, consent, rating and
 > photo-upload links. **Change it and every link already emailed stops working.**

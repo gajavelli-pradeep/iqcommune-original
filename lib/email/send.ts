@@ -85,6 +85,39 @@ export function senderFor(stream: EmailStream = "platform"): string | undefined 
   return process.env[SENDER_ENV[stream]] || process.env.BREVO_SENDER_EMAIL;
 }
 
+/** The env var holding each stream's display name. */
+const SENDER_NAME_ENV: Record<EmailStream, string> = {
+  practitioner: "BREVO_SENDER_NAME_PRACTITIONER",
+  session: "BREVO_SENDER_NAME_SESSION",
+  platform: "BREVO_SENDER_NAME",
+};
+
+/**
+ * The name a recipient sees, and the name the body signs off with (client,
+ * 2026-08-10): "Session Commune" on session mail, "Practitioner Commune" on
+ * practitioner mail.
+ *
+ * Constants rather than a fallback to `BREVO_SENDER_NAME`, deliberately. That
+ * variable is set in production to "IQCommune", so falling back to it would
+ * leave the From line reading IQCommune while the body signed Session Commune,
+ * until someone set the new keys. The names the client asked for apply from this
+ * deploy; the env keys exist to change them later without another one.
+ */
+const STREAM_BRAND: Record<EmailStream, string> = {
+  practitioner: "Practitioner Commune",
+  session: "Session Commune",
+  // Console invites are neither stream and keep the shared name.
+  platform: "iqcommune",
+};
+
+/**
+ * The display name for a stream. One resolver feeds both the Brevo `sender.name`
+ * and the sign-off inside the body, so the two cannot disagree.
+ */
+export function senderNameFor(stream: EmailStream = "platform"): string {
+  return process.env[SENDER_NAME_ENV[stream]] || STREAM_BRAND[stream];
+}
+
 /**
  * Where replies to each stream belong — the other half of the routing above.
  *
@@ -154,6 +187,7 @@ async function attempt(
   deps: SendDeps,
   message: EmailMessage,
   sender: string,
+  senderName: string,
   replyTo: string | undefined,
   apiKey: string,
 ): Promise<EmailResult> {
@@ -165,7 +199,7 @@ async function attempt(
       method: "POST",
       headers: { "api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
-        sender: { email: sender, name: process.env.BREVO_SENDER_NAME || "iqcommune" },
+        sender: { email: sender, name: senderName },
         to: [{ email: message.to }],
         ...(replyTo ? { replyTo: { email: replyTo } } : {}),
         subject: message.subject,
@@ -228,6 +262,7 @@ export async function sendEmail(
 
   const apiKey = process.env.BREVO_API_KEY;
   const sender = senderFor(message.stream);
+  const senderName = senderNameFor(message.stream);
   const replyTo = replyToFor(message.stream);
 
   // 2. Dry run, checked before configuration: a developer with no Brevo key
@@ -281,7 +316,7 @@ export async function sendEmail(
   }
 
   // 4. Send, retrying only what a retry could fix.
-  let outcome = await attempt(deps, message, sender, replyTo, apiKey);
+  let outcome = await attempt(deps, message, sender, senderName, replyTo, apiKey);
   let retries = 0;
   while (outcome.retryable && retries < MAX_RETRIES) {
     await deps.sleep(BACKOFF_MS[retries] ?? BACKOFF_MS[BACKOFF_MS.length - 1]);
@@ -291,7 +326,7 @@ export async function sendEmail(
       status: outcome.status,
       attempt: retries + 1,
     });
-    outcome = await attempt(deps, message, sender, replyTo, apiKey);
+    outcome = await attempt(deps, message, sender, senderName, replyTo, apiKey);
   }
   outcome = { ...outcome, retryCount: retries };
 

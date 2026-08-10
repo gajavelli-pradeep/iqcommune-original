@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
+import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { suggestEmailDomain } from "@/lib/email/suggest-domain";
+import { MODULES } from "@/constants/modules";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   AUDIENCES,
@@ -25,15 +28,6 @@ import {
  * mutations the spec used.
  */
 
-const TOPICS = [
-  "Foundations of Personal Finance",
-  "Retirement & Goal-Based Financial Planning",
-  "Equity Investing Simplified",
-  "Debt & Fixed Income Investing",
-  "Asset Allocation & Portfolio Construction",
-  "Investment Solutions & Portfolio Strategies",
-] as const;
-
 const BUNDLES = [
   {
     value:
@@ -51,8 +45,14 @@ const BUNDLES = [
   },
 ] as const;
 
+/**
+ * Single-topic options come from the module taxonomy, not a second copy of it.
+ * This file used to re-type all six names — byte-identical, and exactly the
+ * drift `constants/modules.ts` was created to stop (audit M4). A session's topic
+ * is a module, so adding one there now reaches this form for free.
+ */
 const TOPIC_OPTIONS = [
-  ...TOPICS.map((topic) => ({ value: topic, label: topic })),
+  ...MODULES.map((topic) => ({ value: topic, label: topic })),
   ...BUNDLES,
   { value: "Not sure — help me choose", label: "Not sure — help me choose" },
 ];
@@ -149,64 +149,108 @@ const AUDIENCE_RULES: Record<
   },
 };
 
-/** Longest a free-text field may run inside the draft. */
-const DRAFT_FIELD_LIMIT = 400;
+/**
+ * Windows' shell handler truncates a `mailto:` past roughly 2,048 characters,
+ * and does it *silently* — the tail of the message simply never arrives, which
+ * is the worst possible failure for a draft whose whole job is to lose nothing.
+ *
+ * Measured: with every field at its schema maximum the encoded href reached
+ * 2,689 characters, so clamping each field to one fixed length does not settle
+ * it. The draft measures itself instead.
+ */
+const HREF_BUDGET = 1900;
+
+/**
+ * Tried in order; the first that fits wins, so a short request keeps everything.
+ * The tight steps at the end exist for the pathological case — every field at
+ * its schema maximum — where the client's prose leaves little room. Real
+ * requests never reach them.
+ */
+const FIELD_LIMITS = [400, 200, 120, 60, 30, 20];
+
+const clampTo = (limit: number) => (value: string) =>
+  value.length > limit ? `${value.slice(0, limit)}…` : value;
 
 /**
  * The fallback email, drafted from what the visitor already typed so the only
  * thing left to do in their mail client is press send.
  *
- * Re-asking for thirteen fields is how a recovery path ends up worse than the
+ * Re-asking for eleven fields is how a recovery path ends up worse than the
  * failure it recovers from, so everything on the form is carried over.
- *
- * ponytail: free text is clamped rather than paginated — `notes` (1000) and
- * `venueDetails` (500) together can push the encoded href past the ~2,048
- * characters Windows' mailto handler truncates at, and a truncated href loses
- * the end of the message silently. Raise the clamp only behind a length check
- * on the final href.
  */
-export function draftFallbackEmail(
+function composeBody(
   form: SessionRequestInput,
   audience: Audience | undefined,
-): { subject: string; body: string } {
-  const clamp = (value: string) =>
-    value.length > DRAFT_FIELD_LIMIT ? `${value.slice(0, DRAFT_FIELD_LIMIT)}…` : value;
-
-  const name = `${form.firstName} ${form.lastName}`.trim();
+  name: string,
+  clamp: (value: string) => string,
+) {
   const details: Array<[string, string | undefined]> = [
     ["Who this is for", audience ? AUDIENCE_LABELS[audience] : undefined],
-    ["Name", name],
+    // See the same note in ApplyModalBody: clamped only for the absurd case
+    // where the schema's 80 + 80 characters are actually used.
+    ["Name", clamp(name)],
     ["Email", form.email],
     ["Phone", form.phone],
-    ["City / State", [form.city, form.state].filter(Boolean).join(", ")],
-    ["Organisation", form.organisationName],
+    // Every free-text field is clamped, not just the long ones — see the same
+    // note in ApplyModalBody: the client's prose leaves less room for fields.
+    ["City / State", clamp([form.city, form.state].filter(Boolean).join(", "))],
+    ["Organisation", form.organisationName && clamp(form.organisationName)],
+    // NOT clamped, deliberately: the topic is chosen from a fixed list, so it is
+    // bounded (a bundle is the longest at ~110 characters) and it is the whole
+    // subject of the request. Truncating it would lose what the session is for.
     ["Topic", form.topic],
     ["Group size", GROUP_SIZES.find((size) => size.value === form.groupSize)?.label],
-    ["Preferred window", form.preferredWindow],
+    ["Preferred window", form.preferredWindow && clamp(form.preferredWindow)],
     ["Venue", form.venueDetails && clamp(form.venueDetails)],
     ["Notes", form.notes && clamp(form.notes)],
   ];
 
-  return {
-    subject: `Session request${name ? ` — ${name}` : ""}`,
-    // CRLF: the line break mailto bodies are specified in, and the one every
-    // mail client agrees on once percent-encoded.
-    body: [
-      "Hi iqcommune team,",
-      "",
-      "I tried to send a session request from your website, but the form couldn't go through. Here are my details:",
-      "",
-      ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
-      "",
-      ...(form.spocConfirmed
-        ? ["I confirm I am registering as the primary contact (SPOC) for this request.", ""]
-        : []),
-      "Please get in touch when you can.",
-      "",
-      "Thanks,",
-      name,
-    ].join("\r\n"),
-  };
+  // CRLF: the line break mailto bodies are specified in, and the one every mail
+  // client agrees on once percent-encoded.
+  return [
+    "Dear iqcommune,",
+    "",
+    "I tried submitting my request on your website but was redirected to this alternative mode (via email) due to a technical glitch at your end. Please find all the details as required in the request form.",
+    "",
+    ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
+    "",
+    // Only when the box was actually ticked. It renders for the audiences that
+    // have one, so printing this for someone who never saw it would assert an
+    // agreement they never gave — the opposite of what a consent record is for.
+    ...(form.spocConfirmed
+      ? [
+          "I am fully aware that this email shall be deemed as my agreement with all the terms & conditions with respect to responsibility of a SPOC, minimum attendance commitment etc., as cited in the consent section of the request form.",
+          "",
+        ]
+      : []),
+    "Awaiting to hear from you on the next steps.",
+    "",
+    "Thanks,",
+    clamp(name),
+  ].join("\r\n");
+}
+
+/** The complete `mailto:` href, composed at the most generous length that fits. */
+export function draftSessionMailto(
+  form: SessionRequestInput,
+  audience: Audience | undefined,
+  address: string,
+): string {
+  const name = `${form.firstName} ${form.lastName}`.trim();
+  // Client format, MOM 2026-08-10. "Module Name" is the topic: its options are
+  // the six module names, the bundles, and "Not sure — help me choose".
+  const subject = `${["New Session Request", form.firstName, form.topic]
+    .filter(Boolean)
+    .join(" - ")} (offline request)`;
+  const build = (limit: number) =>
+    `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      composeBody(form, audience, name, clampTo(limit)),
+    )}`;
+
+  return (
+    FIELD_LIMITS.map(build).find((href) => href.length <= HREF_BUDGET) ??
+    build(FIELD_LIMITS[FIELD_LIMITS.length - 1])
+  );
 }
 
 const EMPTY: SessionRequestInput = {
@@ -252,11 +296,10 @@ export function RequestModal({
   const rules = audience ? AUDIENCE_RULES[audience] : undefined;
   const selectedSize = GROUP_SIZES.find((size) => size.value === form.groupSize);
 
-  const draft =
-    submitError?.offerEmail && sessionEmail ? draftFallbackEmail(form, audience) : undefined;
-  const mailtoHref = draft
-    ? `mailto:${sessionEmail}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`
-    : undefined;
+  const mailtoHref =
+    submitError?.offerEmail && sessionEmail
+      ? draftSessionMailto(form, audience, sessionEmail)
+      : undefined;
   const set = <K extends keyof SessionRequestInput>(key: K, value: SessionRequestInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -414,6 +457,12 @@ export function RequestModal({
             type="email"
             label="Email address"
             placeholder="rohan@example.com"
+            hint={
+              <EmailTypoHint
+                suggestion={suggestEmailDomain(form.email)}
+                onAccept={(email) => set("email", email)}
+              />
+            }
             value={form.email}
             onChange={(value) => set("email", value)}
             error={errors.email}

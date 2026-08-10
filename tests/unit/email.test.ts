@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildLink } from "@/lib/email/links";
-import { replyToFor, sendEmail, senderFor } from "@/lib/email/send";
+import { replyToFor, sendEmail, senderFor, senderNameFor } from "@/lib/email/send";
 import * as templates from "@/lib/email/templates";
 import { verifyToken } from "@/lib/tokens";
 
@@ -272,6 +272,73 @@ describe("email sender routing", () => {
     expect(sent?.replyTo?.email).toBe("session@iqcommune.com");
   });
 
+  it("gives each stream its own display name", () => {
+    // Client, 2026-08-10. Constants, not env-gated: these are the names asked
+    // for, and they apply from this deploy rather than waiting on a variable.
+    expect(senderNameFor("session")).toBe("Session Commune");
+    expect(senderNameFor("practitioner")).toBe("Practitioner Commune");
+  });
+
+  it("leaves the platform name on the shared variable", () => {
+    // Console invites are neither stream and must not start calling themselves
+    // Session Commune.
+    vi.stubEnv("BREVO_SENDER_NAME", "IQCommune");
+    expect(senderNameFor("platform")).toBe("IQCommune");
+    expect(senderNameFor()).toBe("IQCommune");
+
+    vi.stubEnv("BREVO_SENDER_NAME", "");
+    expect(senderNameFor("platform")).toBe("iqcommune");
+  });
+
+  it("does not let the shared name leak into a stream's name", () => {
+    // The whole reason these fall back to constants: BREVO_SENDER_NAME is set
+    // to "IQCommune" in production, and inheriting it would put IQCommune on
+    // the envelope while the body signed Session Commune.
+    vi.stubEnv("BREVO_SENDER_NAME", "IQCommune");
+    expect(senderNameFor("session")).toBe("Session Commune");
+    expect(senderNameFor("practitioner")).toBe("Practitioner Commune");
+  });
+
+  it("lets each name be changed without a deploy", () => {
+    vi.stubEnv("BREVO_SENDER_NAME_SESSION", "Session Commune India");
+    expect(senderNameFor("session")).toBe("Session Commune India");
+    expect(senderNameFor("practitioner")).toBe("Practitioner Commune");
+  });
+
+  it("signs the body with the same name the envelope carries", async () => {
+    // The failure this guards: someone edits one and not the other, and a
+    // recipient sees mail from "Session Commune" signed "iqcommune". One
+    // resolver feeds both, and this proves it end to end.
+    vi.stubEnv("EMAIL_DELIVERY", "live");
+    vi.stubEnv("BREVO_API_KEY", "key");
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+
+    let sent: { sender?: { name?: string }; textContent?: string } | undefined;
+    vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ messageId: "1" }));
+    });
+
+    await sendEmail("trace", templates.sessionRequestCancelled("a@b.com", "Asha"), noPersistence);
+    expect(sent?.sender?.name).toBe("Session Commune");
+    expect(sent?.textContent).toContain("- Session Commune");
+
+    await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"), noPersistence);
+    expect(sent?.sender?.name).toBe("Practitioner Commune");
+    expect(sent?.textContent).toContain("- Practitioner Commune");
+  });
+
+  it("keeps the organisation's name out of the sign-off swap", () => {
+    // "iqcommune" elsewhere in the copy names the company, not the sender.
+    // Substituting there would read "the Practitioner Commune practitioner
+    // network".
+    const welcome = templates.onboardingLink("a@b.com", "Vikram", ID);
+    expect(welcome.subject).toContain("iqcommune");
+    expect(templates.applicationReceived("a@b.com", "Vikram", ID).body).toContain(
+      "iqcommune practitioner network",
+    );
+  });
+
   it("omits Reply-To once the stream sends from its own mailbox", () => {
     // Equal to the From, so it would route nothing and only add a header.
     vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
@@ -303,14 +370,17 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     );
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
-    expect(message.body).toContain("Regards,\nThe iqcommune Team");
+    // Sign-off updated by the client on 2026-08-10 — per stream, superseding the
+    // verbatim "The iqcommune Team" of the original acknowledgment spec. The
+    // prose above it is untouched: that names the organisation, not the sender.
+    expect(message.body).toContain("Regards,\nThe Practitioner Commune Team");
 
     // The HTML version carries the same client-approved wording — only the
     // link's presentation (a button, not a bare URL) differs.
     expect(message.html).toContain(
       "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
     );
-    expect(message.html).toContain("Regards,<br>The iqcommune Team");
+    expect(message.html).toContain("Regards,<br>The Practitioner Commune Team");
   });
 
   it("admin notification for a new application names the applicant, modules and a console link", () => {
@@ -370,6 +440,8 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.body).toContain(
       "we've received your request for a session on Equity Investing Simplified.",
     );
-    expect(message.body).toContain("Regards,\nThe iqcommune Team");
+    // See the application acknowledgment above: sign-off per stream from
+    // 2026-08-10, prose left as approved.
+    expect(message.body).toContain("Regards,\nThe Session Commune Team");
   });
 });

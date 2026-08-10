@@ -110,8 +110,32 @@ export const FEATURE_ENV = {
    * platform mail. This address is never sent from, only rendered.
    */
   CONTACT_EMAIL: "public inbox shown on the site",
-  /** Display name on outbound Brevo email. */
+  /**
+   * Guards the Vercel cron endpoint. Vercel attaches
+   * `Authorization: Bearer <this>` to cron invocations automatically.
+   *
+   * Currently one job only: `/api/keepalive`, which reads a single row so a
+   * free-tier Supabase project does not pause. **Its presence is not permission
+   * to rebuild V6's purge crons** — those delete rows and storage objects and
+   * stay unbuilt until a restore has been tested from a real backup (ADR 0003).
+   * See docs/ENVIRONMENT.md.
+   */
+  CRON_SECRET: "the keepalive cron endpoint",
+  /** Display name on outbound Brevo email — the shared/platform one. */
   BREVO_SENDER_NAME: "outbound email",
+  /**
+   * Per-stream display names (client decision, 2026-08-10): a recipient sees
+   * "Session Commune" on session mail and "Practitioner Commune" on
+   * practitioner mail, and the body signs off with the same name.
+   *
+   * Both OPTIONAL. Unlike the senders above these fall back to a constant, not
+   * to `BREVO_SENDER_NAME` — that variable is set to "IQCommune" in production,
+   * so falling back to it would leave the From line and the sign-off saying
+   * different things until these were set. They exist to change the names later
+   * without a deploy, not to enable them.
+   */
+  BREVO_SENDER_NAME_PRACTITIONER: "practitioner-pipeline display name",
+  BREVO_SENDER_NAME_SESSION: "session display name",
 } as const;
 
 export type FeatureEnvKey = keyof typeof FEATURE_ENV;

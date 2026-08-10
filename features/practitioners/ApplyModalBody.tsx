@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { suggestEmailDomain } from "@/lib/email/suggest-domain";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   EXPERIENCE_BANDS,
@@ -62,8 +64,13 @@ const asOptions = (values: readonly string[]) => values.map((value) => ({ value,
  */
 const HREF_BUDGET = 1900;
 
-/** Tried in order; the first that fits wins, so a short application keeps everything. */
-const FIELD_LIMITS = [400, 200, 120, 60];
+/**
+ * Tried in order; the first that fits wins, so a short application keeps
+ * everything. The tight steps at the end exist for the pathological case —
+ * every field at its schema maximum — where the client's prose leaves little
+ * room. Real applications never reach them.
+ */
+const FIELD_LIMITS = [400, 200, 120, 60, 30, 20];
 
 const clampTo = (limit: number) => (value: string) =>
   value.length > limit ? `${value.slice(0, limit)}…` : value;
@@ -78,45 +85,68 @@ const clampTo = (limit: number) => (value: string) =>
  */
 function composeBody(form: ApplicationInput, name: string, clamp: (value: string) => string) {
   const details: Array<[string, string | undefined]> = [
-    ["Name", name],
+    // Clamped only because the schema allows 80 + 80 characters and the name is
+    // printed three times — field, sign-off and subject. At any real length the
+    // limits never bite; at the absurd one, a shortened name beats a truncated
+    // message.
+    ["Name", clamp(name)],
     ["Email", form.email],
     ["Phone", form.phone],
-    ["Current job title", form.jobTitle],
+    // Every free-text field is clamped, not just the long ones: the client's
+    // wording is prose-heavy, so at the schema maxima the unclamped fields alone
+    // pushed the href back over the ceiling. The name is left whole — it is the
+    // identity on the message, and it already appears in the subject.
+    ["Current job title", form.jobTitle && clamp(form.jobTitle)],
     ["Years of experience", form.experience],
-    ["City / State", [form.city, form.state].filter(Boolean).join(", ")],
+    ["City / State", clamp([form.city, form.state].filter(Boolean).join(", "))],
     ["Communication address", form.address && clamp(form.address)],
     ["T-shirt size", form.tshirtSize],
-    ["Modules", form.modules.length ? clamp(form.modules.join(", ")) : undefined],
-    ["Could teach", form.frequency],
-    ["Why they want to teach", form.motivation && clamp(form.motivation)],
+    // NOT clamped, deliberately. This is the answer the application exists to
+    // collect, and it is a chosen list rather than prose: all six modules come
+    // to 223 characters, so it is bounded and small. Clamping it at 60 left two
+    // of six and silently dropped the rest — losing what someone can teach to
+    // save room for what they wrote about themselves.
+    ["Modules", form.modules.length ? form.modules.join(", ") : undefined],
+    // First person: the applicant is writing this about themselves. The earlier
+    // labels ("Could teach", "Why they want to teach") read as a case file.
+    ["How often I could teach", form.frequency],
+    ["Why I want to teach", form.motivation && clamp(form.motivation)],
   ];
 
   // CRLF: the line break mailto bodies are specified in, and the one every mail
   // client agrees on once percent-encoded.
   return [
-    "Hi iqcommune team,",
+    "Dear iqcommune,",
     "",
-    "I tried to send my practitioner application from your website, but the form couldn't go through. Here are my details:",
+    "I tried submitting my application on your website but was redirected to this alternative mode (via email) due to a technical glitch at your end. Please find all the details as requested in the empanelment form.",
     "",
     ...details.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
     "",
-    // All three are `z.literal(true)`, so a draft only ever exists once they are
-    // ticked — but stating them keeps the emailed copy a faithful record of what
-    // was agreed, which a blanket "I agree" would not be.
+    // The form puts all three tick-boxes inside one fieldset legended
+    // "Disclosure consent", so naming that section binds all three. Each is
+    // `z.literal(true)`, so a draft only exists once every one is ticked — the
+    // guard states that rather than assuming it.
     ...(form.consentDisclosure && form.consentNoCrossSell && form.consentEmployer
-      ? ["I confirm the disclosure, no-cross-selling and employer-disclosure terms.", ""]
+      ? [
+          'I am fully aware that this email shall be deemed as my agreement with all the disclosures appearing under "Disclosure Consent" section of the empanelment form. I hereby confirm my consent towards the same.',
+          "",
+        ]
       : []),
-    "Please get in touch when you can.",
+    "Awaiting to hear from you on the next steps.",
     "",
     "Thanks,",
-    name,
+    clamp(name),
   ].join("\r\n");
 }
 
 /** The complete `mailto:` href, composed at the most generous length that fits. */
 export function draftApplicationMailto(form: ApplicationInput, address: string): string {
   const name = `${form.firstName} ${form.lastName}`.trim();
-  const subject = `Practitioner application${name ? ` — ${name}` : ""}`;
+  // Client format, MOM 2026-08-10. `filter(Boolean)` so a missing field cannot
+  // leave a dangling separator in an admin's inbox.
+  const subject = `${["New Practitioner Request", form.firstName, form.city]
+    .filter(Boolean)
+    .join(" - ")} (offline request)`;
   const build = (limit: number) =>
     `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
       composeBody(form, name, clampTo(limit)),
@@ -277,7 +307,15 @@ export function ApplyModal({
             type="email"
             label="Personal email address"
             placeholder="vikram@gmail.com"
-            hint="Use your personal email — not your work email. We keep this strictly confidential."
+            hint={
+              <>
+                Use your personal email — not your work email. We keep this strictly confidential.
+                <EmailTypoHint
+                  suggestion={suggestEmailDomain(form.email)}
+                  onAccept={(email) => set("email", email)}
+                />
+              </>
+            }
             value={form.email}
             onChange={(value) => set("email", value)}
             error={errors.email}

@@ -81,6 +81,29 @@ describe("ApplyModal", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("offers a one-click fix for a mistyped email domain", () => {
+    // A well-formed address at a domain nobody owns. Nothing rejects it, and
+    // the applicant only finds out when the reply never comes.
+    render(<ApplyModal open onClose={() => {}} />);
+    fill("Personal email address", "vikram@gmial.com");
+
+    const suggestion = screen.getByRole("button", { name: "vikram@gmail.com" });
+    fireEvent.click(suggestion);
+
+    expect(screen.getByLabelText("Personal email address")).toHaveValue("vikram@gmail.com");
+    // Gone once it is right — a hint that never clears reads as an unfixed error.
+    expect(screen.queryByRole("button", { name: "vikram@gmail.com" })).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a company address", () => {
+    // The failure that would matter: telling a real practitioner their own work
+    // address is a typo.
+    render(<ApplyModal open onClose={() => {}} />);
+    fill("Personal email address", "v.kulkarni@hdfcamc.com");
+
+    expect(screen.queryByText(/Did you mean/)).not.toBeInTheDocument();
+  });
+
   it("ships its consent boxes unticked", () => {
     // A pre-ticked consent box is not consent.
     render(<ApplyModal open onClose={() => {}} />);
@@ -136,15 +159,20 @@ describe("ApplyModal", () => {
 
     const href = decodeURIComponent(link.getAttribute("href") ?? "");
     expect(href).toContain("mailto:practitioner@iqcommune.com");
-    expect(href).toContain("Practitioner application — Vikram Kulkarni");
+    // Client subject format, MOM 2026-08-10: first name and city, not full name.
+    expect(href).toContain("New Practitioner Request - Vikram - Mumbai (offline request)");
     // The point of the draft: this form is the longer of the two, and every
     // answer survives the failure.
     expect(href).toContain("Email: vikram@gmail.com");
     expect(href).toContain("Current job title: Equity Analyst");
     expect(href).toContain("Years of experience: 5 – 8 years");
     expect(href).toContain("Modules: Equity Investing Simplified");
-    expect(href).toContain("Could teach: Once a month");
-    expect(href).toContain("I confirm the disclosure, no-cross-selling and employer-disclosure");
+    // First person — the applicant is writing about themselves.
+    expect(href).toContain("How often I could teach: Once a month");
+    expect(href).toContain("Why I want to teach:");
+    expect(href).toContain(
+      'my agreement with all the disclosures appearing under "Disclosure Consent" section',
+    );
   });
 
   it("offers the mailto when the server cannot be reached at all", async () => {
@@ -235,7 +263,34 @@ describe("ApplyModal", () => {
     expect(href.length).toBeLessThanOrEqual(2048);
     // Still a usable draft, not a stub: the identifying fields survive the fit.
     expect(decodeURIComponent(href)).toContain("Email: aaaaa");
-    expect(decodeURIComponent(href)).toContain("Why they want to teach: MMMMM");
+    expect(decodeURIComponent(href)).toContain("Why I want to teach: MMMMM");
+  });
+
+  it("never drops a module to make room, even at the tightest fit", () => {
+    // The answer the application exists to collect. Clamping it with the prose
+    // left two of six and said nothing — so an applicant who writes a long note
+    // would have arrived looking like they teach a third of what they do.
+    const longest: ApplicationInput = {
+      firstName: "F".repeat(80),
+      lastName: "L".repeat(80),
+      email: `${"a".repeat(50)}@example.com`,
+      phone: "+91 98765 43210 000",
+      jobTitle: "J".repeat(120),
+      experience: "13 – 18 years",
+      city: "C".repeat(80),
+      state: "S".repeat(80),
+      address: "A".repeat(400),
+      tshirtSize: "3XL",
+      modules: [...MODULES],
+      frequency: "Flexible — depends on my schedule",
+      motivation: "M".repeat(1500),
+      consentDisclosure: true,
+      consentNoCrossSell: true,
+      consentEmployer: true,
+    };
+
+    const body = decodeURIComponent(draftApplicationMailto(longest, "a@b.com"));
+    for (const moduleName of MODULES) expect(body).toContain(moduleName);
   });
 
   it("says nothing about email when no address is configured", async () => {
