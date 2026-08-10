@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { suggestEmailDomain } from "@/lib/email/suggest-domain";
 import { MODULES } from "@/constants/modules";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
@@ -455,6 +457,12 @@ export function RequestModal({
             type="email"
             label="Email address"
             placeholder="rohan@example.com"
+            hint={
+              <EmailTypoHint
+                suggestion={suggestEmailDomain(form.email)}
+                onAccept={(email) => set("email", email)}
+              />
+            }
             value={form.email}
             onChange={(value) => set("email", value)}
             error={errors.email}

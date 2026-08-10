@@ -81,6 +81,29 @@ describe("ApplyModal", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("offers a one-click fix for a mistyped email domain", () => {
+    // A well-formed address at a domain nobody owns. Nothing rejects it, and
+    // the applicant only finds out when the reply never comes.
+    render(<ApplyModal open onClose={() => {}} />);
+    fill("Personal email address", "vikram@gmial.com");
+
+    const suggestion = screen.getByRole("button", { name: "vikram@gmail.com" });
+    fireEvent.click(suggestion);
+
+    expect(screen.getByLabelText("Personal email address")).toHaveValue("vikram@gmail.com");
+    // Gone once it is right — a hint that never clears reads as an unfixed error.
+    expect(screen.queryByRole("button", { name: "vikram@gmail.com" })).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a company address", () => {
+    // The failure that would matter: telling a real practitioner their own work
+    // address is a typo.
+    render(<ApplyModal open onClose={() => {}} />);
+    fill("Personal email address", "v.kulkarni@hdfcamc.com");
+
+    expect(screen.queryByText(/Did you mean/)).not.toBeInTheDocument();
+  });
+
   it("ships its consent boxes unticked", () => {
     // A pre-ticked consent box is not consent.
     render(<ApplyModal open onClose={() => {}} />);

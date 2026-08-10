@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { suggestEmailDomain } from "@/lib/email/suggest-domain";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   EXPERIENCE_BANDS,
@@ -305,7 +307,15 @@ export function ApplyModal({
             type="email"
             label="Personal email address"
             placeholder="vikram@gmail.com"
-            hint="Use your personal email — not your work email. We keep this strictly confidential."
+            hint={
+              <>
+                Use your personal email — not your work email. We keep this strictly confidential.
+                <EmailTypoHint
+                  suggestion={suggestEmailDomain(form.email)}
+                  onAccept={(email) => set("email", email)}
+                />
+              </>
+            }
             value={form.email}
             onChange={(value) => set("email", value)}
             error={errors.email}
