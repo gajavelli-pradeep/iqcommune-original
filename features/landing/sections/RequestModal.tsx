@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { MODULES } from "@/constants/modules";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   AUDIENCES,
@@ -25,15 +26,6 @@ import {
  * mutations the spec used.
  */
 
-const TOPICS = [
-  "Foundations of Personal Finance",
-  "Retirement & Goal-Based Financial Planning",
-  "Equity Investing Simplified",
-  "Debt & Fixed Income Investing",
-  "Asset Allocation & Portfolio Construction",
-  "Investment Solutions & Portfolio Strategies",
-] as const;
-
 const BUNDLES = [
   {
     value:
@@ -51,8 +43,14 @@ const BUNDLES = [
   },
 ] as const;
 
+/**
+ * Single-topic options come from the module taxonomy, not a second copy of it.
+ * This file used to re-type all six names — byte-identical, and exactly the
+ * drift `constants/modules.ts` was created to stop (audit M4). A session's topic
+ * is a module, so adding one there now reaches this form for free.
+ */
 const TOPIC_OPTIONS = [
-  ...TOPICS.map((topic) => ({ value: topic, label: topic })),
+  ...MODULES.map((topic) => ({ value: topic, label: topic })),
   ...BUNDLES,
   { value: "Not sure — help me choose", label: "Not sure — help me choose" },
 ];
