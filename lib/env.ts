@@ -110,6 +110,17 @@ export const FEATURE_ENV = {
    * platform mail. This address is never sent from, only rendered.
    */
   CONTACT_EMAIL: "public inbox shown on the site",
+  /**
+   * Guards the Vercel cron endpoint. Vercel attaches
+   * `Authorization: Bearer <this>` to cron invocations automatically.
+   *
+   * Currently one job only: `/api/keepalive`, which reads a single row so a
+   * free-tier Supabase project does not pause. **Its presence is not permission
+   * to rebuild V6's purge crons** — those delete rows and storage objects and
+   * stay unbuilt until a restore has been tested from a real backup (ADR 0003).
+   * See docs/ENVIRONMENT.md.
+   */
+  CRON_SECRET: "the keepalive cron endpoint",
   /** Display name on outbound Brevo email — the shared/platform one. */
   BREVO_SENDER_NAME: "outbound email",
   /**

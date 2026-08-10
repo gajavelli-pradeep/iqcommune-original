@@ -161,12 +161,39 @@ To check the routing before any of that, leave `EMAIL_DELIVERY` unset: every sen
 carrying its `stream` and the `from` it resolved, so the mapping is verifiable with no mail sent and
 no mailbox in existence.
 
+## Keeping Supabase awake
+
+A free-tier Supabase project pauses after roughly a week with no database activity, and a paused
+database means every page 500s until someone restores it by hand. `/api/keepalive` runs one
+`select id … limit 1` against `gallery_photos`; `vercel.json` calls it at 03:00 and 15:00 UTC.
+
+**It has to be a route that queries Postgres.** Pinging `/` would not work — that page is statically
+prerendered and answered from Vercel's CDN, so Vercel would show traffic while Supabase saw none and
+paused anyway.
+
+**Two cron entries, not one.** Vercel Hobby caps each job at once per day but allows many jobs, so two
+entries twelve hours apart are legal and give 14 pings a week. A single missed night then leaves a
+12-hour gap rather than 48. If a deploy ever rejects the second entry, deleting it is a one-line fix.
+
+`CRON_SECRET` guards the endpoint — Vercel attaches `Authorization: Bearer <it>` to cron invocations
+automatically. Unset, the route refuses and logs an error rather than leaving an open endpoint. Both
+outcomes are logged, because the usual way a keepalive fails is quietly.
+
+**What this does not do.** It is a workaround, not a contract: Supabase decides what counts as
+activity. More importantly it does nothing about the free tier having **no backups** — keeping a
+backup-less database awake is not the same as making it safe. If real users depend on the site, the
+paid plan removes pausing *and* adds daily backups, which is the failure that would actually hurt.
+
 ## Deliberately absent
 
-**`CRON_SECRET`.** V6 ran three daily Vercel crons that permanently delete rows and storage objects
-(`purge_soft_deleted` at 30 days, `prune_activity_log` at 90 days, photo expiry deleting the image
-files). None is rebuilt here until a restore has been tested from a real backup — BUILD-PLAN §6 H4
-and ADR 0003. Adding this variable is how those crons come back; do not add it casually.
+**The three V6 purge crons.** V6 ran daily Vercel crons that permanently delete rows and storage
+objects (`purge_soft_deleted` at 30 days, `prune_activity_log` at 90 days, photo expiry deleting the
+image files). **None is rebuilt here, and none may be, until a restore has been tested from a real
+backup** — BUILD-PLAN §6 H4 and ADR 0003.
+
+`CRON_SECRET` now exists (see below) because a read-only keepalive needed it. That does **not** clear
+the gate above: the blocker was never the missing variable, it is the untested restore. Rebuilding a
+job that deletes anything still requires that work first.
 
 **`ADMIN_EMAIL` / `GLOBAL_ADMIN_EMAIL`.** V6 granted admin rights by email address alone as a
 bootstrap backdoor, outside its own role system. V7 authorizes from the role claim only.
