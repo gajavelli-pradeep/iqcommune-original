@@ -87,6 +87,9 @@ export const FEATURE_ENV = {
    * hold a mailbox Brevo has verified. Pointing it at a plain inbox to change
    * where visitors write would silently break every outbound session email. The
    * two addresses are usually the same and are free not to be.
+   *
+   * Unset, it falls back to `CONTACT_EMAIL` — never to a sender. Chaining to one
+   * put a personal Gmail on the page as the address to write to.
    */
   SESSION_CONTACT_EMAIL: "mailto fallback on the request form",
   /**
@@ -96,8 +99,8 @@ export const FEATURE_ENV = {
    *
    * Not `BREVO_SENDER_PRACTITIONER`, for the reason given just above: that one
    * is a verified `From:`, and repointing it to change where applicants write
-   * would break every outbound practitioner email. Unset, it falls back to that
-   * sender, so the offer works before this variable exists.
+   * would break every outbound practitioner email. Unset, it falls back to
+   * `CONTACT_EMAIL` — never to that sender, for the reason on the variable above.
    */
   PRACTITIONER_CONTACT_EMAIL: "mailto fallback on the application form",
   /**
