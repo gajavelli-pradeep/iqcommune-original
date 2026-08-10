@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
+import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   AUDIENCES,
   AUDIENCE_LABELS,
@@ -297,12 +298,18 @@ export function RequestModal({
         // Field errors from the server win: it is the authority, and it may
         // know things the client cannot.
         if (body?.error?.fields) setErrors(body.error.fields);
+        // Only a server fault earns the escape hatch. A validation error is the
+        // visitor's own to fix, and a rate limit exists precisely to not be
+        // routed around.
+        const offerEmail = body?.error?.code === "INTERNAL";
         setSubmitError({
-          message: body?.error?.message ?? "Something went wrong. Please try again in a few minutes.",
-          // Only a server fault earns the escape hatch. A validation error is
-          // the visitor's own to fix, and a rate limit exists precisely to not
-          // be routed around.
-          offerEmail: body?.error?.code === "INTERNAL",
+          // The client's copy replaces the API's message only where the offer
+          // appears. Everywhere else the API's wording is the useful one — it
+          // names the fields to fix, or says how long to wait.
+          message: offerEmail
+            ? SUBMIT_FAILURE.message
+            : (body?.error?.message ?? "Something went wrong. Please try again in a few minutes."),
+          offerEmail,
         });
         setStatus("editing");
         return;
@@ -312,10 +319,7 @@ export function RequestModal({
     } catch {
       // Composing a mailto needs no network, so this failure — the one where the
       // server is unreachable — is exactly when the offer is worth the most.
-      setSubmitError({
-        message: "We couldn't reach the server. Check your connection and try again.",
-        offerEmail: true,
-      });
+      setSubmitError({ message: SUBMIT_FAILURE.message, offerEmail: true });
       setStatus("editing");
     }
   }
@@ -523,12 +527,10 @@ export function RequestModal({
           {submitError ? (
             <FormError>
               <p>{submitError.message}</p>
-              {mailtoHref ? (
+              {mailtoHref && sessionEmail ? (
                 <>
-                  <p className="mt-1.5">
-                    Or send it straight to us at {sessionEmail} — everything you filled in is
-                    already in the message, so you only need to press send.
-                  </p>
+                  <p className="mt-1.5">{SUBMIT_FAILURE.offer(sessionEmail)}</p>
+                  <p className="mt-1.5">{SUBMIT_FAILURE.reassurance}</p>
                   {/*
                     An anchor rather than <Button>: `mailto:` must stay a real link so the
                     browser hands it to the mail client, and so right-click → copy address
@@ -548,7 +550,7 @@ export function RequestModal({
                     // both the larger tap target and the layout that cannot wrap.
                     className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-md border-[1.5px] border-border-strong bg-surface px-[18px] py-2.5 text-md font-medium text-ink transition-colors hover:border-gold hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold sm:w-auto"
                   >
-                    Open pre-filled email
+                    {SUBMIT_FAILURE.action}
                   </a>
                 </>
               ) : null}
