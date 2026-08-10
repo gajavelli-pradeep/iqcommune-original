@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { SUBMIT_FAILURE } from "@/content/submit-failure";
+
 import { PostSessionModal } from "./PostSessionModal";
 import { RequestModal } from "./RequestModal";
 
@@ -92,7 +94,8 @@ describe("RequestModal", () => {
     await fillRequestForm(user);
     await user.click(screen.getByRole("button", { name: "Send Request" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Something went wrong/);
+    // A server fault shows the client's copy, not the API's message.
+    expect(await screen.findByRole("alert")).toHaveTextContent(SUBMIT_FAILURE.message);
     expect(screen.queryByRole("heading", { name: "Request received!" })).not.toBeInTheDocument();
   });
 

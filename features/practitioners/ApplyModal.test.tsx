@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import { MODULES, type ApplicationInput } from "@/lib/schemas/application";
 
 import { ApplyModal, draftApplicationMailto } from "./ApplyModalBody";
@@ -123,6 +124,16 @@ describe("ApplyModal", () => {
     // when no mail client is registered for mailto:.
     expect(screen.getByText(/practitioner@iqcommune\.com/)).toBeInTheDocument();
 
+    // The client's approved wording, pinned literally (MOM 2026-08-10). This is
+    // the one place the sentences are spelled out rather than read from the copy
+    // module, so an careless edit to that module fails here instead of shipping.
+    expect(
+      screen.getByText("Apologies! Guess something went wrong. Please try again in a few minutes."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Not to worry\. Everything you have entered has been captured in the email/),
+    ).toBeInTheDocument();
+
     const href = decodeURIComponent(link.getAttribute("href") ?? "");
     expect(href).toContain("mailto:practitioner@iqcommune.com");
     expect(href).toContain("Practitioner application — Vikram Kulkarni");
@@ -236,7 +247,9 @@ describe("ApplyModal", () => {
     fillApplication();
     submit();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Something went wrong/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(SUBMIT_FAILURE.message);
     expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();
+    // The reassurance is about the email, so it must not appear without one.
+    expect(screen.queryByText(/Not to worry/)).not.toBeInTheDocument();
   });
 });

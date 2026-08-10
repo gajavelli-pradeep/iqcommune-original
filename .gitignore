@@ -91,3 +91,6 @@ _shot.mjs
 app/console-preview/
 .claude/
 package-lock.json
+
+# meeting notes — kept locally for traceability, never committed
+docs/MOM-*.md
