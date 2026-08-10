@@ -3,7 +3,23 @@ import { siteUrl } from "@/lib/siteUrl";
 
 import { escapeHtml, safeHref } from "./html";
 import { buildLink } from "./links";
-import type { EmailMessage } from "./send";
+import { senderNameFor, type EmailMessage, type EmailStream } from "./send";
+
+/**
+ * How a body signs off — the stream's own name (client, 2026-08-10): session
+ * mail signs "Session Commune", practitioner mail "Practitioner Commune".
+ *
+ * Resolved through `senderNameFor` rather than written out, so the sign-off is
+ * always the same name the recipient sees in the From line. The two saying
+ * different things is the failure this prevents.
+ *
+ * Only the sign-off moves. "iqcommune" elsewhere in these bodies names the
+ * organisation — "the iqcommune practitioner network", "your empanelment with
+ * iqcommune" — and substituting there would produce "the Practitioner Commune
+ * practitioner network".
+ */
+const signOff = (stream: EmailStream) => `- ${senderNameFor(stream)}`;
+const signOffTeam = (stream: EmailStream) => `The ${senderNameFor(stream)} Team`;
 
 /**
  * Plain-text templates — plus, where a template carries a link worth turning
@@ -72,7 +88,7 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
       "We'll get in touch within 2–3 working days to understand your group's needs a little better and take things forward from there.",
       "",
       "Regards,",
-      "The iqcommune Team",
+      signOffTeam("session"),
     ),
   };
 }
@@ -104,7 +120,7 @@ export function sessionRequestFollowUp(
       "",
       "Reply to this email and we'll get it scheduled.",
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
   };
 }
@@ -123,7 +139,7 @@ export function sessionRequestCancelled(to: string, firstName: string): EmailMes
       "",
       "If circumstances change, or you'd like to discuss a different date or format, just reply here and we'll pick it back up.",
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
   };
 }
@@ -168,7 +184,7 @@ export function newSessionRequestForAdmin(to: string, request: SessionRequestSum
       "",
       `Review in console: ${consoleUrl}`,
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -212,7 +228,7 @@ export function applicationReceived(to: string, firstName: string, applicationId
       link,
       "",
       "Regards,",
-      "The iqcommune Team",
+      signOffTeam("practitioner"),
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -221,7 +237,7 @@ export function applicationReceived(to: string, firstName: string, applicationId
       `<p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. ` +
       `Nothing to prepare — just a chance for us to understand each other a little better.</p>` +
       goldButton(link, "Track your application →") +
-      `<p>Regards,<br>The iqcommune Team</p>` +
+      `<p>Regards,<br>${escapeHtml(signOffTeam("practitioner"))}</p>` +
       `</div>`,
   };
 }
@@ -260,7 +276,7 @@ export function newApplicationForAdmin(to: string, application: ApplicationSumma
       "",
       `Review in console: ${consoleUrl}`,
       "",
-      "- iqcommune",
+      signOff("practitioner"),
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -293,7 +309,7 @@ export function ratingRequest(to: string, firstName: string, assignmentId: strin
       "",
       buildLink("rate", assignmentId),
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
   };
 }
@@ -311,7 +327,7 @@ export function consentRequest(to: string, firstName: string, assignmentId: stri
       "",
       buildLink("consent", assignmentId),
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
   };
 }
@@ -339,7 +355,7 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
       "",
       buildLink("photos", assignmentId),
       "",
-      "- iqcommune",
+      signOff("session"),
     ),
   };
 }
@@ -357,7 +373,7 @@ export function onboardingLink(to: string, firstName: string, agreementId: strin
       "",
       buildLink("onboarding", agreementId),
       "",
-      "- iqcommune",
+      signOff("practitioner"),
     ),
   };
 }
@@ -376,7 +392,7 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
       "",
       "This link can only be used once.",
       "",
-      "- iqcommune",
+      signOff("platform"),
     ),
   };
 }
@@ -400,7 +416,7 @@ export function practitionerWelcome(to: string, firstName: string): EmailMessage
       "Welcome aboard - your empanelment is confirmed and you're now part of the iqcommune",
       "practitioner network. We'll be in touch with your first session details soon.",
       "",
-      "- iqcommune",
+      signOff("practitioner"),
     ),
   };
 }
@@ -418,7 +434,7 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
       "not able to move forward with your application at this time. We genuinely appreciate the",
       "time you took to apply, and we wish you the very best.",
       "",
-      "- iqcommune",
+      signOff("practitioner"),
     ),
   };
 }
@@ -436,7 +452,7 @@ export function practitionerDeactivated(to: string, firstName: string): EmailMes
       "won't be assigned further sessions. If you believe this is in error, please reply to this",
       "email and we'll take a look.",
       "",
-      "- iqcommune",
+      signOff("practitioner"),
     ),
   };
 }

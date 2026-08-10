@@ -59,6 +59,32 @@ is a property of the email.
 `BREVO_SENDER_EMAIL`, so the app is already correct today and moves to the dedicated mailboxes the
 moment they exist. Adding them is a Vercel env change and a redeploy; no code change.
 
+### The display name, per stream
+
+What a recipient actually sees is `Name <address>`. The address is the section above; the **name**
+is resolved separately by `senderNameFor()`, and since 2026-08-10 it differs by stream:
+
+| Stream | Name | Override |
+|---|---|---|
+| `session` | Session Commune | `BREVO_SENDER_NAME_SESSION` |
+| `practitioner` | Practitioner Commune | `BREVO_SENDER_NAME_PRACTITIONER` |
+| `platform` | `BREVO_SENDER_NAME`, else `iqcommune` | — |
+
+The same resolver supplies the **sign-off inside the body**, so a session email signs
+"- Session Commune" and cannot drift from the name on the envelope. Only the sign-off moves;
+"iqcommune" elsewhere in the copy names the organisation ("the iqcommune practitioner network") and
+stays.
+
+The two overrides fall back to a **constant, not to `BREVO_SENDER_NAME`**. That variable is set to
+`IQCommune` in production, so falling back to it would leave the From line reading IQCommune while
+the body signed Session Commune. Set the overrides only to *change* a name; unset already gives the
+two above.
+
+**The name is only half of what a recipient sees.** Until a verified `iqcommune.com` mailbox is
+configured, Brevo sends from its own default address and the From line reads
+`Session Commune <…@…brevosend.com>` — right name, wrong address. Fixing the address half means
+verifying the mailboxes in Brevo and setting the sender variables above; no code change reaches it.
+
 ## Addresses the site displays
 
 Three variables hold addresses that are only ever *rendered*. None is a Brevo sender, so none carries
