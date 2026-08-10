@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MobileNav, type NavLink } from "@/components/layout/MobileNav";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
-import { senderFor } from "@/lib/email/send";
+import { contactEmail } from "@/lib/env";
 
 import { ApplyButton, ApplyProvider } from "./ApplyModal";
 import { ApplyCta } from "./sections/ApplyCta";
@@ -42,10 +42,12 @@ export function PractitionerSections() {
     // a plain prop — never a NEXT_PUBLIC_ variable baked into the bundle, which
     // would need a rebuild to change and would ship `mailto:undefined` unset.
     //
-    // Falls back to the practitioner sender so the offer works before anyone
-    // sets the dedicated variable; see FEATURE_ENV for why they are separate.
+    // Falls back to the public inbox, NOT to the practitioner sender — see the
+    // same note in LandingSections. A contact address shown to an applicant must
+    // never borrow the mail-sending account, which in practice was a personal
+    // Gmail and appeared on the page as the place to write to.
     <ApplyProvider
-      practitionerEmail={process.env.PRACTITIONER_CONTACT_EMAIL || senderFor("practitioner")}
+      practitionerEmail={process.env.PRACTITIONER_CONTACT_EMAIL || contactEmail()}
     >
       <div className="flex min-h-dvh flex-col">
       <SiteHeader

@@ -105,6 +105,23 @@ describe("env contract", () => {
     }
   });
 
+  it("never falls back from a displayed contact to a sending account", () => {
+    // Reported live: both forms offered "write to us at gajavellisbiz@gmail.com".
+    // Nothing hardcoded it — the contact chain ended at BREVO_SENDER_EMAIL, so
+    // with the dedicated variables unset the page published whatever address
+    // the mailer happened to authenticate as. A sending account is not a
+    // contact address; an unconfigured contact surface falls back to the public
+    // inbox instead.
+    for (const file of [
+      "features/landing/LandingSections.tsx",
+      "features/practitioners/PractitionerSections.tsx",
+    ]) {
+      const source = readFileSync(file, "utf8");
+      expect(source).toContain("contactEmail()");
+      expect(source).not.toContain("senderFor(");
+    }
+  });
+
   it("keeps both per-stream senders changeable without a code change", () => {
     // The client's addresses may change again. Nothing may hardcode one: the
     // sender is resolved from env per stream, so switching mailbox is an env
