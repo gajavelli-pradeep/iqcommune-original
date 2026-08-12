@@ -78,6 +78,27 @@ describe("OnboardingForm", () => {
     expect(screen.getByText("✓ Digitally signed")).toBeInTheDocument();
   });
 
+  it("reports a missing name against the name box, and goes there", async () => {
+    // The three checks used to share one message at the foot of the form: it
+    // said what was wrong but never which control, on a page long enough that
+    // the field is routinely scrolled away by the time you read it.
+    render(<OnboardingForm practitioner={practitioner} token="tok" agreementDate="1 January 2026" />);
+
+    const region = screen.getByLabelText("Practitioner Empanelment Agreement");
+    Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+    Object.defineProperty(region, "clientHeight", { value: 500, configurable: true });
+    Object.defineProperty(region, "scrollTop", { value: 700, configurable: true, writable: true });
+    fireEvent.scroll(region);
+
+    const name = screen.getByLabelText(/Full name/);
+    fireEvent.change(name, { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: /sign & complete onboarding/i }));
+
+    expect(await screen.findByText("Your full name is required.")).toBeInTheDocument();
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
   it("keeps the submit button disabled until the agreement is read", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

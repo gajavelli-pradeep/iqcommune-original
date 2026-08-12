@@ -99,6 +99,44 @@ describe("RequestModal", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("moves focus to the first rejected field so it cannot be missed", async () => {
+    // The reported failure: submitting an incomplete form appeared to do
+    // nothing. The error renders beside its field, which on this thirteen-field
+    // dialog is usually scrolled out of sight, so the button just looked broken.
+    const user = userEvent.setup();
+    mockFetch(201, {});
+
+    render(<RequestModal open onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Send Request" }));
+
+    // Nothing is filled in, so the audience picker is the first thing wrong —
+    // and it comes before every text field in the DOM.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Group (register as SPOC)" }),
+      );
+    });
+  });
+
+  it("moves focus past the fields that are already answered", async () => {
+    // Proves it lands on the FIRST remaining problem rather than always the top
+    // of the form — the part that makes it useful on a second attempt.
+    const user = userEvent.setup();
+    mockFetch(201, {});
+
+    render(<RequestModal open onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Organisations & Institutions" }));
+    fireEvent.change(screen.getByLabelText("Organisation name"), {
+      target: { value: "TechCorp India" },
+    });
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Rohan" } });
+    await user.click(screen.getByRole("button", { name: "Send Request" }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByLabelText("Last name"));
+    });
+  });
+
   it("surfaces a server failure without claiming success", async () => {
     const user = userEvent.setup();
     mockFetch(500, {

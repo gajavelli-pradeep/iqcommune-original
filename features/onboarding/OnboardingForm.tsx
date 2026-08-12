@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TextField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Stepper } from "@/components/ui/Stepper";
 import { useApiSubmit } from "@/hooks/useApiSubmit";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
@@ -13,6 +14,9 @@ import { AGREEMENT_CLAUSES } from "@/constants/agreement";
 import { SignaturePad, type Signature } from "./SignaturePad";
 
 /** P6 — review and sign the empanelment agreement. */
+
+/** Keyed by the control at fault; `form` covers what belongs to no one control. */
+type FormErrors = Partial<Record<"form" | "fullName" | "signature", string>>;
 
 // Shape lives in types/, out of the client graph (audit H6); re-exported here.
 export type { OnboardingPractitioner };
@@ -52,11 +56,16 @@ export function OnboardingForm({
   const [designation, setDesignation] = useState(practitioner.role);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
-  // `error` is client-side confirmation validation; `submitError` is the
-  // network/route path, now shared (audit H8).
-  const [error, setError] = useState<string>();
+  // Client-side validation, keyed by the control at fault so the message can sit
+  // beside it. `form` is the one problem that belongs to no single control.
+  // `submitError` is the network/route path, now shared (audit H8).
+  const [errors, setErrors] = useState<FormErrors>({});
   const { submit, busy, error: submitError } = useApiSubmit(token);
   const successRef = useFocusWhen<HTMLHeadingElement>(Boolean(signedAt));
+
+  // The signature pad is hand-built rather than a `Field`, so it wires its own
+  // error message to the control the way `Field` does for everything else.
+  const signatureErrorId = useId();
 
   const agreementRef = useRef<HTMLDivElement>(null);
   // V7 hides the signing section until the agreement is read to the end, then
@@ -309,10 +318,18 @@ export function OnboardingForm({
         className={`mt-6 rounded-[12px] border border-border bg-surface p-8 ${readToEnd ? "" : "hidden"}`}
         onSubmit={async (event) => {
           event.preventDefault();
-          if (!readToEnd) return setError("Please read the full agreement before signing.");
-          if (!fullName.trim()) return setError("Your full name is required.");
-          if (!signature) return setError("Please draw or type your signature.");
-          setError(undefined);
+          // Each problem names the control it belongs to, so the message renders
+          // beside that control and `focusFirstError` can travel to it. A single
+          // shared message at the foot of the form said what was wrong but never
+          // where, which on a page this long is most of the answer.
+          const fail = (next: FormErrors) => {
+            setErrors(next);
+            focusFirstError(signFormRef.current);
+          };
+          if (!readToEnd) return fail({ form: "Please read the full agreement before signing." });
+          if (!fullName.trim()) return fail({ fullName: "Your full name is required." });
+          if (!signature) return fail({ signature: "Please draw or type your signature." });
+          setErrors({});
           const receipt = await submit("/api/agreements", {
             fullName,
             designation,
@@ -348,6 +365,7 @@ export function OnboardingForm({
           placeholder="Your full legal name"
           value={fullName}
           onChange={setFullName}
+          error={errors.fullName}
         />
         <TextField
           label="Designation"
@@ -357,17 +375,34 @@ export function OnboardingForm({
           hint="As per your current employment."
         />
 
-        <ErrorBoundary label="signature-pad">
-          <SignaturePad fullName={fullName} onChange={setSignature} />
-        </ErrorBoundary>
+        {/* `tabIndex={-1}` so an unsigned form can send focus here: the pad is a
+            canvas and a set of controls, with no single input to land on. The
+            message sits directly beneath rather than at the foot of the form. */}
+        <div
+          tabIndex={-1}
+          data-invalid={errors.signature ? true : undefined}
+          aria-describedby={errors.signature ? signatureErrorId : undefined}
+          className="outline-none"
+        >
+          <ErrorBoundary label="signature-pad">
+            <SignaturePad fullName={fullName} onChange={setSignature} />
+          </ErrorBoundary>
+          {errors.signature ? (
+            <p id={signatureErrorId} role="alert" className="mt-1 text-sm text-red">
+              {errors.signature}
+            </p>
+          ) : null}
+        </div>
 
         <p className="mb-4 text-sm text-ink-faint">
           Digital timestamp: Auto-captured at submission
         </p>
 
-        {error ? (
+        {/* Only what belongs to no single control still shows here; the field
+            problems now render beside the field they describe. */}
+        {errors.form ? (
           <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
-            {error}
+            {errors.form}
           </p>
         ) : null}
 

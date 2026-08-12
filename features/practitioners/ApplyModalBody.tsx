@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import { suggestEmailDomain } from "@/lib/email/suggest-domain";
@@ -177,6 +178,7 @@ export function ApplyModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("editing");
   const [submitError, setSubmitError] = useState<{ message: string; offerEmail: boolean }>();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const mailtoHref =
     submitError?.offerEmail && practitionerEmail
@@ -202,6 +204,7 @@ export function ApplyModal({
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
       setErrors(next);
+      focusFirstError(formRef.current);
       return;
     }
 
@@ -219,7 +222,10 @@ export function ApplyModal({
       const body = await response.json();
 
       if (!response.ok) {
-        if (body?.error?.fields) setErrors(body.error.fields);
+        if (body?.error?.fields) {
+          setErrors(body.error.fields);
+          focusFirstError(formRef.current);
+        }
         // Only a server fault earns the escape hatch. A validation error is the
         // applicant's own to fix and emailing it would bypass the schema; a rate
         // limit exists precisely to not be routed around.
@@ -280,6 +286,7 @@ export function ApplyModal({
         </div>
       ) : (
         <form
+          ref={formRef}
           noValidate
           onSubmit={(event) => {
             event.preventDefault();

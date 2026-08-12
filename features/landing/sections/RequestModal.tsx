@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import { suggestEmailDomain } from "@/lib/email/suggest-domain";
@@ -292,6 +293,10 @@ export function RequestModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("editing");
   const [submitError, setSubmitError] = useState<{ message: string; offerEmail: boolean }>();
+  const formRef = useRef<HTMLFormElement>(null);
+  // The audience picker is hand-built rather than a `Field`, so it wires its own
+  // error message to the control the way `Field` does for everything else.
+  const audienceErrorId = useId();
 
   const rules = audience ? AUDIENCE_RULES[audience] : undefined;
   const selectedSize = GROUP_SIZES.find((size) => size.value === form.groupSize);
@@ -322,6 +327,7 @@ export function RequestModal({
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[issue.path.join(".")] = issue.message;
       setErrors(next);
+      focusFirstError(formRef.current);
       return;
     }
 
@@ -340,7 +346,10 @@ export function RequestModal({
       if (!response.ok) {
         // Field errors from the server win: it is the authority, and it may
         // know things the client cannot.
-        if (body?.error?.fields) setErrors(body.error.fields);
+        if (body?.error?.fields) {
+          setErrors(body.error.fields);
+          focusFirstError(formRef.current);
+        }
         // Only a server fault earns the escape hatch. A validation error is the
         // visitor's own to fix, and a rate limit exists precisely to not be
         // routed around.
@@ -407,6 +416,7 @@ export function RequestModal({
         </div>
       ) : (
         <form
+          ref={formRef}
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -416,11 +426,22 @@ export function RequestModal({
           <fieldset className="mb-4">
             <legend className="mb-1.5 text-sm font-medium text-ink">Who is this for?</legend>
             <div className="flex flex-wrap gap-2">
-              {AUDIENCES.map((option) => (
+              {AUDIENCES.map((option, index) => (
                 <button
                   key={option}
                   type="button"
                   aria-pressed={audience === option}
+                  /* `data-invalid`, not `aria-invalid`: this is a button, and
+                     `aria-invalid` is not supported on `role="button"`. The
+                     description below is what announces the problem.
+
+                     Only the first choice is marked, not all three: the group is
+                     one answer, and three "invalid" announcements describe three
+                     broken controls. It also makes this where `focusFirstError`
+                     lands when no audience was picked — the first question, and
+                     the one that changes what the rest of the form asks. */
+                  data-invalid={errors.audience && index === 0 ? true : undefined}
+                  aria-describedby={errors.audience && index === 0 ? audienceErrorId : undefined}
                   onClick={() => setAudience(option)}
                   className={`min-h-11 rounded-full border px-3.5 py-2 text-sm transition-colors ${
                     audience === option
@@ -433,7 +454,7 @@ export function RequestModal({
               ))}
             </div>
             {errors.audience ? (
-              <p role="alert" className="mt-1 text-sm text-red">
+              <p id={audienceErrorId} role="alert" className="mt-1 text-sm text-red">
                 {errors.audience}
               </p>
             ) : null}

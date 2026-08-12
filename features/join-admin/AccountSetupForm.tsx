@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
 import { SuccessPanel } from "@/components/ui/SuccessPanel";
 import { useApiSubmit } from "@/hooks/useApiSubmit";
@@ -26,13 +27,17 @@ export type { AdminInvite };
 
 const MINIMUM_LENGTH = 8;
 
+/** Keyed by the field at fault, so each message renders against its own box. */
+type FormErrors = Partial<Record<"password" | "confirmation", string>>;
+
 export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token: string }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState<string>();
+  // Client-side password validation; `submitError` is the network/route path,
+  // now shared (audit H8).
+  const [errors, setErrors] = useState<FormErrors>({});
   const [activated, setActivated] = useState(false);
-  // `error` above is client-side password validation; `submitError` is the
-  // network/route path, now shared (audit H8).
+  const formRef = useRef<HTMLFormElement>(null);
   const { submit, busy, error: submitError } = useApiSubmit(token);
 
   if (activated) {
@@ -69,16 +74,24 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
       </dl>
 
       <form
+        ref={formRef}
         noValidate
         onSubmit={async (event) => {
           event.preventDefault();
+          // Each message lands on the field it is about. A short password used to
+          // put "must be at least 8 characters" under *Confirm password*, sending
+          // the reader to correct the one box that was not the problem.
+          const fail = (next: FormErrors) => {
+            setErrors(next);
+            focusFirstError(formRef.current);
+          };
           if (password.length < MINIMUM_LENGTH) {
-            return setError(`Password must be at least ${MINIMUM_LENGTH} characters.`);
+            return fail({ password: `Password must be at least ${MINIMUM_LENGTH} characters.` });
           }
           if (password !== confirmation) {
-            return setError("Passwords don't match — check and try again.");
+            return fail({ confirmation: "Passwords don't match — check and try again." });
           }
-          setError(undefined);
+          setErrors({});
           const receipt = await submit("/api/invites", { password });
           if (receipt) setActivated(true);
         }}
@@ -90,6 +103,7 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
           autoComplete="new-password"
           value={password}
           onChange={setPassword}
+          error={errors.password}
         />
         <TextField
           type="password"
@@ -98,7 +112,7 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
           autoComplete="new-password"
           value={confirmation}
           onChange={setConfirmation}
-          error={error}
+          error={errors.confirmation}
         />
 
         <FormError message={submitError} />
