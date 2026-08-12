@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { CheckboxField, SelectField, TextField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Modal } from "@/components/ui/Modal";
 import {
   ACCEPTED_PHOTO_TYPES,
@@ -59,6 +60,10 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
   const [status, setStatus] = useState<Status>("editing");
   const [submitError, setSubmitError] = useState<string>();
   const fileInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  // The picker is hand-built rather than a `Field`, so it wires its own error
+  // message to the control the way `Field` does for everything else.
+  const photosErrorId = useId();
 
   const set = <K extends keyof PhotoSubmissionInput>(key: K, value: PhotoSubmissionInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -85,6 +90,7 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
       }
       if (photoProblem) next.photos = photoProblem;
       setErrors(next);
+      focusFirstError(formRef.current);
       return;
     }
 
@@ -132,6 +138,7 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
         </p>
       ) : (
         <form
+          ref={formRef}
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -213,6 +220,14 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
+              /* The picker is the control that is wrong when no photo is chosen,
+                 so it carries the invalid state — a red border alone is colour-
+                 only (WCAG 1.4.1) and silent to a screen reader. `data-invalid`
+                 rather than `aria-invalid` because this is a button, where that
+                 attribute is unsupported; the description is what announces it.
+                 It is also what makes this a field `focusFirstError` can land on. */
+              data-invalid={errors.photos ? true : undefined}
+              aria-describedby={errors.photos ? photosErrorId : undefined}
               className={`min-h-11 w-full rounded-lg border-[1.5px] border-dashed px-4 py-6 text-center text-base transition-colors hover:border-gold ${
                 errors.photos ? "border-red text-red" : "border-border-strong text-ink-muted"
               }`}
@@ -242,7 +257,7 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
               JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
             </p>
             {errors.photos ? (
-              <p role="alert" className="mt-1 text-sm text-red">
+              <p id={photosErrorId} role="alert" className="mt-1 text-sm text-red">
                 {errors.photos}
               </p>
             ) : null}

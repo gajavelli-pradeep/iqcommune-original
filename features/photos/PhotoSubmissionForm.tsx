@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { CheckboxField } from "@/components/ui/Field";
+import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Stepper } from "@/components/ui/Stepper";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
 import { formatDateIST, formatDateTimeIST } from "@/utils/format";
@@ -56,6 +57,10 @@ export function PhotoSubmissionForm({
   // shows that, not a value recomputed from the browser clock.
   const [expiryDate, setExpiryDate] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  // The picker is hand-built rather than a `Field`, so it wires its own error
+  // message to the control the way `Field` does for everything else.
+  const photosErrorId = useId();
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const successRef = useFocusWhen<HTMLHeadingElement>(Boolean(submittedAt));
@@ -169,6 +174,7 @@ export function PhotoSubmissionForm({
       </p>
 
       <form
+        ref={formRef}
         noValidate
         onSubmit={async (event) => {
           event.preventDefault();
@@ -179,6 +185,7 @@ export function PhotoSubmissionForm({
           };
           if (next.photos || next.consent) {
             setErrors(next);
+            focusFirstError(formRef.current);
             return;
           }
           setErrors({});
@@ -211,6 +218,14 @@ export function PhotoSubmissionForm({
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
+            /* The picker is the control that is wrong when no photo is chosen,
+               so it carries the invalid state — a red border alone is colour-only
+               (WCAG 1.4.1) and silent to a screen reader. `data-invalid` rather
+               than `aria-invalid` because this is a button, where that attribute
+               is unsupported; the description is what announces it. It is also
+               what makes this a field `focusFirstError` can land on. */
+            data-invalid={errors.photos ? true : undefined}
+            aria-describedby={errors.photos ? photosErrorId : undefined}
             className={`min-h-11 w-full rounded-md border-[1.5px] border-dashed bg-surface-soft p-8 text-center transition-colors hover:border-gold hover:bg-gold-light ${
               errors.photos ? "border-red" : "border-gold/40"
             }`}
@@ -252,7 +267,7 @@ export function PhotoSubmissionForm({
             }}
           />
           {errors.photos ? (
-            <p role="alert" className="mt-1 text-center text-sm text-red">
+            <p id={photosErrorId} role="alert" className="mt-1 text-center text-sm text-red">
               {errors.photos}
             </p>
           ) : null}
