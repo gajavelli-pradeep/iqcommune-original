@@ -1,7 +1,8 @@
-import type { PendingUnit } from "./pending";
+import { BRAND_TAGLINE_CASING, type PendingUnit } from "./pending";
 
 /** P7 declarations. */
 export const JOIN_ADMIN_PENDING: PendingUnit[] = [
+  BRAND_TAGLINE_CASING,
   {
     unit: "State · activation receipt",
     reason:

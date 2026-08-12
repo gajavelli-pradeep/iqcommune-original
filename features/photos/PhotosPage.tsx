@@ -16,7 +16,9 @@ export function PhotosPage({
   token?: string;
 }) {
   return (
-    <LinkPageShell width="860px" badge="Post-Session" strapline="Practitioner Network">
+    // 37px mark: this page's V7 nav sits between the marketing 38 and the
+    // compact 34, as onboarding's does.
+    <LinkPageShell width="860px" badge="Post-Session" markSize={37}>
       {session ? (
         <PhotoSubmissionForm session={session} token={token ?? ""} />
       ) : (

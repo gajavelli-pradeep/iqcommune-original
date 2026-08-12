@@ -6,7 +6,7 @@ import { RequestSessionButton } from "../RequestSession";
  *
  * Found by the F4 parity gate, not by the section list — spec line 1487.
  *
- * Its "Request a Session" button opens `RequestModal` through the landing
+ * Its "Join the Waitlist" button opens `RequestModal` through the landing
  * page's dialog provider — the same button, and the same state, as the header
  * and hero.
  */
@@ -16,9 +16,9 @@ const TICK = (
 );
 
 const REASSURANCES: readonly IconStripEntry[] = [
-  { label: "No fixed slots — we schedule around you", icon: TICK },
+  { label: "No commitment — just early access", icon: TICK },
   { label: "Max 25 participants per session", icon: TICK },
-  { label: "We'll reach out within 2–3 working days", icon: TICK },
+  { label: "We'll notify you the moment sessions open in your city", icon: TICK },
 ];
 
 export function CtaSection() {
@@ -34,8 +34,8 @@ export function CtaSection() {
           If you are serious to improve your financial literacy
         </h2>
         <p className="mx-auto mb-8 max-w-[520px] text-xl text-on-dark-muted">
-          Tell us your topic, your group, and a preferred date window. We&apos;ll handle the
-          rest offline.
+          Tell us your topic and your group — we&apos;ll notify you the moment sessions open
+          near you.
         </p>
 
         <div className="mb-8">

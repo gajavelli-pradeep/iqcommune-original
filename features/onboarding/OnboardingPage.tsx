@@ -23,7 +23,9 @@ export function OnboardingPage({
       width="860px"
       badge={["Practitioner", "Network"]}
       badgeStyle="lockup"
-      strapline="Insight Quotient - Unleashed"
+      /* 37px mark, as post-session photos: between the marketing 38 and the
+         compact 34. */
+      markSize={37}
       right={
         <>
           <span className="hidden text-md text-ink-muted sm:inline">Onboarding</span>

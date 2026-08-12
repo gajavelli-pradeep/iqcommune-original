@@ -17,6 +17,14 @@ import { RequestModal, draftSessionMailto } from "./RequestModal";
  * is with the HTTP route, so that is the seam worth holding still.
  */
 
+/**
+ * The dialog's receipt heading (2026-08-12 delivery). Deliberately NOT the
+ * confirmation email's subject: the client specified the on-screen receipt in
+ * the landing-page delivery and the email separately, and the two differ in
+ * register. `tests/unit/email.test.ts` covers the email wording.
+ */
+const RECEIPT_HEADING = "You're on the list!";
+
 function mockFetch(status: number, body: unknown) {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: status < 400,
@@ -66,11 +74,17 @@ describe("RequestModal", () => {
     await user.click(screen.getByRole("button", { name: "Send Request" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Request received!" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: RECEIPT_HEADING })).toBeInTheDocument();
     });
+    // Greeted by the first name typed above, as V7 does.
     expect(
-      screen.getByText(/your session request is in. We'll be in touch within 2–3 working days/),
+      screen.getByText(
+        "Thanks, Rohan — you're on the waitlist. We'll notify you the moment sessions open in your city.",
+      ),
     ).toBeInTheDocument();
+    // The receipt must not quote a reply window: sessions are not scheduled on
+    // arrival during the waitlist phase, and the confirmation email says so too.
+    expect(screen.queryByText(/working days/i)).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/session-requests", expect.anything());
   });
 
@@ -98,7 +112,7 @@ describe("RequestModal", () => {
 
     // A server fault shows the client's copy, not the API's message.
     expect(await screen.findByRole("alert")).toHaveTextContent(SUBMIT_FAILURE.message);
-    expect(screen.queryByRole("heading", { name: "Request received!" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: RECEIPT_HEADING })).not.toBeInTheDocument();
   });
 
   it("offers a drafted mailto on a server fault, carrying what was typed", async () => {

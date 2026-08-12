@@ -31,9 +31,9 @@ describe("SiteHeader", () => {
   });
 
   it("renders the right slot when a page supplies one", () => {
-    render(<SiteHeader right={<button type="button">Request a Session</button>} />);
+    render(<SiteHeader right={<button type="button">Join the Waitlist</button>} />);
     expect(
-      screen.getByRole("button", { name: "Request a Session" }),
+      screen.getByRole("button", { name: "Join the Waitlist" }),
     ).toBeInTheDocument();
   });
 

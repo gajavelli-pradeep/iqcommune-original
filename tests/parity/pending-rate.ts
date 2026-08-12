@@ -1,7 +1,8 @@
-import type { PendingUnit } from "./pending";
+import { BRAND_TAGLINE_CASING, type PendingUnit } from "./pending";
 
 /** P3 declarations. Ranges are lines in `iqcommune-practitioner-rating.html`. */
 export const RATE_PENDING: PendingUnit[] = [
+  BRAND_TAGLINE_CASING,
   {
     unit: "State · rating receipt",
     reason:

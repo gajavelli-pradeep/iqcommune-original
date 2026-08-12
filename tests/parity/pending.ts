@@ -50,17 +50,64 @@ const containing =
     return needles.some((needle) => haystack.includes(needle.toLowerCase()));
   };
 
+/** The year hardcoded in the delivered specs' footers. */
+const SPEC_COPYRIGHT_YEAR = 2026;
+
+/**
+ * SiteFooter renders the current year where the spec hardcodes one, so the two
+ * agree for exactly as long as the calendar does.
+ *
+ * Declaring the deviation unconditionally would make it stale today (rule 2);
+ * omitting it outright would fail every footer-bearing gate on 1 January with no
+ * code change — a test that breaks by calendar. So it is declared only once the
+ * years have actually diverged. Shared because both public pages carry the same
+ * footer and would otherwise drift apart.
+ */
+export const dynamicCopyrightYear = (): PendingUnit[] =>
+  new Date().getFullYear() === SPEC_COPYRIGHT_YEAR
+    ? []
+    : [
+        {
+          unit: "Deviation · dynamic copyright year",
+          reason:
+            `SiteFooter renders the current year; the spec hardcodes ${SPEC_COPYRIGHT_YEAR}, ` +
+            "which would read as an abandoned site. Deliberate and permanent — see " +
+            "components/layout/SiteFooter.tsx.",
+          kind: "deviation",
+          matches: containing(`© ${SPEC_COPYRIGHT_YEAR}. InvestQ Commune. All Rights Reserved`),
+        },
+      ];
+
+/**
+ * Every page's header carries the strapline from the 2026-08-12 delivery on, so
+ * every gate needs this same declaration. One object rather than seven copies —
+ * the reason is identical and a divergent copy would be a lie on six pages.
+ */
+export const BRAND_TAGLINE_CASING: PendingUnit = {
+  unit: "Deviation · brand tagline cased by CSS, not authored in caps",
+  reason:
+    "The 2026-08-12 delivery authors the strapline as 'INSIGHT QUOTIENT - UNLEASHED' where the " +
+    "CSS already applies text-transform:uppercase. SiteHeader keeps the title-case string in " +
+    "the DOM and lets the same transform draw it, so the rendered header is identical — but a " +
+    "literal comparison sees the casing. Title case is deliberate: several screen readers spell " +
+    "all-caps text out letter by letter.",
+  kind: "deviation",
+  matches: containing("INSIGHT QUOTIENT - UNLEASHED"),
+};
+
 export const LANDING_PENDING: PendingUnit[] = [
+  BRAND_TAGLINE_CASING,
   {
     unit: "State · submission receipts",
     reason:
       "Renders only after a successful POST, which this gate cannot perform. Proven to render " +
       "by features/landing/sections/modals.test.tsx — 'shows the receipt after a successful " +
-      "submission', for both dialogs.",
+      "submission', for both dialogs. The waitlist receipt is greeted by name there, matching " +
+      "V7's own scripted version; the spec's unnamed static copy is its no-JS fallback.",
     kind: "state",
     matches: containing(
-      "Request received!",
-      "your session request is in",
+      "You're on the list!",
+      "you're on the waitlist",
       "Photos received - thank you.",
       "We'll process and add them to the gallery within a few days",
     ),
@@ -76,22 +123,5 @@ export const LANDING_PENDING: PendingUnit[] = [
       "and will coordinate internally on session logistics and participant attendance.",
     ),
   },
-  {
-    unit: "Deviation · dynamic copyright year",
-    reason:
-      "SiteFooter renders the current year; the spec's hardcoded 2025 would be wrong on 1 Jan. " +
-      "Deliberate and permanent — see components/layout/SiteFooter.tsx.",
-    kind: "deviation",
-    matches: containing("iqcommune. All rights reserved."),
-  },
-  {
-    unit: "Deviation · brand tagline replaced",
-    reason:
-      "Client copy change (2026-07-23): the header strapline and footer tagline now read " +
-      "'Insight Quotient - Unleashed', decoding the brand name. Supersedes the spec's " +
-      "'Where financial intelligence connects' on every surface — SiteHeader and SiteFooter " +
-      "defaults, so the page title and footer sentence move with it.",
-    kind: "deviation",
-    matches: containing("financial intelligence connects"),
-  },
+  ...dynamicCopyrightYear(),
 ];

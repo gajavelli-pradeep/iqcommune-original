@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -302,12 +303,26 @@ export function ConsoleShell({
             nothing could give and the bar pushed the whole page into
             horizontal scroll. The identity truncates; the controls do not. */}
         <div className="flex min-w-0 items-center gap-3.5">
+          {/* V7 `.nav-logo` draws the mark at 34px/8px on the console, smaller
+              than the 38px marketing header. Decorative: the wordmark beside it
+              already names the product. */}
+          <Image
+            src="/logo.png"
+            alt=""
+            width={34}
+            height={34}
+            priority
+            className="shrink-0 rounded-lg"
+          />
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="flex items-baseline leading-none">
               <span className="text-4xl font-bold tracking-display text-gold">iq</span>
               <span className="text-4xl font-light tracking-display text-ink">commune</span>
             </span>
-            <span className="hidden truncate text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
+            {/* 9px here — V7 `.logo-tag` runs the console's strapline smaller
+                still than the 9.5px marketing one. The `Admin`/`Console` lockup
+                beside it keeps `text-2xs` (10px), which is its own spec size. */}
+            <span className="hidden truncate text-[9px] font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
               Insight Quotient - Unleashed
             </span>
           </div>

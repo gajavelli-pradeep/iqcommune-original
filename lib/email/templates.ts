@@ -71,24 +71,38 @@ function detailRow(label: string, value: string): string {
   );
 }
 
-/** Exact copy from the client's request-acknowledgment spec — subject, body
- *  and sign-off all specified verbatim, not the house style used elsewhere
- *  in this file. */
+/**
+ * Exact copy from the client's interest-acknowledgment spec (2026-08-12) —
+ * subject, body and sign-off all specified verbatim, not the house style used
+ * elsewhere in this file.
+ *
+ * Two deliberate departures from the 2026-08-10 conventions, both the client's
+ * own wording. First, no reply window is promised: for the opening months
+ * sessions are not scheduled on arrival, so the commitment is to the
+ * practitioner mapping rather than to a date. Second, the sign-off reads
+ * "Team iqcommune" rather than `signOffTeam("session")` — this one template
+ * therefore signs a different name from the one on its own envelope, which is
+ * exactly the mismatch the per-stream sign-off exists to prevent. It is the
+ * client's approved text; revert to `signOffTeam("session")` if that is
+ * reconsidered rather than "correcting" it silently.
+ */
 export function sessionRequestReceived(to: string, firstName: string, topic: string): EmailMessage {
   return {
     template: "session-request-received",
     stream: "session",
     to,
-    subject: "iqcommune — your session request has been received",
+    subject: "Thank you for reposing faith in us - We have recorded your interest",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      `Thanks for reaching out to iqcommune — we've received your request for a session on ${topic}.`,
+      `We are extremely delighted to record your interest & wish to confirm that we have received your request for a session on ${topic}. As you must be aware, we have just started and the process of practitioner empanelment is underway as we draft this response.`,
       "",
-      "We'll get in touch within 2–3 working days to understand your group's needs a little better and take things forward from there.",
+      "Be rest assured that we'll get in touch with you as soon as we are able to map the right practitioner in your city. Upon which, we will reach out directly to understand your group's needs a little better and take things forward from there.",
+      "",
+      "Again, on behalf of everyone at iqcommune, we thank you reposing your faith in us. Looking forward to seeing you in the session very soon.",
       "",
       "Regards,",
-      signOffTeam("session"),
+      "Team iqcommune",
     ),
   };
 }

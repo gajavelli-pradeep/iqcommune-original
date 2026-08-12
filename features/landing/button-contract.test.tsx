@@ -25,10 +25,10 @@ import { LandingSections } from "./LandingSections";
  */
 
 function requestButtons() {
-  return screen.getAllByRole("button", { name: /Request a Session/ });
+  return screen.getAllByRole("button", { name: /Join the Waitlist/ });
 }
 
-describe("Request a Session — control contract", () => {
+describe("Join the Waitlist — control contract", () => {
   it("renders one per spec call site: header, hero, closing CTA", () => {
     render(<LandingSections gallery={<Gallery photos={[]} />} />);
     expect(requestButtons()).toHaveLength(3);

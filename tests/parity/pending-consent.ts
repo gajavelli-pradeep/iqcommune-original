@@ -1,7 +1,8 @@
-import type { PendingUnit } from "./pending";
+import { BRAND_TAGLINE_CASING, type PendingUnit } from "./pending";
 
 /** P4 declarations. */
 export const CONSENT_PENDING: PendingUnit[] = [
+  BRAND_TAGLINE_CASING,
   {
     unit: "State · consent receipt",
     reason:
