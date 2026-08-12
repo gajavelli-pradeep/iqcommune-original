@@ -39,9 +39,12 @@ export function focusFirstError(form: HTMLFormElement | null): void {
     // sticky header, where the label and error sit just above the fold. Centring
     // it separately shows the field with its label and message together.
     field.focus({ preventScroll: true });
-    field.scrollIntoView({
-      block: "center",
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    });
+    // Optional call, as `CountUp` and `GalleryCarousel` do: jsdom ships no
+    // `matchMedia`, and an environment without it must still get the scroll —
+    // throwing here would leave the field focused somewhere off-screen, which is
+    // the exact failure this function exists to prevent. Unknown reads as "no
+    // preference expressed", so the motion stays.
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    field.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
   });
 }

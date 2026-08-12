@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -53,6 +53,34 @@ describe("AccountSetupForm", () => {
     await user.click(screen.getByRole("button", { name: "Activate account" }));
 
     expect(screen.getByText("Passwords don't match — check and try again.")).toBeInTheDocument();
+  });
+
+  it("puts each message on the box it is about, and goes there", async () => {
+    // A short password used to be reported under *Confirm password*, which sent
+    // the reader to correct the one field that was not the problem.
+    const user = userEvent.setup();
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z" }, error: null });
+    render(<AccountSetupForm invite={INVITE} token="test-token" />);
+
+    const create = screen.getByLabelText("Create a password");
+    const confirm = screen.getByLabelText("Confirm password");
+
+    await user.type(create, "short");
+    await user.type(confirm, "short");
+    await user.click(screen.getByRole("button", { name: "Activate account" }));
+
+    expect(create).toHaveAttribute("aria-invalid", "true");
+    expect(confirm).not.toHaveAttribute("aria-invalid");
+    await waitFor(() => expect(document.activeElement).toBe(create));
+
+    // A mismatch, by contrast, is the confirmation's problem.
+    await user.clear(create);
+    await user.type(create, "a-long-enough-password");
+    await user.click(screen.getByRole("button", { name: "Activate account" }));
+
+    expect(confirm).toHaveAttribute("aria-invalid", "true");
+    expect(create).not.toHaveAttribute("aria-invalid");
+    await waitFor(() => expect(document.activeElement).toBe(confirm));
   });
 
   it("confirms activation once both passwords agree", async () => {
