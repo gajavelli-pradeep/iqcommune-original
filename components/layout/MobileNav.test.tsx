@@ -20,7 +20,7 @@ const LINKS = [
 ] as const;
 
 const setup = () =>
-  render(<MobileNav links={LINKS} action={<button type="button">Request a Session</button>} />);
+  render(<MobileNav links={LINKS} action={<button type="button">Join the Waitlist</button>} />);
 
 const drawer = () => screen.queryByRole("dialog", { name: "Site menu" });
 
@@ -46,7 +46,7 @@ describe("MobileNav", () => {
       "#who-its-for",
     );
     expect(within(panel).getByRole("link", { name: "For practitioners" })).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Request a Session" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Join the Waitlist" })).toBeInTheDocument();
   });
 
   it("locks the page behind it and gives the scroll back on close", async () => {

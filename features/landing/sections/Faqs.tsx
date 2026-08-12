@@ -49,7 +49,7 @@ const FAQS: ReadonlyArray<Faq> = [
         organisation looking to upskill its people. Sessions are tailored to your
         workforce&apos;s financial literacy level and specific needs. Please note that venue
         and basic infrastructure are to be arranged by your organisation. Use the
-        &quot;Request a Session&quot; form and select{" "}
+        &quot;Join the Waitlist&quot; form and select{" "}
         <strong className="font-semibold text-ink">Organisations &amp; Institutions</strong>{" "}
         as your audience type — we&apos;ll take it from there.
       </>
@@ -58,7 +58,7 @@ const FAQS: ReadonlyArray<Faq> = [
   {
     question: "Can sessions be bundled into a longer block?",
     answer:
-      "Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement & Goal-Based Financial Planning; Equity Investing Simplified paired with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction paired with Investment Solutions & Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the \"Request a Session\" form and we'll confirm bundle availability with you.",
+      "Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement & Goal-Based Financial Planning; Equity Investing Simplified paired with Debt & Fixed Income Investing; or Asset Allocation & Portfolio Construction paired with Investment Solutions & Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the \"Join the Waitlist\" form and we'll confirm bundle availability with you.",
   },
   {
     question: "How is the practitioner chosen for my session?",

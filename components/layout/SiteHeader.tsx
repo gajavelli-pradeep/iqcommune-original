@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -5,7 +6,7 @@ import type { ReactNode } from "react";
  * Shared sticky site header — used by all eight public pages.
  *
  * `right` is a slot because each page puts something different there: the
- * landing page a "Request a Session" button, the practitioner page a link back
+ * landing page a "Join the Waitlist" button, the practitioner page a link back
  * to the learner site, the flow pages a status pill. The chrome is identical
  * everywhere, so it lives here once.
  *
@@ -28,6 +29,7 @@ export function SiteHeader({
   width = "var(--container-page)",
   strapline = "Insight Quotient - Unleashed",
   compact = false,
+  markSize,
 }: {
   /**
    * Inner width. The public pages are 1100px, but each emailed page sets its
@@ -61,8 +63,17 @@ export function SiteHeader({
    * (`.nav-logo-mark` font-size:22px) are smaller than the marketing header.
    */
   compact?: boolean;
+  /**
+   * Logo edge in px, where a page's V7 nav sizes it off the default. The
+   * delivery uses three: 38 on the marketing navs, 34 on the compact ones, and
+   * 37 on onboarding and post-session photos, which sit between the two.
+   */
+  markSize?: number;
 }) {
   const wordmark = compact ? "text-4xl" : "text-4xl sm:text-6xl";
+  const mark = markSize ?? (compact ? 34 : 38);
+  // V7 pairs the smaller marks with an 8px radius and the 38px one with 9px.
+  const markRadius = mark < 37 ? "rounded-lg" : "rounded-[9px]";
   return (
     <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface/95 px-8 backdrop-blur-[12px]">
       <div
@@ -73,23 +84,45 @@ export function SiteHeader({
             them inside one <a> (gap:14px). Spreading them with justify-between
             floated the lockup into the centre. */}
         <div className="flex min-w-0 items-center gap-[14px]">
+          {/* V7 splits the lockup into two anchors — the wordmark to the page
+              and the strapline to the live site — but both resolve to the same
+              place from inside the app, and its strapline href is the
+              `iqcommune.vercel.app` preview origin, which must not ship as an
+              external link from production. One link to `/` renders identically
+              and keeps a single accessible name for the whole lockup. */}
           <Link
             href="/"
-            className="flex shrink-0 flex-col gap-[3px]"
+            className="flex shrink-0 items-center gap-2.5"
             aria-label="iqcommune — home"
           >
-            <span className="flex items-baseline leading-none">
-              <span className={`${wordmark} font-bold tracking-display text-gold`}>iq</span>
-              <span className={`${wordmark} font-light tracking-display text-ink`}>commune</span>
-            </span>
-            {/* Shown from 360px up to match V7, which keeps the strapline on every
-                phone. Hidden only below 360px, where the lockup plus the Request
-                button overflows the viewport — the 320px P1 this guard exists for. */}
-            {strapline ? (
-              <span className="hidden text-2xs font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-                {strapline}
+            {/* Decorative: the link already carries the name, so a second
+                announcement of "iqcommune" here would be read twice. */}
+            <Image
+              src="/logo.png"
+              alt=""
+              width={mark}
+              height={mark}
+              priority
+              className={`shrink-0 ${markRadius}`}
+            />
+            <span className="flex flex-col gap-[3px]">
+              <span className="flex items-baseline leading-none">
+                <span className={`${wordmark} font-bold tracking-display text-gold`}>iq</span>
+                <span className={`${wordmark} font-light tracking-display text-ink`}>commune</span>
               </span>
-            ) : null}
+              {/* Shown from 360px up to match V7, which keeps the strapline on
+                  every phone. Hidden only below 360px, where the lockup plus the
+                  waitlist button overflows the viewport — the 320px P1 this
+                  guard exists for. */}
+              {/* 9.5px, not the 10px `text-2xs` the badge lockup beside it uses:
+                  V7 sizes the strapline half a pixel smaller on every page that
+                  carries one, and at this length the difference is ~9px of width. */}
+              {strapline ? (
+                <span className="hidden text-[9.5px] font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
+                  {strapline}
+                </span>
+              ) : null}
+            </span>
           </Link>
 
           {badge && badgeStyle === "lockup" ? (

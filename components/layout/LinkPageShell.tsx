@@ -9,17 +9,22 @@ import { SiteHeader } from "./SiteHeader";
  * /onboarding, /join-admin.
  *
  * These pages deliberately differ from the marketing chrome: their V7 nav is a
- * compact 22px wordmark with no strapline, and none of them carries the dark
- * site footer — the closing confidentiality note (V7 `.footer-note`) is all
- * they show. A practitioner arriving from an email to confirm one session is
- * not being recruited.
+ * compact 22px wordmark, and none of them carries the dark site footer — the
+ * closing confidentiality note (V7 `.footer-note`) is all they show. A
+ * practitioner arriving from an email to confirm one session is not being
+ * recruited.
+ *
+ * The strapline used to be suppressed here, because V7's flow navs carried none.
+ * The 2026-08-12 delivery puts the logo and tagline into every header, so it now
+ * falls through to SiteHeader's default rather than being nulled.
  */
 export function LinkPageShell({
   badge,
   badgeStyle = "pill",
   right,
   width,
-  strapline = null,
+  strapline,
+  markSize,
   email = contactEmail(),
   children,
 }: {
@@ -34,8 +39,10 @@ export function LinkPageShell({
    * header's inner width tracks it so the wordmark aligns with the card.
    */
   width: string;
-  /** Wordmark sub-line. Rate/consent/user-setup have none; photos/onboarding pass theirs. */
+  /** Wordmark sub-line. Defaults to the site strapline; pass `null` to suppress it. */
   strapline?: string | null;
+  /** Logo edge in px, where this page's V7 nav differs from the compact default. */
+  markSize?: number;
   /** The inbox the closing "questions?" line points at. Defaults to the site's. */
   email?: string;
   children: ReactNode;
@@ -48,6 +55,7 @@ export function LinkPageShell({
         right={right}
         width={width}
         strapline={strapline}
+        markSize={markSize}
         compact
       />
       {/* V7 .page — max-width column with its own 2.5rem 2rem 4rem padding.

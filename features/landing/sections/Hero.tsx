@@ -10,7 +10,7 @@ import { PractitionerPoolCard } from "../components/PractitionerPoolCard";
  * decorative gold glow is dropped on small screens for the same reason the spec
  * drops it: at 560px across it swamps a phone.
  *
- * Its "Request a Session" button opens `RequestModal` via the landing page's
+ * Its "Join the Waitlist" button opens `RequestModal` via the landing page's
  * dialog provider.
  */
 export function Hero() {
@@ -46,7 +46,7 @@ export function Hero() {
             <RequestSessionButton variant="primary" />
             <span className="flex items-center gap-1.5 text-base text-ink-faint">
               <ClockIcon />
-              We&apos;ll schedule around you
+              We&apos;ll notify you when we launch in your city
             </span>
           </div>
         </div>

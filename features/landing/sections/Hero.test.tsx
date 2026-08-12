@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RequestSessionProvider } from "../RequestSession";
 import { Hero } from "./Hero";
@@ -39,16 +39,18 @@ describe("Hero", () => {
     expect(
       screen.getByText("Built for anyone serious about financial literacy."),
     ).toBeInTheDocument();
-    expect(screen.getByText("We'll schedule around you")).toBeInTheDocument();
+    expect(
+      screen.getByText("We'll notify you when we launch in your city"),
+    ).toBeInTheDocument();
   });
 
-  it("renders all three pool figures and all four practitioner roles", () => {
+  it("renders all three pool figures and all six practitioner roles", () => {
     render(
       <RequestSessionProvider>
         <Hero />
       </RequestSessionProvider>,
     );
-    for (const figure of ["12+", "20+", "6"]) {
+    for (const figure of ["8+", "12+", "3"]) {
       expect(screen.getByText(figure)).toBeInTheDocument();
     }
     for (const role of [
@@ -56,6 +58,8 @@ describe("Hero", () => {
       "Portfolio Managers",
       "Certified Financial Planners",
       "Wealth Managers",
+      "Fund & Product Specialists",
+      "Corporate Finance Professionals",
     ]) {
       expect(screen.getByText(role)).toBeInTheDocument();
     }
@@ -76,16 +80,17 @@ describe("Hero", () => {
     }
   });
 
-  it("keeps the qualifying note with the pool card", () => {
+  it("drops the qualifying note the 2026-08-12 delivery removed", () => {
+    // The pool card used to close with "Every session is led by a practitioner
+    // currently active…". The client removed it along with the waitlist copy,
+    // and the card now ends on the role grid. Asserted rather than deleted:
+    // the sentence reads like an obvious improvement to re-add, and doing so
+    // would silently re-fail the parity gate.
     render(
       <RequestSessionProvider>
         <Hero />
       </RequestSessionProvider>,
     );
-    const note = screen.getByText(/Every session is led by a practitioner/);
-    expect(within(note).queryByRole("img")).toBeNull();
-    expect(note).toHaveTextContent(
-      "Every session is led by a practitioner currently active in that specific area of finance.",
-    );
+    expect(screen.queryByText(/Every session is led by a practitioner/)).toBeNull();
   });
 });

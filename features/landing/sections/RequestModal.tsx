@@ -18,7 +18,7 @@ import {
 } from "@/lib/schemas/session-request";
 
 /**
- * "Request a Session" — the landing page's one write, and the reason F2 and F3
+ * "Join the Waitlist" — the landing page's one write, and the reason F2 and F3
  * exist.
  *
  * The form is audience-driven: choosing who this is for changes the guidance,
@@ -371,15 +371,11 @@ export function RequestModal({
     <Modal
       open={open}
       onClose={close}
-      title={
-        status === "sent"
-          ? "Thank you for reposing faith in us - We have recorded your interest"
-          : "Request a Session"
-      }
+      title={status === "sent" ? "You're on the list!" : "Join the Waitlist"}
       description={
         status === "sent"
           ? undefined
-          : "Tell us a bit about what you need — we'll be in touch within 2–3 working days to take it forward."
+          : "Tell us a bit about what you need — we'll notify you the moment sessions open in your city."
       }
     >
       {status === "sent" ? (
@@ -398,16 +394,15 @@ export function RequestModal({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          {/* The client's acknowledgment copy, condensed to the two sentences
-              that answer "what happens next?" — the full text is in the
-              confirmation email (`sessionRequestReceived`). No reply window is
-              quoted here for the same reason it is absent there: until a
+          {/* V7 greets by first name where it has one and drops the comma where
+              it does not — the form requires the field, so in practice the named
+              form is what ships; the fallback covers a receipt rendered from
+              state that never held one. No reply window is quoted: until a
               practitioner is empanelled in their city there is no date to
-              promise. Screen and email must not drift apart. */}
+              promise, which is the whole point of the waitlist. */}
           <p className="text-lg text-ink-muted">
-            We have just started, and the process of practitioner empanelment is underway.
-            We&apos;ll get in touch as soon as we are able to map the right practitioner in your
-            city.
+            Thanks{form.firstName ? `, ${form.firstName}` : ""} — you&apos;re on the waitlist.
+            We&apos;ll notify you the moment sessions open in your city.
           </p>
         </div>
       ) : (
@@ -626,7 +621,7 @@ export function RequestModal({
             {status === "submitting" ? "Sending…" : "Send Request"}
           </button>
           <p className="mt-2 text-center text-sm text-ink-faint">
-            No spam. We&apos;ll only reach out about your session request.
+            No spam. We&apos;ll only reach out when sessions open in your city.
           </p>
         </form>
       )}
