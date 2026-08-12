@@ -56,14 +56,25 @@ export const LANDING_PENDING: PendingUnit[] = [
     reason:
       "Renders only after a successful POST, which this gate cannot perform. Proven to render " +
       "by features/landing/sections/modals.test.tsx — 'shows the receipt after a successful " +
-      "submission', for both dialogs.",
+      "submission'.",
     kind: "state",
     matches: containing(
-      "Request received!",
-      "your session request is in",
       "Photos received - thank you.",
       "We'll process and add them to the gallery within a few days",
     ),
+  },
+  {
+    unit: "Deviation · session receipt superseded by client copy",
+    reason:
+      "V7's receipt promised a 2-3 working day follow-up. Sessions are not scheduled on arrival " +
+      "during the opening months — practitioner empanelment is still under way — so on " +
+      "2026-08-12 the client replaced this copy: the dialog and the confirmation email now " +
+      "commit to mapping a practitioner in the requester's city rather than to a date. Restoring " +
+      "either V7 string would re-promise a window nobody can honour. The replacement is proven " +
+      "to render by features/landing/sections/modals.test.tsx — 'shows the receipt after a " +
+      "successful submission'.",
+    kind: "deviation",
+    matches: containing("Request received!", "your session request is in"),
   },
   {
     unit: "Deviation · unreachable default declaration text",

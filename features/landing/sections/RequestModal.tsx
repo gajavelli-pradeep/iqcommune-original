@@ -371,7 +371,11 @@ export function RequestModal({
     <Modal
       open={open}
       onClose={close}
-      title={status === "sent" ? "Request received!" : "Request a Session"}
+      title={
+        status === "sent"
+          ? "Thank you for reposing faith in us - We have recorded your interest"
+          : "Request a Session"
+      }
       description={
         status === "sent"
           ? undefined
@@ -394,8 +398,16 @@ export function RequestModal({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
+          {/* The client's acknowledgment copy, condensed to the two sentences
+              that answer "what happens next?" — the full text is in the
+              confirmation email (`sessionRequestReceived`). No reply window is
+              quoted here for the same reason it is absent there: until a
+              practitioner is empanelled in their city there is no date to
+              promise. Screen and email must not drift apart. */}
           <p className="text-lg text-ink-muted">
-            Thanks — your session request is in. We&apos;ll be in touch within 2–3 working days.
+            We have just started, and the process of practitioner empanelment is underway.
+            We&apos;ll get in touch as soon as we are able to map the right practitioner in your
+            city.
           </p>
         </div>
       ) : (

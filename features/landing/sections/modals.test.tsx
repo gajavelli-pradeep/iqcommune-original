@@ -17,6 +17,10 @@ import { RequestModal, draftSessionMailto } from "./RequestModal";
  * is with the HTTP route, so that is the seam worth holding still.
  */
 
+/** The client's approved receipt heading (2026-08-12), shared by the dialog and
+ *  the confirmation email's subject so the two cannot drift apart. */
+const RECEIPT_HEADING = "Thank you for reposing faith in us - We have recorded your interest";
+
 function mockFetch(status: number, body: unknown) {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: status < 400,
@@ -66,11 +70,14 @@ describe("RequestModal", () => {
     await user.click(screen.getByRole("button", { name: "Send Request" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Request received!" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: RECEIPT_HEADING })).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/your session request is in. We'll be in touch within 2–3 working days/),
+      screen.getByText(/as soon as we are able to map the right practitioner in your city/),
     ).toBeInTheDocument();
+    // The receipt must not quote a reply window: sessions are not scheduled on
+    // arrival during the opening months, and the confirmation email says so too.
+    expect(screen.queryByText(/working days/i)).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/session-requests", expect.anything());
   });
 
@@ -98,7 +105,7 @@ describe("RequestModal", () => {
 
     // A server fault shows the client's copy, not the API's message.
     expect(await screen.findByRole("alert")).toHaveTextContent(SUBMIT_FAILURE.message);
-    expect(screen.queryByRole("heading", { name: "Request received!" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: RECEIPT_HEADING })).not.toBeInTheDocument();
   });
 
   it("offers a drafted mailto on a server fault, carrying what was typed", async () => {

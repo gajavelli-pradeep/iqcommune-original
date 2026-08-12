@@ -436,12 +436,26 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
   it("session-request acknowledgment, including the topic", () => {
     const message = templates.sessionRequestReceived("a@b.com", "Rahul", "Equity Investing Simplified");
 
-    expect(message.subject).toBe("iqcommune — your session request has been received");
-    expect(message.body).toContain(
-      "we've received your request for a session on Equity Investing Simplified.",
+    expect(message.subject).toBe(
+      "Thank you for reposing faith in us - We have recorded your interest",
     );
-    // See the application acknowledgment above: sign-off per stream from
-    // 2026-08-10, prose left as approved.
-    expect(message.body).toContain("Regards,\nThe Session Commune Team");
+    expect(message.body).toContain(
+      "we have received your request for a session on Equity Investing Simplified.",
+    );
+    // Client copy, 2026-08-12. This template signs "Team iqcommune" rather than
+    // the per-stream `signOffTeam("session")` every other session email uses —
+    // asserted so the departure cannot be reverted by tidying.
+    expect(message.body).toContain("Regards,\nTeam iqcommune");
+    expect(message.body).not.toContain("The Session Commune Team");
+  });
+
+  it("promises no reply window in the acknowledgment", () => {
+    // Sessions are not scheduled on arrival during the opening months, so the
+    // acknowledgment commits to the practitioner mapping and not to a date.
+    // A "2-3 working days" line reappearing here is the regression.
+    const message = templates.sessionRequestReceived("a@b.com", "Rahul", "Equity Investing Simplified");
+
+    expect(message.body).not.toMatch(/working days/i);
+    expect(message.body).toContain("as soon as we are able to map the right practitioner");
   });
 });
