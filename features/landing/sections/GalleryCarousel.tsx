@@ -18,6 +18,15 @@ const VISIBLE = 3;
 const AUTOPLAY_MS = 4500;
 
 export type GallerySlide = {
+  /**
+   * Identity, and the React key.
+   *
+   * The caption used to serve as the key, which held only while every caption
+   * happened to differ. Two photos published under the same one — easily done,
+   * and likelier still while someone is testing — collide, and React drops or
+   * duplicates a slide rather than rendering both.
+   */
+  id: string;
   caption: string;
   city?: string;
   url?: string;
@@ -72,7 +81,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
               with — the arrows and dots below own the keyboard path. */}
           {slides.map((slide) => (
             <li
-              key={slide.caption}
+              key={slide.id}
               className="group relative aspect-[4/3] w-80 shrink-0 overflow-hidden rounded-[10px] border border-on-dark-divider bg-gallery-slide transition-colors duration-300 [@media(hover:hover)]:hover:border-gold/40"
             >
               {slide.url ? (
@@ -140,7 +149,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
         <div className="flex gap-1.5">
           {slides.map((slide, i) => (
             <button
-              key={slide.caption}
+              key={slide.id}
               type="button"
               onClick={() => goTo(i)}
               aria-label={`Go to photo ${i + 1}`}
