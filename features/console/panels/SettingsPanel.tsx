@@ -5,10 +5,13 @@ import { useMemo, useState, useTransition } from "react";
 import { checkboxClass, controlClass, selectClass } from "@/components/ui/control";
 
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
+import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import { inviteTeamMember, removeTeamMember } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadIcon } from "../DownloadLink";
+import { DraftModal } from "../DraftModal";
+import { PendingSendToast } from "../PendingSendToast";
 import { StatusPill, TEAM_ROLE_STATUS } from "../StatusPill";
 import { CONSOLE_ROLES, can, type ConsoleRole } from "../roles";
 import type { MasterDataRow, TeamMemberRow } from "@/services/console";
@@ -280,7 +283,10 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<ConsoleRole>("user");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pending, start] = useTransition();
+  const [drafting, setDrafting] = useState(false);
+  // No `useTransition` here any more: the send now happens inside the Undo
+  // window, so the hold is what the button disables on.
+  const { pending: held, schedule, undo } = useDeferredSend();
 
   const columns: ReadonlyArray<ColumnDef<TeamMemberRow>> = [
     { key: "name", header: "Name", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
@@ -375,25 +381,26 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
             </select>
             <button
               type="button"
-              disabled={pending || !email.trim()}
-              onClick={() =>
-                start(async () => {
-                  const result = await inviteTeamMember(email, inviteRole);
-                  setMessage(
-                    result.ok
-                      ? { ok: true, text: `Invite sent to ${email.trim().toLowerCase()}.` }
-                      : { ok: false, text: result.message },
-                  );
-                  if (result.ok) setEmail("");
-                })
-              }
+              disabled={Boolean(held) || !email.trim()}
+              onClick={() => {
+                // Checked before the dialog opens, as V7 does: an invalid
+                // address should be corrected in the field, not discovered
+                // after reading a draft that was never going to send.
+                const address = email.trim().toLowerCase();
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+                  setMessage({ ok: false, text: "Enter a valid email address." });
+                  return;
+                }
+                setMessage(null);
+                setDrafting(true);
+              }}
               className="inline-flex items-center gap-[7px] rounded-lg bg-ink px-3.5 py-2.5 text-sm font-medium text-surface transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              {pending ? "Sending…" : "Send invite"}
+              {held ? "Sending…" : "Send invite"}
             </button>
           </div>
 
@@ -402,6 +409,30 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
               {message.text}
             </p>
           ) : null}
+
+          {drafting ? (
+            <DraftModal
+              kind="admin-invite"
+              id={email.trim().toLowerCase()}
+              onClose={() => setDrafting(false)}
+              onSend={(edited) => {
+                setDrafting(false);
+                // This send had no hold at all before — the one control in the
+                // console that fired the moment it was clicked.
+                schedule(async () => {
+                  const result = await inviteTeamMember(email, inviteRole, edited);
+                  setMessage(
+                    result.ok
+                      ? { ok: true, text: `Invite sent to ${email.trim().toLowerCase()}.` }
+                      : { ok: false, text: result.message },
+                  );
+                  if (result.ok) setEmail("");
+                }, `Inviting ${email.trim().toLowerCase()}…`);
+              }}
+            />
+          ) : null}
+
+          {held ? <PendingSendToast pending={held} onUndo={undo} /> : null}
         </div>
       ) : null}
     </section>

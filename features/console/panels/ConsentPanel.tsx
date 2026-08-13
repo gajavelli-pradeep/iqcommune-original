@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { controlClass, selectClass } from "@/components/ui/control";
-import { Toast } from "@/components/ui/Toast";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
@@ -11,6 +10,7 @@ import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
 import { DraftModal } from "../DraftModal";
 import type { DraftOverride } from "../draft-kinds";
+import { PendingSendToast } from "../PendingSendToast";
 import { RowAction } from "../RowAction";
 import { CONSENT_STATUS, StatusPill } from "../StatusPill";
 import { can, type ConsoleRole } from "../roles";
@@ -139,20 +139,12 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
       ) : null}
 
       {held ? (
-        <Toast
-          message={held.label}
-          action={
-            <button
-              type="button"
-              onClick={() => {
-                undo();
-                setStatus(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
-              }}
-              className="rounded-md px-2 py-1 text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-            >
-              Undo
-            </button>
-          }
+        <PendingSendToast
+          pending={held}
+          onUndo={() => {
+            undo();
+            setStatus(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+          }}
         />
       ) : null}
     </>

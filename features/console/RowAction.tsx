@@ -2,11 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 
-import { Toast } from "@/components/ui/Toast";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import { DraftModal } from "./DraftModal";
 import type { DraftKind, DraftOverride } from "./draft-kinds";
+import { PendingSendToast } from "./PendingSendToast";
 
 /**
  * A single console row action with the 15-second Undo window (procedure §114).
@@ -101,18 +101,10 @@ export function RowAction({
       ) : null}
 
       {pending ? (
-        <Toast
-          message={pending.label}
+        <PendingSendToast
+          pending={pending}
+          onUndo={undo}
           tone={tone === "danger" ? "danger" : "neutral"}
-          action={
-            <button
-              type="button"
-              onClick={undo}
-              className="rounded-md px-2 py-1 text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-            >
-              Undo
-            </button>
-          }
         />
       ) : null}
     </>

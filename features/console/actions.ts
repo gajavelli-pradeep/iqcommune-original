@@ -960,7 +960,11 @@ const ROLE_WORD: Record<string, string> = {
  * a token cannot be revoked before it expires (ADR 0004), so consumption has to
  * be recorded somewhere the loader checks.
  */
-export async function inviteTeamMember(email: string, role: string): Promise<ActionResult> {
+export async function inviteTeamMember(
+  email: string,
+  role: string,
+  draft?: DraftOverride,
+): Promise<ActionResult> {
   const { email: actor } = await requireCapability("manageTeam");
 
   const address = email.trim().toLowerCase();
@@ -1005,7 +1009,14 @@ export async function inviteTeamMember(email: string, role: string): Promise<Act
   // and the admin is standing there waiting to know. Everywhere else the email
   // is a side effect of a state change that has already succeeded, and blocking
   // the response on a mail provider would be the wrong trade.
-  const delivery = await sendEmail(newTraceId(), adminInvite(address, invite.id as string));
+  const delivery = await sendEmail(
+    newTraceId(),
+    applyDraft(
+      adminInvite(address, invite.id as string),
+      draft,
+      buildLink("invite", invite.id as string),
+    ),
+  );
 
   await recordActivity({
     actorEmail: actor,
@@ -1558,6 +1569,15 @@ async function draftMessage(
     return { message: applicationRejected(data.email as string, data.first_name as string) };
   }
 
+  if (kind === "admin-invite") {
+    // The id is the address being invited. There is no row to read — the invite
+    // is created by the send — so the draft is composed from the address alone.
+    const address = id.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return null;
+    const message = adminInvite(address, PREVIEW_ID);
+    return { message: { ...message, body: maskLink(message.body) } };
+  }
+
   if (kind === "onboarding-link") {
     const { table, id: rowRef } = pipelineId(id);
     let contact: { email: string; firstName: string } | null = null;
@@ -1631,7 +1651,10 @@ function applyDraft(message: EmailMessage, draft?: DraftOverride, link?: string)
  * — an admin opening a dialog and closing it again must leave no trace.
  */
 export async function composeDraft(kind: DraftKind, id: string): Promise<Draft | null> {
-  await requireCapability("mutate");
+  // The invite is team management, not a pipeline mutation — previewing it must
+  // demand the same capability as sending it, or an admin could read a draft of
+  // something they are not allowed to send.
+  await requireCapability(kind === "admin-invite" ? "manageTeam" : "mutate");
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
