@@ -645,7 +645,13 @@ export function RequestModal({
             disabled={status === "submitting"}
             className="min-h-11 w-full rounded-md bg-gold px-5 py-3 text-md font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {status === "submitting" ? "Sending…" : "Send Request"}
+            {/* The client's changelog renamed this dialog's title, subtitle,
+                fine print and receipt, but not the control that actually
+                submits it — so the page asked you to join a waitlist and then
+                offered a "Send Request" button to do it. Named for the action
+                it completes, which is the same phrase every CTA that opens this
+                dialog already uses. */}
+            {status === "submitting" ? "Joining…" : "Join the Waitlist"}
           </button>
           <p className="mt-2 text-center text-sm text-ink-faint">
             No spam. We&apos;ll only reach out when sessions open in your city.

@@ -144,6 +144,19 @@ export const LANDING_PENDING: PendingUnit[] = [
     ),
   },
   {
+    unit: "Deviation · the dialog's submit button names the action it completes",
+    reason:
+      "V7 labels it 'Send Request'. The changelog renamed this dialog's title, subtitle, fine " +
+      "print and receipt to the waitlist and stopped there, so the one control that actually " +
+      "submits the form still sent a request — the last place on the page where the old model " +
+      "survived, and the most consequential, being the control the visitor presses. It now " +
+      "carries the same phrase as every CTA that opens the dialog. The button-contract gate " +
+      "still counts three of those on the closed page; this fourth exists only while the dialog " +
+      "is open.",
+    kind: "deviation",
+    lines: [1752, 1752],
+  },
+  {
     unit: "Deviation · preferred-window field carries no scheduling promise",
     reason:
       "V7 labels this 'Preferred date window' and hints 'we confirm offline' — the last control " +

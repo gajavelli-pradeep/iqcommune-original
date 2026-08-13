@@ -29,6 +29,16 @@ excuse, so one hand holds all of it.
 | 4 | Confirmation email's "very soon" sign-off | `lib/email/templates.ts` |
 | 5 | Onboarding success promising session details in 2-3 days | `features/onboarding/OnboardingForm.tsx` |
 | 6 | Parity deviations for 1-3 and for 5 | `tests/parity/pending.ts`, `tests/parity/pending-onboarding.ts` |
+| 7 | The dialog's submit button, still "Send Request" — found by the second-pass audit, which read every rendered control label instead of grepping for date words | `features/landing/sections/RequestModal.tsx`, `modals.test.tsx`, `tests/parity/pending.ts` |
+
+## What the second pass changed about the method
+
+The first sweep grepped for the vocabulary of the old promise — "schedule", "working days",
+"preferred date". That finds prose and misses controls: `Send Request` contains none of those words
+and is the single most consequential string on the page, being the button the visitor presses. The
+second pass rendered the page and enumerated every control label and every visible sentence, which
+is what surfaced it. Coverage was also extended to the requester status page (`services/link-pages.ts`)
+— all of its copy is the practitioner application flow, so nothing leaked there.
 
 ## Deliberately not changed
 
