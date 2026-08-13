@@ -85,13 +85,24 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
                   </svg>
                 </div>
               )}
+              {/* Both sit on a photo, so both carry their own backing. The
+                  caption had one and the city did not — white at 20% alpha
+                  straight onto the image, which computes to about 1.1:1 on a
+                  bright photo and simply is not there. Nothing about the type
+                  could fix that: the contrast is against whatever the
+                  photographer pointed the camera at.
+
+                  Full white on a 65%-opaque chip clears AA against any photo
+                  underneath — roughly 6:1 even over a near-white one. */}
               {slide.captionInArt ? null : (
-                <p className="absolute inset-x-2.5 top-2.5 rounded-sm bg-gallery-slide/55 px-2.5 py-[5px] text-xs font-medium leading-[1.35] text-surface/85">
+                <p className="absolute inset-x-2.5 top-2.5 rounded-sm bg-gallery-slide/65 px-2.5 py-[5px] text-xs font-medium leading-[1.35] text-surface">
                   {slide.caption}
                 </p>
               )}
               {slide.city ? (
-                <p className="absolute right-2.5 bottom-2.5 text-2xs text-surface/20">{slide.city}</p>
+                <p className="absolute right-2.5 bottom-2.5 rounded-sm bg-gallery-slide/65 px-2 py-[3px] text-2xs font-medium text-surface">
+                  {slide.city}
+                </p>
               ) : null}
             </li>
           ))}

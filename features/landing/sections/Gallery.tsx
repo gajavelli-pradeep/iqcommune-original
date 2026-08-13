@@ -97,17 +97,22 @@ export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
         <h2 className="text-[clamp(22px,2.8vw,30px)] font-semibold leading-[1.25] text-surface">
           Where it actually happens.
         </h2>
-        <p className="mt-1.5 text-[13.5px] text-surface/40">
+        {/* `--color-on-dark-muted` exists precisely so copy on this background
+            clears AA; a raw `text-surface/40` was 3.8:1 against the section's
+            near-black and missed it. */}
+        <p className="mt-1.5 text-[13.5px] text-on-dark-muted">
           Photos from sessions conducted across India — real rooms, real conversations.
         </p>
       </div>
 
       <GalleryCarousel slides={slides} />
 
-      <p className="px-8 pb-2 text-center text-[12.5px] text-surface/30">
+      {/* Was `text-surface/30` — 2.6:1, the faintest thing on the page and the
+          line actually asking people to do something. */}
+      <p className="px-8 pb-2 text-center text-[12.5px] text-on-dark-muted">
         Attended a session? Share it on social media and tag{" "}
-        <strong className="font-medium text-surface/55">@iqcommune</strong> — we feature the best
-        ones here.
+        <strong className="font-medium text-surface">@iqcommune</strong> — we feature the best ones
+        here.
       </p>
     </section>
   );
