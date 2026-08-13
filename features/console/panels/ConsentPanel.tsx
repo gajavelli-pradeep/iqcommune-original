@@ -5,7 +5,14 @@ import { useMemo, useState, useTransition } from "react";
 import { controlClass, selectClass } from "@/components/ui/control";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
-import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
+import {
+  generateConfirmation,
+  overrideConfirmationField,
+  sendConsentRequest,
+  sendPhotoGuide,
+  setSessionStatus,
+  type ConfirmationField,
+} from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
 import { DraftModal } from "../DraftModal";
@@ -67,11 +74,99 @@ function to24Hour(hour: string, minute: string, meridiem: string): string {
   return `${String(value).padStart(2, "0")}:${minute}`;
 }
 
-function AutoField({ label, value }: { label: string; value: string }) {
+/**
+ * One auto-populated field, with V7's Global-Admin correction pencil.
+ *
+ * `field` omitted means nothing may correct this by hand — the same convention
+ * `KvRow` uses on the practitioner card. V7 instead renders a pencil on every
+ * row and raises "this field is computed" when two of them are clicked; an
+ * absent pencil says that before the click rather than after it.
+ */
+function AutoField({
+  label,
+  value,
+  field,
+  assignmentId,
+  canOverride,
+}: {
+  label: string;
+  value: string;
+  field?: ConfirmationField;
+  /** Both omitted where the field is display-only, as in Part 3's summary. */
+  assignmentId?: string;
+  canOverride?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      await overrideConfirmationField(assignmentId!, field!, draft);
+      setEditing(false);
+    });
+  };
+
   return (
     <div>
-      <div className="text-3xs uppercase tracking-caps text-ink-faint">{label}</div>
-      <div className="mt-px font-medium text-ink">{value}</div>
+      <div className="flex items-center gap-1 text-3xs uppercase tracking-caps text-ink-faint">
+        {label}
+        {field && canOverride && !editing ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(value);
+              setEditing(true);
+            }}
+            title="Global Admin: correct the source record"
+            // 9px pencil as V7 draws it, with the pseudo-element growing the
+            // tap target to 44×44 on touch without changing the visual.
+            className="relative inline-flex items-center rounded px-1 py-0.5 text-gold-dark transition-colors hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:after:absolute [@media(any-pointer:coarse)]:after:left-1/2 [@media(any-pointer:coarse)]:after:top-1/2 [@media(any-pointer:coarse)]:after:h-11 [@media(any-pointer:coarse)]:after:w-11 [@media(any-pointer:coarse)]:after:-translate-x-1/2 [@media(any-pointer:coarse)]:after:-translate-y-1/2 [@media(any-pointer:coarse)]:after:content-['']"
+          >
+            <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            <span className="sr-only">Correct {label}</span>
+          </button>
+        ) : null}
+      </div>
+
+      {editing ? (
+        <div className="mt-px flex flex-wrap items-center gap-1.5">
+          <label className="sr-only" htmlFor={`${assignmentId}-${field}`}>
+            {label}
+          </label>
+          <input
+            id={`${assignmentId}-${field}`}
+            value={draft}
+            autoFocus
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") save();
+              if (event.key === "Escape") setEditing(false);
+            }}
+            className={controlClass({ tone: "compact", className: "min-w-0 flex-1" })}
+          />
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending}
+            className="rounded-md px-2 py-1 text-xs font-semibold text-gold-dark underline underline-offset-2 disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="rounded-md px-2 py-1 text-xs text-ink-faint underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="mt-px font-medium text-ink">{value}</div>
+      )}
     </div>
   );
 }
@@ -214,7 +309,13 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
 ];
 
 /** Part 1 — generate a confirmation for a matched session. */
-function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSession[] }) {
+function GenerateConfirmation({
+  sessions,
+  role,
+}: {
+  sessions: readonly ConfirmableSession[];
+  role: ConsoleRole;
+}) {
   const [selected, setSelected] = useState("");
   const [hour, setHour] = useState("10");
   const [minute, setMinute] = useState("00");
@@ -237,6 +338,9 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
   const [done, setDone] = useState<ConfirmableSession | null>(null);
 
   const session = useMemo(() => sessions.find((entry) => entry.id === selected), [sessions, selected]);
+
+  // Shared by every field in the grid; only the label, value and column differ.
+  const auto = { assignmentId: session?.id ?? "", canOverride: can(role, "override") };
 
   return (
     <section>
@@ -289,18 +393,22 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
                   label that means the empanelment agreement — two different
                   identifiers on two different records. */}
               <div className="grid gap-x-5 gap-y-2.5 text-xs sm:grid-cols-2">
-                <AutoField label="First name" value={session.practitioner.split(" ")[0]} />
-                <AutoField label="Module confirmed for" value={session.module} />
-                <AutoField label="Date" value={session.sessionDate ?? "[to be scheduled]"} />
-                <AutoField label="Venue" value={session.venue ?? "Pending from SPOC"} />
-                <AutoField label="City" value={session.city} />
-                <AutoField label="State" value={session.state ?? "—"} />
-                <AutoField label="Audience type" value={session.audience} />
-                <AutoField label="Participant count" value={session.participants ?? "—"} />
-                <AutoField label="SPOC name" value={session.spoc} />
-                <AutoField label="Empanelment agreement ref." value={session.agreementReference} />
+                <AutoField {...auto} label="First name" field="practitioner" value={session.practitioner.split(" ")[0]} />
+                <AutoField {...auto} label="Module confirmed for" field="module" value={session.module} />
+                <AutoField {...auto} label="Date" field="sessionDate" value={session.sessionDate ?? "[to be scheduled]"} />
+                <AutoField {...auto} label="Venue" field="venue" value={session.venue ?? "Pending from SPOC"} />
+                <AutoField {...auto} label="City" field="city" value={session.city} />
+                <AutoField {...auto} label="State" field="state" value={session.state ?? "—"} />
+                <AutoField {...auto} label="Audience type" field="audience" value={session.audience} />
+                <AutoField {...auto} label="Participant count" field="participants" value={session.participants ?? "—"} />
+                <AutoField {...auto} label="SPOC name" field="spoc" value={session.spoc} />
+                {/* No pencil: this is the agreement's identity, not a value of
+                    this confirmation. */}
+                <AutoField {...auto} label="Empanelment agreement ref." value={session.agreementReference} />
                 <AutoField
+                  {...auto}
                   label="Agreed gross payout (₹)"
+                  field="grossPayout"
                   value={inr(session.grossPayout, session.currency)}
                 />
               </div>
@@ -571,7 +679,7 @@ export function ConsentPanel({
         </div>
       </div>
 
-      {mayEdit ? <GenerateConfirmation sessions={confirmable} /> : null}
+      {mayEdit ? <GenerateConfirmation sessions={confirmable} role={role} /> : null}
 
       <section>
         <h2 className={PART}>Part 2 — Track Status</h2>
