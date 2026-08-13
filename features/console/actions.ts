@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { dispatchEmail } from "@/lib/email/dispatch";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, type EmailMessage } from "@/lib/email/send";
 import {
   adminInvite,
   applicationRejected,
@@ -21,6 +21,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
+import type { Draft, DraftKind, DraftOverride } from "./draft-kinds";
 import { requireCapability } from "./requireRole";
 import { toConsoleRole } from "./roles";
 
@@ -242,55 +243,31 @@ export async function matchSessionRequest(id: string): Promise<ActionResult> {
  * requester. What is outstanding is derived from the record rather than left to
  * the admin to remember, so the email says which thing is missing.
  */
-export async function sendRequestFollowUp(id: string): Promise<void> {
+export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
-  const supabase = createAdminClient();
+  const composed = await draftMessage("request-follow-up", id);
+  if (!composed) throw new Error("that request no longer exists");
 
-  const { data, error } = await supabase
-    .from("session_requests")
-    .select("first_name, email, venue_details, preferred_window, min_commitment, group_size")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) throw new Error(`request read failed: ${error.message}`);
-  if (!data) throw new Error("that request no longer exists");
-
-  const outstanding: string[] = [];
-  if (!data.venue_details) outstanding.push("The venue - where the session will be held.");
-  if (!data.preferred_window) outstanding.push("Your preferred dates.");
-  if (!data.min_commitment) outstanding.push("The minimum number of participants you can commit to.");
-  if (!data.group_size) outstanding.push("The expected group size.");
-  if (outstanding.length === 0) {
-    outstanding.push("Confirmation that you're still happy to go ahead, so we can lock a date.");
-  }
-
-  dispatchEmail(
-    newTraceId(),
-    sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding),
-  );
+  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "request.followed_up",
     entityType: "request",
     entityRef: id,
-    detail: outstanding.join(" "),
+    // What was outstanding is still the useful audit line; an edit is noted
+    // beside it rather than replacing it, since the admin may have rewritten
+    // the copy without changing which thing is actually missing.
+    detail: draft ? `${composed.detail} (edited before sending)` : composed.detail,
   });
 }
 
 /** "Send cancellation message" — tells the client, without changing the status. */
-export async function sendRequestCancellation(id: string): Promise<void> {
+export async function sendRequestCancellation(id: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
-  const supabase = createAdminClient();
+  const composed = await draftMessage("request-cancellation", id);
+  if (!composed) throw new Error("that request no longer exists");
 
-  const { data } = await supabase
-    .from("session_requests")
-    .select("first_name, email")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (!data) throw new Error("that request no longer exists");
-
-  dispatchEmail(newTraceId(), sessionRequestCancelled(data.email as string, data.first_name as string));
+  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "request.cancellation_sent",
@@ -625,14 +602,13 @@ export async function empanelPractitioner(rowId: string): Promise<void> {
 }
 
 /** "Send welcome message" — the welcome email on its own, no status change. */
-export async function sendWelcomeMessage(rowId: string): Promise<void> {
+export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
 
-  const supabase = createAdminClient();
-  const contact = await practitionerContact(supabase, id);
-  if (contact) dispatchEmail(newTraceId(), practitionerWelcome(contact.email, contact.firstName));
+  const composed = await draftMessage("practitioner-welcome", rowId);
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.welcomed",
@@ -1476,6 +1452,109 @@ async function assignmentContact(id: string): Promise<{ email: string; firstName
   return practitionerContact(supabase, data.practitioner_id as string);
 }
 
+/** What a follow-up is still waiting on, derived from the record. */
+function outstandingFor(request: Record<string, unknown>): string[] {
+  const outstanding: string[] = [];
+  if (!request.venue_details) outstanding.push("The venue - where the session will be held.");
+  if (!request.preferred_window) outstanding.push("Your preferred dates.");
+  if (!request.min_commitment) {
+    outstanding.push("The minimum number of participants you can commit to.");
+  }
+  if (!request.group_size) outstanding.push("The expected group size.");
+  if (outstanding.length === 0) {
+    outstanding.push("Confirmation that you're still happy to go ahead, so we can lock a date.");
+  }
+  return outstanding;
+}
+
+/**
+ * The single place a draftable message is composed.
+ *
+ * Both halves go through it — the preview the admin edits, and the send that
+ * follows — so the text on screen cannot drift from the text that leaves. That
+ * is the whole reason it exists; two call sites building the "same" message
+ * independently is how a preview starts lying.
+ *
+ * Read-only by construction: every branch looks something up and builds. A kind
+ * whose email is the consequence of a write does not belong here (see
+ * `draft-kinds.ts`).
+ */
+async function draftMessage(
+  kind: DraftKind,
+  id: string,
+): Promise<{ message: EmailMessage; detail?: string } | null> {
+  const supabase = createAdminClient();
+
+  if (kind === "request-follow-up") {
+    const { data, error } = await supabase
+      .from("session_requests")
+      .select("first_name, email, venue_details, preferred_window, min_commitment, group_size")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) throw new Error(`request read failed: ${error.message}`);
+    if (!data) return null;
+
+    const outstanding = outstandingFor(data);
+    return {
+      message: sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding),
+      detail: outstanding.join(" "),
+    };
+  }
+
+  if (kind === "request-cancellation") {
+    const { data } = await supabase
+      .from("session_requests")
+      .select("first_name, email")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!data) return null;
+    return { message: sessionRequestCancelled(data.email as string, data.first_name as string) };
+  }
+
+  if (kind === "practitioner-welcome") {
+    const { table, id: practitionerId } = pipelineId(id);
+    if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
+    const contact = await practitionerContact(supabase, practitionerId);
+    return contact ? { message: practitionerWelcome(contact.email, contact.firstName) } : null;
+  }
+
+  const contact = await assignmentContact(id);
+  if (!contact) return null;
+  if (kind === "consent-request") {
+    return { message: consentRequest(contact.email, contact.firstName, id) };
+  }
+  if (kind === "rating-request") {
+    return { message: ratingRequest(contact.email, contact.firstName, id) };
+  }
+  return { message: photoReminder(contact.email, contact.firstName, id) };
+}
+
+/**
+ * The admin's edits, laid over the composed message.
+ *
+ * The HTML twin is dropped rather than carried: it was rendered from the
+ * original copy, so keeping it would send two different messages to one person
+ * and let their mail client pick which one they read.
+ */
+function applyDraft(message: EmailMessage, draft?: DraftOverride): EmailMessage {
+  if (!draft) return message;
+  return { ...message, subject: draft.subject, body: draft.body, html: undefined };
+}
+
+/**
+ * What the draft dialog shows before anything is sent. Nothing is written here
+ * — an admin opening a dialog and closing it again must leave no trace.
+ */
+export async function composeDraft(kind: DraftKind, id: string): Promise<Draft | null> {
+  await requireCapability("mutate");
+  const draft = await draftMessage(kind, id);
+  if (!draft) return null;
+  const { to, subject, body } = draft.message;
+  return { to, subject, body };
+}
+
 /**
  * "Generate Confirmation" (V7 tab 4, Part 1).
  *
@@ -1548,24 +1627,24 @@ export async function generateConfirmation(
   return { ok: true };
 }
 
-export async function sendConsentRequest(assignmentId: string): Promise<void> {
+export async function sendConsentRequest(assignmentId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
-  const contact = await assignmentContact(assignmentId);
-  if (contact) dispatchEmail(newTraceId(), consentRequest(contact.email, contact.firstName, assignmentId));
+  const composed = await draftMessage("consent-request", assignmentId);
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({ actorEmail: actor, action: "consent.requested", entityType: "assignment", entityRef: assignmentId });
 }
 
-export async function sendRatingRequest(assignmentId: string): Promise<void> {
+export async function sendRatingRequest(assignmentId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
-  const contact = await assignmentContact(assignmentId);
-  if (contact) dispatchEmail(newTraceId(), ratingRequest(contact.email, contact.firstName, assignmentId));
+  const composed = await draftMessage("rating-request", assignmentId);
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({ actorEmail: actor, action: "rating.requested", entityType: "assignment", entityRef: assignmentId });
 }
 
-export async function sendPhotoGuide(assignmentId: string): Promise<void> {
+export async function sendPhotoGuide(assignmentId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
-  const contact = await assignmentContact(assignmentId);
-  if (contact) dispatchEmail(newTraceId(), photoReminder(contact.email, contact.firstName, assignmentId));
+  const composed = await draftMessage("photo-guide", assignmentId);
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({ actorEmail: actor, action: "photo_guide.sent", entityType: "assignment", entityRef: assignmentId });
 }
 

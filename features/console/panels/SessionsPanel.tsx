@@ -187,6 +187,7 @@ function columns(role: ConsoleRole): ReadonlyArray<ColumnDef<SessionRow>> {
         row.status === "Completed" && row.assignmentId ? (
           <RowAction
             action={sendRatingRequest.bind(null, row.assignmentId)}
+            draft={{ kind: "rating-request", id: row.assignmentId }}
             label="Send email"
             pendingMessage={`Sending a rating request for ${row.reference}…`}
             variant="ghost"

@@ -373,6 +373,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
               />
               <RowAction
                 action={sendConsentRequest.bind(null, done.id)}
+                draft={{ kind: "consent-request", id: done.id }}
                 label="Send consent request"
                 pendingMessage={`Sending the consent request to ${done.practitioner}…`}
                 variant="ghost"
@@ -446,6 +447,7 @@ function PhotoGuidePart({ sessions }: { sessions: readonly ConfirmableSession[] 
               />
               <RowAction
                 action={sendPhotoGuide.bind(null, session.id)}
+                draft={{ kind: "photo-guide", id: session.id }}
                 label="Send photo guide email"
                 pendingMessage={`Sending the photo guide to ${session.practitioner}…`}
                 variant="ghost"

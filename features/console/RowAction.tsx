@@ -1,9 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Toast } from "@/components/ui/Toast";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
+
+import { DraftModal } from "./DraftModal";
+import type { DraftKind, DraftOverride } from "./draft-kinds";
 
 /**
  * A single console row action with the 15-second Undo window (procedure §114).
@@ -30,16 +33,28 @@ export function RowAction({
   tone = "neutral",
   variant = "link",
   icon,
+  draft,
 }: {
-  action: () => Promise<void>;
+  action: (draft?: DraftOverride) => Promise<void>;
   label: string;
   /** Shown in the toast while the Undo window is open, e.g. "Matching request…". */
   pendingMessage: string;
   tone?: "neutral" | "danger";
   variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary";
   icon?: ReactNode;
+  /**
+   * Show the message first (client, 2026-08-13). With this set, clicking opens
+   * the draft dialog instead of starting the Undo window; the window starts
+   * when the admin presses Send in there, carrying whatever they edited.
+   *
+   * The Undo window is kept for *every* kind, where V7 dropped it on the
+   * internal ones. It costs nothing beside a dialog the admin has already read,
+   * and removing a working safety net to match a prototype is the wrong trade.
+   */
+  draft?: { kind: DraftKind; id: string };
 }) {
   const { pending, schedule, undo } = useDeferredSend();
+  const [drafting, setDrafting] = useState(false);
 
   const focus =
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50";
@@ -65,13 +80,25 @@ export function RowAction({
     <>
       <button
         type="button"
-        onClick={() => schedule(action, pendingMessage)}
+        onClick={() => (draft ? setDrafting(true) : schedule(action, pendingMessage))}
         disabled={Boolean(pending)}
         className={CLASSES[variant]}
       >
         {variant !== "link" && icon ? icon : null}
         {label}
       </button>
+
+      {draft && drafting ? (
+        <DraftModal
+          onClose={() => setDrafting(false)}
+          kind={draft.kind}
+          id={draft.id}
+          onSend={(edited) => {
+            setDrafting(false);
+            schedule(() => action(edited), pendingMessage);
+          }}
+        />
+      ) : null}
 
       {pending ? (
         <Toast
