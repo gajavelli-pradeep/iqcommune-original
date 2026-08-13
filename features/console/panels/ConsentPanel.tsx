@@ -5,7 +5,14 @@ import { useMemo, useState, useTransition } from "react";
 import { controlClass, selectClass } from "@/components/ui/control";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
-import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
+import {
+  generateConfirmation,
+  overrideConfirmationField,
+  sendConsentRequest,
+  sendPhotoGuide,
+  setSessionStatus,
+  type ConfirmationField,
+} from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
 import { DraftModal } from "../DraftModal";
@@ -29,6 +36,18 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
 const PART = "mb-1.5 text-2xs font-bold uppercase tracking-caps text-gold-dark";
 const LABEL = "mb-[5px] block text-xs font-semibold text-ink";
+
+/**
+ * The two follow-on actions before a confirmation exists — V7's `.btn-ghost`
+ * at `opacity:.45`.
+ *
+ * Rendered as spans rather than disabled buttons, and `aria-hidden`: they are
+ * placeholders showing what will become available, and a disabled control that
+ * can never be reached by keyboard is noise to a screen reader. The line beside
+ * them says what to do instead, which is the part worth announcing.
+ */
+const DIMMED_PILL =
+  "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted";
 /** The confirmation form's own controls — V7's tight white selects. */
 const FIELD = controlClass({ tone: "compact" });
 
@@ -55,11 +74,99 @@ function to24Hour(hour: string, minute: string, meridiem: string): string {
   return `${String(value).padStart(2, "0")}:${minute}`;
 }
 
-function AutoField({ label, value }: { label: string; value: string }) {
+/**
+ * One auto-populated field, with V7's Global-Admin correction pencil.
+ *
+ * `field` omitted means nothing may correct this by hand — the same convention
+ * `KvRow` uses on the practitioner card. V7 instead renders a pencil on every
+ * row and raises "this field is computed" when two of them are clicked; an
+ * absent pencil says that before the click rather than after it.
+ */
+function AutoField({
+  label,
+  value,
+  field,
+  assignmentId,
+  canOverride,
+}: {
+  label: string;
+  value: string;
+  field?: ConfirmationField;
+  /** Both omitted where the field is display-only, as in Part 3's summary. */
+  assignmentId?: string;
+  canOverride?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      await overrideConfirmationField(assignmentId!, field!, draft);
+      setEditing(false);
+    });
+  };
+
   return (
     <div>
-      <div className="text-3xs uppercase tracking-caps text-ink-faint">{label}</div>
-      <div className="mt-px font-medium text-ink">{value}</div>
+      <div className="flex items-center gap-1 text-3xs uppercase tracking-caps text-ink-faint">
+        {label}
+        {field && canOverride && !editing ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(value);
+              setEditing(true);
+            }}
+            title="Global Admin: correct the source record"
+            // 9px pencil as V7 draws it, with the pseudo-element growing the
+            // tap target to 44×44 on touch without changing the visual.
+            className="relative inline-flex items-center rounded px-1 py-0.5 text-gold-dark transition-colors hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold [@media(any-pointer:coarse)]:after:absolute [@media(any-pointer:coarse)]:after:left-1/2 [@media(any-pointer:coarse)]:after:top-1/2 [@media(any-pointer:coarse)]:after:h-11 [@media(any-pointer:coarse)]:after:w-11 [@media(any-pointer:coarse)]:after:-translate-x-1/2 [@media(any-pointer:coarse)]:after:-translate-y-1/2 [@media(any-pointer:coarse)]:after:content-['']"
+          >
+            <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            <span className="sr-only">Correct {label}</span>
+          </button>
+        ) : null}
+      </div>
+
+      {editing ? (
+        <div className="mt-px flex flex-wrap items-center gap-1.5">
+          <label className="sr-only" htmlFor={`${assignmentId}-${field}`}>
+            {label}
+          </label>
+          <input
+            id={`${assignmentId}-${field}`}
+            value={draft}
+            autoFocus
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") save();
+              if (event.key === "Escape") setEditing(false);
+            }}
+            className={controlClass({ tone: "compact", className: "min-w-0 flex-1" })}
+          />
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending}
+            className="rounded-md px-2 py-1 text-xs font-semibold text-gold-dark underline underline-offset-2 disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="rounded-md px-2 py-1 text-xs text-ink-faint underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="mt-px font-medium text-ink">{value}</div>
+      )}
     </div>
   );
 }
@@ -202,7 +309,13 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
 ];
 
 /** Part 1 — generate a confirmation for a matched session. */
-function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSession[] }) {
+function GenerateConfirmation({
+  sessions,
+  role,
+}: {
+  sessions: readonly ConfirmableSession[];
+  role: ConsoleRole;
+}) {
   const [selected, setSelected] = useState("");
   const [hour, setHour] = useState("10");
   const [minute, setMinute] = useState("00");
@@ -225,6 +338,9 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
   const [done, setDone] = useState<ConfirmableSession | null>(null);
 
   const session = useMemo(() => sessions.find((entry) => entry.id === selected), [sessions, selected]);
+
+  // Shared by every field in the grid; only the label, value and column differ.
+  const auto = { assignmentId: session?.id ?? "", canOverride: can(role, "override") };
 
   return (
     <section>
@@ -251,7 +367,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
             }}
             className={`${PICKER} max-w-[480px]`}
           >
-            <option value="">— Select a matched session —</option>
+            <option value="">— Choose a session —</option>
             {sessions.map((entry) => (
               <option key={entry.id} value={entry.id}>
                 {entry.sessionReference} — {entry.practitioner} — {entry.module}
@@ -271,15 +387,30 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
               <div className="mb-2 text-3xs font-semibold uppercase tracking-caps text-ink-faint">
                 Auto-populated — from the request and practitioner record
               </div>
+              {/* V7's eleven fields, in its order and under its labels. The
+                  earlier eight renamed most of them, dropped Date, State and
+                  the payout, and showed the confirmation reference under a
+                  label that means the empanelment agreement — two different
+                  identifiers on two different records. */}
               <div className="grid gap-x-5 gap-y-2.5 text-xs sm:grid-cols-2">
-                <AutoField label="Practitioner" value={session.practitioner} />
-                <AutoField label="Module" value={session.module} />
-                <AutoField label="Requested by (SPOC)" value={session.spoc} />
-                <AutoField label="Audience" value={session.audience} />
-                <AutoField label="City" value={[session.city, session.state].filter(Boolean).join(", ")} />
-                <AutoField label="Venue" value={session.venue ?? "Pending from SPOC"} />
-                <AutoField label="Participants" value={session.participants ?? "—"} />
-                <AutoField label="Confirmation ref." value={session.confirmationReference} />
+                <AutoField {...auto} label="First name" field="practitioner" value={session.practitioner.split(" ")[0]} />
+                <AutoField {...auto} label="Module confirmed for" field="module" value={session.module} />
+                <AutoField {...auto} label="Date" field="sessionDate" value={session.sessionDate ?? "[to be scheduled]"} />
+                <AutoField {...auto} label="Venue" field="venue" value={session.venue ?? "Pending from SPOC"} />
+                <AutoField {...auto} label="City" field="city" value={session.city} />
+                <AutoField {...auto} label="State" field="state" value={session.state ?? "—"} />
+                <AutoField {...auto} label="Audience type" field="audience" value={session.audience} />
+                <AutoField {...auto} label="Participant count" field="participants" value={session.participants ?? "—"} />
+                <AutoField {...auto} label="SPOC name" field="spoc" value={session.spoc} />
+                {/* No pencil: this is the agreement's identity, not a value of
+                    this confirmation. */}
+                <AutoField {...auto} label="Empanelment agreement ref." value={session.agreementReference} />
+                <AutoField
+                  {...auto}
+                  label="Agreed gross payout (₹)"
+                  field="grossPayout"
+                  value={inr(session.grossPayout, session.currency)}
+                />
               </div>
             </div>
 
@@ -406,32 +537,48 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
           </>
         ) : null}
 
-        {/* The two follow-on actions. V7 renders them disabled until a
-            confirmation exists; there is nothing to download or request consent
-            against before then, so they are absent rather than inert. */}
+        {/* V7 keeps both actions on screen from the start, dimmed to 45% and
+            disabled, then turns them gold once a confirmation exists — the
+            state change is how it tells you the generate worked. They were
+            absent-until-ready here, which loses that signal and moves the
+            layout under the cursor.
+
+            Gold takes an ink label, not V7's white: white on --color-gold is
+            2.1:1 and fails AA. Recorded here so it is not "corrected" back. */}
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           {done ? (
             <>
               <DownloadLink
                 href={`/api/consents/${done.id}/pdf`}
                 label="Download PDF"
+                sublabel="(fallback, for sending offline)"
                 title="Download the confirmation, for sending offline"
+                tone="gold"
               />
               <RowAction
                 action={sendConsentRequest.bind(null, done.id)}
                 draft={{ kind: "consent-request", id: done.id }}
                 label="Send consent request"
                 pendingMessage={`Sending the consent request to ${done.practitioner}…`}
-                variant="ghost"
+                variant="gold-pill"
               />
               <span aria-live="polite" className="text-xs text-ink-faint">
-                Generated {done.confirmationReference} for {done.practitioner}.
+                Generated {done.confirmationReference} for {done.practitioner} — download the PDF if
+                needed, or send the consent request directly.
               </span>
             </>
           ) : (
-            <span className="text-xs text-ink-faint">
-              Generate a confirmation to download it or request consent.
-            </span>
+            <>
+              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
+                Download PDF <span className="font-normal opacity-75">(fallback, for sending offline)</span>
+              </span>
+              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
+                Send consent request
+              </span>
+              <span className="text-xs text-ink-faint">
+                Generate a confirmation to download it or request consent.
+              </span>
+            </>
           )}
         </div>
       </div>
@@ -532,7 +679,7 @@ export function ConsentPanel({
         </div>
       </div>
 
-      {mayEdit ? <GenerateConfirmation sessions={confirmable} /> : null}
+      {mayEdit ? <GenerateConfirmation sessions={confirmable} role={role} /> : null}
 
       <section>
         <h2 className={PART}>Part 2 — Track Status</h2>

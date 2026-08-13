@@ -40,7 +40,7 @@ export function RowAction({
   /** Shown in the toast while the Undo window is open, e.g. "Matching request…". */
   pendingMessage: string;
   tone?: "neutral" | "danger";
-  variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary";
+  variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary" | "gold-pill";
   icon?: ReactNode;
   /**
    * Show the message first (client, 2026-08-13). With this set, clicking opens
@@ -74,6 +74,10 @@ export function RowAction({
     }`,
     dark: `flex w-full items-center justify-center gap-[7px] rounded-lg bg-ink px-3.5 py-2.5 text-sm font-medium text-surface transition-opacity hover:opacity-90 ${focus}`,
     primary: `flex w-full items-center justify-center gap-[7px] rounded-lg bg-gold px-3.5 py-2.5 text-sm font-semibold text-ink shadow-gold transition-[filter] hover:brightness-[1.08] ${focus}`,
+    // V7 `.btn-gold.btn-sm`: the same pill as `ghost`, turned gold. Used where
+    // an action becomes available rather than appearing — the consent panel's
+    // two follow-ons after a confirmation is generated.
+    "gold-pill": `inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-1 text-xs font-medium text-ink shadow-gold transition-[filter] hover:brightness-[1.08] ${focus}`,
   };
 
   return (

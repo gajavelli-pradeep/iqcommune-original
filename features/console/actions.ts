@@ -791,6 +791,107 @@ const OVERRIDABLE = {
 export type OverridableField = keyof typeof OVERRIDABLE;
 
 /**
+ * The consent panel's correctable fields (V7's pencils on the auto-populated
+ * grid). Keyed to the table the panel actually *reads* from, which is the
+ * detail V7 gets wrong: its `module` and `audience` pencils write to the
+ * practitioner and request records while the panel and the generated document
+ * both read the session, so those two edits report success and change nothing.
+ *
+ * `agreementReference` has no entry on purpose — it is another record's
+ * identity, not a value of this confirmation. V7 renders a pencil for it (and
+ * for the participant count) that only raises an error when clicked; an absent
+ * pencil says the same thing without the dead end.
+ */
+const CONFIRMATION_OVERRIDES = {
+  practitioner: { table: "practitioners", column: "full_name", onAssignment: false },
+  module: { table: "sessions", column: "module", onAssignment: false },
+  sessionDate: { table: "sessions", column: "session_date", onAssignment: false },
+  venue: { table: "sessions", column: "venue", onAssignment: false },
+  city: { table: "sessions", column: "city", onAssignment: false },
+  state: { table: "sessions", column: "state", onAssignment: false },
+  audience: { table: "sessions", column: "audience", onAssignment: false },
+  participants: { table: "sessions", column: "participants", onAssignment: false },
+  spoc: { table: "sessions", column: "spoc_name", onAssignment: false },
+  grossPayout: { table: "session_practitioners", column: "gross_payout", onAssignment: true },
+} as const;
+
+export type ConfirmationField = keyof typeof CONFIRMATION_OVERRIDES;
+
+/**
+ * A Global-Admin correction from the consent panel, written to the record the
+ * value belongs to rather than to the document.
+ *
+ * Global Admin only, and checked here rather than trusted from the client — the
+ * pencil is hidden for other roles as an affordance, not as the guard.
+ */
+export async function overrideConfirmationField(
+  assignmentId: string,
+  field: ConfirmationField,
+  value: string,
+): Promise<void> {
+  const { email: actor } = await requireCapability("override");
+  const spec = CONFIRMATION_OVERRIDES[field];
+  if (!spec) throw new Error(`field is not overridable: ${field}`);
+
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error("a corrected value cannot be empty");
+
+  const supabase = createAdminClient();
+  const { data: assignment } = await supabase
+    .from("session_practitioners")
+    .select("session_id, practitioner_id")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!assignment) throw new Error("that assignment no longer exists");
+
+  let patch: Record<string, unknown>;
+  if (field === "grossPayout") {
+    // Typed with a currency symbol and separators more often than not.
+    const amount = Number(trimmed.replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(amount) || amount < 0) throw new Error("enter a payout as a number");
+    patch = { [spec.column]: amount };
+  } else if (field === "practitioner") {
+    // The panel shows the first name but the column holds the whole name.
+    // V7 writes the edited first name straight over `full_name`, which renames
+    // the practitioner to a single word everywhere the record is read. Only the
+    // first token is replaced here, so the surname survives.
+    const { data: current } = await supabase
+      .from("practitioners")
+      .select("full_name")
+      .eq("id", assignment.practitioner_id as string)
+      .maybeSingle();
+    const rest = ((current?.full_name as string) ?? "").split(" ").slice(1).join(" ");
+    patch = { full_name: rest ? `${trimmed} ${rest}` : trimmed };
+  } else {
+    patch = { [spec.column]: trimmed };
+  }
+
+  const targetId =
+    spec.table === "practitioners"
+      ? (assignment.practitioner_id as string)
+      : spec.onAssignment
+        ? assignmentId
+        : (assignment.session_id as string);
+
+  const { error } = await supabase
+    .from(spec.table)
+    .update(patch)
+    .eq("id", targetId)
+    .is("deleted_at", null);
+  if (error) throw new Error(`override failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "confirmation.field_overridden",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `Global Admin corrected ${field}.`,
+  });
+  revalidateConsole();
+}
+
+/**
  * A Global-Admin correction to a field the applicant supplied (V7's pencil
  * buttons). Global Admin only — `override` is deliberately not part of
  * `mutate`, because correcting a system-of-record value is a different power
