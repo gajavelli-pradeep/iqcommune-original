@@ -551,13 +551,19 @@ export function RequestModal({
               error={errors.groupSize}
               hint="Sessions are capped at 25 participants."
             />
+            {/* V7 labels this "Preferred date window" and promises "we confirm
+                offline" — the one control still asking for the thing the page
+                stopped promising, directly under a CTA that now asks only for a
+                topic and a group. The field itself stays: it is optional, and a
+                rough window is the signal that decides which city gets
+                empanelled first. Only the promise attached to it is gone. */}
             <TextField
-              label="Preferred date window"
+              label="Preferred timing"
               placeholder="e.g. July last week"
               value={form.preferredWindow ?? ""}
               onChange={(value) => set("preferredWindow", value)}
               error={errors.preferredWindow}
-              hint="Rough window is fine — we confirm offline."
+              hint="Optional — a rough window helps us prioritise cities. Nothing is scheduled yet."
             />
           </div>
 

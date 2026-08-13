@@ -8,10 +8,20 @@ describe("HowItWorks", () => {
     const headings = screen.getAllByRole("heading", { level: 3 });
     expect(headings.map((h) => h.textContent)).toEqual([
       "Pick a topic",
-      "Send your request",
-      "We get in touch",
+      "Join the waitlist",
+      "We map your city",
       "Attend Session",
     ]);
+  });
+
+  it("promises no schedule while the waitlist phase is on", () => {
+    const { container } = render(<HowItWorks />);
+    // The section survived the client's messaging change by being reworded
+    // rather than hidden. Any of these reappearing means it drifted back to
+    // promising a date the empanelment phase cannot keep.
+    expect(container.textContent).not.toMatch(
+      /schedule around you|lock in the schedule|preferred date window/i,
+    );
   });
 
   it("numbers the steps 1 to 4", () => {
