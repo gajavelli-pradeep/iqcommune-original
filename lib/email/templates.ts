@@ -3,23 +3,28 @@ import { siteUrl } from "@/lib/siteUrl";
 
 import { escapeHtml, safeHref } from "./html";
 import { buildLink } from "./links";
-import { senderNameFor, type EmailMessage, type EmailStream } from "./send";
+import type { EmailMessage } from "./send";
 
 /**
- * How a body signs off — the stream's own name (client, 2026-08-10): session
- * mail signs "Session Commune", practitioner mail "Practitioner Commune".
+ * How a body signs off — one signature on every email (client, 2026-08-13).
  *
- * Resolved through `senderNameFor` rather than written out, so the sign-off is
- * always the same name the recipient sees in the From line. The two saying
- * different things is the failure this prevents.
+ * Supersedes the per-stream sign-off of 2026-08-10, where session mail signed
+ * "Session Commune" and practitioner mail "Practitioner Commune". The client
+ * asked for one consistent signature, generalising the wording already approved
+ * for `sessionRequestReceived` below.
  *
- * Only the sign-off moves. "iqcommune" elsewhere in these bodies names the
+ * The body signature and the From line therefore differ by design now. The
+ * envelope still carries the stream's own name via `senderNameFor` (send.ts),
+ * so a reply still reaches the mailbox whose job it is, while every body signs
+ * the same way. The 2026-08-10 note called that drift the failure to prevent —
+ * it is now the requirement, so move both together if this is reconsidered.
+ *
+ * Only the signature is shared. "iqcommune" elsewhere in these bodies names the
  * organisation — "the iqcommune practitioner network", "your empanelment with
- * iqcommune" — and substituting there would produce "the Practitioner Commune
- * practitioner network".
+ * iqcommune" — and is left alone.
  */
-const signOff = (stream: EmailStream) => `- ${senderNameFor(stream)}`;
-const signOffTeam = (stream: EmailStream) => `The ${senderNameFor(stream)} Team`;
+const SIGN_OFF = "- Team iqcommune";
+const SIGN_OFF_TEAM = "Team iqcommune";
 
 /**
  * Plain-text templates — plus, where a template carries a link worth turning
@@ -73,18 +78,18 @@ function detailRow(label: string, value: string): string {
 
 /**
  * Exact copy from the client's interest-acknowledgment spec (2026-08-12) —
- * subject, body and sign-off all specified verbatim, not the house style used
- * elsewhere in this file.
+ * subject and body specified verbatim, not the house style used elsewhere in
+ * this file.
  *
- * Two deliberate departures from the 2026-08-10 conventions, both the client's
- * own wording. First, no reply window is promised: for the opening months
- * sessions are not scheduled on arrival, so the commitment is to the
- * practitioner mapping rather than to a date. Second, the sign-off reads
- * "Team iqcommune" rather than `signOffTeam("session")` — this one template
- * therefore signs a different name from the one on its own envelope, which is
- * exactly the mismatch the per-stream sign-off exists to prevent. It is the
- * client's approved text; revert to `signOffTeam("session")` if that is
- * reconsidered rather than "correcting" it silently.
+ * One deliberate departure from the 2026-08-10 conventions, the client's own
+ * wording: no reply window is promised, because for the opening months sessions
+ * are not scheduled on arrival, so the commitment is to the practitioner
+ * mapping rather than to a date.
+ *
+ * Its sign-off used to be the lone hardcoded "Team iqcommune" while every other
+ * body signed per-stream. The client generalised this one to all of them on
+ * 2026-08-13, so it now reads from `SIGN_OFF_TEAM` like the rest — the same
+ * string it always rendered, no longer an exception.
  */
 export function sessionRequestReceived(to: string, firstName: string, topic: string): EmailMessage {
   return {
@@ -102,7 +107,7 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
       "Again, on behalf of everyone at iqcommune, we thank you reposing your faith in us. Looking forward to seeing you in the session very soon.",
       "",
       "Regards,",
-      "Team iqcommune",
+      SIGN_OFF_TEAM,
     ),
   };
 }
@@ -134,7 +139,7 @@ export function sessionRequestFollowUp(
       "",
       "Reply to this email and we'll get it scheduled.",
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
   };
 }
@@ -153,7 +158,7 @@ export function sessionRequestCancelled(to: string, firstName: string): EmailMes
       "",
       "If circumstances change, or you'd like to discuss a different date or format, just reply here and we'll pick it back up.",
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
   };
 }
@@ -198,7 +203,7 @@ export function newSessionRequestForAdmin(to: string, request: SessionRequestSum
       "",
       `Review in console: ${consoleUrl}`,
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -242,7 +247,7 @@ export function applicationReceived(to: string, firstName: string, applicationId
       link,
       "",
       "Regards,",
-      signOffTeam("practitioner"),
+      SIGN_OFF_TEAM,
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -251,7 +256,7 @@ export function applicationReceived(to: string, firstName: string, applicationId
       `<p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. ` +
       `Nothing to prepare — just a chance for us to understand each other a little better.</p>` +
       goldButton(link, "Track your application →") +
-      `<p>Regards,<br>${escapeHtml(signOffTeam("practitioner"))}</p>` +
+      `<p>Regards,<br>${escapeHtml(SIGN_OFF_TEAM)}</p>` +
       `</div>`,
   };
 }
@@ -290,7 +295,7 @@ export function newApplicationForAdmin(to: string, application: ApplicationSumma
       "",
       `Review in console: ${consoleUrl}`,
       "",
-      signOff("practitioner"),
+      SIGN_OFF,
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -323,7 +328,7 @@ export function ratingRequest(to: string, firstName: string, assignmentId: strin
       "",
       buildLink("rate", assignmentId),
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
   };
 }
@@ -341,7 +346,7 @@ export function consentRequest(to: string, firstName: string, assignmentId: stri
       "",
       buildLink("consent", assignmentId),
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
   };
 }
@@ -369,7 +374,7 @@ export function photoReminder(to: string, firstName: string, assignmentId: strin
       "",
       buildLink("photos", assignmentId),
       "",
-      signOff("session"),
+      SIGN_OFF,
     ),
   };
 }
@@ -387,7 +392,7 @@ export function onboardingLink(to: string, firstName: string, agreementId: strin
       "",
       buildLink("onboarding", agreementId),
       "",
-      signOff("practitioner"),
+      SIGN_OFF,
     ),
   };
 }
@@ -406,7 +411,7 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
       "",
       "This link can only be used once.",
       "",
-      signOff("platform"),
+      SIGN_OFF,
     ),
   };
 }
@@ -430,7 +435,7 @@ export function practitionerWelcome(to: string, firstName: string): EmailMessage
       "Welcome aboard - your empanelment is confirmed and you're now part of the iqcommune",
       "practitioner network. We'll be in touch with your first session details soon.",
       "",
-      signOff("practitioner"),
+      SIGN_OFF,
     ),
   };
 }
@@ -448,7 +453,7 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
       "not able to move forward with your application at this time. We genuinely appreciate the",
       "time you took to apply, and we wish you the very best.",
       "",
-      signOff("practitioner"),
+      SIGN_OFF,
     ),
   };
 }
@@ -466,7 +471,7 @@ export function practitionerDeactivated(to: string, firstName: string): EmailMes
       "won't be assigned further sessions. If you believe this is in error, please reply to this",
       "email and we'll take a look.",
       "",
-      signOff("practitioner"),
+      SIGN_OFF,
     ),
   };
 }
