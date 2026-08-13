@@ -227,23 +227,27 @@ export function DownloadPhotosModal({
   const allSelected = photos !== null && selected.size === photos.length && photos.length > 0;
 
   /**
-   * Saves each chosen photo. Staggered because browsers throttle several
-   * programmatic downloads fired in the same tick — unstaggered, all but the
-   * first are silently dropped, which looks like the button half-working.
+   * Saves the chosen photos as one archive.
+   *
+   * This used to click a hidden `<a download>` per photo, staggered by 400ms
+   * against download throttling. It could not work: the links point at Supabase
+   * Storage, and a browser ignores `download` on a cross-origin URL — so the
+   * first click navigated to the image and unloaded the console, and the queued
+   * timers for the rest never ran. One photo saved nothing; five saved nothing
+   * and lost the page.
+   *
+   * The zip route is same-origin, so `download` is honoured, one click means one
+   * file, and there is no multiple-download prompt to dismiss.
    */
   const downloadSelected = () => {
-    if (!photos) return;
-    [...selected].forEach((index, at) => {
-      setTimeout(() => {
-        const link = document.createElement("a");
-        link.href = photos[index].url;
-        link.download = `${row.sessionReference}-photo-${index + 1}`;
-        link.rel = "noopener";
-        document.body.append(link);
-        link.click();
-        link.remove();
-      }, at * 400);
-    });
+    if (!photos || selected.size === 0) return;
+    const select = [...selected].sort((a, b) => a - b).join(",");
+    const link = document.createElement("a");
+    link.href = `/api/photo-submissions/${row.submissionId}/download?format=zip&select=${select}`;
+    link.download = `${row.sessionReference}-photos.zip`;
+    document.body.append(link);
+    link.click();
+    link.remove();
   };
 
   const footer = (
