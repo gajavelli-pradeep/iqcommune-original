@@ -39,6 +39,33 @@ export type DraftKind =
  */
 export const LINK_PLACEHOLDER = "[a secure one-time link is inserted here when you send]";
 
+/**
+ * Stands in for the row the send is about to create, purely so the template can
+ * render a body worth previewing. Never reaches an inbox — `maskLink` strips
+ * the URL it produces, and the send mints the real one against the real id.
+ */
+export const PREVIEW_ID = "00000000-0000-4000-8000-000000000000";
+
+/**
+ * Any tokenised URL the template produced, swapped for the placeholder.
+ *
+ * Matched by shape rather than by equality: `buildLink` mints a fresh token on
+ * every call, so the URL sitting in the composed body is not the one a second
+ * call would hand back to compare against.
+ */
+export function maskLink(body: string): string {
+  return body.replace(/https?:\/\/\S+\?t=\S+/, LINK_PLACEHOLDER);
+}
+
+/** The real link, put back where the placeholder sat. */
+export function withLink(body: string, link: string): string {
+  return body.includes(LINK_PLACEHOLDER)
+    ? body.replaceAll(LINK_PLACEHOLDER, link)
+    : // Deleted by the admin. These emails exist to carry the link, so it goes
+      // back on its own line rather than the message going out useless.
+      `${body}\n\n${link}`;
+}
+
 /** What the admin edited, as it leaves the dialog. */
 export interface DraftOverride {
   subject: string;

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { buildLink } from "@/lib/email/links";
 import { sendEmail, type EmailMessage } from "@/lib/email/send";
 import {
   adminInvite,
@@ -21,7 +22,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
-import type { Draft, DraftKind, DraftOverride } from "./draft-kinds";
+import {
+  maskLink,
+  withLink,
+  PREVIEW_ID,
+  type Draft,
+  type DraftKind,
+  type DraftOverride,
+} from "./draft-kinds";
 import { requireCapability } from "./requireRole";
 import { toConsoleRole } from "./roles";
 
@@ -414,7 +422,7 @@ export async function setApplicationStage(rowId: string, stage: string): Promise
  * Idempotent — a second click resends the link for the existing agreement
  * rather than issuing a second one.
  */
-export async function generateAndSendAgreement(rowId: string): Promise<void> {
+export async function generateAndSendAgreement(rowId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
   const { table, id } = pipelineId(rowId);
@@ -510,7 +518,18 @@ export async function generateAndSendAgreement(rowId: string): Promise<void> {
   }
 
   const contact = await practitionerContact(supabase, practitionerId);
-  if (contact) dispatchEmail(newTraceId(), onboardingLink(contact.email, contact.firstName, agreementId));
+  if (contact) {
+    // The agreement exists now, so the link the draft only stood in for can
+    // finally be minted and put back where the placeholder sat.
+    dispatchEmail(
+      newTraceId(),
+      applyDraft(
+        onboardingLink(contact.email, contact.firstName, agreementId),
+        draft,
+        buildLink("onboarding", agreementId),
+      ),
+    );
+  }
 
   await recordActivity({
     actorEmail: actor,
@@ -1539,6 +1558,29 @@ async function draftMessage(
     return { message: applicationRejected(data.email as string, data.first_name as string) };
   }
 
+  if (kind === "onboarding-link") {
+    const { table, id: rowRef } = pipelineId(id);
+    let contact: { email: string; firstName: string } | null = null;
+
+    if (table === "practitioner") {
+      contact = await practitionerContact(supabase, rowRef);
+    } else {
+      // Not promoted yet — the practitioner record is created by the send, so
+      // the applicant's own row is what the draft is addressed from.
+      const { data } = await supabase
+        .from("practitioner_applications")
+        .select("email, first_name")
+        .eq("id", rowRef)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (data) contact = { email: data.email as string, firstName: data.first_name as string };
+    }
+    if (!contact) return null;
+
+    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID);
+    return { message: { ...message, body: maskLink(message.body) } };
+  }
+
   if (kind === "session-cancellation") {
     // The session names the request; the request names the person to write to.
     const { data: session } = await supabase
@@ -1577,10 +1619,12 @@ async function draftMessage(
  * original copy, so keeping it would send two different messages to one person
  * and let their mail client pick which one they read.
  */
-function applyDraft(message: EmailMessage, draft?: DraftOverride): EmailMessage {
+function applyDraft(message: EmailMessage, draft?: DraftOverride, link?: string): EmailMessage {
   if (!draft) return message;
-  return { ...message, subject: draft.subject, body: draft.body, html: undefined };
+  const body = link ? withLink(draft.body, link) : draft.body;
+  return { ...message, subject: draft.subject, body, html: undefined };
 }
+
 
 /**
  * What the draft dialog shows before anything is sent. Nothing is written here

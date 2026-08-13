@@ -412,6 +412,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                   <>
                     <RowAction
                       action={generateAndSendAgreement.bind(null, row.id)}
+                      draft={{ kind: "onboarding-link", id: row.id }}
                       label="Generate & send empanelment agreement"
                       pendingMessage={`Sending the agreement to ${row.name}…`}
                       variant="primary"
@@ -432,6 +433,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                   <>
                     <RowAction
                       action={generateAndSendAgreement.bind(null, row.id)}
+                      draft={{ kind: "onboarding-link", id: row.id }}
                       label="Resend agreement link"
                       pendingMessage={`Resending the agreement to ${row.name}…`}
                       variant="ghost-block"
