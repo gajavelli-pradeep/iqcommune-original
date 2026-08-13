@@ -70,11 +70,10 @@ is resolved separately by `senderNameFor()`, and since 2026-08-10 it differs by 
 | `practitioner` | Practitioner Commune | `BREVO_SENDER_NAME_PRACTITIONER` |
 | `platform` | `BREVO_SENDER_NAME`, else `iqcommune` | — |
 
-These names apply to the **envelope only**. Since 2026-08-13 every body signs
-"- Team iqcommune" regardless of stream (client decision, superseding the per-stream sign-off of
-2026-08-10), so a session email arrives from "Session Commune" and signs "Team iqcommune". The two
-differ by design: the envelope routes the reply, the signature is the house name. "iqcommune"
-elsewhere in the copy names the organisation ("the iqcommune practitioner network") and stays.
+The same resolver supplies the **sign-off inside the body**, so a session email signs
+"- Session Commune" and cannot drift from the name on the envelope. Only the sign-off moves;
+"iqcommune" elsewhere in the copy names the organisation ("the iqcommune practitioner network") and
+stays.
 
 The two overrides fall back to a **constant, not to `BREVO_SENDER_NAME`**. That variable is set to
 `IQCommune` in production, so falling back to it would leave the From line reading IQCommune while

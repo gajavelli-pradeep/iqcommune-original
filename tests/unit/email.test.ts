@@ -329,11 +329,10 @@ describe("email sender routing", () => {
     expect(senderNameFor("practitioner")).toBe("Practitioner Commune");
   });
 
-  it("signs every body the same way, whatever name the envelope carries", async () => {
-    // Client, 2026-08-13: one signature on every email. The envelope still
-    // names the stream so a reply reaches the right mailbox, so From and
-    // sign-off now differ deliberately — this proves both halves at once, and
-    // supersedes the 2026-08-10 rule that they must match.
+  it("signs the body with the same name the envelope carries", async () => {
+    // The failure this guards: someone edits one and not the other, and a
+    // recipient sees mail from "Session Commune" signed "iqcommune". One
+    // resolver feeds both, and this proves it end to end.
     vi.stubEnv("EMAIL_DELIVERY", "live");
     vi.stubEnv("BREVO_API_KEY", "key");
     vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
@@ -346,33 +345,17 @@ describe("email sender routing", () => {
 
     await sendEmail("trace", templates.sessionRequestCancelled("a@b.com", "Asha"), noPersistence);
     expect(sent?.sender?.name).toBe("Session Commune");
-    expect(sent?.textContent).toContain("- Team iqcommune");
+    expect(sent?.textContent).toContain("- Session Commune");
 
     await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram"), noPersistence);
     expect(sent?.sender?.name).toBe("Practitioner Commune");
-    expect(sent?.textContent).toContain("- Team iqcommune");
+    expect(sent?.textContent).toContain("- Practitioner Commune");
   });
 
-  it("leaves no per-stream sign-off behind", () => {
-    // The 2026-08-13 ask was consistency, so the guard is the absence of the
-    // old names: a template quietly reintroducing one is the regression.
-    const bodies = [
-      templates.sessionRequestCancelled("a@b.com", "Asha").body,
-      templates.practitionerWelcome("a@b.com", "Vikram").body,
-      templates.onboardingLink("a@b.com", "Vikram", ID).body,
-      templates.applicationReceived("a@b.com", "Vikram", ID).body,
-    ];
-
-    for (const body of bodies) {
-      expect(body).toContain("Team iqcommune");
-      expect(body).not.toContain("Session Commune");
-      expect(body).not.toContain("Practitioner Commune");
-    }
-  });
-
-  it("keeps the organisation's name out of the signature", () => {
-    // "iqcommune" elsewhere in the copy names the company, not the sender, and
-    // is left alone — the signature is the only line that changed.
+  it("keeps the organisation's name out of the sign-off swap", () => {
+    // "iqcommune" elsewhere in the copy names the company, not the sender.
+    // Substituting there would read "the Practitioner Commune practitioner
+    // network".
     const welcome = templates.onboardingLink("a@b.com", "Vikram", ID);
     expect(welcome.subject).toContain("iqcommune");
     expect(templates.applicationReceived("a@b.com", "Vikram", ID).body).toContain(
@@ -411,17 +394,17 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     );
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
-    // Sign-off updated by the client on 2026-08-13 — one signature everywhere,
-    // superseding the per-stream "The Practitioner Commune Team" of 2026-08-10.
-    // The prose above it is untouched: that names the organisation, not the sender.
-    expect(message.body).toContain("Regards,\nTeam iqcommune");
+    // Sign-off updated by the client on 2026-08-10 — per stream, superseding the
+    // verbatim "The iqcommune Team" of the original acknowledgment spec. The
+    // prose above it is untouched: that names the organisation, not the sender.
+    expect(message.body).toContain("Regards,\nThe Practitioner Commune Team");
 
     // The HTML version carries the same client-approved wording — only the
     // link's presentation (a button, not a bare URL) differs.
     expect(message.html).toContain(
       "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
     );
-    expect(message.html).toContain("Regards,<br>Team iqcommune");
+    expect(message.html).toContain("Regards,<br>The Practitioner Commune Team");
   });
 
   it("admin notification for a new application names the applicant, modules and a console link", () => {
@@ -483,9 +466,9 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.body).toContain(
       "we have received your request for a session on Equity Investing Simplified.",
     );
-    // Client copy, 2026-08-12, generalised to every template on 2026-08-13.
-    // Once the lone exception, now the house signature — still asserted here
-    // because this is the template whose approved wording set it.
+    // Client copy, 2026-08-12. This template signs "Team iqcommune" rather than
+    // the per-stream `signOffTeam("session")` every other session email uses —
+    // asserted so the departure cannot be reverted by tidying.
     expect(message.body).toContain("Regards,\nTeam iqcommune");
     expect(message.body).not.toContain("The Session Commune Team");
   });
