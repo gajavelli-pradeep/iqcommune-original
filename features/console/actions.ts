@@ -533,10 +533,15 @@ async function nextReference(
 }
 
 /** "Send rejection message" — sets the stage and tells the applicant. */
-export async function rejectApplication(rowId: string): Promise<void> {
+export async function rejectApplication(rowId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "application") throw new Error("only an application can be rejected");
+
+  // Composed before the status moves. The copy addresses the applicant, so
+  // nothing in it depends on the transition having happened — and this is the
+  // same text the admin was shown, edits included.
+  const composed = await draftMessage("application-rejected", rowId);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -544,11 +549,11 @@ export async function rejectApplication(rowId: string): Promise<void> {
     .update({ status: "Rejected" })
     .eq("id", id)
     .is("deleted_at", null)
-    .select("email, first_name")
+    .select("id")
     .maybeSingle();
   if (error) throw new Error(`rejection failed: ${error.message}`);
 
-  if (data) dispatchEmail(newTraceId(), applicationRejected(data.email as string, data.first_name as string));
+  if (data && composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "application.rejected",
@@ -563,13 +568,14 @@ export async function rejectApplication(rowId: string): Promise<void> {
  * hatch for a practitioner who signed on paper, so the pipeline is not stuck
  * waiting for a webhook that will never arrive.
  */
-export async function empanelPractitioner(rowId: string): Promise<void> {
+export async function empanelPractitioner(rowId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") {
     throw new Error("send the agreement first — there is no practitioner record to empanel yet");
   }
 
+  const composed = await draftMessage("practitioner-welcome", rowId);
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioners")
@@ -589,8 +595,7 @@ export async function empanelPractitioner(rowId: string): Promise<void> {
       .eq("id", data.application_id);
   }
 
-  const contact = await practitionerContact(supabase, id);
-  if (contact) dispatchEmail(newTraceId(), practitionerWelcome(contact.email, contact.firstName));
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.empanelled",
@@ -617,10 +622,12 @@ export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): 
   });
 }
 
-export async function deactivatePractitioner(rowId: string): Promise<void> {
+export async function deactivatePractitioner(rowId: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") throw new Error("only an empanelled practitioner can be deactivated");
+
+  const composed = await draftMessage("practitioner-deactivated", rowId);
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -630,8 +637,7 @@ export async function deactivatePractitioner(rowId: string): Promise<void> {
     .is("deleted_at", null);
   if (error) throw new Error(`deactivate failed: ${error.message}`);
 
-  const contact = await practitionerContact(supabase, id);
-  if (contact) dispatchEmail(newTraceId(), practitionerDeactivated(contact.email, contact.firstName));
+  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.deactivated",
@@ -840,7 +846,11 @@ const SESSION_STAGE_ACTIONS: Record<string, string> = {
  * Cancelling it tells the client, because a session that quietly disappears
  * from the console has not been cancelled from their side.
  */
-export async function setSessionStatus(sessionId: string, status: string): Promise<void> {
+export async function setSessionStatus(
+  sessionId: string,
+  status: string,
+  draft?: DraftOverride,
+): Promise<void> {
   const { email: actor } = await requireCapability("mutate");
   if (!SESSION_STAGES.has(status)) throw new Error(`unknown session status: ${status}`);
 
@@ -855,18 +865,8 @@ export async function setSessionStatus(sessionId: string, status: string): Promi
   if (error) throw new Error(`session status update failed: ${error.message}`);
 
   if (status === "Cancelled" && data?.session_request_id) {
-    const { data: request } = await supabase
-      .from("session_requests")
-      .select("first_name, email")
-      .eq("id", data.session_request_id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (request) {
-      dispatchEmail(
-        newTraceId(),
-        sessionRequestCancelled(request.email as string, request.first_name as string),
-      );
-    }
+    const composed = await draftMessage("session-cancellation", sessionId);
+    if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   }
 
   await recordActivity({
@@ -1513,11 +1513,50 @@ async function draftMessage(
     return { message: sessionRequestCancelled(data.email as string, data.first_name as string) };
   }
 
-  if (kind === "practitioner-welcome") {
+  if (kind === "practitioner-welcome" || kind === "practitioner-deactivated") {
     const { table, id: practitionerId } = pipelineId(id);
     if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
     const contact = await practitionerContact(supabase, practitionerId);
-    return contact ? { message: practitionerWelcome(contact.email, contact.firstName) } : null;
+    if (!contact) return null;
+    return {
+      message:
+        kind === "practitioner-welcome"
+          ? practitionerWelcome(contact.email, contact.firstName)
+          : practitionerDeactivated(contact.email, contact.firstName),
+    };
+  }
+
+  if (kind === "application-rejected") {
+    const { table, id: applicationId } = pipelineId(id);
+    if (table !== "application") throw new Error("only an application can be rejected");
+    const { data } = await supabase
+      .from("practitioner_applications")
+      .select("email, first_name")
+      .eq("id", applicationId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!data) return null;
+    return { message: applicationRejected(data.email as string, data.first_name as string) };
+  }
+
+  if (kind === "session-cancellation") {
+    // The session names the request; the request names the person to write to.
+    const { data: session } = await supabase
+      .from("sessions")
+      .select("session_request_id")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!session?.session_request_id) return null;
+
+    const { data: request } = await supabase
+      .from("session_requests")
+      .select("first_name, email")
+      .eq("id", session.session_request_id as string)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!request) return null;
+    return { message: sessionRequestCancelled(request.email as string, request.first_name as string) };
   }
 
   const contact = await assignmentContact(id);
