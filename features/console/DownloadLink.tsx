@@ -15,23 +15,42 @@ import type { ReactNode } from "react";
 export function DownloadLink({
   href,
   label,
+  sublabel,
   title,
   icon,
+  tone = "ghost",
 }: {
   href: string;
   label: string;
+  /** V7 puts a dimmer qualifier inside the button, e.g. "(fallback, …)". */
+  sublabel?: string;
   /** The fuller description, when the visible label is a single word. */
   title?: string;
   icon?: ReactNode;
+  /**
+   * `ghost` is the resting look everywhere. `gold` is V7's post-generate state
+   * on the consent panel, where the colour change is what reports that the
+   * confirmation was created.
+   *
+   * Gold takes an ink label, not V7's white: white on `--color-gold` is 2.1:1
+   * and fails AA (same call as `RowAction`'s `primary`).
+   */
+  tone?: "ghost" | "gold";
 }) {
+  const look =
+    tone === "gold"
+      ? "bg-gold text-ink shadow-gold hover:brightness-[1.08]"
+      : "border border-border-strong bg-surface text-ink-muted hover:bg-surface-soft hover:text-ink";
+
   return (
     <a
       href={href}
       title={title}
-      className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${look}`}
     >
       {icon ?? <DownloadIcon />}
       {label}
+      {sublabel ? <span className="font-normal opacity-75">{sublabel}</span> : null}
     </a>
   );
 }

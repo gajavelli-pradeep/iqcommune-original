@@ -572,6 +572,8 @@ export interface ConfirmableSession {
   sessionReference: string;
   confirmationReference: string;
   practitioner: string;
+  /** The practitioner's live empanelment agreement — V7 shows it on the panel. */
+  agreementReference: string;
   module: string;
   sessionDate: string | null;
   city: string;
@@ -594,7 +596,7 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
   const query = supabase
     .from("session_practitioners")
     .select(
-      "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, module, session_date, city, state, venue, participants, spoc_name, audience, start_time, duration_minutes, deleted_at )",
+      "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name, practitioner_agreements ( reference, deleted_at ) ), sessions ( reference, module, session_date, city, state, venue, participants, spoc_name, audience, start_time, duration_minutes, deleted_at )",
     )
     .is("deleted_at", null)
     .limit(500);
@@ -607,7 +609,10 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
 
   return (data ?? [])
     .map((row) => {
-      const practitioner = one<{ full_name: string }>(row.practitioners);
+      const practitioner = one<{
+        full_name: string;
+        practitioner_agreements: { reference: string; deleted_at: string | null }[] | null;
+      }>(row.practitioners);
       const session = one<{
         reference: string;
         module: string;
@@ -631,6 +636,11 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
         sessionReference: session.reference,
         confirmationReference: row.confirmation_reference,
         practitioner: practitioner?.full_name ?? "—",
+        // The empanelment agreement the confirmation sits under. A practitioner
+        // has one live agreement at a time (see `generateAndSendAgreement`), so
+        // the first undeleted row is it.
+        agreementReference:
+          practitioner?.practitioner_agreements?.find((row) => !row.deleted_at)?.reference ?? "—",
         module: session.module,
         sessionDate: session.session_date,
         city: session.city,

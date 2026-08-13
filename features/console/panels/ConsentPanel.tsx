@@ -29,6 +29,18 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
 const PART = "mb-1.5 text-2xs font-bold uppercase tracking-caps text-gold-dark";
 const LABEL = "mb-[5px] block text-xs font-semibold text-ink";
+
+/**
+ * The two follow-on actions before a confirmation exists — V7's `.btn-ghost`
+ * at `opacity:.45`.
+ *
+ * Rendered as spans rather than disabled buttons, and `aria-hidden`: they are
+ * placeholders showing what will become available, and a disabled control that
+ * can never be reached by keyboard is noise to a screen reader. The line beside
+ * them says what to do instead, which is the part worth announcing.
+ */
+const DIMMED_PILL =
+  "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted";
 /** The confirmation form's own controls — V7's tight white selects. */
 const FIELD = controlClass({ tone: "compact" });
 
@@ -271,15 +283,26 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
               <div className="mb-2 text-3xs font-semibold uppercase tracking-caps text-ink-faint">
                 Auto-populated — from the request and practitioner record
               </div>
+              {/* V7's eleven fields, in its order and under its labels. The
+                  earlier eight renamed most of them, dropped Date, State and
+                  the payout, and showed the confirmation reference under a
+                  label that means the empanelment agreement — two different
+                  identifiers on two different records. */}
               <div className="grid gap-x-5 gap-y-2.5 text-xs sm:grid-cols-2">
-                <AutoField label="Practitioner" value={session.practitioner} />
-                <AutoField label="Module" value={session.module} />
-                <AutoField label="Requested by (SPOC)" value={session.spoc} />
-                <AutoField label="Audience" value={session.audience} />
-                <AutoField label="City" value={[session.city, session.state].filter(Boolean).join(", ")} />
+                <AutoField label="First name" value={session.practitioner.split(" ")[0]} />
+                <AutoField label="Module confirmed for" value={session.module} />
+                <AutoField label="Date" value={session.sessionDate ?? "[to be scheduled]"} />
                 <AutoField label="Venue" value={session.venue ?? "Pending from SPOC"} />
-                <AutoField label="Participants" value={session.participants ?? "—"} />
-                <AutoField label="Confirmation ref." value={session.confirmationReference} />
+                <AutoField label="City" value={session.city} />
+                <AutoField label="State" value={session.state ?? "—"} />
+                <AutoField label="Audience type" value={session.audience} />
+                <AutoField label="Participant count" value={session.participants ?? "—"} />
+                <AutoField label="SPOC name" value={session.spoc} />
+                <AutoField label="Empanelment agreement ref." value={session.agreementReference} />
+                <AutoField
+                  label="Agreed gross payout (₹)"
+                  value={inr(session.grossPayout, session.currency)}
+                />
               </div>
             </div>
 
@@ -406,32 +429,48 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
           </>
         ) : null}
 
-        {/* The two follow-on actions. V7 renders them disabled until a
-            confirmation exists; there is nothing to download or request consent
-            against before then, so they are absent rather than inert. */}
+        {/* V7 keeps both actions on screen from the start, dimmed to 45% and
+            disabled, then turns them gold once a confirmation exists — the
+            state change is how it tells you the generate worked. They were
+            absent-until-ready here, which loses that signal and moves the
+            layout under the cursor.
+
+            Gold takes an ink label, not V7's white: white on --color-gold is
+            2.1:1 and fails AA. Recorded here so it is not "corrected" back. */}
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           {done ? (
             <>
               <DownloadLink
                 href={`/api/consents/${done.id}/pdf`}
                 label="Download PDF"
+                sublabel="(fallback, for sending offline)"
                 title="Download the confirmation, for sending offline"
+                tone="gold"
               />
               <RowAction
                 action={sendConsentRequest.bind(null, done.id)}
                 draft={{ kind: "consent-request", id: done.id }}
                 label="Send consent request"
                 pendingMessage={`Sending the consent request to ${done.practitioner}…`}
-                variant="ghost"
+                variant="gold-pill"
               />
               <span aria-live="polite" className="text-xs text-ink-faint">
-                Generated {done.confirmationReference} for {done.practitioner}.
+                Generated {done.confirmationReference} for {done.practitioner} — download the PDF if
+                needed, or send the consent request directly.
               </span>
             </>
           ) : (
-            <span className="text-xs text-ink-faint">
-              Generate a confirmation to download it or request consent.
-            </span>
+            <>
+              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
+                Download PDF <span className="font-normal opacity-75">(fallback, for sending offline)</span>
+              </span>
+              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
+                Send consent request
+              </span>
+              <span className="text-xs text-ink-faint">
+                Generate a confirmation to download it or request consent.
+              </span>
+            </>
           )}
         </div>
       </div>
