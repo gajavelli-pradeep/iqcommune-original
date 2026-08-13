@@ -59,13 +59,30 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
           className="flex gap-3 px-8 pb-8 transition-transform duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)] motion-reduce:transition-none"
           style={{ transform: `translateX(-${offset}px)` }}
         >
+          {/* Hovering a slide already pauses the carousel (the handlers above),
+              so the card answers with a slow push-in and a warmer edge — it
+              makes the pause read as deliberate rather than as the animation
+              stalling.
+
+              Only `transform` and colour move, both compositor-cheap. Gated on
+              a real hover pointer, since a touch device leaves a card stuck in
+              the hovered state after a tap, and on `motion-safe`, so a
+              reduced-motion visitor keeps the border and loses the zoom.
+              Nothing here is a control, so there is no focus state to pair
+              with — the arrows and dots below own the keyboard path. */}
           {slides.map((slide) => (
             <li
               key={slide.caption}
-              className="relative aspect-[4/3] w-80 shrink-0 overflow-hidden rounded-[10px] border border-on-dark-divider bg-gallery-slide"
+              className="group relative aspect-[4/3] w-80 shrink-0 overflow-hidden rounded-[10px] border border-on-dark-divider bg-gallery-slide transition-colors duration-300 [@media(hover:hover)]:hover:border-gold/40"
             >
               {slide.url ? (
-                <Image src={slide.url} alt={slide.caption} fill sizes="320px" className="object-cover" />
+                <Image
+                  src={slide.url}
+                  alt={slide.caption}
+                  fill
+                  sizes="320px"
+                  className="object-cover transition-transform duration-500 ease-out motion-safe:[@media(hover:hover)]:group-hover:scale-[1.04]"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <svg
