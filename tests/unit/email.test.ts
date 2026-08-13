@@ -242,6 +242,30 @@ describe("email sender routing", () => {
     expect(sent?.sender?.email).toBe("practitioner@iqcommune.com");
   });
 
+  it("sends the account setup email from the platform address", async () => {
+    // Client, 2026-08-13: "account setup email should go from hello". The
+    // invite declares no stream, so it resolves through the platform default to
+    // BREVO_SENDER_EMAIL. Pinned because that variable is now carrying a
+    // requirement rather than the fallback it started as — and because the two
+    // dedicated senders are set here, proving they cannot drag the invite off
+    // the platform address with them.
+    vi.stubEnv("EMAIL_DELIVERY", "live");
+    vi.stubEnv("BREVO_API_KEY", "key");
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_SESSION", "session@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "practitioner@iqcommune.com");
+
+    let sent: { sender?: { email?: string } } | undefined;
+    vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ messageId: "1" }));
+    });
+
+    await sendEmail("trace", templates.adminInvite("a@b.com", ID), noPersistence);
+
+    expect(sent?.sender?.email).toBe("hello@iqcommune.com");
+  });
+
   /**
    * The return trip. `senderFor` falling back to the shared inbox used to take
    * replies with it, because nothing set Reply-To — so an answer to an
