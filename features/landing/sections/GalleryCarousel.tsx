@@ -18,6 +18,15 @@ const VISIBLE = 3;
 const AUTOPLAY_MS = 4500;
 
 export type GallerySlide = {
+  /**
+   * Identity, and the React key.
+   *
+   * The caption used to serve as the key, which held only while every caption
+   * happened to differ. Two photos published under the same one — easily done,
+   * and likelier still while someone is testing — collide, and React drops or
+   * duplicates a slide rather than rendering both.
+   */
+  id: string;
   caption: string;
   city?: string;
   url?: string;
@@ -59,13 +68,30 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
           className="flex gap-3 px-8 pb-8 transition-transform duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)] motion-reduce:transition-none"
           style={{ transform: `translateX(-${offset}px)` }}
         >
+          {/* Hovering a slide already pauses the carousel (the handlers above),
+              so the card answers with a slow push-in and a warmer edge — it
+              makes the pause read as deliberate rather than as the animation
+              stalling.
+
+              Only `transform` and colour move, both compositor-cheap. Gated on
+              a real hover pointer, since a touch device leaves a card stuck in
+              the hovered state after a tap, and on `motion-safe`, so a
+              reduced-motion visitor keeps the border and loses the zoom.
+              Nothing here is a control, so there is no focus state to pair
+              with — the arrows and dots below own the keyboard path. */}
           {slides.map((slide) => (
             <li
-              key={slide.caption}
-              className="relative aspect-[4/3] w-80 shrink-0 overflow-hidden rounded-[10px] border border-on-dark-divider bg-gallery-slide"
+              key={slide.id}
+              className="group relative aspect-[4/3] w-80 shrink-0 overflow-hidden rounded-[10px] border border-on-dark-divider bg-gallery-slide transition-colors duration-300 [@media(hover:hover)]:hover:border-gold/40"
             >
               {slide.url ? (
-                <Image src={slide.url} alt={slide.caption} fill sizes="320px" className="object-cover" />
+                <Image
+                  src={slide.url}
+                  alt={slide.caption}
+                  fill
+                  sizes="320px"
+                  className="object-cover transition-transform duration-500 ease-out motion-safe:[@media(hover:hover)]:group-hover:scale-[1.04]"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <svg
@@ -123,7 +149,7 @@ export function GalleryCarousel({ slides }: { slides: readonly GallerySlide[] })
         <div className="flex gap-1.5">
           {slides.map((slide, i) => (
             <button
-              key={slide.caption}
+              key={slide.id}
               type="button"
               onClick={() => goTo(i)}
               aria-label={`Go to photo ${i + 1}`}

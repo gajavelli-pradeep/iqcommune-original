@@ -57,6 +57,7 @@ const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Built for people, not for portfolios" },
 ].map((slide, i) => ({
   ...slide,
+  id: `placeholder-${i + 1}`,
   url: `/gallery/gallery-placeholder-${i + 1}.png`,
   captionInArt: true,
 }));
@@ -83,7 +84,7 @@ export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
   // section got worse the moment it got its first real content — and stayed
   // worse until the twentieth.
   const slides: readonly GallerySlide[] = [
-    ...photos.map((p) => ({ caption: p.caption, city: p.city, url: p.url })),
+    ...photos.map((p) => ({ id: p.id, caption: p.caption, city: p.city, url: p.url })),
     ...PLACEHOLDERS.slice(photos.length),
   ];
 
