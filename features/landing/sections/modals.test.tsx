@@ -71,7 +71,7 @@ describe("RequestModal", () => {
 
     render(<RequestModal open onClose={() => {}} />);
     await fillRequestForm(user);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: RECEIPT_HEADING })).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("RequestModal", () => {
     const fetchMock = mockFetch(201, {});
 
     render(<RequestModal open onClose={() => {}} />);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     expect(await screen.findByText("First name is required")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe("RequestModal", () => {
     mockFetch(201, {});
 
     render(<RequestModal open onClose={() => {}} />);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     // Nothing is filled in, so the audience picker is the first thing wrong —
     // and it comes before every text field in the DOM.
@@ -130,7 +130,7 @@ describe("RequestModal", () => {
       target: { value: "TechCorp India" },
     });
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Rohan" } });
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     await waitFor(() => {
       expect(document.activeElement).toBe(screen.getByLabelText("Last name"));
@@ -146,7 +146,7 @@ describe("RequestModal", () => {
 
     render(<RequestModal open onClose={() => {}} />);
     await fillRequestForm(user);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     // A server fault shows the client's copy, not the API's message.
     expect(await screen.findByRole("alert")).toHaveTextContent(SUBMIT_FAILURE.message);
@@ -162,7 +162,7 @@ describe("RequestModal", () => {
 
     render(<RequestModal open onClose={() => {}} sessionEmail="session@iqcommune.com" />);
     await fillRequestForm(user);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     const link = await screen.findByRole("link", { name: "Open pre-filled email" });
     // The address stays readable as text: right-click → copy is the only rescue
@@ -202,7 +202,7 @@ describe("RequestModal", () => {
 
     render(<RequestModal open onClose={() => {}} sessionEmail="session@iqcommune.com" />);
     await fillRequestForm(user);
-    await user.click(screen.getByRole("button", { name: "Send Request" }));
+    await user.click(screen.getByRole("button", { name: "Join the Waitlist" }));
 
     expect(await screen.findByText("Please check the highlighted fields.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open pre-filled email" })).not.toBeInTheDocument();

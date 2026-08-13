@@ -99,9 +99,14 @@ export function OnboardingForm({
         >
           Agreement signed. Welcome to iqcommune.
         </h1>
+        {/* V7 promises the first session details "within 2-3 working days".
+            That was written before the waitlist phase: a practitioner who signs
+            today is empanelled ahead of demand, and no session exists to send
+            them. The 2-3 day window still holds for reviewing an *application*
+            — see features/practitioners — but not for a session. */}
         <p className="mb-5 text-base leading-[1.6] text-ink-muted">
           Your empanelment is confirmed. We&apos;ll be in touch with your first session details
-          within 2–3 working days. Keep an eye on your inbox.
+          as soon as sessions open in your city. Keep an eye on your inbox.
         </p>
         <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
           {(

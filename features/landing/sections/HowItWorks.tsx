@@ -6,6 +6,15 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
  * Rendered as an <ol>: the steps happen in order, and the numerals are the
  * content rather than decoration. The visible circles are the list's own
  * numbering made explicit, so a screen reader hears "1" as part of the step.
+ *
+ * Steps 2 and 3 are the waitlist phase's wording. V7 has them as "Send your
+ * request" and "We get in touch" — a request that gets answered and a schedule
+ * that gets locked in, which is the promise the rest of the page stopped
+ * making. They now describe what actually happens while practitioners are still
+ * being empanelled: the interest is recorded, and the city is what everyone is
+ * waiting on. Steps 1 and 4 needed no change — picking a topic and attending
+ * the session are the same either side of launch, which is what makes the
+ * section forward-looking rather than a description of today.
  */
 
 const STEPS = [
@@ -15,14 +24,14 @@ const STEPS = [
       "Choose the area that fits your need — or a 6-hour bundle covering two related modules. Unsure? We'll guide you.",
   },
   {
-    title: "Send your request",
+    title: "Join the waitlist",
     description:
-      "Share your audience type, group size (up to 25), and a preferred date window. We take it from there.",
+      "Share your audience type and group size (up to 25). Nothing is scheduled yet — you're on the list.",
   },
   {
-    title: "We get in touch",
+    title: "We map your city",
     description:
-      "Our team reaches out to confirm details, align the right practitioner, and lock in the schedule with you.",
+      "We're still empanelling practitioners city by city. Once one matches your topic and your city, we reach out to plan the details with you.",
   },
   {
     title: "Attend Session",
@@ -38,7 +47,7 @@ export function HowItWorks() {
         <SectionHeading
           tag="Process"
           headline="How it works."
-          sub="Tell us what you need. We align the right practitioner and schedule around you."
+          sub="Tell us what you need. Here's how a session comes together once we're live in your city."
         />
 
         {/* flex-wrap with a 180px basis: four across on desktop, two on a

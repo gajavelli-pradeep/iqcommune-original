@@ -113,6 +113,61 @@ export const LANDING_PENDING: PendingUnit[] = [
     ),
   },
   {
+    unit: "Deviation · how it works, reworded for the waitlist phase",
+    reason:
+      "The client's 2026-08-12 changelog rewrote thirteen locations away from promising a " +
+      "scheduled session, listed this block under 'Flagged, But Not Changed', and left the call " +
+      "open. The call: reworded, not hidden. Steps 2 and 3 were the whole of the promise — a " +
+      "request that gets answered and a schedule that gets locked in — and are now the waitlist " +
+      "and the city that everyone is waiting on. Steps 1 and 4 are unchanged and still render, " +
+      "which is what leaves the section forward-looking rather than a description of today.",
+    kind: "deviation",
+    lines: [1094, 1109],
+  },
+  {
+    unit: "Deviation · FAQ answers that promised a schedule",
+    reason:
+      "Four answers described active scheduling in prose. The changelog caught only the two that " +
+      "named the form by its old title, because those are the two a find-and-replace on 'Request " +
+      "a Session' would surface; these say the same thing without the phrase. Each keeps its " +
+      "answer and loses only the scheduling clause.",
+    kind: "deviation",
+    matches: containing(
+      // FAQ 1 — asks for a date window, then promises to confirm the schedule.
+      "a preferred date window, and your venue details",
+      // FAQ 5 — "we build the session schedule around it".
+      "we build the session schedule around it",
+      // FAQ 6 — "around your schedule".
+      "align the right practitioner around your schedule",
+      // FAQ 8 — "before we confirm your session details".
+      "before we confirm your session details",
+    ),
+  },
+  {
+    unit: "Deviation · the dialog's submit button names the action it completes",
+    reason:
+      "V7 labels it 'Send Request'. The changelog renamed this dialog's title, subtitle, fine " +
+      "print and receipt to the waitlist and stopped there, so the one control that actually " +
+      "submits the form still sent a request — the last place on the page where the old model " +
+      "survived, and the most consequential, being the control the visitor presses. It now " +
+      "carries the same phrase as every CTA that opens the dialog. The button-contract gate " +
+      "still counts three of those on the closed page; this fourth exists only while the dialog " +
+      "is open.",
+    kind: "deviation",
+    lines: [1752, 1752],
+  },
+  {
+    unit: "Deviation · preferred-window field carries no scheduling promise",
+    reason:
+      "V7 labels this 'Preferred date window' and hints 'we confirm offline' — the last control " +
+      "still asking for the thing the page stopped promising, and it sits directly under a CTA " +
+      "the same changelog rewrote to ask only for a topic and a group. The field itself stays: " +
+      "it is optional, and a rough window is the signal that decides which city gets empanelled " +
+      "first. Its placeholder is unchanged and still renders; only the label and the hint move.",
+    kind: "deviation",
+    lines: [1715, 1717],
+  },
+  {
     unit: "Deviation · unreachable default declaration text",
     reason:
       "The spec's static SPOC sentence is overwritten by its own script the moment an audience " +

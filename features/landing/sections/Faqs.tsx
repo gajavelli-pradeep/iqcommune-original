@@ -17,7 +17,7 @@ const FAQS: ReadonlyArray<Faq> = [
   {
     question: "How do I register if I have a group?",
     answer:
-      "One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, a preferred date window, and your venue details. We align a practitioner and confirm the schedule with you directly. Your group takes care of the venue — we handle the rest, from practitioner match to logistics on our end.",
+      "One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, and your venue details. We align a practitioner and confirm the details with you directly once we're live in your city. Your group takes care of the venue — we handle the rest, from practitioner match to logistics on our end.",
   },
   {
     question: "Will the practitioner try to sell me financial products?",
@@ -37,14 +37,14 @@ const FAQS: ReadonlyArray<Faq> = [
   {
     question: "Where are the sessions held? Are they online?",
     answer:
-      "All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. Your group finalises the venue once it's formed, and we build the session schedule around it.",
+      "All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. Your group finalises the venue once it's formed, and we build the session around it.",
   },
   {
     question: "Can my company book a session for a team?",
     answer: (
       <>
         Yes. Organisational sessions work differently — you bring the group (your team), and
-        we align the right practitioner around your schedule. This covers corporates,
+        we align the right practitioner around your team&apos;s needs. This covers corporates,
         educational institutions, hospitals, media &amp; production houses, and any
         organisation looking to upskill its people. Sessions are tailored to your
         workforce&apos;s financial literacy level and specific needs. Please note that venue
@@ -63,7 +63,7 @@ const FAQS: ReadonlyArray<Faq> = [
   {
     question: "How is the practitioner chosen for my session?",
     answer:
-      "We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Investment Solutions & Portfolio Strategies is currently structuring client portfolios. The match is made internally before we confirm your session details.",
+      "We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Investment Solutions & Portfolio Strategies is currently structuring client portfolios. The match is made internally, before we confirm anything with you.",
   },
   {
     question: "Who arranges the venue?",
