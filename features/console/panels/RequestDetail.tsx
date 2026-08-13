@@ -230,6 +230,7 @@ export function RequestDetail({
             <div className="flex flex-col gap-1.5">
               <RowAction
                 action={sendRequestFollowUp.bind(null, row.id)}
+                draft={{ kind: "request-follow-up", id: row.id }}
                 label="Send follow-up to client"
                 pendingMessage={`Sending a follow-up to ${row.name}…`}
                 variant="dark"
@@ -242,6 +243,7 @@ export function RequestDetail({
               />
               <RowAction
                 action={sendRequestCancellation.bind(null, row.id)}
+                draft={{ kind: "request-cancellation", id: row.id }}
                 label="Send cancellation message"
                 pendingMessage={`Sending a cancellation to ${row.name}…`}
                 variant="ghost-block"

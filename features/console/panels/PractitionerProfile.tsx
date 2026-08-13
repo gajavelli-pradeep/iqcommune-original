@@ -455,6 +455,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                   <>
                     <RowAction
                       action={sendWelcomeMessage.bind(null, row.id)}
+                      draft={{ kind: "practitioner-welcome", id: row.id }}
                       label="Send welcome message"
                       pendingMessage={`Sending a welcome to ${row.name}…`}
                       variant="ghost-block"
