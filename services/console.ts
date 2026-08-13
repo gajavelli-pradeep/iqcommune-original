@@ -521,6 +521,8 @@ export interface ConsentRow {
   recordedOn: string;
   sessionStatus: string;
   issuedOn: string;
+  /** `YYYY-MM` of issue, for Part 2's "Issued in" filter. */
+  issuedMonth: string;
 }
 
 const CONSENT_SELECT =
@@ -557,6 +559,9 @@ export async function listConsents(): Promise<ConsentRow[]> {
       recordedOn: date(row.consent_given_at),
       sessionStatus: session?.status ?? "—",
       issuedOn: date(row.confirmation_generated_at),
+      // `issuedOn` is already formatted for display, so the period filter gets
+      // its own sortable value rather than parsing a rendered date back.
+      issuedMonth: (row.confirmation_generated_at as string | null)?.slice(0, 7) ?? "",
     };
   });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { controlClass, selectClass } from "@/components/ui/control";
@@ -36,6 +37,12 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
 const PART = "mb-1.5 text-2xs font-bold uppercase tracking-caps text-gold-dark";
 const LABEL = "mb-[5px] block text-xs font-semibold text-ink";
+
+/** V7's abbreviated month names on the "Issued in" filter. */
+const MONTHS_ISSUED = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
 /**
  * The two follow-on actions before a confirmation exists — V7's `.btn-ghost`
@@ -665,31 +672,147 @@ export function ConsentPanel({
   photoGuideSessions: readonly ConfirmableSession[];
 }) {
   const mayEdit = can(role, "mutate");
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [month, setMonth] = useState("all");
+  const [year, setYear] = useState("all");
+  const [refreshing, start] = useTransition();
+  const [checked, setChecked] = useState<string | null>(null);
+  const router = useRouter();
+
+  /**
+   * The years actually present, not V7's hardcoded [2025, 2026, 2027].
+   * That window is already nearly spent — its own generated references read
+   * IQC-2026 — and a year missing from the list silently hides every
+   * confirmation issued in it.
+   */
+  const years = useMemo(
+    () => [...new Set(rows.map((row) => row.issuedMonth.slice(0, 4)).filter(Boolean))].sort().reverse(),
+    [rows],
+  );
+
+  const visible = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (month !== "all" && row.issuedMonth.slice(5, 7) !== month) return false;
+        if (year !== "all" && row.issuedMonth.slice(0, 4) !== year) return false;
+        return !pendingOnly || row.status !== "Received";
+      }),
+    [rows, month, year, pendingOnly],
+  );
+
+  /**
+   * Counted across every confirmation, not the filtered view.
+   *
+   * V7 derives this from the filtered set, so narrowing "Issued in" to a quiet
+   * month drops the number — and it feeds the sidebar badge, so a workload
+   * indicator visible from every other tab reads zero while the work still
+   * exists. Fidelity is not worth that.
+   */
   const awaitingConsent = rows.filter((row) => row.status !== "Received").length;
 
   return (
     <>
-      {/* V7 .pending-bar. No period filter here — V7's "Issued in:" selects
-          exist but this panel's table is the only thing they could filter, and
-          it is already ordered by issue date. */}
-      <div className="mb-5 border-b border-border pb-5">
-        <div className="inline-block min-w-[120px] rounded-lg border border-red/30 bg-red-light px-4 py-2">
+      {/* V7 `.pending-bar` — the count hard left, the period filter hard right. */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-5">
+        {/* A button, not V7's `<div onclick>`: that version cannot be reached
+            by Tab or fired by Enter, and its "showing only this" caption lives
+            in CSS `content`, where no screen reader or translation reaches it. */}
+        <button
+          type="button"
+          aria-pressed={pendingOnly}
+          onClick={() => setPendingOnly((on) => !on)}
+          className={`min-w-[120px] select-none rounded-lg border bg-red-light px-4 py-2 text-left transition-[box-shadow,border-color] hover:border-red focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${
+            pendingOnly ? "border-red shadow-[0_0_0_2px_rgba(163,45,45,0.18)]" : "border-red/30"
+          }`}
+        >
           <span className="block text-4xl font-bold leading-[1.1] text-red">{awaitingConsent}</span>
           <span className="block text-xs text-ink-muted">Signed copy not yet received</span>
+          {pendingOnly ? (
+            <span className="mt-[3px] block text-3xs font-semibold text-red">✓ showing only this</span>
+          ) : null}
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <span className="mr-0.5 text-xs text-ink-faint">Issued in:</span>
+          <label className="sr-only" htmlFor="consent-month">
+            Month issued
+          </label>
+          <select
+            id="consent-month"
+            value={month}
+            onChange={(event) => setMonth(event.target.value)}
+            className={PICKER}
+          >
+            <option value="all">All months</option>
+            {MONTHS_ISSUED.map((name, index) => (
+              <option key={name} value={String(index + 1).padStart(2, "0")}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <label className="sr-only" htmlFor="consent-year">
+            Year issued
+          </label>
+          <select
+            id="consent-year"
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+            className={PICKER}
+          >
+            <option value="all">All years</option>
+            {years.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {mayEdit ? <GenerateConfirmation sessions={confirmable} role={role} /> : null}
 
       <section>
-        <h2 className={PART}>Part 2 — Track Status</h2>
+        {/* V7 puts the refresh on the section header line, right-aligned. */}
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <h2 className={`${PART} mb-0`}>Part 2 — Track Status</h2>
+          {mayEdit ? (
+            <div className="flex items-center gap-2">
+              {checked ? (
+                <span aria-live="polite" className="text-xs text-ink-faint">
+                  {checked}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                disabled={refreshing}
+                onClick={() =>
+                  start(async () => {
+                    // V7 re-reads localStorage, because that is where its
+                    // consent statuses live. Ours are in the database and a
+                    // practitioner's consent lands there directly, so the
+                    // honest equivalent is re-fetching the server data.
+                    router.refresh();
+                    setChecked("Checked just now.");
+                  })
+                }
+                className="rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {refreshing ? "Checking…" : "Check for updates now"}
+              </button>
+            </div>
+          ) : null}
+        </div>
         <ConsoleTable
           caption="Generated confirmations"
           columns={COLUMNS}
-          rows={rows}
+          rows={visible}
           role={role}
           rowKey={(row) => row.id}
-          empty="No confirmations generated yet. Select a matched session above to generate one."
+          empty={
+            rows.length === 0
+              ? "No confirmations generated yet. Select a matched session above to generate one."
+              : "Nothing matches this filter."
+          }
         />
       </section>
 
