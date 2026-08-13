@@ -145,11 +145,14 @@ export function Modal({
           // chrome rather than as part of the page behind it.
           <div className="flex flex-shrink-0 items-center justify-between gap-4 bg-ink px-6 py-[1.1rem]">
             <div>
-              <h2 id={titleId} className="text-base font-medium text-surface">
+              {/* V7 `.draft-header-title` is 14px/500 and `.draft-header-sub`
+                  11px — both shared by every console dialog, so the sizes are
+                  matched here rather than overridden per dialog. */}
+              <h2 id={titleId} className="text-md font-medium text-surface">
                 {title}
               </h2>
               {description ? (
-                <p id={descriptionId} className="mt-px text-2xs text-on-dark-faint">
+                <p id={descriptionId} className="mt-px text-xs text-on-dark-faint">
                   {description}
                 </p>
               ) : null}
@@ -200,7 +203,9 @@ export function Modal({
         {/* The panel is height-capped, so this is where the overflow goes. */}
         <div
           className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${
-            variant === "console" ? "p-5" : "px-10 py-6"
+            // V7 `.draft-body`: 1.25rem vertical, 1.5rem horizontal — not the
+            // uniform 20px this carried before.
+            variant === "console" ? "px-6 py-5" : "px-10 py-6"
           }`}
         >
           {children}

@@ -419,6 +419,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                     />
                     <RowAction
                       action={rejectApplication.bind(null, row.id)}
+                      draft={{ kind: "application-rejected", id: row.id }}
                       label="Send rejection message"
                       pendingMessage={`Rejecting ${row.name}…`}
                       variant="ghost-block"
@@ -442,6 +443,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                       <div className="mt-1.5">
                         <RowAction
                           action={empanelPractitioner.bind(null, row.id)}
+                          draft={{ kind: "practitioner-welcome", id: row.id }}
                           label="Mark Empanelled manually"
                           pendingMessage={`Empanelling ${row.name}…`}
                           variant="ghost-block"
@@ -462,6 +464,7 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
                     />
                     <RowAction
                       action={deactivatePractitioner.bind(null, row.id)}
+                      draft={{ kind: "practitioner-deactivated", id: row.id }}
                       label="Send deactivation message"
                       pendingMessage={`Deactivating ${row.name}…`}
                       variant="ghost-block"

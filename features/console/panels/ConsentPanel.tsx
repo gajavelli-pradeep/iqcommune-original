@@ -3,10 +3,14 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { controlClass, selectClass } from "@/components/ui/control";
+import { Toast } from "@/components/ui/Toast";
+import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import { generateConfirmation, sendConsentRequest, sendPhotoGuide, setSessionStatus } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
+import { DraftModal } from "../DraftModal";
+import type { DraftOverride } from "../draft-kinds";
 import { RowAction } from "../RowAction";
 import { CONSENT_STATUS, StatusPill } from "../StatusPill";
 import { can, type ConsoleRole } from "../roles";
@@ -73,6 +77,25 @@ function AutoField({ label, value }: { label: string; value: string }) {
 function SessionStatusSelect({ row }: { row: ConsentRow }) {
   const [status, setStatus] = useState(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
   const [pending, start] = useTransition();
+  const { pending: held, schedule, undo } = useDeferredSend();
+  const [drafting, setDrafting] = useState(false);
+
+  /**
+   * Cancelling emails the client, so it goes through the draft dialog like
+   * every other admin-initiated send rather than firing off a `select`.
+   *
+   * The select keeps showing the old value until the send is actually
+   * scheduled. Moving it to "Cancelled" the moment the dialog opens would have
+   * the row claim a status it does not have yet, and closing the dialog would
+   * leave that claim behind.
+   */
+  const cancel = (edited: DraftOverride) => {
+    setDrafting(false);
+    setStatus("Cancelled");
+    schedule(async () => {
+      await setSessionStatus(row.sessionId, "Cancelled", edited);
+    }, `Cancelling ${row.session}…`);
+  };
 
   return (
     <>
@@ -82,9 +105,13 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
       <select
         id={`${row.id}-session-status`}
         value={["Pending", "Confirmed", "Cancelled"].includes(status) ? status : "Pending"}
-        disabled={pending}
+        disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
+          if (next === "Cancelled") {
+            setDrafting(true);
+            return;
+          }
           setStatus(next);
           start(async () => {
             await setSessionStatus(row.sessionId, next);
@@ -100,6 +127,33 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
       </select>
       {row.sessionStatus === "Completed" ? (
         <span className="mt-0.5 block text-3xs text-ink-faint">Delivered</span>
+      ) : null}
+
+      {drafting ? (
+        <DraftModal
+          kind="session-cancellation"
+          id={row.sessionId}
+          onClose={() => setDrafting(false)}
+          onSend={cancel}
+        />
+      ) : null}
+
+      {held ? (
+        <Toast
+          message={held.label}
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                undo();
+                setStatus(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+              }}
+              className="rounded-md px-2 py-1 text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+            >
+              Undo
+            </button>
+          }
+        />
       ) : null}
     </>
   );
