@@ -263,7 +263,7 @@ function GenerateConfirmation({ sessions }: { sessions: readonly ConfirmableSess
             }}
             className={`${PICKER} max-w-[480px]`}
           >
-            <option value="">— Select a matched session —</option>
+            <option value="">— Choose a session —</option>
             {sessions.map((entry) => (
               <option key={entry.id} value={entry.id}>
                 {entry.sessionReference} — {entry.practitioner} — {entry.module}
