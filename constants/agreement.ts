@@ -31,7 +31,7 @@ export const AGREEMENT_CLAUSES: readonly AgreementClause[] = [
   {
     title: "2. SCOPE OF ENGAGEMENT",
     paragraphs: [
-      "The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.",
+      "The Practitioner agrees to conduct in-person training sessions within their selected module(s) of expertise, subject to availability confirmation prior to each session. Module preferences are recorded separately from this Agreement and may be updated by the Practitioner from time to time.",
     ],
     subClauses: [
       "(a) Sessions are typically 3 hours in duration, in-person, with a maximum of 25 participants — or up to 6 hours for a bundled two-module session.",

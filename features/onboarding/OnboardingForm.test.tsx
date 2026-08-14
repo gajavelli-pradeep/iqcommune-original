@@ -15,8 +15,8 @@ const practitioner = {
   name: "Jane Doe",
   role: "Senior Analyst",
   organisation: "Acme Capital",
-  module: "Equity Investing Simplified",
   city: "Pune",
+  email: "jane@example.com",
   agreementReference: "IQC-AGR-0007",
 };
 

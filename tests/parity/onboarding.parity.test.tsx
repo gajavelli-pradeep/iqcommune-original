@@ -14,8 +14,8 @@ const PRACTITIONER: OnboardingPractitioner = {
   name: "Vikram Kulkarni",
   role: "Equity Analyst",
   organisation: "Kotak Securities",
-  module: "Equity Investing Simplified",
   city: "Mumbai",
+  email: "vikram@example.com",
   agreementReference: "IQC-EMP-0042",
 };
 

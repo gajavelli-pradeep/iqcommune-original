@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from("practitioner_agreements")
     .select(
-      "reference, modules, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name )",
+      "reference, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name )",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -47,7 +47,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const pdf = await renderSignedAgreement({
     reference: data.reference,
     practitioner: name,
-    modules: (data.modules ?? []) as string[],
     issuedOn: dateOnly(data.issued_on) ?? "—",
     signedName: data.signed_name,
     signedDesignation: data.signed_designation,

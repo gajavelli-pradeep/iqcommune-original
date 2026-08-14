@@ -48,12 +48,20 @@ export interface PhotoSession {
   sessionId: string;
 }
 
+/**
+ * No `module`: the 2026-08-14 spec decouples module from the agreement, which
+ * now records only that sessions fall "within their selected module(s) of
+ * expertise". Preferences live on the practitioner record and are edited in the
+ * console — `practitioner_agreements.modules` is still written, just no longer
+ * a term of the document the practitioner signs.
+ */
 export interface OnboardingPractitioner {
   name: string;
   role: string;
   organisation: string;
-  module: string;
   city: string;
+  /** The agreement's "Practitioner" row reads `name · city · email`. */
+  email: string;
   agreementReference: string;
 }
 
