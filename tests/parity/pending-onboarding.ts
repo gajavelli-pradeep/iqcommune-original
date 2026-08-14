@@ -28,6 +28,19 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
       ].some((needle) => text.includes(needle)),
   },
   {
+    unit: "Deviation · agreement body superseded by the client's own contract",
+    reason:
+      "V7 carries a shortened on-screen summary of the agreement; the client later delivered " +
+      "the contract itself as iqcommune-empanelment-agreement-content.json, whose readme says " +
+      "to render it as-is. constants/agreement.ts is now generated from that file, so the page " +
+      "and the signed PDF both show the client's wording and V7's summary no longer appears. " +
+      "The summary is not merely shorter — it omitted the platform party, the consent sentence " +
+      "and the seat of arbitration, and weakened clause 5. This range is the whole agreement " +
+      "body, preamble through clause 13; the clause TITLES are unchanged and still render.",
+    kind: "deviation",
+    lines: [372, 424],
+  },
+  {
     unit: "State · document title",
     reason: "Set through Next's metadata export, outside the component tree this gate renders.",
     kind: "state",

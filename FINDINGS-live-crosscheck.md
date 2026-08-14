@@ -206,6 +206,9 @@ canonical where.
 
 | Item | Evidence |
 |---|---|
+| **2, 3, 4, 5, 6 — the agreement was a summary, not the contract** | The client's JSON is vendored to `spec/v7/` and `constants/agreement.ts` is now generated from it by `scripts/build-agreement-content.mjs`. The page and the PDF read the same constants, so both now carry the platform party, the intro, the consent sentence, the Hyderabad seat and the full clause 5. Clause 4 runs (a)–(f) in order — `tests/unit/agreement-content.test.ts` pins that, and that no lettered sub-clause can ever precede the one before it |
+| **Client decision 1 — the application sign-off** | `Regards,` → `Warm regards,` in both the plain and HTML halves, taking the client's own recommendation. The waitlist ack keeps its `Regards,` — Appendix A exempts it |
+| **B10 — the dialog's `Re:` line disagreed with the real subject** | Removed, and `DRAFT_CHROME.subject` deleted with it. A subject nothing sends is a second source of truth waiting to drift; the editable Subject field below was always the real one |
 | **1 — execution timestamp 5½ hours out** | One `lib/timestamp.ts` pins `Asia/Kolkata` and labels the output; all four call sites use it. `tests/unit/timestamp.test.ts` pins 13:36:58 UTC → 7:06:58 pm IST — the exact numbers from the reported PDF and success page |
 | **9 — confirmation PDF printed the raw `audience` enum** | Mapped through `AUDIENCE_LABELS` in the consents route, as the email path already did |
 | **11 — Part 1's consent request unreachable after a reload** | Part 2 gained a role-gated `Consent request` column; the row that shows the request is outstanding now offers to send it |

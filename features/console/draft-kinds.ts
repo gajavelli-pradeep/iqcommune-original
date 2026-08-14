@@ -97,19 +97,28 @@ export interface Draft extends DraftOverride {
   to: string;
 }
 
-/** Dialog chrome per kind — V7 sets a title and a subtitle on every open. */
-export const DRAFT_CHROME: Record<DraftKind, { title: string; subject: string }> = {
-  "request-follow-up": { title: "Send follow-up", subject: "Follow-up on a session request" },
-  "request-cancellation": { title: "Send cancellation", subject: "Cancelling a session request" },
-  "consent-request": { title: "Send consent request", subject: "Session confirmation and payout consent" },
-  "rating-request": { title: "Seek feedback", subject: "Rating request for a completed session" },
-  "photo-guide": { title: "Send photo guide", subject: "Shot guide and upload link" },
-  "practitioner-welcome": { title: "Send welcome message", subject: "Empanelment welcome" },
-  "application-rejected": { title: "Send rejection", subject: "An update on an application" },
-  "practitioner-deactivated": { title: "Send deactivation", subject: "Empanelment status" },
-  "session-cancellation": { title: "Cancel session", subject: "Cancelling a booked session" },
-  "onboarding-link": { title: "Send agreement", subject: "Empanelment agreement to sign" },
-  "admin-invite": { title: "Send invite", subject: "Console account setup" },
+/**
+ * Dialog chrome per kind — the dialog's own title.
+ *
+ * V7 carries a second field here, a short subject printed as "Re:" above the
+ * editable Subject box. It was never the subject that sent, and the two
+ * disagreed on every one of the eleven dialogs — "Cancelling a booked session"
+ * over "iqcommune — your session has been cancelled". The client logged that as
+ * appendix B10, so the field is gone rather than kept and corrected: a subject
+ * nothing reads is a second source of truth waiting to drift again.
+ */
+export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
+  "request-follow-up": { title: "Send follow-up" },
+  "request-cancellation": { title: "Send cancellation" },
+  "consent-request": { title: "Send consent request" },
+  "rating-request": { title: "Seek feedback" },
+  "photo-guide": { title: "Send photo guide" },
+  "practitioner-welcome": { title: "Send welcome message" },
+  "application-rejected": { title: "Send rejection" },
+  "practitioner-deactivated": { title: "Send deactivation" },
+  "session-cancellation": { title: "Cancel session" },
+  "onboarding-link": { title: "Send agreement" },
+  "admin-invite": { title: "Send invite" },
 };
 
 /**
