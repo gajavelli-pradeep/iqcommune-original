@@ -118,201 +118,209 @@ export function PhotoSubmissionForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-8">
+    <>
+      {/* V7 `.stepper` is a sibling of the card, and Stepper draws its own
+          bordered box — nesting it here put a card inside a card. */}
       <Stepper steps={STEPS} current={1} />
 
-      <h1 className="mb-1.5 text-2xl font-semibold text-ink">Your session photo link</h1>
-      <p className="mb-5 text-base leading-[1.6] text-ink-muted">
-        Bookmark or save this page — come back to it during your session or right after to submit
-        your photos. Eight standard angles, all on your phone. Once submitted, your photos sit in
-        our review queue; we&apos;ll process and publish the confirmed ones, and anything not
-        selected is automatically deleted after 30 days.
-      </p>
+      {/* rounded-[12px]: V7 `.card` is `var(--radius)` = 12px. See the note in
+          features/onboarding/OnboardingForm.tsx for why `rounded-lg` is 8px. */}
+      <section className="rounded-[12px] border border-border bg-surface p-8">
+        <h1 className="mb-1.5 text-2xl font-semibold leading-[1.7] tracking-[-0.01em] text-ink">
+          Your session photo link
+        </h1>
+        <p className="mb-6 text-md leading-[1.6] text-ink-muted">
+          Bookmark or save this page — come back to it during your session or right after to submit
+          your photos. Eight standard angles, all on your phone. Once submitted, your photos sit in
+          our review queue; we&apos;ll process and publish the confirmed ones, and anything not
+          selected is automatically deleted after 30 days.
+        </p>
 
-      {/* V7 .prac-strip: name+meta left, ref badge right, one row. */}
-      <div className="mb-5 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem]">
-        <div className="min-w-0">
-          <p className="text-lg font-semibold text-ink">{session.practitioner}</p>
-          <p className="text-sm text-ink-muted">
-            {session.practitionerRole} · {session.city}
-          </p>
+        {/* V7 .prac-strip: name+meta left, ref badge right, one row. */}
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem]">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-ink">{session.practitioner}</p>
+            <p className="text-sm text-ink-muted">
+              {session.practitionerRole} · {session.city}
+            </p>
+          </div>
+          <span className="inline-flex shrink-0 rounded-full border border-gold-border bg-gold-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-gold-dark">
+            Ref: {session.practitionerRef}
+          </span>
         </div>
-        <span className="inline-flex shrink-0 rounded-full border border-gold-border bg-gold-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-gold-dark">
-          Ref: {session.practitionerRef}
-        </span>
-      </div>
 
-      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem] min-[600px]:grid-cols-4">
-        <Detail label="Session date" value={session.sessionDate} />
-        <Detail label="Module" value={session.module} />
-        <Detail label="City" value={`${session.city}, ${session.state}`} />
-        <Detail label="Session ID" value={session.sessionId} />
-      </dl>
+        <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface-soft px-4 py-[0.85rem] min-[600px]:grid-cols-4">
+          <Detail label="Session date" value={session.sessionDate} />
+          <Detail label="Module" value={session.module} />
+          <Detail label="City" value={`${session.city}, ${session.state}`} />
+          <Detail label="Session ID" value={session.sessionId} />
+        </dl>
 
-      {/* V7 .storage-notice: left-gold-border box (no full border) with an info icon. */}
-      <p className="mb-6 flex items-start gap-[9px] rounded-r-[8px] border-l-[3px] border-l-gold bg-gold-light px-4 py-[0.85rem] text-base leading-[1.6] text-gold-dark">
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden
-          focusable="false"
-          className="mt-[2px] shrink-0"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 8v4M12 16h.01" />
-        </svg>
-        <span>
-          <strong className="font-semibold">Storage policy:</strong> All photos are stored securely
-          for 30 days from the date of submission. Anything not approved for publication within that
-          window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No
-          action needed from you after submission.
-        </span>
-      </p>
+        {/* V7 .storage-notice: left-gold-border box (no full border) with an info icon. */}
+        <p className="mb-6 flex items-start gap-[9px] rounded-r-[8px] border-l-[3px] border-l-gold bg-gold-light px-4 py-[0.85rem] text-base leading-[1.6] text-gold-dark">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+            focusable="false"
+            className="mt-[2px] shrink-0"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          <span>
+            <strong className="font-semibold">Storage policy:</strong> All photos are stored securely
+            for 30 days from the date of submission. Anything not approved for publication within that
+            window is automatically deleted — we do not retain unprocessed photos beyond 30 days. No
+            action needed from you after submission.
+          </span>
+        </p>
 
-      <form
-        ref={formRef}
-        noValidate
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const photoProblem = validatePhotos(photos);
-          const next = {
-            photos: photoProblem,
-            consent: consented ? undefined : "Participant consent is required before submitting",
-          };
-          if (next.photos || next.consent) {
-            setErrors(next);
-            focusFirstError(formRef.current);
-            return;
-          }
-          setErrors({});
-          setBusy(true);
-          setSubmitError(undefined);
-          try {
-            const body = new FormData();
-            body.append("t", token);
-            for (const photo of photos) body.append("photos", photo);
-
-            const response = await fetch("/api/photo-submissions", { method: "POST", body });
-            const result = await response.json();
-            if (!response.ok) {
-              setSubmitError(result?.error?.message ?? "Something went wrong. Please try again.");
+        <form
+          ref={formRef}
+          noValidate
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const photoProblem = validatePhotos(photos);
+            const next = {
+              photos: photoProblem,
+              consent: consented ? undefined : "Participant consent is required before submitting",
+            };
+            if (next.photos || next.consent) {
+              setErrors(next);
+              focusFirstError(formRef.current);
               return;
             }
-            setExpiryDate(formatDateIST(result.data.expiryDate));
-            setSubmittedAt(formatDateTimeIST(result.data.submittedAt));
-          } catch {
-            setSubmitError("We could not reach the server. Check your connection and try again.");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <ShotChecklist />
+            setErrors({});
+            setBusy(true);
+            setSubmitError(undefined);
+            try {
+              const body = new FormData();
+              body.append("t", token);
+              for (const photo of photos) body.append("photos", photo);
 
-        <div className="mb-5">
-          {/* V7 .upload-area: gold dashed border, upload icon + title + hint inside. */}
-          <button
-            type="button"
-            onClick={() => fileInput.current?.click()}
-            /* The picker is the control that is wrong when no photo is chosen,
-               so it carries the invalid state — a red border alone is colour-only
-               (WCAG 1.4.1) and silent to a screen reader. `data-invalid` rather
-               than `aria-invalid` because this is a button, where that attribute
-               is unsupported; the description is what announces it. It is also
-               what makes this a field `focusFirstError` can land on. */
-            data-invalid={errors.photos ? true : undefined}
-            aria-describedby={errors.photos ? photosErrorId : undefined}
-            className={`min-h-11 w-full rounded-md border-[1.5px] border-dashed bg-surface-soft p-8 text-center transition-colors hover:border-gold hover:bg-gold-light ${
-              errors.photos ? "border-red" : "border-gold/40"
-            }`}
-          >
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden
-              focusable="false"
-              className="mx-auto mb-2 text-gold-dark"
+              const response = await fetch("/api/photo-submissions", { method: "POST", body });
+              const result = await response.json();
+              if (!response.ok) {
+                setSubmitError(result?.error?.message ?? "Something went wrong. Please try again.");
+                return;
+              }
+              setExpiryDate(formatDateIST(result.data.expiryDate));
+              setSubmittedAt(formatDateTimeIST(result.data.submittedAt));
+            } catch {
+              setSubmitError("We could not reach the server. Check your connection and try again.");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <ShotChecklist />
+
+          <div className="mb-5">
+            {/* V7 .upload-area: gold dashed border, upload icon + title + hint inside. */}
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              /* The picker is the control that is wrong when no photo is chosen,
+                 so it carries the invalid state — a red border alone is colour-only
+                 (WCAG 1.4.1) and silent to a screen reader. `data-invalid` rather
+                 than `aria-invalid` because this is a button, where that attribute
+                 is unsupported; the description is what announces it. It is also
+                 what makes this a field `focusFirstError` can land on. */
+              data-invalid={errors.photos ? true : undefined}
+              aria-describedby={errors.photos ? photosErrorId : undefined}
+              className={`min-h-11 w-full rounded-md border-[1.5px] border-dashed bg-surface-soft p-8 text-center transition-colors hover:border-gold hover:bg-gold-light ${
+                errors.photos ? "border-red" : "border-gold/40"
+              }`}
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            <span className="block text-md font-medium text-ink">
-              {photos.length > 0
-                ? `${photos.length} photo${photos.length > 1 ? "s" : ""} selected`
-                : "Tap to upload photos"}
-            </span>
-            <span className="mt-1 block text-sm text-ink-faint">
-              JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
-            </span>
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            accept={ACCEPTED_PHOTO_TYPES.join(",")}
-            aria-label="Choose session photos"
-            className="sr-only"
-            onChange={(event) => {
-              setPhotos([...(event.target.files ?? [])].slice(0, MAX_PHOTOS));
-              setErrors((current) => ({ ...current, photos: undefined }));
-            }}
-          />
-          {errors.photos ? (
-            <p id={photosErrorId} role="alert" className="mt-1 text-center text-sm text-red">
-              {errors.photos}
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden
+                focusable="false"
+                className="mx-auto mb-2 text-gold-dark"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span className="block text-md font-medium text-ink">
+                {photos.length > 0
+                  ? `${photos.length} photo${photos.length > 1 ? "s" : ""} selected`
+                  : "Tap to upload photos"}
+              </span>
+              <span className="mt-1 block text-sm text-ink-faint">
+                JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
+              </span>
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept={ACCEPTED_PHOTO_TYPES.join(",")}
+              aria-label="Choose session photos"
+              className="sr-only"
+              onChange={(event) => {
+                setPhotos([...(event.target.files ?? [])].slice(0, MAX_PHOTOS));
+                setErrors((current) => ({ ...current, photos: undefined }));
+              }}
+            />
+            {errors.photos ? (
+              <p id={photosErrorId} role="alert" className="mt-1 text-center text-sm text-red">
+                {errors.photos}
+              </p>
+            ) : null}
+          </div>
+
+          <CheckboxField checked={consented} onChange={setConsented} error={errors.consent}>
+            All session participants were informed that photos would be taken and may appear on
+            iqcommune&apos;s website and social media. I confirm participant consent on their behalf,
+            and take responsibility for any tagging or attribution requests related to these photos.
+          </CheckboxField>
+
+          {submitError ? (
+            <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
+              {submitError}
             </p>
           ) : null}
-        </div>
 
-        <CheckboxField checked={consented} onChange={setConsented} error={errors.consent}>
-          All session participants were informed that photos would be taken and may appear on
-          iqcommune&apos;s website and social media. I confirm participant consent on their behalf,
-          and take responsibility for any tagging or attribution requests related to these photos.
-        </CheckboxField>
-
-        {submitError ? (
-          <p role="alert" className="mb-3 rounded-md border border-red bg-red-light px-3 py-2 text-sm text-red">
-            {submitError}
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          >
+            {!busy ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+                focusable="false"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            ) : null}
+            {busy ? "Submitting…" : "Submit photos for review"}
+          </button>
+          <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
+            Nothing is published automatically. Every photo is reviewed by iqcommune before appearing
+            anywhere.
           </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-        >
-          {!busy ? (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-              focusable="false"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-          ) : null}
-          {busy ? "Submitting…" : "Submit photos for review"}
-        </button>
-        <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
-          Nothing is published automatically. Every photo is reviewed by iqcommune before appearing
-          anywhere.
-        </p>
-      </form>
-    </section>
+        </form>
+      </section>
+    </>
   );
 }
