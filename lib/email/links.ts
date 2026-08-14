@@ -20,13 +20,17 @@ const PATHS: Record<TokenKind, string> = {
 /** Days, not months — a token cannot be revoked before it expires.
  *  `status` is the long one on purpose: empanelment review can take weeks,
  *  and the one link an applicant gets is in the acknowledgment email they
- *  received on day one — it has to still work whenever they come back to it. */
+ *  received on day one — it has to still work whenever they come back to it.
+ *
+ *  `invite` is three because the invitation row it points at expires in 72
+ *  hours (`INVITE_TTL_HOURS`) and the email says so. A longer token only buys
+ *  days in which the link opens onto a dead invite. */
 const TTL_DAYS: Record<TokenKind, number> = {
   rate: 14,
   consent: 7,
   photos: 30,
   onboarding: 14,
-  invite: 7,
+  invite: 3,
   status: 60,
 };
 

@@ -79,7 +79,9 @@ export async function POST(request: Request) {
     // practitioner and sends the welcome. Off the response path — the signature
     // is already recorded and must not fail on a downstream step.
     const welcome = await empanelBySignature(token.payload.id);
-    if (welcome) dispatchEmail(traceId, practitionerWelcome(welcome.email, welcome.firstName));
+    if (welcome) {
+      dispatchEmail(traceId, practitionerWelcome(welcome.email, welcome.firstName, welcome.reference));
+    }
 
     return ok(receipt, 201);
   } catch (cause) {
