@@ -14,10 +14,12 @@ import {
   practitionerDeactivated,
   practitionerWelcome,
   ratingRequest,
+  sessionCancelled,
   sessionRequestCancelled,
   sessionRequestFollowUp,
 } from "@/lib/email/templates";
 import { newTraceId } from "@/lib/logger";
+import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
@@ -25,7 +27,9 @@ import { recordActivity } from "@/services/console";
 import {
   maskLink,
   withLink,
+  withReference,
   PREVIEW_ID,
+  REFERENCE_PLACEHOLDER,
   type Draft,
   type DraftKind,
   type DraftOverride,
@@ -69,15 +73,19 @@ function revalidateConsole() {
 async function practitionerContact(
   supabase: ReturnType<typeof createAdminClient>,
   practitionerId: string,
-): Promise<{ email: string; firstName: string } | null> {
+): Promise<{ email: string; firstName: string; reference: string } | null> {
   const { data } = await supabase
     .from("practitioners")
-    .select("email, full_name")
+    .select("email, full_name, reference")
     .eq("id", practitionerId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!data) return null;
-  return { email: data.email, firstName: (data.full_name as string).split(" ")[0] };
+  return {
+    email: data.email,
+    firstName: (data.full_name as string).split(" ")[0],
+    reference: data.reference as string,
+  };
 }
 
 // ── Session requests ─────────────────────────────────────────────────────────
@@ -478,15 +486,17 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
   // link in an old email keeps working.
   const { data: openAgreement } = await supabase
     .from("practitioner_agreements")
-    .select("id")
+    .select("id, reference")
     .eq("practitioner_id", practitionerId)
     .is("signed_at", null)
     .is("deleted_at", null)
     .maybeSingle();
 
   let agreementId: string;
+  let agreementReference: string;
   if (openAgreement) {
     agreementId = openAgreement.id as string;
+    agreementReference = openAgreement.reference as string;
   } else {
     const { data: application } = applicationId
       ? await supabase
@@ -508,6 +518,7 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
       .single();
     if (agreementError) throw new Error(`agreement create failed: ${agreementError.message}`);
     agreementId = created.id as string;
+    agreementReference = reference;
   }
 
   if (applicationId) {
@@ -519,14 +530,15 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
 
   const contact = await practitionerContact(supabase, practitionerId);
   if (contact) {
-    // The agreement exists now, so the link the draft only stood in for can
-    // finally be minted and put back where the placeholder sat.
+    // The agreement exists now, so the link and the reference the draft only
+    // stood in for can finally be put back where the placeholders sat.
     dispatchEmail(
       newTraceId(),
       applyDraft(
-        onboardingLink(contact.email, contact.firstName, agreementId),
+        onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
         draft,
         buildLink("onboarding", agreementId),
+        agreementReference,
       ),
     );
   }
@@ -1113,7 +1125,7 @@ export async function inviteTeamMember(
   const delivery = await sendEmail(
     newTraceId(),
     applyDraft(
-      adminInvite(address, invite.id as string),
+      adminInvite(address, invite.id as string, ROLE_WORD[consoleRole]),
       draft,
       buildLink("invite", invite.id as string),
     ),
@@ -1571,16 +1583,76 @@ export async function deletePhotoSubmission(submissionId: string): Promise<void>
 
 // ── Outbound link emails (the external, 15s-held sends) ──────────────────────
 
-async function assignmentContact(id: string): Promise<{ email: string; firstName: string } | null> {
+/**
+ * Everything the three assignment emails quote, in one read.
+ *
+ * They used to resolve an address and a first name and nothing else, which is
+ * why their copy could only speak in generalities. The join was already written
+ * for the link pages; this is the same shape, trimmed to what a body needs.
+ */
+async function assignmentDetails(id: string): Promise<{
+  practitioner: { email: string; firstName: string; fullName: string };
+  module: string;
+  sessionId: string;
+  sessionReference: string;
+  confirmationReference: string;
+} | null> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("session_practitioners")
-    .select("practitioner_id")
+    .select("practitioner_id, confirmation_reference, session_id, sessions (reference, module)")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!data) return null;
-  return practitionerContact(supabase, data.practitioner_id as string);
+
+  const { data: practitioner } = await supabase
+    .from("practitioners")
+    .select("email, full_name")
+    .eq("id", data.practitioner_id as string)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!practitioner) return null;
+
+  const session = data.sessions as unknown as { reference: string; module: string } | null;
+  if (!session) return null;
+
+  const fullName = practitioner.full_name as string;
+  return {
+    practitioner: { email: practitioner.email as string, firstName: fullName.split(" ")[0], fullName },
+    module: session.module,
+    sessionId: data.session_id as string,
+    sessionReference: session.reference,
+    confirmationReference: data.confirmation_reference as string,
+  };
+}
+
+/**
+ * Who asked for a session, resolved through the request it came from.
+ *
+ * Returns null for an admin-created session: it has no originating request, so
+ * there is nobody on the client side to write to. The caller treats that the
+ * same way it treats a missing row — nothing to send — rather than falling back
+ * to whoever else is on the record.
+ */
+async function requestorForSession(sessionId: string): Promise<{ email: string; firstName: string } | null> {
+  const supabase = createAdminClient();
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("session_request_id")
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!session?.session_request_id) return null;
+
+  const { data: request } = await supabase
+    .from("session_requests")
+    .select("first_name, email")
+    .eq("id", session.session_request_id as string)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!request) return null;
+  return { email: request.email as string, firstName: request.first_name as string };
 }
 
 /** What a follow-up is still waiting on, derived from the record. */
@@ -1619,7 +1691,7 @@ async function draftMessage(
   if (kind === "request-follow-up") {
     const { data, error } = await supabase
       .from("session_requests")
-      .select("first_name, email, venue_details, preferred_window, min_commitment, group_size")
+      .select("first_name, email, topic, audience, venue_details, preferred_window, min_commitment, group_size")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -1628,7 +1700,14 @@ async function draftMessage(
 
     const outstanding = outstandingFor(data);
     return {
-      message: sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding),
+      message: sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding, {
+        topic: data.topic as string,
+        // The label, never the stored value — "corporate" is not a thing anyone
+        // asked to be called.
+        audience: AUDIENCE_LABELS[data.audience as Audience],
+        groupSize: (data.group_size as string | null) ?? undefined,
+        preferredWindow: (data.preferred_window as string | null) ?? undefined,
+      }),
       detail: outstanding.join(" "),
     };
   }
@@ -1636,12 +1715,14 @@ async function draftMessage(
   if (kind === "request-cancellation") {
     const { data } = await supabase
       .from("session_requests")
-      .select("first_name, email")
+      .select("first_name, email, topic")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) return null;
-    return { message: sessionRequestCancelled(data.email as string, data.first_name as string) };
+    return {
+      message: sessionRequestCancelled(data.email as string, data.first_name as string, data.topic as string),
+    };
   }
 
   if (kind === "practitioner-welcome" || kind === "practitioner-deactivated") {
@@ -1652,7 +1733,7 @@ async function draftMessage(
     return {
       message:
         kind === "practitioner-welcome"
-          ? practitionerWelcome(contact.email, contact.firstName)
+          ? practitionerWelcome(contact.email, contact.firstName, contact.reference)
           : practitionerDeactivated(contact.email, contact.firstName),
     };
   }
@@ -1671,11 +1752,16 @@ async function draftMessage(
   }
 
   if (kind === "admin-invite") {
-    // The id is the address being invited. There is no row to read — the invite
-    // is created by the send — so the draft is composed from the address alone.
-    const address = id.trim().toLowerCase();
+    // There is no row to read — the invite is created by the send — so the
+    // draft is composed from what the form holds. The body names the role, so
+    // the role travels with the address rather than the preview guessing at it
+    // and disagreeing with what actually goes out. An address cannot contain a
+    // colon, which is what makes the split unambiguous.
+    const separator = id.indexOf(":");
+    const address = (separator === -1 ? id : id.slice(separator + 1)).trim().toLowerCase();
+    const role = separator === -1 ? "admin" : id.slice(0, separator);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return null;
-    const message = adminInvite(address, PREVIEW_ID);
+    const message = adminInvite(address, PREVIEW_ID, ROLE_WORD[role] ?? ROLE_WORD.admin);
     return { message: { ...message, body: maskLink(message.body) } };
   }
 
@@ -1698,7 +1784,24 @@ async function draftMessage(
     }
     if (!contact) return null;
 
-    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID);
+    // A resend quotes the agreement it is resending. A first issue has no
+    // agreement yet, so the reference stands in exactly as the link does.
+    const { data: openAgreement } = table === "practitioner"
+      ? await supabase
+          .from("practitioner_agreements")
+          .select("reference")
+          .eq("practitioner_id", rowRef)
+          .is("signed_at", null)
+          .is("deleted_at", null)
+          .maybeSingle()
+      : { data: null };
+
+    const message = onboardingLink(
+      contact.email,
+      contact.firstName,
+      PREVIEW_ID,
+      (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER,
+    );
     return { message: { ...message, body: maskLink(message.body) } };
   }
 
@@ -1706,31 +1809,56 @@ async function draftMessage(
     // The session names the request; the request names the person to write to.
     const { data: session } = await supabase
       .from("sessions")
-      .select("session_request_id")
+      .select("reference, module")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
-    if (!session?.session_request_id) return null;
+    if (!session) return null;
 
-    const { data: request } = await supabase
-      .from("session_requests")
-      .select("first_name, email")
-      .eq("id", session.session_request_id as string)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!request) return null;
-    return { message: sessionRequestCancelled(request.email as string, request.first_name as string) };
+    const requestor = await requestorForSession(id);
+    if (!requestor) return null;
+    return {
+      message: sessionCancelled(
+        requestor.email,
+        requestor.firstName,
+        session.module as string,
+        session.reference as string,
+      ),
+    };
   }
 
-  const contact = await assignmentContact(id);
-  if (!contact) return null;
+  const assignment = await assignmentDetails(id);
+  if (!assignment) return null;
   if (kind === "consent-request") {
-    return { message: consentRequest(contact.email, contact.firstName, id) };
+    return {
+      message: consentRequest(assignment.practitioner.email, assignment.practitioner.firstName, id, {
+        module: assignment.module,
+        sessionReference: assignment.sessionReference,
+        confirmationReference: assignment.confirmationReference,
+      }),
+    };
   }
   if (kind === "rating-request") {
-    return { message: ratingRequest(contact.email, contact.firstName, id) };
+    // The rating is about the practitioner, so it goes to the person who can
+    // give one — the client who asked for the session, not the practitioner
+    // being rated.
+    const requestor = await requestorForSession(assignment.sessionId);
+    if (!requestor) return null;
+    return {
+      message: ratingRequest(requestor.email, requestor.firstName, id, {
+        module: assignment.module,
+        practitionerName: assignment.practitioner.fullName,
+      }),
+    };
   }
-  return { message: photoReminder(contact.email, contact.firstName, id) };
+  return {
+    message: photoReminder(
+      assignment.practitioner.email,
+      assignment.practitioner.firstName,
+      id,
+      assignment.module,
+    ),
+  };
 }
 
 /**
@@ -1740,10 +1868,19 @@ async function draftMessage(
  * original copy, so keeping it would send two different messages to one person
  * and let their mail client pick which one they read.
  */
-function applyDraft(message: EmailMessage, draft?: DraftOverride, link?: string): EmailMessage {
+function applyDraft(
+  message: EmailMessage,
+  draft?: DraftOverride,
+  link?: string,
+  reference?: string,
+): EmailMessage {
   if (!draft) return message;
-  const body = link ? withLink(draft.body, link) : draft.body;
-  return { ...message, subject: draft.subject, body, html: undefined };
+  let body = link ? withLink(draft.body, link) : draft.body;
+  if (reference) body = withReference(body, reference);
+  // The subject carries the reference too, and the admin never saw the real one
+  // — so it is substituted there as well, or the sent subject keeps the stand-in.
+  const subject = reference ? withReference(draft.subject, reference) : draft.subject;
+  return { ...message, subject, body, html: undefined };
 }
 
 
@@ -1914,16 +2051,7 @@ export async function clearSignedAgreement(agreementId: string): Promise<void> {
   revalidateConsole();
 }
 
-export async function sendAgreement(agreementId: string): Promise<void> {
-  const { email: actor } = await requireCapability("mutate");
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("practitioner_agreements")
-    .select("practitioner_id")
-    .eq("id", agreementId)
-    .is("deleted_at", null)
-    .maybeSingle();
-  const contact = data ? await practitionerContact(supabase, data.practitioner_id as string) : null;
-  if (contact) dispatchEmail(newTraceId(), onboardingLink(contact.email, contact.firstName, agreementId));
-  await recordActivity({ actorEmail: actor, action: "agreement.sent", entityType: "agreement", entityRef: agreementId });
-}
+// `sendAgreement` lived here: a second, caller-less way to send the onboarding
+// link that skipped the promotion, the status move and the draft the admin
+// actually edited. "Resend agreement link" goes through
+// `generateAndSendAgreement`, which does all of it.

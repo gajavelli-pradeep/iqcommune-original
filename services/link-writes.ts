@@ -174,7 +174,7 @@ export async function signAgreement(
  */
 export async function empanelBySignature(
   agreementId: string,
-): Promise<{ email: string; firstName: string } | null> {
+): Promise<{ email: string; firstName: string; reference: string } | null> {
   const supabase = createAdminClient();
 
   const { data: agreement } = await supabase
@@ -191,7 +191,7 @@ export async function empanelBySignature(
     .eq("id", agreement.practitioner_id)
     .is("deleted_at", null)
     .neq("status", "Empanelled")
-    .select("email, full_name")
+    .select("email, full_name, reference")
     .maybeSingle();
   if (!practitioner) return null;
 
@@ -205,6 +205,7 @@ export async function empanelBySignature(
   return {
     email: practitioner.email as string,
     firstName: (practitioner.full_name as string).split(" ")[0],
+    reference: practitioner.reference as string,
   };
 }
 

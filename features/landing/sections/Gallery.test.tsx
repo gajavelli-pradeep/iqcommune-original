@@ -37,6 +37,31 @@ describe("Gallery", () => {
     expect(screen.queryByAltText("Deep in a foundations session")).toBeNull();
   });
 
+  it("renders two photos sharing a caption, rather than collapsing them", () => {
+    // The slide key was the caption, so a second photo captioned the same as
+    // the first collided with it: React warned about duplicate keys and
+    // dropped or duplicated a slide. Captions are free text an admin types —
+    // "GD" twice is not a misuse, and two "Session in Pune" never would be.
+    withProvider(
+      <Gallery
+        photos={[
+          { id: "1", url: "/a.jpg", caption: "GD", city: "Pune" },
+          { id: "2", url: "/b.jpg", caption: "GD", city: "Mumbai" },
+        ]}
+      />,
+    );
+
+    const shared = screen.getAllByAltText("GD");
+    expect(shared).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Go to photo/ })).toHaveLength(20);
+
+    // Scoped to their own slides — an artwork slide further along is also Pune.
+    // Distinct cities prove the two did not collapse into one another.
+    const [first, second] = shared.map((image) => image.closest("li")!);
+    expect(within(first).getByText("Pune")).toBeInTheDocument();
+    expect(within(second).getByText("Mumbai")).toBeInTheDocument();
+  });
+
   it("captions a published photo on the slide itself, since its pixels carry none", () => {
     withProvider(
       <Gallery photos={[{ id: "1", url: "/x.jpg", caption: "A live session", city: "Pune" }]} />,
