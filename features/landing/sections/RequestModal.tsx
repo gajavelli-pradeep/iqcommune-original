@@ -9,6 +9,7 @@ import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
 import { suggestEmailDomain } from "@/lib/email/suggest-domain";
 import { MODULES } from "@/constants/modules";
+import { SESSION_REQUEST_ACK } from "@/content/session-request";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 import {
   AUDIENCES,
@@ -380,7 +381,7 @@ export function RequestModal({
     <Modal
       open={open}
       onClose={close}
-      title={status === "sent" ? "You're on the list!" : "Join the Waitlist"}
+      title={status === "sent" ? SESSION_REQUEST_ACK.popupTitle : "Join the Waitlist"}
       description={
         status === "sent"
           ? undefined
@@ -403,16 +404,11 @@ export function RequestModal({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          {/* V7 greets by first name where it has one and drops the comma where
-              it does not — the form requires the field, so in practice the named
-              form is what ships; the fallback covers a receipt rendered from
-              state that never held one. No reply window is quoted: until a
-              practitioner is empanelled in their city there is no date to
-              promise, which is the whole point of the waitlist. */}
-          <p className="text-lg text-ink-muted">
-            Thanks{form.firstName ? `, ${form.firstName}` : ""} — you&apos;re on the waitlist.
-            We&apos;ll notify you the moment sessions open in your city.
-          </p>
+          {/* The client's 2026-08-14 confirmations delivery replaces V7's scripted
+              receipt, which greeted by first name, with one unnamed sentence — the
+              same wording the confirmation email opens with, so the screen and the
+              inbox no longer say it two ways. */}
+          <p className="text-lg text-ink-muted">{SESSION_REQUEST_ACK.popupBody}</p>
         </div>
       ) : (
         <form

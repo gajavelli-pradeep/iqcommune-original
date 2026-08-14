@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { SESSION_REQUEST_ACK } from "@/content/session-request";
 import { SUBMIT_FAILURE } from "@/content/submit-failure";
 
 import type { SessionRequestInput } from "@/lib/schemas/session-request";
@@ -18,12 +19,14 @@ import { RequestModal, draftSessionMailto } from "./RequestModal";
  */
 
 /**
- * The dialog's receipt heading (2026-08-12 delivery). Deliberately NOT the
- * confirmation email's subject: the client specified the on-screen receipt in
- * the landing-page delivery and the email separately, and the two differ in
- * register. `tests/unit/email.test.ts` covers the email wording.
+ * The dialog's receipt, from whichever phase `content/session-request.ts` has
+ * live. Read from the module rather than retyped, because the confirmations
+ * delivery (2026-08-14) gave the popup and the email the same opening sentence —
+ * pinning it twice by hand is how they drift apart again. The wording itself is
+ * checked against the client's document in `tests/unit/email.test.ts`; what this
+ * file proves is that the receipt renders at all, which the parity gate cannot.
  */
-const RECEIPT_HEADING = "You're on the list!";
+const RECEIPT_HEADING = SESSION_REQUEST_ACK.popupTitle;
 
 function mockFetch(status: number, body: unknown) {
   const fetchMock = vi.fn().mockResolvedValue({
@@ -76,15 +79,11 @@ describe("RequestModal", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: RECEIPT_HEADING })).toBeInTheDocument();
     });
-    // Greeted by the first name typed above, as V7 does.
-    expect(
-      screen.getByText(
-        "Thanks, Rohan — you're on the waitlist. We'll notify you the moment sessions open in your city.",
-      ),
-    ).toBeInTheDocument();
-    // The receipt must not quote a reply window: sessions are not scheduled on
-    // arrival during the waitlist phase, and the confirmation email says so too.
-    expect(screen.queryByText(/working days/i)).not.toBeInTheDocument();
+    // No longer greeted by the first name typed above: the confirmations
+    // delivery replaced V7's scripted greeting with one unnamed sentence, shared
+    // with the email so the screen and the inbox no longer say it two ways.
+    expect(screen.getByText(SESSION_REQUEST_ACK.popupBody)).toBeInTheDocument();
+    expect(screen.queryByText(/Thanks, Rohan/)).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/session-requests", expect.anything());
   });
 

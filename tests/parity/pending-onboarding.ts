@@ -11,6 +11,13 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
     matches: (text) =>
       [
         "Agreement signed. Welcome to iqcommune.",
+        // The success lede. It used to be declared separately as a deviation,
+        // because the page dropped V7's "within 2-3 working days" promise on
+        // wording chosen here. The 2026-08-14 delivery replaced that sentence
+        // with the client's own, which this page now renders verbatim — so the
+        // only reason it is still missing from this gate is the one every other
+        // needle here has: it lives behind a signature.
+        "Your empanelment is confirmed",
         "your inbox",
         "Signed by",
         "Type your name to generate signature",
@@ -19,18 +26,6 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
         "Status",
         "Digitally signed",
       ].some((needle) => text.includes(needle)),
-  },
-  {
-    unit: "Deviation · no session-details window promised during the waitlist phase",
-    reason:
-      "V7 tells a freshly empanelled practitioner their first session details are coming 'within " +
-      "2-3 working days'. Practitioners are now being empanelled ahead of demand, so there is no " +
-      "session to send and the window cannot be kept. The 2-3 day reply window is untouched " +
-      "where it is still true — reviewing an application, see pending-practitioners.ts. The rest " +
-      "of the sentence, and the inbox line after it, are unchanged and still declared above as " +
-      "state-gated copy.",
-    kind: "deviation",
-    matches: (text) => text.includes("your first session details within"),
   },
   {
     unit: "State · document title",

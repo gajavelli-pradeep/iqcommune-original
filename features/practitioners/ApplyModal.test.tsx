@@ -130,7 +130,12 @@ describe("ApplyModal", () => {
       await screen.findByRole("heading", { name: "Application received!" }),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/applications", expect.anything());
-    expect(screen.getByText(/we'll reach out within 2–3 working days/)).toBeInTheDocument();
+    // Client's confirmations delivery, 2026-08-14, item 6.
+    expect(
+      screen.getByText(
+        "Thank you for applying. We will reach out within 2–3 working days for a brief, informal discussion.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("offers a drafted mailto on a server fault, carrying what was typed", async () => {
