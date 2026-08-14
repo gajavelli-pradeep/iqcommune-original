@@ -18,10 +18,15 @@ import { FAINT, GREEN, INK, RED, startDocument } from "./document";
  * the one on screen would be worse than no download at all.
  */
 
+/**
+ * No `modules`: the 2026-08-14 spec removed the Module(s) row from the
+ * agreement's detail table, so carrying one here would put a term in the
+ * archived contract that never appeared on the page it was signed from — the
+ * exact divergence the note above rules out.
+ */
 export interface SignedAgreement {
   reference: string;
   practitioner: string;
-  modules: readonly string[];
   issuedOn: string;
   signedName: string | null;
   signedDesignation: string | null;
@@ -39,7 +44,6 @@ export async function renderSignedAgreement(agreement: SignedAgreement): Promise
 
   writer.field("Practitioner", agreement.practitioner);
   writer.field("Agreement reference", agreement.reference);
-  writer.field("Module(s)", agreement.modules.join(", ") || "—");
   writer.field("Issued on", agreement.issuedOn);
   writer.field("Agreement version", agreement.version);
   writer.gap(14);

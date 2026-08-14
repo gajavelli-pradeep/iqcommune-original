@@ -143,14 +143,15 @@ export function OnboardingForm({
           your details below, read through the empanelment agreement carefully, and provide your
           digital signature to complete the onboarding.
         </p>
-        {/* V7 .summary-item: filled surface-soft cards, always two columns. */}
-        <dl className="grid grid-cols-2 gap-3">
+        {/* V7 .summary-item: filled surface-soft cards, two columns that collapse
+            to one at the spec's 600px breakpoint — a half-width card holds an
+            organisation name badly on a phone. */}
+        <dl className="grid grid-cols-1 gap-3 min-[600px]:grid-cols-2">
           {(
             [
               ["Name", practitioner.name],
               ["Current role", practitioner.role],
               ["Organisation", practitioner.organisation],
-              ["Module assigned", practitioner.module],
               ["City", practitioner.city],
               ["Agreement reference", practitioner.agreementReference],
             ] as ReadonlyArray<[string, string]>
@@ -240,7 +241,6 @@ export function OnboardingForm({
                 ["Agreement Date", agreementDate],
                 ["Platform", "InvestQ Commune, operating as iqcommune (\"the Platform\")"],
                 ["Practitioner", practitioner.name],
-                ["Module(s)", practitioner.module],
               ] as ReadonlyArray<[string, string]>
             ).map(([label, value]) => (
               <div key={label} className="flex border-b border-border last:border-b-0">

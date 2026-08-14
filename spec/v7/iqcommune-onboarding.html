@@ -216,6 +216,7 @@
   .btn-sign:hover { opacity: 0.87; }
   .btn-sign:disabled { opacity: 0.35; cursor: not-allowed; }
   .sign-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 0.75rem; }
+  .footer-note { text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 2rem; }
 
   /* ── SUCCESS ── */
   #success-screen { display: none; }
@@ -323,10 +324,6 @@
         <div class="summary-value" id="disp-org">—</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Module assigned</div>
-        <div class="summary-value" id="disp-module">—</div>
-      </div>
-      <div class="summary-item">
         <div class="summary-label">City</div>
         <div class="summary-value" id="disp-city">—</div>
       </div>
@@ -368,7 +365,6 @@
           <tr><td class="ag-label">Agreement Date</td><td class="ag-populated" id="ag-date">—</td></tr>
           <tr><td class="ag-label">Platform</td><td class="ag-populated">InvestQ Commune, operating as <strong>iqcommune</strong> ("the Platform")</td></tr>
           <tr><td class="ag-label">Practitioner</td><td class="ag-populated" id="ag-practitioner">—</td></tr>
-          <tr><td class="ag-label">Module(s)</td><td class="ag-populated" id="ag-modules">—</td></tr>
         </table>
 
         <div class="ag-divider"></div>
@@ -380,7 +376,7 @@
         <p class="ag-clause-body">The engagement is non-exclusive. The Practitioner is free to conduct independent training, consulting, or advisory work outside of this Agreement.</p>
 
         <div class="ag-clause-title">2. SCOPE OF ENGAGEMENT</div>
-        <p class="ag-clause-body">The Practitioner agrees to conduct in-person training sessions for the module(s) listed above, subject to availability confirmation prior to each session.</p>
+        <p class="ag-clause-body">The Practitioner agrees to conduct in-person training sessions within their selected module(s) of expertise, subject to availability confirmation prior to each session. Module preferences are recorded separately from this Agreement and may be updated by the Practitioner from time to time.</p>
         <p class="ag-sub-clause">(a) Sessions are typically 3 hours in duration, in-person, with a maximum of 25 participants — or up to 6 hours for a bundled two-module session.</p>
         <p class="ag-sub-clause">(b) The Platform will notify the Practitioner of session requests and confirm availability before any commitment is made. The Practitioner is never obligated to accept a session.</p>
         <p class="ag-sub-clause">(c) Sessions are typically confirmed 1–2 weeks in advance.</p>
@@ -500,6 +496,7 @@
     </div>
   </div>
 
+  <div class="footer-note">Confidential · Questions? Reply to the email this link was sent from, or write to hello@iqcommune.com</div>
 </div><!-- end onboarding-screen -->
 
 <!-- ── SUCCESS SCREEN ── -->
@@ -521,10 +518,6 @@
         <span class="receipt-value" id="receipt-ref">—</span>
       </div>
       <div class="receipt-row">
-        <span class="receipt-label">Module assigned</span>
-        <span class="receipt-value" id="receipt-module">—</span>
-      </div>
-      <div class="receipt-row">
         <span class="receipt-label">Timestamp</span>
         <span class="receipt-value green" id="receipt-ts">—</span>
       </div>
@@ -534,12 +527,13 @@
       </div>
     </div>
   </div>
+  <div class="footer-note">Confidential · Questions? Reply to the email this link was sent from, or write to hello@iqcommune.com</div>
 </div>
 
 <script>
 // ── URL PARAMS — auto-populate from coordinator-sent link ─────────────────
 // Example link: iqcommune-onboarding.html?name=Vikram+Kulkarni&role=Equity+Analyst
-//   &org=Kotak+Securities&module=Stock+Market+Basics&city=Mumbai&ref=0042
+//   &org=Kotak+Securities&city=Mumbai&ref=0042
 //
 // If params not present, falls back to placeholders so page still works standalone
 
@@ -548,7 +542,6 @@ const params = new URLSearchParams(window.location.search);
 const pName   = params.get('name')   || 'Practitioner Name';
 const pRole   = params.get('role')   || 'Current Role';
 const pOrg    = params.get('org')    || 'Organisation';
-const pModule = params.get('module') || 'Module TBC';
 const pCity   = params.get('city')   || 'City';
 const pRef    = params.get('ref')    || '0001';
 const pEmail  = params.get('email')  || 'your registered email';
@@ -560,14 +553,12 @@ const dateStr  = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'
 document.getElementById('disp-name').textContent    = pName;
 document.getElementById('disp-role').textContent    = pRole;
 document.getElementById('disp-org').textContent     = pOrg;
-document.getElementById('disp-module').textContent  = pModule;
 document.getElementById('disp-city').textContent    = pCity;
 document.getElementById('disp-ref').textContent     = refCode;
 
 // Populate agreement inline
 document.getElementById('ag-date').textContent         = dateStr;
 document.getElementById('ag-practitioner').textContent = `${pName} · ${pCity} · ${pEmail}`;
-document.getElementById('ag-modules').textContent      = pModule;
 document.getElementById('ref-in-toolbar').textContent  = pRef;
 document.getElementById('date-in-toolbar').textContent = dateStr;
 document.getElementById('success-email').textContent   = pEmail;
@@ -697,7 +688,6 @@ function submitAgreement() {
   // Populate success screen
   document.getElementById('receipt-name').textContent   = fullname;
   document.getElementById('receipt-ref').textContent    = refCode;
-  document.getElementById('receipt-module').textContent = pModule;
   document.getElementById('receipt-ts').textContent     = tsStr;
 
   // Switch screens
