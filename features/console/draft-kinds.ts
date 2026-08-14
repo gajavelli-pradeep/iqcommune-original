@@ -40,6 +40,15 @@ export type DraftKind =
 export const LINK_PLACEHOLDER = "[a secure one-time link is inserted here when you send]";
 
 /**
+ * The same problem as `LINK_PLACEHOLDER`, for the reference the agreement email
+ * quotes: an agreement issued for the first time has no reference until the send
+ * allocates one, and previewing must not allocate anything.
+ *
+ * Resending an existing agreement has a real reference and never shows this.
+ */
+export const REFERENCE_PLACEHOLDER = "[reference assigned when you send]";
+
+/**
  * Stands in for the row the send is about to create, purely so the template can
  * render a body worth previewing. Never reaches an inbox — `maskLink` strips
  * the URL it produces, and the send mints the real one against the real id.
@@ -64,6 +73,17 @@ export function withLink(body: string, link: string): string {
     : // Deleted by the admin. These emails exist to carry the link, so it goes
       // back on its own line rather than the message going out useless.
       `${body}\n\n${link}`;
+}
+
+/**
+ * The allocated reference, put back where the placeholder sat.
+ *
+ * No append fallback, unlike `withLink`: an admin who deleted the reference
+ * deleted a courtesy, not the reason the email is being sent, and putting it
+ * back somewhere they did not choose would be the ruder failure.
+ */
+export function withReference(body: string, reference: string): string {
+  return body.replaceAll(REFERENCE_PLACEHOLDER, reference);
 }
 
 /** What the admin edited, as it leaves the dialog. */

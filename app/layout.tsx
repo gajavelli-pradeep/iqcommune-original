@@ -1,21 +1,39 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 import { siteUrl } from "@/lib/siteUrl";
 
 /**
- * DM Sans, self-hosted by next/font — no external request, so it survives the
- * CSP and costs no extra round trip.
+ * DM Sans, vendored into the repo rather than fetched from Google.
  *
- * The V7 source links weights 300;400;500;600 but authors `font-weight: 700`
- * ten times, which leaves the browser synthesising a fake bold. 700 is loaded
- * here so those headings render in the real cut.
+ * `next/font/google` self-hosts at *runtime* but downloads the woff2 during the
+ * build, which makes fonts.gstatic.com a hard build dependency. The URLs Next
+ * derives for DM Sans's opsz+wght axes now 404 — Google rotated the files and
+ * the ones Next asks for are gone — so every cold-cache build fails. It passes
+ * locally only because a warm `.next/cache` still holds the old download, which
+ * is why this surfaced in CI first. Vendoring takes the network out of the
+ * build; the runtime behaviour is unchanged.
+ *
+ * Two subsets, not one: ₹ (U+20B9) is in latin-ext, and the payout and consent
+ * screens use it. Listing the ext face after the latin one lets the browser
+ * fall back per glyph, so ₹ renders in DM Sans instead of a system face.
+ *
+ * One variable file per subset covers the whole 300-700 range. The V7 source
+ * links 300/400/500/600 but authors `font-weight: 700` ten times, which would
+ * otherwise leave the browser synthesising a fake bold.
  */
-const dmSans = DM_Sans({
+const dmSansLatinExt = localFont({
+  src: "./fonts/dm-sans-latin-ext.woff2",
+  variable: "--font-dm-sans-ext",
+  weight: "300 700",
+  display: "swap",
+});
+
+const dmSans = localFont({
+  src: "./fonts/dm-sans-latin.woff2",
   variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: "300 700",
   display: "swap",
 });
 
@@ -71,7 +89,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={dmSans.variable}>
+    <html lang="en" className={`${dmSans.variable} ${dmSansLatinExt.variable}`}>
       <body>
         {children}
         <script

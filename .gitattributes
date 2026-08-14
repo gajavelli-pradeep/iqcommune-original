@@ -4,3 +4,10 @@
 # tests/unit/spec-freshness.test.ts compares exactly those bytes. `-text`
 # disables the conversion in both directions and stores it verbatim.
 spec/v7/*.html -text
+
+# The delivery folder itself, now tracked rather than living only on the machine
+# it was delivered to. It is the other half of that same byte comparison, so it
+# needs the same treatment: without this git stores it normalised and hands back
+# CRLF on checkout, while spec/v7 stays verbatim, and the two stop matching on
+# any machine that is not this one.
+"client requirements/**" -text

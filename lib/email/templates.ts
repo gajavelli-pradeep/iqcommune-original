@@ -7,7 +7,11 @@ import { buildLink } from "./links";
 import type { EmailMessage } from "./send";
 
 /**
- * How a body signs off — one signature on every email (client, 2026-08-13).
+ * How a body signs off — one signature on every email (client, 2026-08-13),
+ * as the two-line block the console-messages document specifies (rev 2,
+ * 2026-08-14). It replaced a single hyphenated line; `SIGN_OFF_TEAM` is the
+ * bare name, kept for the two acknowledgment emails whose copy is client
+ * verbatim and already carries its own "Regards," line.
  *
  * Supersedes the per-stream sign-off of 2026-08-10, where session mail signed
  * "Session Commune" and practitioner mail "Practitioner Commune". The client
@@ -24,7 +28,7 @@ import type { EmailMessage } from "./send";
  * organisation — "the iqcommune practitioner network", "your empanelment with
  * iqcommune" — and is left alone.
  */
-const SIGN_OFF = "- Team iqcommune";
+const SIGN_OFF = "Warm regards,\nTeam iqcommune";
 const SIGN_OFF_TEAM = "Team iqcommune";
 
 /**
@@ -125,39 +129,105 @@ export function sessionRequestFollowUp(
   to: string,
   firstName: string,
   outstanding: readonly string[],
+  request: RequestEcho,
 ): EmailMessage {
   return {
     template: "session-request-follow-up",
     stream: "session",
     to,
-    subject: "Following up on your session request",
+    subject: "iqcommune — following up on your session request",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Following up on your session request - we're ready to move ahead and need a little more from your side:",
+      `Thank you for your interest in iqcommune, and for your request for a session on ${request.topic}.`,
+      "",
+      "We are ready to move ahead and need a little more from your side:",
       "",
       ...outstanding.map((item) => `- ${item}`),
       "",
-      "Reply to this email and we'll get it scheduled.",
+      "Please reply to this email with the above and we will take it forward.",
+      "",
+      "Your request as it stands:",
+      ...requestEchoRows(request),
       "",
       SIGN_OFF,
     ),
   };
 }
 
-/** The console's "Send cancellation message" for a request that fell through. */
-export function sessionRequestCancelled(to: string, firstName: string): EmailMessage {
+/**
+ * What the follow-up echoes back, so the reader can see what we hold without
+ * digging out their own submission.
+ *
+ * Optional rows are dropped rather than shown empty — and a field that is
+ * outstanding is by definition one we do not have, so an echo that printed
+ * "Group: participants" would be contradicting the list directly above it.
+ */
+export interface RequestEcho {
+  topic: string;
+  /** Already resolved through AUDIENCE_LABELS — the enum never reaches a body. */
+  audience: string;
+  groupSize?: string;
+  preferredWindow?: string;
+}
+
+function requestEchoRows(request: RequestEcho): string[] {
+  return [
+    `Topic: ${request.topic}`,
+    request.groupSize
+      ? `Group: ${request.groupSize} participants, ${request.audience}`
+      : `Group: ${request.audience}`,
+    ...(request.preferredWindow ? [`Preferred window: ${request.preferredWindow}`] : []),
+  ];
+}
+
+/**
+ * The console's "Send cancellation message" — a request that will not be taken
+ * forward, before anything was ever matched or scheduled.
+ *
+ * Deliberately does not use the word "cancelled": nothing was booked, and a
+ * message announcing a cancelled session to someone who never had one is the
+ * defect this template was split away from `sessionCancelled` to prevent
+ * (console-messages doc, rev 2).
+ */
+export function sessionRequestCancelled(to: string, firstName: string, topic: string): EmailMessage {
   return {
     template: "session-request-cancelled",
     stream: "session",
     to,
-    subject: "Your session request",
+    subject: "iqcommune — update on your session request",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "We're sorry - we aren't able to take your session request forward at this time.",
+      "Thank you for your interest in iqcommune, and for taking the time to tell us what your group needs.",
       "",
-      "If circumstances change, or you'd like to discuss a different date or format, just reply here and we'll pick it back up.",
+      `We are sorry to say that we are not able to take your request for a session on ${topic} forward at this time.`,
+      "",
+      "If circumstances change, or you would like to discuss a different date or format, please reply to this email and we will gladly pick it back up.",
+      "",
+      SIGN_OFF,
+    ),
+  };
+}
+
+/** The status dropdown's "Cancelled" — a session that was already confirmed. */
+export function sessionCancelled(
+  to: string,
+  firstName: string,
+  module: string,
+  sessionReference: string,
+): EmailMessage {
+  return {
+    template: "session-cancelled",
+    stream: "session",
+    to,
+    subject: "iqcommune — your session has been cancelled",
+    body: lines(
+      `Dear ${firstName},`,
+      "",
+      `We are writing to inform you that your confirmed session on ${module} (ref. ${sessionReference}) has been cancelled.`,
+      "",
+      "If this was unexpected, or you would like to reschedule, please reply to this email and we will assist. We apologise for any inconvenience caused.",
       "",
       SIGN_OFF,
     ),
@@ -328,101 +398,163 @@ export function newApplicationForAdmin(to: string, application: ApplicationSumma
   };
 }
 
-export function ratingRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
+/**
+ * Addressed to the person who asked for the session, not the practitioner who
+ * delivered it — the rating is about the practitioner, and the linked page says
+ * in as many words that it is never shared with them.
+ */
+export function ratingRequest(
+  to: string,
+  firstName: string,
+  assignmentId: string,
+  session: { module: string; practitionerName: string },
+): EmailMessage {
   return {
     template: "rating-request",
     stream: "session",
     to,
-    subject: "How was your session?",
+    subject: "iqcommune — quick feedback on your recent session?",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Your feedback helps us maintain quality across our practitioner network - it takes less than a minute.",
+      `We hope the session on ${session.module} with ${session.practitionerName} was valuable for your group.`,
+      "",
+      "We would appreciate a brief rating for the practitioner, to help us maintain quality across our practitioner network. It takes less than a minute:",
       "",
       buildLink("rate", assignmentId),
+      "",
+      "Your rating is shared internally with iqcommune only — never with the practitioner directly. The link expires in 14 days.",
+      "",
+      "Thank you for your time.",
       "",
       SIGN_OFF,
     ),
   };
 }
 
-export function consentRequest(to: string, firstName: string, assignmentId: string): EmailMessage {
+/**
+ * No session date in the body on purpose: a consent request can go out before a
+ * date is fixed, so the date lives on the linked page where it is always
+ * current. Copy that named one here would sometimes name nothing.
+ */
+export function consentRequest(
+  to: string,
+  firstName: string,
+  assignmentId: string,
+  session: { module: string; sessionReference: string; confirmationReference: string },
+): EmailMessage {
   return {
     template: "consent-request",
     stream: "session",
     to,
-    subject: "Confirm your session details",
+    subject: `iqcommune — please confirm your session details (Ref. ${session.confirmationReference})`,
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Please review your session details and the stated payout, and provide your consent to confirm.",
+      `Please find below the revenue confirmation for your upcoming session on ${session.module} (session ref. ${session.sessionReference}). Kindly review the session details and the payout figure, then confirm your consent using the link below:`,
       "",
       buildLink("consent", assignmentId),
+      "",
+      "Confirming here locks the session in on our end, so please review the details carefully before proceeding. The link expires in 7 days.",
+      "",
+      `Confirmation reference: ${session.confirmationReference}`,
       "",
       SIGN_OFF,
     ),
   };
 }
 
-export function photoReminder(to: string, firstName: string, assignmentId: string): EmailMessage {
+export function photoReminder(
+  to: string,
+  firstName: string,
+  assignmentId: string,
+  module: string,
+): EmailMessage {
   // Carries the shot ideas ahead of the session, not just the link (audit G4b):
   // the procedure wants the practitioner to have them ready before they need them.
-  const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label} — ${shot.note}`);
+  // One list, three surfaces — this email, the upload page's checklist and the
+  // confirmation PDF — so the wording is owned by the constant, not by any of them.
+  // Colon, not a dash: half the labels contain a dash of their own, and
+  // "Candid — Q&A or discussion moment — Natural interaction" reads as three
+  // things rather than a shot and its note.
+  const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label}: ${shot.note}`);
   return {
     template: "photo-reminder",
     // Sent to a practitioner, but about a session — and the reply ("which
     // session is this?") belongs with whoever runs sessions.
     stream: "session",
     to,
-    subject: "Your session photos — shot guide and upload link",
+    subject: "iqcommune — your session photos: shot guide and upload link",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Ahead of your session, here are the eight shots that make a session gallery look great —",
-      "keep this handy so you have them ready on the day:",
+      `Ahead of your session on ${module}, we would appreciate a few photographs from the room for our website, if convenient. Phone photographs are entirely sufficient.`,
+      "",
+      "Here are the eight shots that make a session gallery look great — keep this handy so you have them ready on the day:",
       "",
       ...shots,
       "",
-      "When the session wraps, upload them here (bookmark it now):",
+      "When the session wraps, upload them using this link — bookmark it now:",
       "",
       buildLink("photos", assignmentId),
+      "",
+      "Thank you in advance.",
       "",
       SIGN_OFF,
     ),
   };
 }
 
-export function onboardingLink(to: string, firstName: string, agreementId: string): EmailMessage {
+/**
+ * `agreementReference` is the agreement's own IQC-AGR reference, not the
+ * practitioner's IQC-EMP one — they are separate sequences and quoting the
+ * wrong one here sends someone looking for a document that does not exist.
+ */
+export function onboardingLink(
+  to: string,
+  firstName: string,
+  agreementId: string,
+  agreementReference: string,
+): EmailMessage {
   return {
     template: "onboarding-link",
     stream: "practitioner",
     to,
-    subject: "Welcome to the iqcommune practitioner network",
+    subject: `iqcommune — your empanelment agreement (Ref. ${agreementReference})`,
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Please review and sign your empanelment agreement.",
+      "Your empanelment agreement is ready, prefilled with the details you shared with us. Please review it and sign online using the link below:",
       "",
       buildLink("onboarding", agreementId),
+      "",
+      "It takes only a couple of minutes — review the terms, then sign directly on the page. The link is unique to you and expires in 14 days; if it lapses, reply here and we will send a fresh one.",
+      "",
+      `Reference for this agreement: ${agreementReference}`,
+      "",
+      "Please let us know if anything requires clarification before signing.",
       "",
       SIGN_OFF,
     ),
   };
 }
 
-export function adminInvite(to: string, inviteId: string): EmailMessage {
+/** `roleLabel` is what a person says — "Global Admin", "Admin", "User". */
+export function adminInvite(to: string, inviteId: string, roleLabel: string): EmailMessage {
   return {
     template: "admin-invite",
     to,
-    subject: "Set up your iqcommune account",
+    subject: "iqcommune — you've been invited to the admin console",
     body: lines(
-      "You have been invited to the iqcommune admin console.",
+      "Dear Team Member,",
       "",
-      "Confirm your details and choose a password to activate your account:",
+      `You have been invited to join the iqcommune admin console as ${roleLabel}.`,
+      "",
+      "Please set up your account and choose a password using the link below:",
       "",
       buildLink("invite", inviteId),
       "",
-      "This link can only be used once.",
+      "This link can only be used once, and the invitation expires in 72 hours. If it lapses, ask whoever invited you to send a fresh one.",
       "",
       SIGN_OFF,
     ),
@@ -436,17 +568,34 @@ export function adminInvite(to: string, inviteId: string): EmailMessage {
  * link, just news of a decision.
  */
 
-export function practitionerWelcome(to: string, firstName: string): EmailMessage {
+/**
+ * The availability promise in the second paragraph is the client's, and the
+ * practitioner pages and the empanelment agreement both make it too — but no
+ * availability-check message exists in the console yet (console-messages doc,
+ * rev 2, B2). The copy is what was approved; the mechanism is outstanding.
+ */
+export function practitionerWelcome(
+  to: string,
+  firstName: string,
+  practitionerReference: string,
+): EmailMessage {
   return {
     template: "practitioner-welcome",
     stream: "practitioner",
     to,
-    subject: "You're empanelled with iqcommune",
+    subject: "Welcome to iqcommune — you're officially empanelled",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Welcome aboard - your empanelment is confirmed and you're now part of the iqcommune",
-      "practitioner network. We'll be in touch with your first session details soon.",
+      "We are pleased to confirm that your signed agreement is in, and you are now officially empanelled as an iqcommune practitioner.",
+      "",
+      "As session requests come in that match your profile and city, we will reach out to check your availability before confirming anything. You are never obligated to accept a session, and there is no minimum commitment on your end. We will be in touch with your first session details as soon as we have a match.",
+      "",
+      `Your empanelment reference: ${practitionerReference}`,
+      "",
+      "If any of your details change, please let us know and we will update them on our end.",
+      "",
+      "We look forward to working with you.",
       "",
       SIGN_OFF,
     ),
@@ -458,31 +607,42 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
     template: "application-rejected",
     stream: "practitioner",
     to,
-    subject: "An update on your iqcommune application",
+    subject: "iqcommune — update on your practitioner application",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Thank you for your interest in the iqcommune practitioner network. After review, we're",
-      "not able to move forward with your application at this time. We genuinely appreciate the",
-      "time you took to apply, and we wish you the very best.",
+      "Thank you for your interest in joining iqcommune, and for the time you invested through the application and screening process.",
+      "",
+      "After careful review, we will not be moving forward with your application at this time. This is not a reflection of your expertise — we are often working within a specific mix of modules, cities and experience bands at any given time, and this can change as our requirements evolve.",
+      "",
+      "We would genuinely welcome a future application should circumstances change, and we wish you the very best.",
       "",
       SIGN_OFF,
     ),
   };
 }
 
+/**
+ * The console has one control here, so one message covers it. The practitioner
+ * record distinguishes Paused from Deactivated; if those ever become separate
+ * sends, the paused one needs copy of its own rather than reusing this.
+ */
 export function practitionerDeactivated(to: string, firstName: string): EmailMessage {
   return {
     template: "practitioner-deactivated",
     stream: "practitioner",
     to,
-    subject: "Your iqcommune empanelment status",
+    subject: "iqcommune — a quick update on your practitioner status",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "This is to let you know that your empanelment with iqcommune has been deactivated and you",
-      "won't be assigned further sessions. If you believe this is in error, please reply to this",
-      "email and we'll take a look.",
+      "This is to inform you that we have paused matching you to new sessions for the time being.",
+      "",
+      "This does not affect any existing arrangement — your signed agreement and session history remain unchanged. Should your circumstances change and you wish to be considered again, please let us know and we will reactivate your profile.",
+      "",
+      "If you believe this has happened in error, please reply to this email and we will take a look.",
+      "",
+      "Thank you for your contribution so far.",
       "",
       SIGN_OFF,
     ),

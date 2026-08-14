@@ -413,7 +413,9 @@ function TeamAccess({ rows, role }: { rows: readonly TeamMemberRow[]; role: Cons
           {drafting ? (
             <DraftModal
               kind="admin-invite"
-              id={email.trim().toLowerCase()}
+              // Role first, then the address — the body names the role, and a
+              // preview composed without it would not be the message that sends.
+              id={`${inviteRole}:${email.trim().toLowerCase()}`}
               onClose={() => setDrafting(false)}
               onSend={(edited) => {
                 setDrafting(false);

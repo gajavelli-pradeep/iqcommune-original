@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iqcommune — Insight Quotient - Unleashed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0f1117;
+    --ink-muted: #4a4d5c;
+    --ink-faint: #9496a1;
+    --surface: #ffffff;
+    --surface-soft: #f8f7f4;
+    --gold: #c9982a;
+    --gold-light: #f5e9c8;
+    --gold-dark: #8a6510;
+    --green: #2a6b2a;
+    --green-light: #eef7ee;
+    --border: rgba(15,17,23,0.10);
+    --border-strong: rgba(15,17,23,0.20);
+    --radius: 12px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── UTILITIES ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--gold-dark); background: var(--gold-light); border: 1px solid #e0c870;
+    padding: 5px 14px; border-radius: 100px;
+  }
+  .section-tag { text-align: center; margin-bottom: 1rem; }
+  .section-headline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(26px, 3.8vw, 40px); font-weight: 600; line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-align: center; color: var(--ink); margin-bottom: 1rem;
+  }
+  .section-sub {
+    font-size: 16px; color: var(--ink-muted);
+    text-align: center; max-width: 520px; margin: 0 auto 3rem;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 2rem;
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; height: 68px;
+  }
+  .nav-logo {
+    font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 300; letter-spacing:-0.03em;
+    color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 10px;
+  }
+  .nav-logo span { background: none; }
+  .btn-nav {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ink); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; padding: 10px 22px; border-radius: 100px;
+    text-decoration: none; transition: opacity 0.2s; cursor: pointer; border: none;
+  }
+  .btn-nav:hover { opacity: 0.82; }
+  .btn-nav-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: none; color: var(--ink); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; padding: 10px 18px; border-radius: 100px;
+    border: 1.5px solid var(--border-strong); cursor: pointer;
+    transition: border-color 0.18s, background 0.18s;
+  }
+  .btn-nav-ghost:hover { border-color: var(--gold); background: var(--gold-light); }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--surface-soft); border-bottom: 1px solid var(--border);
+    padding: 5rem 2rem 4.5rem; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -140px; right: -100px;
+    width: 560px; height: 560px;
+    background: radial-gradient(circle, #f5e9c8 0%, transparent 68%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+  }
+  .hero-badge { margin-bottom: 1.5rem; }
+  .hero-headline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(30px, 4.2vw, 48px); font-weight: 600; line-height: 1.18;
+    color: var(--ink); margin-bottom: 1.25rem; letter-spacing: -0.01em;
+  }
+  .hero-headline em { font-style: normal; color: var(--gold); }
+  .hero-sub {
+    font-size: 17px; color: var(--ink-muted);
+    max-width: 440px; margin-bottom: 2rem; line-height: 1.65;
+  }
+  .hero-cta-group { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ink); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 600; padding: 14px 30px; border-radius: 100px;
+    text-decoration: none; cursor: pointer; border: none;
+    transition: transform 0.18s, box-shadow 0.18s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.22); }
+  .hero-note {
+    font-size: 13px; color: var(--ink-faint);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── HERO CARD ── */
+  .hero-card {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 20px; padding: 2rem;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.07);
+    animation: fadeUp 0.55s 0.3s ease both;
+  }
+  .hero-card-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold-dark); margin-bottom: 1.1rem;
+  }
+  .pool-stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .pool-stat {
+    text-align: center; padding: 0.65rem 0.5rem;
+    border-right: 1px solid var(--border);
+  }
+  .pool-stat:last-child { border-right: none; }
+  .pool-stat-num {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1.1; letter-spacing: -0.02em;
+  }
+  .pool-stat-label { font-size: 11px; color: var(--ink-muted); margin-top: 2px; line-height: 1.3; }
+  .pool-divider { height: 1px; background: var(--border); margin: 1rem 0; }
+  .pool-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1rem; }
+  .pool-role-card { background: var(--surface-soft); border-radius: 10px; padding: 0.75rem 0.9rem; }
+  .pool-role-icon { color: var(--gold-dark); margin-bottom: 5px; }
+  .pool-role-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .pool-role-sub { font-size: 11px; color: var(--ink-muted); line-height: 1.4; }
+
+  /* ── TRUST BAR ── */
+  .trust-bar {
+    background: var(--ink); color: rgba(255,255,255,0.82); padding: 0.9rem 2rem;
+  }
+  .trust-bar-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap;
+  }
+  .trust-item { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .trust-item svg { opacity: 0.65; flex-shrink: 0; }
+
+  /* ── IN-PERSON RIBBON ── */
+  .inperson-ribbon {
+    background: var(--gold-light);
+    border-top: 1px solid #e0c870; border-bottom: 1px solid #e0c870;
+    padding: 0.85rem 2rem;
+  }
+  .inperson-ribbon-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; gap: 2.5rem; flex-wrap: wrap;
+  }
+  .ribbon-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500; color: var(--gold-dark);
+  }
+
+  /* ── SECTIONS ── */
+  section { padding: 5rem 2rem; }
+
+  /* ── DIFFERENTIATOR ── */
+  .diff-section { background: var(--surface); }
+  .diff-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    overflow: hidden; max-width: 900px; margin: 0 auto;
+  }
+  .diff-header {
+    padding: 1.1rem 1.75rem; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--border-strong);
+  }
+  .diff-col.them .diff-header { background: var(--surface-soft); color: var(--ink-faint); }
+  .diff-col.us   .diff-header { background: var(--ink); color: #fff; }
+  .diff-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 1rem 1.75rem; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .diff-item:last-child { border-bottom: none; }
+  .diff-col.them .diff-item { color: var(--ink-muted); }
+  .diff-col.us   .diff-item { color: var(--ink); font-weight: 500; padding-left: 0.5rem; }
+  .diff-icon { flex-shrink: 0; margin-top: 3px; }
+
+  /* ── TOPICS ── */
+  .topics-section { background: var(--surface-soft); }
+  .topics-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;
+  }
+  .topic-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .topic-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+  .topic-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--gold-light); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem; color: var(--gold-dark);
+  }
+  .topic-name { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .topic-desc { font-size: 13px; color: var(--ink-muted); line-height: 1.55; }
+
+  /* ── WHO IS THIS FOR ── */
+  .audience-section { background: var(--surface); padding-bottom: 2rem; }
+  .audience-grid {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 2rem;
+  }
+  .audience-card {
+    background: var(--surface-soft); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.6rem 1.75rem;
+    flex: 1 1 210px; max-width: 240px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .audience-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+  .audience-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--gold-light); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem; color: var(--gold-dark);
+  }
+  .audience-name { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .audience-desc { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+  .audience-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 0.75rem; }
+  .aud-tag {
+    font-size: 11px; font-weight: 500; color: var(--gold-dark);
+    background: var(--gold-light); border: 1px solid #e0c870;
+    padding: 3px 9px; border-radius: 100px;
+  }
+  .audience-footnote {
+    text-align: center; margin-top: 1.75rem;
+    font-size: 12px; color: var(--ink-faint);
+    line-height: 1.5;
+  }
+  .audience-footnote svg { display: inline; vertical-align: middle; margin-right: 5px; margin-top: -2px; }
+
+  /* ── BUNDLED SESSIONS ── */
+  .bundle-section { background: var(--surface); padding-top: 1.5rem; }
+  .bundle-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem;
+    margin: 2rem auto 0;
+  }
+  .bundle-card {
+    background: var(--surface-soft); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.6rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .bundle-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+  .bundle-duration { display: flex; align-items: baseline; gap: 7px; margin-bottom: 1rem; }
+  .bundle-duration-total { font-size: 16px; font-weight: 600; color: var(--ink); }
+  .bundle-modules { display: flex; flex-direction: column; gap: 0; margin-bottom: 1rem; }
+  .bundle-module-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+  .bundle-module-row:last-child { border-bottom: none; }
+  .bundle-module-left { display: flex; align-items: flex-start; gap: 8px; }
+  .bundle-module-num { font-size: 11px; font-weight: 700; color: var(--gold-dark); flex-shrink: 0; margin-top: 2px; }
+  .bundle-module-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .bundle-module-duration { font-size: 11px; font-weight: 600; color: var(--ink-faint); flex-shrink: 0; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); padding: 2px 8px; border-radius: 100px; }
+  .bundle-note { font-size: 13px; color: var(--ink-muted); line-height: 1.55; }
+  .bundle-footnote {
+    text-align: center; margin-top: 1.75rem;
+    font-size: 12px; color: var(--ink-faint);
+    line-height: 1.5;
+  }
+  .bundle-footnote svg { display: inline; vertical-align: middle; margin-right: 5px; margin-top: -2px; }
+
+  /* ── HOW IT WORKS ── */
+  .how-section { background: var(--surface-soft); }
+  .steps {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 2rem; max-width: 960px; margin: 0 auto;
+  }
+  .step { text-align: center; flex: 1 1 180px; max-width: 210px; }
+  .step-num {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--ink); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
+  }
+  .step-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
+  .step-desc { font-size: 13.5px; color: var(--ink-muted); line-height: 1.6; }
+
+  /* ── CTA ── */
+  .cta-section { background: var(--ink); padding: 5.5rem 2rem; text-align: center; }
+  .cta-section .section-headline { color: #fff; }
+  .cta-section .section-sub { color: rgba(255,255,255,0.55); margin-bottom: 2rem; }
+  .cta-section .pill { background: rgba(201,152,42,0.15); color: #f0c84a; border-color: rgba(201,152,42,0.3); }
+  .btn-gold {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--gold); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 16px; font-weight: 600; padding: 16px 36px; border-radius: 100px;
+    cursor: pointer; border: none;
+    transition: filter 0.2s, transform 0.18s;
+    box-shadow: 0 6px 24px rgba(201,152,42,0.35);
+  }
+  .btn-gold:hover { filter: brightness(1.1); transform: translateY(-2px); }
+  .cta-reassurance {
+    display: flex; align-items: center; justify-content: center; gap: 2rem;
+    flex-wrap: wrap; margin-top: 2rem;
+  }
+  .cta-re-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: rgba(255,255,255,0.45); }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #080a0e; color: rgba(255,255,255,0.3);
+    padding: 2rem; text-align: center; font-size: 13px;
+  }
+  footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+  footer a:hover { color: rgba(255,255,255,0.75); }
+  footer strong { color: rgba(255,255,255,0.7); font-weight: 500; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 200;
+    align-items: flex-start; justify-content: center;
+    padding: 2rem 1rem; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 20px;
+    padding: 2.5rem; width: 100%; max-width: 520px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+    position: relative; margin: auto;
+  }
+  .modal-close {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    background: none; border: none; cursor: pointer; color: var(--ink-faint);
+    font-size: 18px; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--surface-soft); }
+  .modal-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.3rem;
+  }
+  .modal-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 1.4rem; }
+  .modal-aud-label {
+    font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; display: block;
+  }
+  .aud-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.1rem; }
+  .aud-chip {
+    padding: 7px 14px; border-radius: 100px;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    font-size: 13px; font-weight: 500; color: var(--ink-muted);
+    cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .aud-chip:hover { border-color: var(--gold); color: var(--ink); }
+  .aud-chip.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 600; }
+  .modal-context {
+    background: var(--surface-soft); border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 1.25rem;
+    font-size: 13px; color: var(--ink-muted); display: flex; align-items: flex-start; gap: 8px;
+  }
+  .modal-context svg { flex-shrink: 0; margin-top: 1px; color: var(--gold-dark); }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 5px; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink);
+    background: var(--surface); outline: none; transition: border-color 0.15s; resize: none;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--gold); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .form-hint { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
+  .modal-submit {
+    width: 100%; margin-top: 1.25rem;
+    background: var(--ink); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    padding: 14px; border-radius: 100px; border: none; cursor: pointer;
+    transition: opacity 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .modal-submit:hover { opacity: 0.87; }
+  .modal-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 0.75rem; }
+  .modal-success { display: none; text-align: center; padding: 1.5rem 0; }
+  .success-tick {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--green-light); display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem; color: var(--green);
+  }
+  .modal-success h3 {
+    font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.5rem;
+  }
+  .modal-success p { font-size: 14px; color: var(--ink-muted); line-height: 1.65; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero-left > * { animation: fadeUp 0.5s ease both; }
+  .hero-left > *:nth-child(1) { animation-delay: 0.05s; }
+  .hero-left > *:nth-child(2) { animation-delay: 0.14s; }
+  .hero-left > *:nth-child(3) { animation-delay: 0.23s; }
+  .hero-left > *:nth-child(4) { animation-delay: 0.32s; }
+
+  /* ── WHAT YOU WALK OUT WITH ── */
+  .walkout-section { background: var(--surface); }
+  .walkout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2rem; }
+  .walkout-card {
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .walkout-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+  .walkout-card-header {
+    background: var(--ink); padding: 1rem 1.25rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .walkout-card-header svg { color: var(--gold); flex-shrink: 0; }
+  .walkout-card-title { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; }
+  .walkout-card-body { background: var(--surface); padding: 1.1rem 1.25rem; }
+  .walkout-item {
+    display: flex; align-items: flex-start; gap: 9px;
+    font-size: 13px; color: var(--ink-muted); line-height: 1.55; margin-bottom: 0.6rem;
+  }
+  .walkout-item:last-child { margin-bottom: 0; }
+  .walkout-item svg { flex-shrink: 0; margin-top: 3px; color: var(--gold); }
+  .walkout-callout {
+    background: var(--surface-soft); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold); border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.5rem; margin-top: 2rem; max-width: 780px; margin-left: auto; margin-right: auto;
+    font-size: 14px; color: var(--ink-muted); line-height: 1.65;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .walkout-callout svg { flex-shrink: 0; margin-top: 3px; color: var(--gold-dark); }
+  .walkout-callout strong { color: var(--ink); font-weight: 600; }
+
+  /* ── FAQ ── */
+  .faq-section { background: var(--surface-soft); }
+  .faq-list { max-width: 780px; margin: 0 auto; }
+  .faq-item {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); margin-bottom: 0.75rem; overflow: hidden;
+  }
+  .faq-q {
+    width: 100%; background: none; border: none; cursor: pointer; text-align: left;
+    padding: 1.1rem 1.4rem; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    transition: background 0.15s;
+  }
+  .faq-q:hover { background: var(--surface-soft); }
+  .faq-q.open { background: var(--surface-soft); }
+  .faq-chevron {
+    flex-shrink: 0; color: var(--ink-faint); transition: transform 0.22s;
+  }
+  .faq-q.open .faq-chevron { transform: rotate(180deg); }
+  .faq-a {
+    display: none; padding: 0 1.4rem 1.1rem;
+    font-size: 14px; color: var(--ink-muted); line-height: 1.7; border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .faq-a.open { display: block; }
+  .faq-solo-cta {
+    background: var(--gold-light); border: 1px solid #e0c870; border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin-top: 1.5rem; max-width: 780px; margin-left: auto; margin-right: auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .faq-solo-text { font-size: 14px; color: var(--gold-dark); line-height: 1.5; }
+  .faq-solo-text strong { font-weight: 600; display: block; margin-bottom: 2px; color: var(--ink); }
+  .btn-solo {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--ink); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 100px;
+    border: none; cursor: pointer; white-space: nowrap; transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-solo:hover { opacity: 0.83; }
+
+  /* ── TOOLS FOOTER ── */
+  .tools-section {
+    background: var(--ink); padding: 4rem 2rem;
+  }
+  .tools-section .section-headline { color: #fff; }
+  .tools-section .section-sub { color: rgba(255,255,255,0.5); }
+  .tools-section .pill { background: rgba(201,152,42,0.15); color: #f0c84a; border-color: rgba(201,152,42,0.3); }
+  .tools-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;
+  }
+  .tool-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius); padding: 1.25rem;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+  .tool-card:hover { background: rgba(255,255,255,0.09); border-color: rgba(201,152,42,0.4); }
+  .tool-module {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 0.5rem;
+  }
+  .tool-name { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+  .tool-desc { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.5; margin-bottom: 0.75rem; }
+  .tool-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; color: rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; padding: 3px 9px;
+  }
+  /* ── INTERACTIVE TOOL WIDGETS ── */
+  .tool-card { display: flex; flex-direction: column; }
+  .tool-card-top { margin-bottom: 1rem; }
+  .tool-widget {
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(201,152,42,0.18);
+    border-radius: 8px; overflow: hidden; margin-top: auto; flex: 1;
+  }
+  .tw-header {
+    padding: 9px 13px; border-bottom: 1px solid rgba(201,152,42,0.12);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .tw-title { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.9); }
+  .tw-tag {
+    font-size: 9px; padding: 2px 7px; border-radius: 20px;
+    background: rgba(201,152,42,0.12); color: var(--gold);
+    border: 0.5px solid rgba(201,152,42,0.3);
+  }
+  .tw-body { padding: 12px 13px; }
+  .tw-ctrl { margin-bottom: 9px; }
+  .tw-ctrl-lbl {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: rgba(255,255,255,0.4); margin-bottom: 3px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .tw-ctrl-lbl span { font-size: 11.5px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: 0; text-transform: none; }
+  input[type=range].tw-range {
+    width: 100%; accent-color: var(--gold);
+    background: transparent; cursor: pointer;
+  }
+  .tw-res { display: grid; gap: 5px; margin-top: 10px; }
+  .tw-res.c2 { grid-template-columns: 1fr 1fr; }
+  .tw-res.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .tw-box { background: rgba(0,0,0,0.3); border-radius: 5px; padding: 7px 9px; }
+  .tw-box-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.3); margin-bottom: 2px; }
+  .tw-box-val { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); font-variant-numeric: tabular-nums; }
+  .tw-box-val.pos { color: #4ec994; }
+  .tw-box-val.neg { color: #e06c75; }
+  .tw-box-val.warn { color: var(--gold); }
+  .tw-bars { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-top: 8px; }
+  .tw-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 3px; transition: height 0.3s; }
+  .tw-msg { font-size: 10.5px; font-style: italic; color: rgba(255,255,255,0.35); line-height: 1.5; margin-top: 8px; }
+  .tw-flag {
+    margin-top: 8px; padding: 6px 9px; border-radius: 5px;
+    font-size: 11px; line-height: 1.4;
+  }
+  .tw-flag.good { background: rgba(78,201,148,0.1); color: #4ec994; border: 0.5px solid rgba(78,201,148,0.25); }
+  .tw-flag.warn { background: rgba(201,152,42,0.1); color: var(--gold); border: 0.5px solid rgba(201,152,42,0.25); }
+  .tw-flag.bad  { background: rgba(224,108,117,0.1); color: #e06c75; border: 0.5px solid rgba(224,108,117,0.25); }
+  .tw-seg { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px; gap: 1px; }
+  .tw-seg-fill { height: 100%; transition: width 0.3s; }
+  .tw-chips { display: flex; gap: 5px; margin-bottom: 9px; }
+  .tw-chip {
+    font-size: 10px; padding: 3px 9px; border-radius: 20px; cursor: pointer;
+    border: 0.5px solid rgba(201,152,42,0.2); color: rgba(255,255,255,0.4);
+    transition: all 0.15s;
+  }
+  .tw-chip.on { border-color: rgba(201,152,42,0.5); color: var(--gold); background: rgba(201,152,42,0.08); }
+
+  /* ── PHOTO GALLERY SLIDER ── */
+  .gallery-section {
+    background: #0a0a0a; padding: 4rem 0 0; overflow: hidden;
+  }
+  .gallery-section .container { padding-bottom: 0; }
+  .gallery-header { text-align: center; margin-bottom: 2.5rem; padding: 0 2rem; }
+  .gallery-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.5rem; }
+  .gallery-headline { font-size: clamp(22px, 2.8vw, 30px); font-weight: 600; color: #fff; line-height: 1.25; }
+  .gallery-sub { font-size: 13.5px; color: rgba(255,255,255,0.4); margin-top: 0.4rem; }
+  .gallery-track-wrap { position: relative; overflow: hidden; }
+  .gallery-track {
+    display: flex; gap: 12px;
+    padding: 0 2rem 2rem;
+    transition: transform 0.5s cubic-bezier(0.25,0.8,0.25,1);
+  }
+  .gallery-slide {
+    flex: 0 0 320px; border-radius: 10px; overflow: hidden;
+    position: relative; background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.06);
+    aspect-ratio: 4/3;
+  }
+  .gallery-slide-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+  }
+  .gallery-slide-placeholder svg { color: rgba(201,152,42,0.3); }
+  .gallery-slide-caption {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.01em;
+    color: rgba(255,255,255,0.85); background: rgba(26,26,26,0.55);
+    border-radius: 6px; padding: 5px 10px; line-height: 1.35;
+  }
+  .gallery-slide-city {
+    position: absolute; bottom: 10px; right: 10px;
+    font-size: 10px; color: rgba(255,255,255,0.2);
+  }
+  .gallery-nav {
+    display: flex; justify-content: center; align-items: center; gap: 16px;
+    padding: 1.25rem 2rem 2.5rem; background: #0a0a0a;
+  }
+  .gallery-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
+    background: transparent; color: rgba(255,255,255,0.4); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .gallery-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .gallery-dots { display: flex; gap: 6px; }
+  .gallery-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: background 0.3s, width 0.3s; cursor: pointer; }
+  .gallery-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+  .gallery-submit-nudge {
+    text-align: center; font-size: 12.5px; color: rgba(255,255,255,0.3);
+    padding-bottom: 0.5rem;
+  }
+  .gallery-submit-nudge button {
+    background: none; border: none; color: var(--gold); font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; text-decoration: underline;
+    text-underline-offset: 3px; padding: 0;
+  }
+  .gallery-submit-nudge button:hover { color: #f0c84a; }
+
+  /* ── POST-SESSION MODAL ── */
+  .postsession-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,17,23,0.75);
+    backdrop-filter: blur(6px); z-index: 200;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .postsession-overlay.open { display: flex; }
+  .postsession-modal {
+    background: var(--surface); border-radius: 16px; width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto; position: relative; padding: 2rem;
+  }
+  .postsession-close {
+    position: absolute; top: 14px; right: 16px; background: none; border: none;
+    font-size: 18px; color: var(--ink-faint); cursor: pointer; line-height: 1;
+  }
+  .postsession-close:hover { color: var(--ink); }
+  .postsession-title { font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .postsession-sub   { font-size: 13.5px; color: var(--ink-muted); line-height: 1.6; margin-bottom: 1.5rem; }
+  .ps-section-label  { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin: 1.25rem 0 0.75rem; }
+  .ps-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 0.5rem; }
+  .ps-check-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface-soft); border-radius: 8px; padding: 8px 10px; cursor: pointer;
+  }
+  .ps-check-item input[type=checkbox] { accent-color: var(--gold); margin-top: 2px; flex-shrink: 0; width: 14px; height: 14px; }
+  .ps-check-item label { font-size: 12.5px; color: var(--ink-muted); cursor: pointer; line-height: 1.5; }
+  .ps-check-item.checked label { color: var(--ink); }
+  .ps-form-row { margin-bottom: 0.85rem; }
+  .ps-form-row label { display: block; font-size: 11.5px; font-weight: 500; color: var(--ink-muted); margin-bottom: 4px; }
+  .ps-form-row input, .ps-form-row select, .ps-form-row textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+    color: var(--ink); background: var(--surface); outline: none; transition: border-color 0.2s;
+  }
+  .ps-form-row input:focus, .ps-form-row select:focus, .ps-form-row textarea:focus { border-color: var(--gold); }
+  .ps-form-row textarea { resize: vertical; min-height: 60px; }
+  .ps-upload-area {
+    border: 1.5px dashed rgba(201,152,42,0.35); border-radius: 10px;
+    padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    background: var(--surface-soft);
+  }
+  .ps-upload-area:hover { border-color: var(--gold); background: var(--gold-light); }
+  .ps-upload-icon { color: var(--gold-dark); margin-bottom: 8px; }
+  .ps-upload-text { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+  .ps-upload-hint { font-size: 11.5px; color: var(--ink-faint); }
+  .ps-consent {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface-soft); border-radius: 8px; padding: 10px 12px;
+    margin: 1rem 0;
+  }
+  .ps-consent input { accent-color: var(--gold); flex-shrink: 0; margin-top: 3px; }
+  .ps-consent label { font-size: 12px; color: var(--ink-muted); line-height: 1.55; }
+  .ps-submit {
+    width: 100%; background: var(--gold); color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 14.5px; font-weight: 600; border: none; border-radius: 100px;
+    padding: 13px 24px; cursor: pointer; transition: background 0.2s;
+  }
+  .ps-submit:hover { background: var(--gold-dark); }
+  .ps-success { display: none; text-align: center; padding: 1rem 0; }
+  .ps-success-tick { width: 48px; height: 48px; border-radius: 50%; background: #eef7ee; color: #2a6b2a; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+  .ps-success h3 { font-size: 17px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .ps-success p  { font-size: 13px; color: var(--ink-muted); line-height: 1.6; }
+  .solo-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 210;
+    align-items: flex-start; justify-content: center;
+    padding: 2rem 1rem; overflow-y: auto;
+  }
+  .solo-modal-overlay.open { display: flex; }
+  .solo-modal {
+    background: var(--surface); border-radius: 20px;
+    padding: 2.5rem; width: 100%; max-width: 480px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+    position: relative; margin: auto;
+  }
+  .solo-modal-close {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    background: none; border: none; cursor: pointer; color: var(--ink-faint);
+    font-size: 18px; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: background 0.15s;
+  }
+  .solo-modal-close:hover { background: var(--surface-soft); }
+  .solo-how {
+    display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem;
+    background: var(--surface-soft); border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .solo-step {
+    display: flex; align-items: flex-start; gap: 12px; padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .solo-step:last-child { border-bottom: none; }
+  .solo-step-num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff;
+    font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .solo-step-text { font-size: 13px; color: var(--ink-muted); line-height: 1.55; }
+  .solo-step-text strong { color: var(--ink); font-weight: 500; }
+
+  /* ── NAV LOGO FONT FIX ── */
+  .nav-logo { font-family: 'DM Sans', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+  @media (max-width: 720px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    .hero::before { display: none; }
+    .diff-grid { grid-template-columns: 1fr; }
+    .diff-col.them { display: none; }
+    .topics-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .trust-bar-inner, .inperson-ribbon-inner, .cta-reassurance { gap: 1.25rem; }
+    .walkout-grid { grid-template-columns: 1fr 1fr; }
+    .tools-grid { grid-template-columns: 1fr 1fr; }
+    .btn-nav-ghost { display: none; }
+  }
+  @media (max-width: 480px) {
+    .topics-grid { grid-template-columns: 1fr; }
+    .pool-role-grid { grid-template-columns: 1fr; }
+    .walkout-grid { grid-template-columns: 1fr; }
+    .tools-grid { grid-template-columns: 1fr; }
+    .bundle-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo" style="display:flex;align-items:center;gap:10px;">
+      <img src="data:image/png;base64,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" alt="iqcommune" style="height:38px;width:38px;border-radius:9px;flex-shrink:0;"/>
+      <span style="display:flex;flex-direction:column;gap:3px;">
+        <a href="#" style="display:flex;align-items:baseline;gap:0;line-height:1;text-decoration:none;">
+          <span style="color:var(--gold);font-weight:700;font-size:26px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">iq</span><span style="color:var(--ink);font-weight:300;font-size:26px;letter-spacing:-0.04em;font-family:'DM Sans',sans-serif;">commune</span>
+        </a>
+        <a href="https://iqcommune.vercel.app/" target="_blank" rel="noopener" style="font-size:9.5px;font-weight:500;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase;line-height:1;text-decoration:none;">INSIGHT QUOTIENT - UNLEASHED</a>
+      </span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.6rem;">
+      <button class="btn-nav" onclick="openModal()">
+        Join the Waitlist
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="pill">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Taught by Active Professionals
+        </span>
+      </div>
+      <h1 class="hero-headline">
+        Real financial insights from <em>active</em> professionals — backed by years of experience.
+      </h1>
+      <p class="hero-sub">
+        Built for anyone serious about financial literacy.
+      </p>
+      <div class="hero-cta-group">
+        <button class="btn-primary" onclick="openModal()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Join the Waitlist
+        </button>
+        <span class="hero-note">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          We'll notify you when we launch in your city
+        </span>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div class="hero-card-label">Our practitioner pool</div>
+      <div class="pool-stats">
+        <div class="pool-stat">
+          <div class="pool-stat-num">8+</div>
+          <div class="pool-stat-label">Active practitioners</div>
+        </div>
+        <div class="pool-stat">
+          <div class="pool-stat-num">12+</div>
+          <div class="pool-stat-label">Years avg. experience</div>
+        </div>
+        <div class="pool-stat">
+          <div class="pool-stat-num">3</div>
+          <div class="pool-stat-label">Cities</div>
+        </div>
+      </div>
+      <div class="pool-divider"></div>
+      <div class="pool-role-grid">
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div class="pool-role-title">Equity Analysts</div>
+          <div class="pool-role-sub">At brokerages & research desks</div>
+        </div>
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+          <div class="pool-role-title">Portfolio Managers</div>
+          <div class="pool-role-sub">Active at AMCs & wealth firms</div>
+        </div>
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="pool-role-title">Certified Financial Planners</div>
+          <div class="pool-role-sub">SEBI-registered, currently practising</div>
+        </div>
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="pool-role-title">Wealth Managers</div>
+          <div class="pool-role-sub">Serving HNI clients day-to-day</div>
+        </div>
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
+          <div class="pool-role-title">Fund &amp; Product Specialists</div>
+          <div class="pool-role-sub">Structuring funds &amp; investment products</div>
+        </div>
+        <div class="pool-role-card">
+          <div class="pool-role-icon"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+          <div class="pool-role-title">Corporate Finance Professionals</div>
+          <div class="pool-role-sub">In treasury &amp; corporate finance teams</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TRUST BAR ── -->
+<div class="trust-bar">
+  <div class="trust-bar-inner">
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      All practitioners currently active in that specific domain
+    </div>
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      In-person sessions only — not online
+    </div>
+    <div class="trust-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Max 25 participants per session
+    </div>
+  </div>
+</div>
+
+<!-- ── AUDIENCE RIBBON ── -->
+<div class="inperson-ribbon">
+  <div class="inperson-ribbon-inner">
+    <div class="ribbon-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Groups
+    </div>
+    <div class="ribbon-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      Organisations & Institutions
+    </div>
+    <div class="ribbon-item">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      AMCs & Wealth Management Firms
+    </div>
+  </div>
+</div>
+
+<!-- ── DIFFERENTIATOR ── -->
+<section class="diff-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Why it matters</span></div>
+    <h2 class="section-headline">A practitioner is not a trainer.</h2>
+    <p class="section-sub">The person teaching you should still be doing it. Here's why that gap changes everything.</p>
+    <div class="diff-grid">
+      <div class="diff-col them">
+        <div class="diff-header">Conventional Trainers</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Focus on theory &amp; concepts</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Curriculum based on past market conditions</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Generic case studies</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Limited focus on investor behaviour</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#9496a1" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Learning ends with the classroom</div>
+      </div>
+      <div class="diff-col us">
+        <div class="diff-header">Our Practitioners</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Blend theory with practical investment applications</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Content updated to reflect evolving market conditions</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Real-world portfolio and investment examples</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>They manage money the same way they teach you to</div>
+        <div class="diff-item"><svg class="diff-icon" width="15" height="15" fill="none" stroke="#c9982a" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>You step out with a clear plan of action with real numbers</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHO IS THIS FOR ── -->
+<section class="audience-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Who is this for</span></div>
+    <h2 class="section-headline">Built for anyone serious<br/>about financial literacy.</h2>
+    <p class="section-sub">Whether it's a group of friends, a corporate team, or a firm looking to upskill — we design the session around your audience.</p>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <div class="audience-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="audience-name">Groups</div>
+        <div class="audience-desc">Register as the SPOC (primary contact) on behalf of your group. You coordinate with us — we handle everything else.</div>
+        <div class="audience-tags">
+          <span class="aud-tag">Friends & Family</span>
+          <span class="aud-tag">Colleagues</span>
+          <span class="aud-tag">Residential Communities</span>
+          <span class="aud-tag">Walking & Interest Groups</span>
+          <span class="aud-tag">Study Circles</span>
+        </div>
+      </div>
+      <div class="audience-card">
+        <div class="audience-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div class="audience-name">Organisations & Institutions</div>
+        <div class="audience-desc">Any organisation looking to upskill its people on financial literacy — tailored to your workforce and context.</div>
+        <div class="audience-tags">
+          <span class="aud-tag">Corporates</span>
+          <span class="aud-tag">Educational Institutions</span>
+          <span class="aud-tag">Hospitals</span>
+          <span class="aud-tag">Media & Production</span>
+        </div>
+      </div>
+      <div class="audience-card">
+        <div class="audience-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="audience-name">AMCs & Wealth Firms</div>
+        <div class="audience-desc">Client education or new-joiner onboarding — led by practitioners from within the same industry.</div>
+        <div class="audience-tags">
+          <span class="aud-tag">Client Education</span>
+          <span class="aud-tag">New Joiner Onboarding</span>
+          <span class="aud-tag">RM & Advisor Upskilling</span>
+          <span class="aud-tag">Investor Awareness Events</span>
+        </div>
+      </div>
+    </div>
+    <p class="audience-footnote">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      All sessions capped at 25 participants — to keep the quality of conversation and interaction high.
+    </p>
+  </div>
+</section>
+
+<!-- ── TOPICS ── -->
+<section class="topics-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Training Topics</span></div>
+    <h2 class="section-headline">What you'll learn.</h2>
+    <p class="section-sub">Six focused modules — each led by a practitioner actively working in that specific area.</p>
+    <div class="topics-grid">
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="topic-name">Foundations of Personal Finance</div>
+        <div class="topic-desc">Budgeting, net worth, emergency funds, insurance, and tax basics — the complete foundation every adult needs before investing a single rupee.</div>
+      </div>
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="topic-name">Retirement &amp; Goal-Based Financial Planning</div>
+        <div class="topic-desc">Corpus calculation, NPS/EPF/PPF, goal-bucket planning, and handling competing financial goals — all in one session.</div>
+      </div>
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="topic-name">Equity Investing Simplified</div>
+        <div class="topic-desc">From how markets work to reading financials, valuation ratios, and earnings reports — taught by an active equity analyst, not a textbook.</div>
+      </div>
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="topic-name">Debt &amp; Fixed Income Investing</div>
+        <div class="topic-desc">Bonds, G-Secs, debt mutual funds, yield, duration, and tax treatment — the fixed income universe decoded by an active portfolio manager.</div>
+      </div>
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-3"/></svg></div>
+        <div class="topic-name">Asset Allocation &amp; Portfolio Construction</div>
+        <div class="topic-desc">How to split a portfolio across asset classes, build for your risk profile, and rebalance — taught by someone actively making these decisions for real clients.</div>
+      </div>
+      <div class="topic-card">
+        <div class="topic-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <div class="topic-name">Investment Solutions &amp; Portfolio Strategies</div>
+        <div class="topic-desc">Mutual fund categories, SIP/STP/SWP mechanics, PMS and AIF, portfolio review frameworks, and tax-efficient investing — taught by a practising portfolio manager.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BUNDLED SESSIONS ── -->
+<section class="bundle-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Bundled Sessions</span></div>
+    <h2 class="section-headline">Book one module or bundle two into one sitting.</h2>
+    <p class="section-sub">Two related modules, taught back-to-back by one practitioner, as a single 6-hour session — open to every audience.</p>
+    <div class="bundle-grid">
+      <div class="bundle-card">
+        <div class="bundle-duration"><span class="bundle-duration-total">6 hrs total</span></div>
+        <div class="bundle-modules">
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">01</span><span class="bundle-module-name">Foundations of Personal Finance</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">02</span><span class="bundle-module-name">Retirement &amp; Goal-Based Financial Planning</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+        </div>
+        <div class="bundle-note">A complete personal-finance-to-retirement arc — get the foundation right, then plan toward the goals it's funding.</div>
+      </div>
+      <div class="bundle-card">
+        <div class="bundle-duration"><span class="bundle-duration-total">6 hrs total</span></div>
+        <div class="bundle-modules">
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">01</span><span class="bundle-module-name">Equity Investing Simplified</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">02</span><span class="bundle-module-name">Debt &amp; Fixed Income Investing</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+        </div>
+        <div class="bundle-note">The two core asset classes covered together — how to evaluate and invest across equity and debt instruments in a single session.</div>
+      </div>
+      <div class="bundle-card">
+        <div class="bundle-duration"><span class="bundle-duration-total">6 hrs total</span></div>
+        <div class="bundle-modules">
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">01</span><span class="bundle-module-name">Asset Allocation &amp; Portfolio Construction</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+          <div class="bundle-module-row">
+            <div class="bundle-module-left"><span class="bundle-module-num">02</span><span class="bundle-module-name">Investment Solutions &amp; Portfolio Strategies</span></div>
+            <span class="bundle-module-duration">3 hrs</span>
+          </div>
+        </div>
+        <div class="bundle-note">Decide the allocation, then pick the instruments to execute it — strategy through to implementation in one session.</div>
+      </div>
+    </div>
+    <p class="bundle-footnote">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Bundling is open to all audiences. Groups booking a bundle need a minimum of 9 participants, instead of the usual 5, to make the longer session worthwhile.
+    </p>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="how-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Process</span></div>
+    <h2 class="section-headline">How it works.</h2>
+    <p class="section-sub">Tell us what you need. We align the right practitioner and schedule around you.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Pick a topic</div>
+        <div class="step-desc">Choose the area that fits your need — or a 6-hour bundle covering two related modules. Unsure? We'll guide you.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Send your request</div>
+        <div class="step-desc">Share your audience type, group size (up to 25), and a preferred date window. We take it from there.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">We get in touch</div>
+        <div class="step-desc">Our team reaches out to confirm details, align the right practitioner, and lock in the schedule with you.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Attend Session</div>
+        <div class="step-desc">In-person, focused session — max 25 people — led by a practitioner still active in that field.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT YOU WALK OUT WITH ── -->
+<section class="walkout-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Takeaways</span></div>
+    <h2 class="section-headline">What you walk out with.</h2>
+    <p class="section-sub">Not notes. Not slides. A plan you can act on the same evening — built around your own numbers and goals.</p>
+
+    <div class="walkout-grid">
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <div class="walkout-card-title">Foundations of Personal Finance</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A personal budget framework mapped to your actual income and expense pattern</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Net worth snapshot built in the session — with one specific step to improve it within 30 days</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Emergency fund target calculated for your household size and income stability</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A ranked financial to-do list — what to fix before the first rupee is invested</div>
+        </div>
+      </div>
+
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div class="walkout-card-title">Retirement &amp; Goal-Based Planning</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Your personal retirement corpus number — calculated in the room with your own age, lifestyle cost, and inflation assumption</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A NPS / PPF / EPF contribution plan mapped to your current income and retirement timeline</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A personal goal-bucket map — each major goal with a timeline, target amount, and instrument match</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Monthly SIP amounts needed per goal — calculated in the room with your own numbers</div>
+        </div>
+      </div>
+
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <div class="walkout-card-title">Equity Investing Simplified</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A stock evaluation template — P/E context, growth rate, moat assessment, and red flag checklist</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Ability to read a basic earnings report and extract what matters — practised in the session</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A watchlist of 3–5 companies started in the room using the practitioner's shortlisting framework</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>One valuation ratio calibrated to the current market — what's cheap vs. expensive right now</div>
+        </div>
+      </div>
+
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <div class="walkout-card-title">Debt &amp; Fixed Income Investing</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A fixed income allocation framework — how to decide what portion of your portfolio belongs in debt and in which instruments</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A debt instrument comparison guide — FD vs. debt fund vs. bond vs. G-Sec across risk, return, liquidity, and tax</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Clarity on how RBI rate decisions affect your fixed income holdings — with a simple response framework</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A tax-efficiency checklist for debt investments — how to minimise the tax drag on fixed income returns</div>
+        </div>
+      </div>
+
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-3"/></svg>
+          <div class="walkout-card-title">Asset Allocation &amp; Portfolio Construction</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A personal allocation framework — how to split your investable surplus across asset classes based on your risk profile and timeline</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A model portfolio structure (conservative / moderate / aggressive) as a starting reference</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A rebalancing trigger framework — simple rules for when and how to adjust the portfolio</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A checklist of portfolio construction pitfalls most retail investors make</div>
+        </div>
+      </div>
+      <div class="walkout-card">
+        <div class="walkout-card-header">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="walkout-card-title">Portfolio &amp; Investment Strategies</div>
+        </div>
+        <div class="walkout-card-body">
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A portfolio strategy document — your allocation across mutual fund categories, mapped to your risk profile and timeline</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A mutual fund shortlist framework — how to evaluate and compare funds within a category before committing</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A portfolio review checklist — what to look at, how often, and what triggers a change vs. staying the course</div>
+          <div class="walkout-item"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>A tax-efficiency action list — two or three moves to reduce the tax drag on your current portfolio</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="walkout-callout">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span><strong>This isn't a certificate programme.</strong> There are no slides to take home. What you leave with is a working plan — built around your actual numbers, in the room, with a practitioner who can sense-check it on the spot.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section class="faq-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">FAQs</span></div>
+    <h2 class="section-headline">Things people ask before they sign up.</h2>
+    <p class="section-sub">Honest answers — no fine print.</p>
+
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I register if I have a group?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">One person from your group registers as the SPOC (primary contact) on behalf of everyone. You share the group size, topic, a preferred date window, and your venue details. We align a practitioner and confirm the schedule with you directly. Your group takes care of the venue — we handle the rest, from practitioner match to logistics on our end.</div>
+      </div>
+
+
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Will the practitioner try to sell me financial products?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">No. This is a firm policy, not a preference. During sessions, our practitioners are here purely to educate — no cross-selling, no product pitching, no collecting attendee details for commercial purposes. They have no commercial arrangement with any fund house, brokerage, or insurance company through this programme. The session is about frameworks, concepts, and your questions — nothing else. That said, practitioners are real professionals and you are adults — any interaction or connection that happens outside the session, on a voluntary basis, is entirely between you and them. We don't restrict that, and we don't pretend we can.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Are these sessions affiliated with any AMFI, SEBI, or product entity?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">No. iqcommune is an independent platform. Our practitioners may personally hold relevant certifications (CFP, NISM, etc.), but the sessions are not conducted on behalf of any regulator, distributor, or product company. This independence is deliberate — it's what keeps the content product-agnostic.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What exactly will I learn — and what won't be covered?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">Each session covers the framework and thinking behind a topic — not specific stock tips, fund recommendations, or portfolio advice. You'll leave understanding how to think about a problem, not with a list of things to buy. The practitioner will use real examples from their own work, but the goal is your literacy — not their portfolio.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Where are the sessions held? Are they online?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">All sessions are in-person only. We believe the quality of conversation in a room — the ability to ask follow-up questions, read the room, and get a real-time answer — is central to how this works. Your group finalises the venue once it's formed, and we build the session schedule around it.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can my company book a session for a team?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">Yes. Organisational sessions work differently — you bring the group (your team), and we align the right practitioner around your schedule. This covers corporates, educational institutions, hospitals, media & production houses, and any organisation looking to upskill its people. Sessions are tailored to your workforce's financial literacy level and specific needs. Please note that venue and basic infrastructure are to be arranged by your organisation. Use the "Join the Waitlist" form and select <strong>Organisations & Institutions</strong> as your audience type — we'll take it from there.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can sessions be bundled into a longer block?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">Yes — for any audience. Two related modules can run back-to-back as a single 6-hour session, taught by one practitioner end to end. Three combinations are available: Foundations of Personal Finance paired with Retirement &amp; Goal-Based Financial Planning; Equity Investing Simplified paired with Debt &amp; Fixed Income Investing; or Asset Allocation &amp; Portfolio Construction paired with Investment Solutions &amp; Portfolio Strategies. Groups booking a bundle need a minimum of 9 participants (instead of the usual 5). Select your audience type and topic of interest in the "Join the Waitlist" form and we'll confirm bundle availability with you.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How is the practitioner chosen for my session?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">We match the practitioner to the module by current role — not just credentials. Someone teaching Equity Investing Simplified is an active equity analyst. Someone covering Investment Solutions &amp; Portfolio Strategies is currently structuring client portfolios. The match is made internally before we confirm your session details.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Who arranges the venue?
+          <svg class="faq-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">It depends on your audience type. <br/><br/><strong>Groups</strong> — Venue is your group's responsibility, same as our Organisation and AMC formats — a society clubhouse, an office room, a community hall, anything that fits. If you're not sure where to start, let us know your city and we're happy to point you to a few practical options other groups have used — the booking and any cost is on your group.<br/><br/><strong>Organisations &amp; Institutions</strong> (corporates, educational institutions, hospitals, media houses) — the venue and basic infrastructure (seating, projector or screen) are to be arranged by your organisation. This gives you flexibility to host the session in a familiar setting for your team. We handle the practitioner, content, and delivery.<br/><br/><strong>AMCs &amp; Wealth Firms</strong> — venue and setup are on your end. You know your space and your audience best. We focus entirely on the content and the practitioner match.</div>
+      </div>
+
+    </div>
+
+
+  </div>
+</section>
+
+<!-- ── TOOLS & CALCULATORS ── -->
+<section class="tools-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Tools &amp; Calculators</span></div>
+    <h2 class="section-headline" style="color:#fff;">Try the numbers before you attend.</h2>
+    <p class="section-sub" style="color:rgba(255,255,255,0.5);">Six live calculators — one per module. Built on the same frameworks the sessions use. No sign-up, no data stored.</p>
+
+    <div class="tools-grid">
+
+      <!-- ── TOOL 1: 50/30/20 Budget Checker ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Foundations of Personal Finance</div>
+          <div class="tool-name">50/30/20 Budget Checker</div>
+          <div class="tool-desc">Enter your monthly take-home. See instantly how your spending maps against the 50/30/20 benchmark.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">Budget Checker</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Monthly take-home <span id="t1-iv">&#x20B9;60,000</span></div>
+              <input type="range" class="tw-range" min="15000" max="300000" step="5000" value="60000" oninput="t1calc(this.value)">
+            </div>
+            <div class="tw-seg" id="t1-seg"></div>
+            <div class="tw-res c3" style="margin-top:7px;">
+              <div class="tw-box"><div class="tw-box-lbl">Needs (50%)</div><div class="tw-box-val" id="t1-needs">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Wants (30%)</div><div class="tw-box-val" id="t1-wants">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Savings (20%)</div><div class="tw-box-val pos" id="t1-save">&#x2014;</div></div>
+            </div>
+            <div class="tw-flag" id="t1-msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL 2: Retirement Corpus Calculator ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Retirement &amp; Goal-Based Planning</div>
+          <div class="tool-name">Retirement Corpus Calculator</div>
+          <div class="tool-desc">Your age, monthly savings, and inflation. We calculate what you need at retirement and the SIP to get there.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">Retirement Corpus</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Current age <span id="t2-av">32</span></div>
+              <input type="range" class="tw-range" min="22" max="55" step="1" value="32" oninput="t2calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Monthly savings <span id="t2-sv">&#x20B9;20,000</span></div>
+              <input type="range" class="tw-range" min="5000" max="150000" step="5000" value="20000" oninput="t2calc()">
+            </div>
+            <div class="tw-res c2">
+              <div class="tw-box"><div class="tw-box-lbl">Corpus needed</div><div class="tw-box-val warn" id="t2-corpus">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">SIP required</div><div class="tw-box-val pos" id="t2-sip">&#x2014;</div></div>
+            </div>
+            <div class="tw-msg" id="t2-msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL 3: P/E Valuation Check ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Equity Investing Simplified</div>
+          <div class="tool-name">P/E Valuation Quick-Check</div>
+          <div class="tool-desc">Enter a stock&apos;s market price and EPS. Instant P/E verdict against the broad market benchmark.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">Valuation Check</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Market price (&#x20B9;) <span id="t3-pv">&#x20B9;450</span></div>
+              <input type="range" class="tw-range" min="10" max="5000" step="10" value="450" oninput="t3calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">EPS (&#x20B9;) <span id="t3-ev">&#x20B9;22</span></div>
+              <input type="range" class="tw-range" min="1" max="500" step="1" value="22" oninput="t3calc()">
+            </div>
+            <div class="tw-res c3">
+              <div class="tw-box"><div class="tw-box-lbl">P/E Ratio</div><div class="tw-box-val" id="t3-pe">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Market avg</div><div class="tw-box-val">22&#xD7;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Verdict</div><div class="tw-box-val" id="t3-verdict">&#x2014;</div></div>
+            </div>
+            <div class="tw-flag" id="t3-msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL 4: Post-Tax Return Comparator ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Debt &amp; Fixed Income Investing</div>
+          <div class="tool-name">Post-Tax Return Comparator</div>
+          <div class="tool-desc">FD vs. debt fund vs. G-Sec. Enter amount and tenure &#x2014; see post-tax returns side by side.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">Debt Comparator</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Amount (&#x20B9;) <span id="t4-av">&#x20B9;1,00,000</span></div>
+              <input type="range" class="tw-range" min="10000" max="1000000" step="10000" value="100000" oninput="t4calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Tenure (years) <span id="t4-tv">3 yrs</span></div>
+              <input type="range" class="tw-range" min="1" max="10" step="1" value="3" oninput="t4calc()">
+            </div>
+            <div class="tw-res c3">
+              <div class="tw-box"><div class="tw-box-lbl">FD (post-tax)</div><div class="tw-box-val" id="t4-fd">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Debt Fund</div><div class="tw-box-val pos" id="t4-mf">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">G-Sec</div><div class="tw-box-val pos" id="t4-gs">&#x2014;</div></div>
+            </div>
+            <div class="tw-msg">Assumes 30% tax slab. Illustrative only &#x2014; actual returns vary with rate cycles and tax slab.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL 5: Portfolio Balance Scorecard ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Asset Allocation &amp; Portfolio Construction</div>
+          <div class="tool-name">Portfolio Balance Scorecard</div>
+          <div class="tool-desc">Enter your asset mix. Get a live balance score and rebalancing cue for your risk profile.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">Portfolio Scorecard</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-chips">
+              <div class="tw-chip on" id="t5c0" onclick="t5profile(0)">Conservative</div>
+              <div class="tw-chip" id="t5c1" onclick="t5profile(1)">Moderate</div>
+              <div class="tw-chip" id="t5c2" onclick="t5profile(2)">Aggressive</div>
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Equity % <span id="t5-ev">40%</span></div>
+              <input type="range" class="tw-range" min="0" max="100" step="5" value="40" id="t5-er" oninput="t5calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Debt % <span id="t5-dv">45%</span></div>
+              <input type="range" class="tw-range" min="0" max="100" step="5" value="45" id="t5-dr" oninput="t5calc()">
+            </div>
+            <div class="tw-res c2">
+              <div class="tw-box"><div class="tw-box-lbl">Balance score</div><div class="tw-box-val warn" id="t5-score">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Gold + Cash</div><div class="tw-box-val" id="t5-rest">15%</div></div>
+            </div>
+            <div class="tw-flag" id="t5-msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL 6: SIP Growth Visualiser ── -->
+      <div class="tool-card">
+        <div class="tool-card-top">
+          <div class="tool-module">Investment Solutions &amp; Portfolio Strategies</div>
+          <div class="tool-name">SIP Growth Visualiser</div>
+          <div class="tool-desc">Monthly SIP + years + return rate. Watch your corpus build year by year.</div>
+        </div>
+        <div class="tool-widget">
+          <div class="tw-header"><span class="tw-title">SIP Growth</span><span class="tw-tag">Try it</span></div>
+          <div class="tw-body">
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Monthly SIP <span id="t6-sv">&#x20B9;10,000</span></div>
+              <input type="range" class="tw-range" min="1000" max="100000" step="1000" value="10000" oninput="t6calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Years <span id="t6-yv">15</span></div>
+              <input type="range" class="tw-range" min="3" max="30" step="1" value="15" oninput="t6calc()">
+            </div>
+            <div class="tw-ctrl">
+              <div class="tw-ctrl-lbl">Return % <span id="t6-rv">12%</span></div>
+              <input type="range" class="tw-range" min="6" max="18" step="0.5" value="12" oninput="t6calc()">
+            </div>
+            <div class="tw-res c3">
+              <div class="tw-box"><div class="tw-box-lbl">Invested</div><div class="tw-box-val" id="t6-inv">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Corpus</div><div class="tw-box-val pos" id="t6-corp">&#x2014;</div></div>
+              <div class="tw-box"><div class="tw-box-lbl">Gains</div><div class="tw-box-val pos" id="t6-gain">&#x2014;</div></div>
+            </div>
+            <div class="tw-bars" id="t6-bars"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="container">
+    <div class="section-tag"><span class="pill">Get Started</span></div>
+    <h2 class="section-headline">If you are serious to improve your financial literacy</h2>
+    <p class="section-sub">Tell us your topic and your group — we'll notify you the moment sessions open near you.</p>
+    <button class="btn-gold" onclick="openModal()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Join the Waitlist
+    </button>
+    <div class="cta-reassurance">
+      <div class="cta-re-item">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        No commitment — just early access
+      </div>
+      <div class="cta-re-item">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Max 25 participants per session
+      </div>
+      <div class="cta-re-item">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        We'll notify you the moment sessions open in your city
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PHOTO GALLERY ──
+     Each slide below has a hidden <img class="gallery-slide-img"> slot plus a
+     fallback placeholder. Once photos are published from the admin console's
+     Gallery tab (city + caption per photo — see iqcommune-admin-console.html),
+     populating each .gallery-slide-img's src and toggling it visible (hiding
+     the placeholder) is the only wiring needed — the two are already built to
+     the same shape. This still requires a shared backend between the two
+     files, which doesn't exist yet; until then this section shows illustrative
+     placeholders. -->
+<section class="gallery-section">
+  <div class="container">
+    <div class="gallery-header">
+      <div class="gallery-eyebrow">Sessions in the room</div>
+      <div class="gallery-headline">Where it actually happens.</div>
+      <div class="gallery-sub">Photos from sessions conducted across India — real rooms, real conversations.</div>
+    </div>
+  </div>
+  <div class="gallery-track-wrap">
+    <div class="gallery-track" id="gallery-track">
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Deep in a foundations session</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Full house for equity investing</div>
+        <div class="gallery-slide-city">Mumbai</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Wrapping up on a high note</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Working through a retirement plan</div>
+        <div class="gallery-slide-city">Bengaluru</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Building out a portfolio, live</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Great question from the back row</div>
+        <div class="gallery-slide-city">Pune</div>
+      </div>
+
+      <div class="gallery-slide">
+        <img class="gallery-slide-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+        <div class="gallery-slide-placeholder">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="gallery-slide-caption">Foundations, session two</div>
+        <div class="gallery-slide-city">Delhi</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="gallery-nav">
+    <button class="gallery-btn" id="gallery-prev" onclick="galleryNav(-1)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="gallery-dots" id="gallery-dots"></div>
+    <button class="gallery-btn" id="gallery-next" onclick="galleryNav(1)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+  <div class="gallery-submit-nudge">
+    Attended a session? Share it on social media and tag <strong style="color:rgba(255,255,255,0.55);">@iqcommune</strong> — we feature the best ones here.
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div style="border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 1.5rem; margin-bottom: 1.25rem;">
+    <p style="font-size:12px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#c9982a; margin-bottom:0.5rem;">Are you a finance professional?</p>
+    <a href="iqcommune-empanelment.html" style="display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:500; color:rgba(255,255,255,0.65); text-decoration:none; transition:color 0.15s; border-bottom: 1px solid rgba(201,152,42,0.35); padding-bottom:2px;"
+       onmouseover="this.style.color='#f0c84a'; this.style.borderBottomColor='rgba(201,152,42,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.65)'; this.style.borderBottomColor='rgba(201,152,42,0.35)'">
+      Teach what you practise — join the iqcommune practitioner network
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+  <p><a href="privacy-policy.html" style="color:rgba(255,255,255,0.65); text-decoration:none;">Privacy Policy</a> &nbsp;·&nbsp; <a href="terms-of-use.html" style="color:rgba(255,255,255,0.65); text-decoration:none;">Terms of Use</a> &nbsp;·&nbsp; <a href="mailto:hello@iqcommune.com" style="color:rgba(255,255,255,0.65); text-decoration:none;">hello@iqcommune.com</a></p>
+  <p style="margin-top:0.5rem;">© 2026. InvestQ Commune. All Rights Reserved</p>
+</footer>
+
+<!-- ── ENQUIRY MODAL ── -->
+<div class="modal-overlay" id="modal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+
+    <div id="modal-form">
+      <h2 class="modal-title">Join the Waitlist</h2>
+      <p class="modal-sub">Tell us a bit about what you need — we'll notify you the moment sessions open in your city.</p>
+
+      <label class="modal-aud-label">Who is this for?</label>
+      <div class="aud-chips">
+        <div class="aud-chip" onclick="selectAud(this,'individual')">Group (register as SPOC)</div>
+        <div class="aud-chip" onclick="selectAud(this,'corporate')">Organisations & Institutions</div>
+        <div class="aud-chip" onclick="selectAud(this,'finance')">AMC / Wealth Firm</div>
+      </div>
+
+      <div class="modal-context" id="modal-context">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span id="modal-context-text">Select an audience type above and we'll tailor our follow-up accordingly.</span>
+      </div>
+
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fname">First name</label>
+          <input type="text" id="fname" placeholder="Rohan"/>
+        </div>
+        <div class="form-group">
+          <label for="lname">Last name</label>
+          <input type="text" id="lname" placeholder="Mehta"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="rohan@example.com"/>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone number</label>
+        <input type="tel" id="phone" placeholder="+91 98765 43210"/>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="req-city">City</label>
+          <input type="text" id="req-city" placeholder="e.g. Mumbai"/>
+        </div>
+        <div class="form-group">
+          <label for="req-state">State</label>
+          <input type="text" id="req-state" placeholder="e.g. Maharashtra"/>
+        </div>
+      </div>
+
+      <!-- Org/firm name — shown for corporate & finance audience types -->
+      <div class="form-group" id="org-name-row" style="display:none;">
+        <label for="org-name" id="org-name-label">Organisation name</label>
+        <input type="text" id="org-name" placeholder=""/>
+      </div>
+
+      <div class="form-group">
+        <label for="topic">Topic of interest</label>
+        <select id="topic" onchange="handleTopicChange(this.value)">
+          <option value="">Select a training topic…</option>
+          <option>Foundations of Personal Finance</option>
+          <option>Retirement &amp; Goal-Based Financial Planning</option>
+          <option>Equity Investing Simplified</option>
+          <option>Debt &amp; Fixed Income Investing</option>
+          <option>Asset Allocation &amp; Portfolio Construction</option>
+          <option>Investment Solutions &amp; Portfolio Strategies</option>
+          <option class="bundle-option" value="Bundle — Foundations of Personal Finance + Retirement &amp; Goal-Based Financial Planning (6 hrs)">Bundle — Foundations + Retirement &amp; Goal-Based Planning (6 hrs)</option>
+          <option class="bundle-option" value="Bundle — Equity Investing Simplified + Debt &amp; Fixed Income Investing (6 hrs)">Bundle — Equity Investing + Debt &amp; Fixed Income (6 hrs)</option>
+          <option class="bundle-option" value="Bundle — Asset Allocation &amp; Portfolio Construction + Investment Solutions &amp; Portfolio Strategies (6 hrs)">Bundle — Asset Allocation + Investment Solutions (6 hrs)</option>
+          <option>Not sure — help me choose</option>
+        </select>
+        <div class="form-hint" id="bundle-hint">Bundled (6-hour) sessions are open to all audiences. For Groups, this requires a minimum of 9 participants.</div>
+      </div>
+
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="groupsize">Group size</label>
+          <select id="groupsize" onchange="updateMinCommitment(this.value)">
+            <option value="">Select…</option>
+            <option id="size-5-8" value="5-8">5 – 8 people</option>
+            <option value="9-15">9 – 15 people</option>
+            <option value="16-25">16 – 25 people</option>
+          </select>
+          <div class="form-hint" id="groupsize-hint">Sessions are capped at 25 participants.</div>
+        </div>
+        <div class="form-group">
+          <label for="datewindow">Preferred date window</label>
+          <input type="text" id="datewindow" placeholder="e.g. July last week"/>
+          <div class="form-hint">Rough window is fine — we confirm offline.</div>
+        </div>
+      </div>
+
+      <!-- Venue — shown for Groups only -->
+      <div id="venue-row" style="display:none;">
+        <div class="form-group">
+          <label for="venue-pref">Your venue details <span style="color:#c0392b;">*</span></label>
+          <input type="text" id="venue-pref" required placeholder="e.g. Society clubhouse, office conference room, community hall…"/>
+          <div class="form-hint">Venue booking is your group's responsibility. Share the space you've finalised, or let us know if you'd like a few suggestions for your city.</div>
+        </div>
+      </div>
+
+      <!-- Min commitment callout — shown when Groups is selected and group size chosen -->
+      <div id="min-commitment-box" style="display:none; background:var(--gold-light); border:1px solid #e0c870; border-left:3px solid var(--gold); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:0.85rem 1rem; margin-bottom:0.5rem; font-size:13px; color:var(--gold-dark); line-height:1.65;">
+        <strong style="color:var(--ink); font-weight:600; display:block; margin-bottom:3px;">Minimum attendance commitment</strong>
+        <span id="min-commitment-text">—</span>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Anything else? <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
+        <textarea id="notes" rows="2" placeholder="e.g. specific focus areas, preferred language, city…"></textarea>
+      </div>
+
+      <!-- SPOC declaration — shown for all audience types -->
+      <div id="spoc-declaration" style="display:none; margin-top:0.5rem;">
+        <div style="background:var(--surface-soft); border:1.5px solid var(--border-strong); border-radius:8px; padding:0.9rem 1rem;">
+          <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:13px; color:var(--ink-muted); line-height:1.6;">
+            <input type="checkbox" id="spoc-checkbox" style="accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; margin-top:3px;"/>
+            <span id="spoc-text">I confirm I am registering as the <strong style="color:var(--ink);">SPOC (primary contact)</strong> and will coordinate internally on session logistics and participant attendance.</span>
+          </label>
+        </div>
+      </div>
+
+      <button class="modal-submit" onclick="submitForm()">
+        Send Request
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <p class="modal-fine">No spam. We'll only reach out when sessions open in your city.</p>
+    </div>
+
+    <div class="modal-success" id="modal-success">
+      <div class="success-tick">
+        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>You're on the list!</h3>
+      <p id="modal-success-msg">Thanks — you're on the waitlist. We'll notify you the moment sessions open in your city.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── POST-SESSION PHOTO MODAL ── -->
+<div class="postsession-overlay" id="postsession-modal" onclick="handlePSOverlay(event)">
+  <div class="postsession-modal">
+    <button class="postsession-close" onclick="closePostSession()">✕</button>
+
+    <div id="ps-form-state">
+      <div class="postsession-title">Share your session photos</div>
+      <div class="postsession-sub">Photos from sessions are displayed on this page and used for iqcommune's social presence. Use the shot list below — a phone camera on good natural light is all you need.</div>
+
+      <div class="ps-section-label">Session details</div>
+      <div class="ps-form-row"><label>Date of session</label><input type="date" id="ps-date"></div>
+      <div class="ps-form-row"><label>Module taught</label>
+        <select id="ps-module">
+          <option value="">Select module…</option>
+          <option>Foundations of Personal Finance</option>
+          <option>Retirement &amp; Goal-Based Financial Planning</option>
+          <option>Equity Investing Simplified</option>
+          <option>Debt &amp; Fixed Income Investing</option>
+          <option>Asset Allocation &amp; Portfolio Construction</option>
+          <option>Investment Solutions &amp; Portfolio Strategies</option>
+        </select>
+      </div>
+      <div class="ps-form-row"><label>Organisation / group name <span style="color:var(--ink-faint);font-weight:400;">(optional — for tagging)</span></label><input type="text" id="ps-org" placeholder="e.g. HDFC Securities, Koramangala Study Circle"></div>
+      <div class="ps-form-row"><label>City</label><input type="text" id="ps-city" placeholder="e.g. Mumbai"></div>
+
+      <div class="ps-section-label">Shot checklist — tick what you captured</div>
+      <div class="ps-checklist">
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Back of room — trainer in focus, full audience visible</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>From trainer's position — audience looking toward screen</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Front-left corner — wide view of the room</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Front-right corner — trainer and materials visible</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Candid — participant working through numbers</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Candid — Q&amp;A or discussion moment</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Candid — close-up of notes, worksheets, or screen</label></div>
+        <div class="ps-check-item" onclick="togglePsCheck(this)"><input type="checkbox"><label>Group photo — trainer and all participants</label></div>
+      </div>
+
+      <div class="ps-section-label">Upload photos</div>
+      <div class="ps-upload-area" onclick="document.getElementById('ps-file').click()">
+        <div class="ps-upload-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="ps-upload-text">Tap to upload photos</div>
+        <div class="ps-upload-hint">JPEG or PNG · Up to 10 photos · Max 25MB per photo</div>
+        <input type="file" id="ps-file" multiple accept="image/*" style="display:none" onchange="psFileSelected(this)">
+      </div>
+      <div id="ps-file-list" style="margin-top:8px;font-size:12px;color:var(--ink-faint);"></div>
+
+      <div class="ps-consent">
+        <input type="checkbox" id="ps-consent">
+        <label for="ps-consent">All participants were informed that photos would be taken and may be used on iqcommune's website and social media. I confirm this on their behalf.</label>
+      </div>
+
+      <button class="ps-submit" onclick="submitPostSession()">Submit photos</button>
+    </div>
+
+    <div class="ps-success" id="ps-success-state">
+      <div class="ps-success-tick">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>Photos received — thank you.</h3>
+      <p>We'll process and add them to the gallery within a few days. If you've included an organisation name, we'll confirm with you before tagging publicly.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal() {
+    document.getElementById('modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal')) closeModal();
+  }
+
+
+
+
+
+  function toggleFaq(btn) {
+    const isOpen = btn.classList.contains('open');
+    document.querySelectorAll('.faq-q').forEach(q => q.classList.remove('open'));
+    document.querySelectorAll('.faq-a').forEach(a => a.classList.remove('open'));
+    if (!isOpen) {
+      btn.classList.add('open');
+      btn.nextElementSibling.classList.add('open');
+    }
+  }
+
+  const contextMessages = {
+    individual: 'You are registering as the SPOC (primary contact) for your group. Minimum 5 participants required. Sessions are priced per head — the minimum charge applies to the lower bound of your selected group size, regardless of actual attendance on the day. <strong style="color:var(--ink)">Venue booking and cost are your group\'s responsibility — happy to share a few suggestions for your city if you need them.</strong> You can also request a 6-hour bundled session covering two related modules — this requires a minimum of 9 participants.',
+    corporate:  'You are registering as the SPOC for your organisation. We\'ll tailor the session to your team\'s goals and align the right practitioner. <strong style="color:var(--ink)">Venue and basic infrastructure (seating, projector/screen) are to be arranged by your organisation. We handle everything else.</strong> You can also request a 6-hour bundled session — select a bundle option in the topic field below.',
+    finance:    'You are registering as the SPOC for your firm. We\'ll match the right practitioner and structure the session around your goals. <strong style="color:var(--ink)">Venue and setup are on your end — we take care of the content and delivery.</strong> You can also request a 6-hour bundled session — select a bundle option in the topic field below.'
+  };
+
+  function selectAud(el, type) {
+    document.querySelectorAll('.aud-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('modal-context-text').innerHTML = contextMessages[type];
+
+    // SPOC shown for all types
+    document.getElementById('spoc-declaration').style.display = 'block';
+
+    // Venue row — Groups only
+    document.getElementById('venue-row').style.display = type === 'individual' ? 'block' : 'none';
+
+    // Org/firm name row — Orgs & AMCs only
+    const orgRow   = document.getElementById('org-name-row');
+    const orgLabel = document.getElementById('org-name-label');
+    const orgInput = document.getElementById('org-name');
+    if (type === 'corporate') {
+      orgRow.style.display = 'block';
+      orgLabel.textContent = 'Organisation name';
+      orgInput.placeholder = 'e.g. TechCorp India, St. Xavier\'s College, Apollo Hospitals';
+    } else if (type === 'finance') {
+      orgRow.style.display = 'block';
+      orgLabel.textContent = 'Firm name';
+      orgInput.placeholder = 'e.g. HDFC AMC, Mirae Asset, Axis Securities, Anand Rathi Wealth';
+    } else {
+      orgRow.style.display = 'none';
+    }
+
+    // SPOC text — tailored per type
+    const spocText = document.getElementById('spoc-text');
+    if (type === 'individual') {
+      spocText.innerHTML = 'I confirm I am registering as the <strong style="color:var(--ink);">SPOC (primary contact)</strong> for this group and that <span id="spoc-min-text">at least 5 participants</span> will attend. I confirm I will coordinate venue and logistics for the session, and acknowledge that the minimum attendance commitment applies regardless of actual turnout on the day.';
+    } else if (type === 'corporate') {
+      spocText.innerHTML = 'I confirm I am registering as the <strong style="color:var(--ink);">SPOC (primary contact)</strong> for this organisation and will coordinate internally on session logistics, venue, and participant attendance.';
+    } else {
+      spocText.innerHTML = 'I confirm I am registering as the <strong style="color:var(--ink);">SPOC (primary contact)</strong> for this firm and will coordinate internally on session logistics, venue, and participant attendance.';
+    }
+
+    if (type !== 'individual') {
+      document.getElementById('min-commitment-box').style.display = 'none';
+      document.getElementById('groupsize').value = '';
+    }
+    handleTopicChange(document.getElementById('topic').value);
+  }
+
+
+
+  function handleTopicChange(val) {
+    const isBundle = val.startsWith('Bundle');
+    const size58 = document.getElementById('size-5-8');
+    const groupsizeSelect = document.getElementById('groupsize');
+    const groupsizeHint = document.getElementById('groupsize-hint');
+    const isGroups = document.querySelector('.aud-chip.active') &&
+                     document.querySelector('.aud-chip.active').textContent.trim().startsWith('Group');
+    if (isBundle && isGroups) {
+      size58.disabled = true;
+      if (groupsizeSelect.value === '5-8') {
+        groupsizeSelect.value = '';
+        document.getElementById('min-commitment-box').style.display = 'none';
+      }
+      groupsizeHint.textContent = 'Bundled (6-hour) sessions require a minimum group of 9 participants.';
+    } else {
+      size58.disabled = false;
+      groupsizeHint.textContent = 'Sessions are capped at 25 participants.';
+    }
+  }
+
+  function switchToSolo() {
+    closeModal();
+    // slight delay so first modal finishes closing before second opens
+    setTimeout(openSoloModal, 180);
+  }
+
+  function updateMinCommitment(val) {
+    const box  = document.getElementById('min-commitment-box');
+    const txt  = document.getElementById('min-commitment-text');
+    const stxt = document.getElementById('spoc-min-text');
+    // Only show for Groups audience type
+    const isGroups = document.querySelector('.aud-chip.active') &&
+                     document.querySelector('.aud-chip.active').textContent.trim().startsWith('Group');
+    const full = {
+      '5-8':  'Your selected range is 5–8 people. The minimum charge applies to 5 participants — even if fewer attend on the day.',
+      '9-15': 'Your selected range is 9–15 people. The minimum charge applies to 9 participants — even if fewer attend on the day.',
+      '16-25':'Your selected range is 16–25 people. The minimum charge applies to 16 participants — even if fewer attend on the day.'
+    };
+    const minMap = { '5-8':'at least 5 participants', '9-15':'at least 9 participants', '16-25':'at least 16 participants' };
+    if (val && full[val] && isGroups) {
+      box.style.display = 'block';
+      txt.textContent   = full[val];
+      if (stxt) stxt.textContent = minMap[val] || 'at least 5 participants';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function submitForm() {
+    const fname = document.getElementById('fname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const topic = document.getElementById('topic').value;
+    const size  = document.getElementById('groupsize').value;
+    if (!fname || !email || !topic || !size) {
+      alert('Please fill in your name, email, topic, and group size to continue.');
+      return;
+    }
+    // Check SPOC declaration if Groups is selected
+    const spocBox = document.getElementById('spoc-declaration');
+    if (spocBox && spocBox.style.display !== 'none') {
+      if (!document.getElementById('spoc-checkbox').checked) {
+        alert('Please confirm the SPOC declaration and minimum attendance commitment before submitting.');
+        return;
+      }
+    }
+    // NOTE: This is a static, client-only page — there is no backend here to
+    // actually send an email. In production, sendRequestConfirmationEmail()
+    // below is the integration point: replace it with a real API call (or a
+    // trigger the backend picks up) that sends the confirmation email to
+    // `email`, addressed to `fname`, referencing `topic`. Subject/body for
+    // that email are already finalised — see the session request
+    // confirmation email draft.
+    sendRequestConfirmationEmail(fname, email, topic);
+
+    const firstName = fname.split(' ')[0];
+    document.getElementById('modal-success-msg').textContent =
+      'Thanks, ' + firstName + ' — you\'re on the waitlist. We\'ll notify you the moment sessions open in your city.';
+    document.getElementById('modal-form').style.display = 'none';
+    document.getElementById('modal-success').style.display = 'block';
+  }
+
+  function sendRequestConfirmationEmail(name, email, topic) {
+    // Integration point only — see note above. No-op until a backend exists.
+  }
+
+  /* ── PHOTO GALLERY ── */
+  (function() {
+    const track  = document.getElementById('gallery-track');
+    const dotsEl = document.getElementById('gallery-dots');
+    const slides = track.querySelectorAll('.gallery-slide');
+    const slideW = 320 + 12; // width + gap
+    const visible = 3;
+    const total = slides.length;
+    let current = 0;
+    let autoTimer;
+
+    // build dots
+    slides.forEach((_,i) => {
+      const d = document.createElement('div');
+      d.className = 'gallery-dot' + (i===0?' active':'');
+      d.onclick = () => goTo(i);
+      dotsEl.appendChild(d);
+    });
+
+    function goTo(i) {
+      current = ((i % total) + total) % total;
+      const maxOffset = Math.max(0, total - visible);
+      const offset = Math.min(current, maxOffset) * slideW;
+      track.style.transform = `translateX(-${offset}px)`;
+      dotsEl.querySelectorAll('.gallery-dot').forEach((d,idx) => d.classList.toggle('active', idx===current));
+    }
+
+    window.galleryNav = function(dir) {
+      clearTimeout(autoTimer);
+      goTo(current + dir);
+      autoTimer = setTimeout(autoAdvance, 4500);
+    };
+
+    function autoAdvance() {
+      goTo(current + 1);
+      autoTimer = setTimeout(autoAdvance, 4500);
+    }
+    autoTimer = setTimeout(autoAdvance, 4500);
+  })();
+
+  /* ── POST-SESSION MODAL ── */
+  function openPostSession() {
+    document.getElementById('postsession-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePostSession() {
+    document.getElementById('postsession-modal').classList.remove('open');
+    document.body.style.overflow = '';
+    // reset for next use
+    document.getElementById('ps-form-state').style.display = '';
+    document.getElementById('ps-success-state').style.display = 'none';
+  }
+  function handlePSOverlay(e) {
+    if (e.target === document.getElementById('postsession-modal')) closePostSession();
+  }
+  function togglePsCheck(item) {
+    const cb = item.querySelector('input');
+    cb.checked = !cb.checked;
+    item.classList.toggle('checked', cb.checked);
+  }
+  function psFileSelected(input) {
+    const list = document.getElementById('ps-file-list');
+    if (input.files.length === 0) { list.textContent = ''; return; }
+    list.textContent = input.files.length + ' photo' + (input.files.length>1?'s':'') + ' selected.';
+  }
+  function submitPostSession() {
+    const consent = document.getElementById('ps-consent').checked;
+    if (!consent) { alert('Please confirm participant consent before submitting.'); return; }
+    document.getElementById('ps-form-state').style.display = 'none';
+    document.getElementById('ps-success-state').style.display = 'block';
+  }
+
+  /* ── TOOL CALCULATORS ── */
+  function fmt(n) {
+    if (n >= 10000000) return '₹' + (n/10000000).toFixed(1) + 'Cr';
+    if (n >= 100000)   return '₹' + (n/100000).toFixed(1) + 'L';
+    if (n >= 1000)     return '₹' + (n/1000).toFixed(0) + 'K';
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+  function fmtN(n, dec) { return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(dec || 1); }
+
+  // T1: 50/30/20 Budget Checker
+  function t1calc(v) {
+    v = parseInt(v);
+    document.getElementById('t1-iv').textContent = fmt(v);
+    const needs = v * 0.5, wants = v * 0.3, save = v * 0.2;
+    document.getElementById('t1-needs').textContent = fmt(needs);
+    document.getElementById('t1-wants').textContent = fmt(wants);
+    document.getElementById('t1-save').textContent  = fmt(save);
+    const seg = document.getElementById('t1-seg');
+    seg.innerHTML = `<div class="tw-seg-fill" style="width:50%;background:#c9982a;"></div><div class="tw-seg-fill" style="width:30%;background:#4a7abe;"></div><div class="tw-seg-fill" style="width:20%;background:#4ec994;"></div>`;
+    const msg = document.getElementById('t1-msg');
+    const yr = v * 12;
+    msg.className = 'tw-flag good';
+    msg.textContent = `₹${Math.round(save*12/1000)}K/yr goes to savings — over 10 years at 10% return that compounds to ${fmt(save*12*((Math.pow(1.10,10)-1)/0.10*(1.10)))}.`;
+  }
+  t1calc(60000);
+
+  // T2: Retirement Corpus Calculator
+  function t2calc() {
+    const age  = parseInt(document.querySelector('#t2-av').closest('.tw-ctrl').querySelector('input').value);
+    const sav  = parseInt(document.querySelector('#t2-sv').closest('.tw-ctrl').querySelector('input').value);
+    document.getElementById('t2-av').textContent = age;
+    document.getElementById('t2-sv').textContent = fmt(sav);
+    const yearsLeft = 60 - age;
+    const inflation = 0.06, retireMonths = 240; // 20yr retirement
+    const monthlyExpense = sav * 0.7; // assume 70% of savings reflects current spend
+    const futureMonthly = monthlyExpense * Math.pow(1+inflation, yearsLeft);
+    const corpus = futureMonthly * ((1 - Math.pow(1.07/1.06, -retireMonths/12*12)) / (0.07/12 - inflation/12)) / 12;
+    const r = 0.12/12, n = yearsLeft * 12;
+    const sipNeeded = corpus * r / (Math.pow(1+r,n) - 1);
+    document.getElementById('t2-corpus').textContent = fmt(corpus);
+    document.getElementById('t2-sip').textContent    = fmt(sipNeeded);
+    const msg = document.getElementById('t2-msg');
+    msg.textContent = `${yearsLeft} years to retirement. Assumed 6% inflation, 7% withdrawal-phase return, 20-year retirement window.`;
+  }
+  (function(){
+    const e = document.getElementById('t2-av').closest('.tw-body').querySelectorAll('input');
+    e[0].oninput = e[1].oninput = t2calc;
+    t2calc();
+  })();
+
+  // T3: P/E Valuation
+  function t3calc() {
+    const body = document.getElementById('t3-pe').closest('.tw-body');
+    const inputs = body.querySelectorAll('input');
+    const price = parseInt(inputs[0].value), eps = parseInt(inputs[1].value);
+    document.getElementById('t3-pv').textContent = '₹' + price.toLocaleString('en-IN');
+    document.getElementById('t3-ev').textContent = '₹' + eps;
+    if (eps <= 0) { document.getElementById('t3-pe').textContent = 'N/A'; return; }
+    const pe = price / eps;
+    document.getElementById('t3-pe').textContent = fmtN(pe, 1) + '×';
+    const msg = document.getElementById('t3-msg');
+    const vd  = document.getElementById('t3-verdict');
+    if (pe < 15) {
+      vd.textContent = 'Cheap'; vd.className = 'tw-box-val pos';
+      msg.className = 'tw-flag good'; msg.textContent = `P/E of ${fmtN(pe,1)}× is below 15 — trading at a discount to the market. Worth investigating why.`;
+    } else if (pe <= 28) {
+      vd.textContent = 'Fair'; vd.className = 'tw-box-val warn';
+      msg.className = 'tw-flag warn'; msg.textContent = `P/E of ${fmtN(pe,1)}× is in line with market. Valuation is not the edge here — earnings quality is.`;
+    } else {
+      vd.textContent = 'Stretched'; vd.className = 'tw-box-val neg';
+      msg.className = 'tw-flag bad'; msg.textContent = `P/E of ${fmtN(pe,1)}× is above 28 — priced for significant growth. Any miss will be punished.`;
+    }
+  }
+  (function(){ document.getElementById('t3-pe').closest('.tw-body').querySelectorAll('input').forEach(i => i.oninput = t3calc); t3calc(); })();
+
+  // T4: Post-Tax Debt Comparator
+  function t4calc() {
+    const body = document.getElementById('t4-fd').closest('.tw-body');
+    const inputs = body.querySelectorAll('input');
+    const amt = parseInt(inputs[0].value), yrs = parseInt(inputs[1].value);
+    document.getElementById('t4-av').textContent = fmt(amt);
+    document.getElementById('t4-tv').textContent = yrs + ' yr' + (yrs>1?'s':'');
+    const fdRate = 0.069, mfRate = 0.077, gsRate = 0.073;
+    const tax = 0.30;
+    const fdGross  = amt * (Math.pow(1+fdRate, yrs) - 1);
+    const fdNet    = amt + fdGross * (1 - tax);
+    const mfGross  = amt * (Math.pow(1+mfRate, yrs) - 1);
+    const mfNet    = amt + mfGross * (1 - tax); // now taxed at marginal rate post-2023 budget
+    const gsGross  = amt * (Math.pow(1+gsRate, yrs) - 1);
+    const gsNet    = amt + gsGross * (1 - tax);
+    document.getElementById('t4-fd').textContent = fmt(fdNet);
+    document.getElementById('t4-mf').textContent = fmt(mfNet);
+    document.getElementById('t4-gs').textContent = fmt(gsNet);
+  }
+  (function(){ document.getElementById('t4-fd').closest('.tw-body').querySelectorAll('input').forEach(i => i.oninput = t4calc); t4calc(); })();
+
+  // T5: Portfolio Balance Scorecard
+  let t5Prof = 0;
+  const t5Targets = [
+    {eq:30, de:55, label:'Conservative'},
+    {eq:55, de:35, label:'Moderate'},
+    {eq:75, de:18, label:'Aggressive'}
+  ];
+  function t5profile(p) {
+    t5Prof = p;
+    [0,1,2].forEach(i => document.getElementById('t5c'+i).className = 'tw-chip'+(i===p?' on':''));
+    const er = document.getElementById('t5-er'), dr = document.getElementById('t5-dr');
+    er.value = t5Targets[p].eq; dr.value = t5Targets[p].de;
+    t5calc();
+  }
+  function t5calc() {
+    const eq = parseInt(document.getElementById('t5-er').value);
+    const de = parseInt(document.getElementById('t5-dr').value);
+    const rest = Math.max(0, 100 - eq - de);
+    document.getElementById('t5-ev').textContent   = eq + '%';
+    document.getElementById('t5-dv').textContent   = de + '%';
+    document.getElementById('t5-rest').textContent = rest + '%';
+    const tgt = t5Targets[t5Prof];
+    const eqDiff = Math.abs(eq - tgt.eq), deDiff = Math.abs(de - tgt.de);
+    const rawScore = Math.max(0, 10 - (eqDiff + deDiff) / 5);
+    const score = Math.round(rawScore * 10) / 10;
+    const scoreEl = document.getElementById('t5-score');
+    scoreEl.textContent = score.toFixed(1) + '/10';
+    scoreEl.className   = 'tw-box-val ' + (score>=8?'pos':score>=5?'warn':'neg');
+    const msg = document.getElementById('t5-msg');
+    if (score >= 8) {
+      msg.className = 'tw-flag good'; msg.textContent = `Well-balanced for a ${tgt.label} profile. No rebalancing needed right now.`;
+    } else if (score >= 5) {
+      msg.className = 'tw-flag warn'; msg.textContent = `Slightly off-target for ${tgt.label}. Target: ~${tgt.eq}% equity, ~${tgt.de}% debt.`;
+    } else {
+      msg.className = 'tw-flag bad'; msg.textContent = `Significant drift from ${tgt.label} targets. Rebalance toward ${tgt.eq}% equity, ${tgt.de}% debt.`;
+    }
+  }
+  t5calc();
+
+  // T6: SIP Growth Visualiser
+  function t6calc() {
+    const body = document.getElementById('t6-inv').closest('.tw-body');
+    const inputs = body.querySelectorAll('input');
+    const sip = parseInt(inputs[0].value), yrs = parseInt(inputs[1].value), ret = parseFloat(inputs[2].value)/100/12;
+    document.getElementById('t6-sv').textContent = fmt(sip);
+    document.getElementById('t6-yv').textContent = yrs;
+    document.getElementById('t6-rv').textContent = (parseFloat(inputs[2].value)) + '%';
+    const n = yrs * 12;
+    const corpus = sip * ((Math.pow(1+ret,n)-1)/ret) * (1+ret);
+    const invested = sip * n;
+    const gains = corpus - invested;
+    document.getElementById('t6-inv').textContent  = fmt(invested);
+    document.getElementById('t6-corp').textContent = fmt(corpus);
+    document.getElementById('t6-gain').textContent = fmt(gains);
+    const bars = document.getElementById('t6-bars');
+    const steps = Math.min(yrs, 10);
+    let html = '';
+    let maxVal = 0;
+    const vals = [];
+    for (let y=1; y<=steps; y++) {
+      const ny = Math.round(y * (yrs/steps)) * 12;
+      const c = sip * ((Math.pow(1+ret,ny)-1)/ret) * (1+ret);
+      vals.push(c); if (c>maxVal) maxVal=c;
+    }
+    vals.forEach((v,i) => {
+      const h = Math.max(4, Math.round((v/maxVal)*36));
+      const isLast = i===vals.length-1;
+      html += `<div class="tw-bar" style="height:${h}px;background:${isLast?'#c9982a':'rgba(201,152,42,0.35)'};" title="${fmt(v)}"></div>`;
+    });
+    bars.innerHTML = html;
+  }
+  (function(){ document.getElementById('t6-inv').closest('.tw-body').querySelectorAll('input').forEach(i => i.oninput = t6calc); t6calc(); })();
+
+</script>
+</body>
+</html>
