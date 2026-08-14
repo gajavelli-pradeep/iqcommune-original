@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Shared modal chrome. Built once because P1 needs two of them and P2 needs a
@@ -115,12 +116,22 @@ export function Modal({
     // reads nothing stale — the one changing value, `onClose`, comes from a ref.
   }, [open]);
 
-  if (!open) return null;
+  // `document` is read below, so the server never gets this far. Every caller
+  // opens from client state, so an open modal cannot exist on the first render.
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       // Overlay layer of the z-scale — above the sticky header (audit C1). At
       // z-50 the header painted over the scrim and the top of the dialog.
+      //
+      // The z-index only settles that contest when the two share a stacking
+      // context, which is why this is portalled to `document.body` rather than
+      // rendered where it is written. `RowAction` renders its dialog inside the
+      // expanded row, and that card sits in a `sticky` wrapper
+      // (`ExpandableRows`) — position:sticky creates a stacking context, so the
+      // whole dialog was trapped inside it at the row's own depth and the
+      // header painted straight over it, no matter how high this number went.
       className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center overflow-y-auto overscroll-contain bg-scrim p-4 sm:p-6"
       // Clicking the backdrop closes; clicking inside must not. The check is on
       // the target rather than a stopPropagation inside the panel, so a drag
@@ -219,6 +230,7 @@ export function Modal({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

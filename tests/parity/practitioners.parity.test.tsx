@@ -32,7 +32,10 @@ describe("content parity — P2 `/practitioners` against iqcommune-empanelment.h
   // The application form only exists once its dialog is open, so the gate opens
   // it rather than declaring the whole form "pending" — it has shipped.
   const dialog = render(<ApplyModal open onClose={() => {}} />);
-  const haystack = `${renderedHaystack(container)} ${renderedHaystack(dialog.container)}`;
+  // `baseElement`, not `container`: `Modal` portals to `document.body` so it can
+  // paint above the sticky header, which puts its copy outside the render
+  // container entirely. Reading `container` here silently found nothing.
+  const haystack = `${renderedHaystack(container)} ${renderedHaystack(dialog.baseElement)}`;
 
   const missing = specStrings.filter((entry) => !haystack.includes(entry.text));
   const claimed = new Set<PendingUnit>();
