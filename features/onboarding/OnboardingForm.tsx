@@ -511,7 +511,8 @@ export function OnboardingForm({
           </svg>
           {busy ? "Signing…" : "I agree — sign & complete onboarding"}
         </button>
-        <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">
+        {/* V7 .sign-fine sets no line-height, so it takes the page's 1.7. */}
+        <p className="mt-3 text-center text-sm leading-[1.7] text-ink-faint">
           This action is irreversible. A copy of the signed agreement will be sent to your
           registered email.
         </p>

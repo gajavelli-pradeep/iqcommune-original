@@ -86,15 +86,21 @@ export function SignaturePad({
   }
 
   return (
-    <div className="mb-5">
-      <p className="mb-2 text-sm font-medium text-ink">Your signature</p>
+    /* V7 .sig-area — 1rem below, a 13px label, pill tabs, then one bordered
+       well that both modes render inside. */
+    <div className="mb-4">
+      <p className="mb-2 text-base font-medium text-ink">Your signature</p>
 
       {/*
         Toggle buttons, not ARIA tabs (audit A11Y-4): a real tablist owes the
         user arrow-key roving and tabpanel wiring, which these don't implement.
-        aria-pressed is the honest role for a two-way mode toggle.
+        aria-pressed is the honest role for a two-way mode toggle. V7 uses
+        clickable divs, which are neither focusable nor announced.
+
+        `tap-44` rather than `min-h-11`: V7's pill is ~37px tall and growing the
+        box would redraw the control, so the hit area grows instead.
       */}
-      <div role="group" aria-label="Signature method" className="mb-2 flex gap-1">
+      <div role="group" aria-label="Signature method" className="mb-3 flex gap-1.5">
         {(["drawn", "typed"] as const).map((option) => (
           <button
             key={option}
@@ -104,10 +110,10 @@ export function SignaturePad({
               setMode(option);
               clear();
             }}
-            className={`min-h-11 rounded-full border px-4 py-2 text-sm transition-colors ${
+            className={`tap-44 rounded-full border-[1.5px] px-4 py-1.5 text-base font-medium transition-colors ${
               mode === option
-                ? "border-gold-border bg-gold-light font-medium text-gold-dark"
-                : "border-border-strong text-ink-muted hover:text-ink"
+                ? "border-ink bg-ink text-surface"
+                : "border-border-strong bg-surface text-ink-muted hover:text-ink"
             }`}
           >
             {option === "drawn" ? "Draw signature" : "Type signature"}
@@ -115,53 +121,60 @@ export function SignaturePad({
         ))}
       </div>
 
-      {mode === "drawn" ? (
-        <canvas
-          ref={canvasRef}
-          width={640}
-          height={180}
-          aria-label="Draw your signature"
-          onPointerDown={start}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerLeave={end}
-          className="h-[140px] w-full touch-none rounded-lg border-[1.5px] border-dashed border-border-strong bg-surface"
-        />
-      ) : (
-        <>
-          <label htmlFor="typed-signature" className="sr-only">
-            Type your name to generate signature
-          </label>
-          <input
-            id="typed-signature"
-            type="text"
-            value={typed}
-            placeholder="Type your name to generate signature"
-            onChange={(event) => {
-              setTyped(event.target.value);
-              onChange(
-                event.target.value.trim() ? { mode: "typed", text: event.target.value } : null,
-              );
-            }}
-            // Georgia, and not italic. The spec sets a serif face here because a
-            // signature should not read as UI text; the first clone used the
-            // project sans and invented the italic.
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            className="min-h-[52px] w-full border-b-[1.5px] border-border-strong bg-transparent px-4 py-3 text-center text-[28px] tracking-[0.02em] text-ink placeholder:text-lg placeholder:tracking-normal placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
-          />
-        </>
-      )}
-
-      {/* No "Signing as …" line: V7 has none, and the name it echoed is in the
-          field directly above. */}
-      <div className="mt-2 flex items-center justify-end gap-4">
-        <button
-          type="button"
-          onClick={clear}
-          className="min-h-11 px-2 text-sm font-medium text-ink-muted underline underline-offset-4 hover:text-ink"
-        >
-          Clear
-        </button>
+      {/* V7 .sig-canvas-wrap: a solid 1.5px well at 10px radius on surface-soft,
+          `relative` so the Clear pill can sit in its top-right corner. */}
+      <div className="relative overflow-hidden rounded-[10px] border-[1.5px] border-border-strong bg-surface-soft">
+        {mode === "drawn" ? (
+          <>
+            <canvas
+              ref={canvasRef}
+              width={640}
+              height={180}
+              aria-label="Draw your signature"
+              onPointerDown={start}
+              onPointerMove={move}
+              onPointerUp={end}
+              onPointerLeave={end}
+              className="block h-[140px] w-full touch-none"
+            />
+            {/* Draw mode only, as V7: typed text is cleared by editing it. */}
+            <button
+              type="button"
+              onClick={clear}
+              className="tap-44 absolute right-2 top-2 rounded-full border border-border-strong bg-surface px-2.5 py-[3px] text-xs font-medium text-ink-faint transition-colors hover:text-ink"
+            >
+              Clear
+            </button>
+          </>
+        ) : (
+          <div className="px-4 py-3">
+            {/* V7 .sig-typed-preview — the signature is drawn here, at 28px in a
+                serif face, while the input below stays ordinary UI text. */}
+            <div
+              aria-hidden
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              className="min-h-[52px] border-b-[1.5px] border-border-strong pb-1 text-[28px] tracking-[0.02em] text-ink"
+            >
+              {typed}
+            </div>
+            <label htmlFor="typed-signature" className="sr-only">
+              Type your name to generate signature
+            </label>
+            <input
+              id="typed-signature"
+              type="text"
+              value={typed}
+              placeholder="Type your name to generate signature"
+              onChange={(event) => {
+                setTyped(event.target.value);
+                onChange(
+                  event.target.value.trim() ? { mode: "typed", text: event.target.value } : null,
+                );
+              }}
+              className="mt-2 w-full border-none bg-transparent py-1 text-md text-ink outline-none placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
