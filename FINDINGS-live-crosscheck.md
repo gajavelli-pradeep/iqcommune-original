@@ -185,12 +185,14 @@ canonical where.
 
 | # | Item | Source |
 |---|---|---|
-| 1 | Application acknowledgment sign-off — `Regards,` → `Warm regards,`? | console doc Appendix A, client's own recommendation |
-| 2 | Availability-check message — build it, or reword the four places that promise it? | console doc **B2** |
-| 3 | Apply `iqcommune-empanelment-agreement-content.json` as-is, per its own readme? | agreement JSON `_readme` |
-| 4 | Agreement header reference — IQC-EMP as the client's field asks, IQC-AGR as shipped, or both? | agreement JSON `headerFields[3]` |
-| 5 | Session follow-up — keep the app's grammatical fix, or restore the client's literal wording? | console doc msg 7 |
-| 6 | Which tagline is canonical, and where? | agreement JSON `branding.tagline` |
+| ~~1~~ | ~~Application acknowledgment sign-off~~ | **Done** — `Warm regards,` in both halves, taking the client's own recommendation |
+| 2 | Availability-check message — build it, or reword the four places that promise it? | console doc **B2** — **still open**, and the only one that cannot be closed by copy |
+| ~~3~~ | ~~Apply the agreement JSON as-is~~ | **Done** — generated from the delivery; the readme was the instruction |
+| ~~4~~ | ~~Agreement header reference~~ | **Done** — both, since the two documents ask for different ones |
+| 5 | Session follow-up — keep the app's grammatical fix, or restore the client's literal `before we can:`? | console doc msg 7 — **still open** |
+| ~~6~~ | ~~Which tagline is canonical~~ | **Done** — the client's, which is the only one in any client source |
+
+Two remain, and neither is code-shaped: **2** needs a product decision (build the availability check or soften four promises), **5** needs a ruling on one dangling clause in the client's own sentence.
 
 ### Ours to fix — no client input needed
 
