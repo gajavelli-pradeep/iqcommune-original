@@ -70,6 +70,40 @@ behaviour.
 **Confirmed working.** `Group: 9-15 participants, Group (register as SPOC)` renders the human
 label, not the stored enum — appendix item **B6** satisfied.
 
+## The signing success page — exact match
+
+Confirmations doc item 1, checked line by line. Recorded because only its timestamp appears
+below, and a page that matched is a result rather than an absence of one.
+
+| Element | Client doc | Seen | |
+|---|---|---|---|
+| Heading | `Agreement signed. Welcome to iqcommune.` | identical | ✓ |
+| Body | the full sentence | identical, word for word | ✓ |
+| Receipt rows | Signed by · Agreement ref. · Timestamp · Status | all four, same order | ✓ |
+| Status value | `✓ Digitally signed` | identical | ✓ |
+| Footer | `Confidential · Questions? Reply to the email…hello@iqcommune.com` | identical | ✓ |
+
+Both open findings from the **v1** confirmations doc are closed by it: the receipt no longer
+shows "Module assigned.", and the footer trust line — recorded there as *"genuinely absent"* on
+this page — is present. Its timestamp is the exception, and is finding 1.
+
+## The first bug reported, and the reason this branch exists
+
+Not a copy cross-check, and it predates this document — recorded so the branch's own history is
+complete. On Practitioners, the email dialog opened **underneath** the console header.
+
+The z-index was never the problem: `--z-overlay` is 300 against the header's 100, so the dialog
+already outranked it. They were never in the same stacking context. `RowAction` renders its
+dialog inline, so the dialog sat inside the expanded row's card, and `ExpandableRows` wraps that
+card in `sticky left-0` to pin it during sideways scroll — and `position: sticky` creates a
+stacking context. The dialog was sealed inside it at the row's own depth, and the header painted
+over it however high the number went. Which is why the Settings invite dialog, rendered outside
+any row, looked fine.
+
+Fixed by portalling the shared `Modal` to `document.body`, so every dialog benefits rather than
+the one that was reported. Merged to `main` in PR #32. The two content-parity gates read modal
+copy off `render().container`, which a portal empties, so they now read `baseElement`.
+
 ## Part 2 — Signature convention
 
 Client convention (console doc, Conventions §): *"every email closes with the two-line block
