@@ -218,7 +218,7 @@ function GuideDownload({ row }: { row: ConsentRow }) {
   return (
     <DownloadLink
       href={`/api/consents/${row.id}/pdf?doc=photo-guide`}
-      label="Photo guide (PDF)"
+      label="Download photo guide (PDF)"
       title={`Download the photo guide for ${row.session}`}
     />
   );
@@ -286,7 +286,10 @@ function NextStep({ row }: { row: ConsentRow }) {
           <RowAction
             action={sendPhotoGuide.bind(null, row.id)}
             draft={{ kind: "photo-guide", id: row.id }}
-            label="Send photo guide"
+            // V7's own labels, kept word for word. Part 3 is gone, but its two
+            // controls moved rather than being reinvented — a shorter label
+            // would be a second deviation on top of the one already recorded.
+            label="Send photo guide email"
             pendingMessage={`Sending the photo guide to ${row.practitioner}…`}
             variant="ghost"
           />
