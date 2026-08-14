@@ -55,4 +55,11 @@ Vercel (production branch: `main`). Set the production Supabase project's keys +
 `NEXT_PUBLIC_BASE_URL` in the Vercel dashboard — never point a local run at the production
 service-role key (it bypasses RLS). See `docs/ENVIRONMENT.md` and `docs/adr/0003-*`.
 
+**Functions run in `hnd1` (`vercel.json`), because Supabase runs in `ap-northeast-1` — the same
+AWS region.** Vercel defaults new projects to `iad1` (Washington), which put every query a
+Pacific crossing away from the database, and a console page reads a dozen tables per render. If
+the Supabase project ever moves region, move this with it; a mismatch is invisible locally,
+where the database is a millisecond away, and only shows up as a slow console in production.
+Static pages are unaffected either way — the CDN serves those from the PoP nearest the visitor.
+
 <!-- deploy-access-test: confirming this commit's author can trigger a Vercel deployment -->
