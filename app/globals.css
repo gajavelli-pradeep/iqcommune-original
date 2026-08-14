@@ -170,7 +170,10 @@
      0.5px at this size is sub-pixel. They normalise to the nearest step,
      ties rounding up (13.5 -> 14), preserving the "slightly larger" intent. */
 
-  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  /* The ext face second, so a glyph outside latin — ₹ (U+20B9) on the payout
+     and consent screens — still resolves to DM Sans rather than a system face. */
+  --font-sans:
+    var(--font-dm-sans), var(--font-dm-sans-ext), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --text-3xs: 9px;    /* result-box labels inside the calculators — the spec's
