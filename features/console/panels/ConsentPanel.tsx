@@ -22,6 +22,7 @@ import type { DraftOverride } from "../draft-kinds";
 import { PendingSendToast } from "../PendingSendToast";
 import { RowAction } from "../RowAction";
 import { CONSENT_STATUS, StatusPill } from "../StatusPill";
+import { consentStage } from "@/lib/consent-stage";
 import { can, type ConsoleRole } from "../roles";
 import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
@@ -177,6 +178,90 @@ function AutoField({
       )}
     </div>
   );
+}
+
+/** Quiet text for a row with nothing to do — a stage, not an absence of one. */
+const SETTLED = "text-3xs text-ink-faint";
+
+/**
+ * The single action for wherever this confirmation has reached.
+ *
+ * Every branch is one stage of `ConsentStage`, and the switch is exhaustive on
+ * purpose: a new stage should fail to compile here rather than render an empty
+ * cell that reads as "nothing to do" when it means "nobody taught this row what
+ * to do".
+ */
+function NextStep({ row }: { row: ConsentRow }) {
+  const stage = consentStage(row);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  switch (stage) {
+    case "cancelled":
+      return <span className={SETTLED}>No longer in progress</span>;
+    case "delivered":
+      return <span className={SETTLED}>Delivered</span>;
+    case "in-flight":
+      return <span className={SETTLED}>Waiting for the session</span>;
+
+    case "confirm":
+      // Confirming is offered only here, and only once consent is in. That is
+      // the agreement's own precondition — "not confirmed until the
+      // Practitioner provides digital consent" — expressed as an action that
+      // does not exist yet rather than as a warning after the fact.
+      return (
+        <>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const result = await setSessionStatus(row.sessionId, "Confirmed");
+                setError(result.ok ? null : result.message);
+              })
+            }
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {pending ? "Confirming…" : "Confirm the session"}
+          </button>
+          {error ? (
+            <p role="alert" className="mt-1 max-w-[170px] text-3xs text-red">
+              {error}
+            </p>
+          ) : null}
+        </>
+      );
+
+    case "guide":
+      return (
+        <RowAction
+          action={sendPhotoGuide.bind(null, row.id)}
+          draft={{ kind: "photo-guide", id: row.id }}
+          label="Send photo guide"
+          pendingMessage={`Sending the photo guide to ${row.practitioner}…`}
+          variant="ghost"
+        />
+      );
+
+    case "request":
+    case "waiting":
+      return (
+        <div>
+          {/* How long it has been waiting, which is the only question anyone
+              asks of a request that has not come back yet. */}
+          {row.requestSentLabel ? (
+            <span className="mb-1 block text-3xs text-ink-faint">Sent {row.requestSentLabel}</span>
+          ) : null}
+          <RowAction
+            action={sendConsentRequest.bind(null, row.id)}
+            draft={{ kind: "consent-request", id: row.id }}
+            label={stage === "waiting" ? "Resend" : "Send consent request"}
+            pendingMessage={`Sending the consent request to ${row.practitioner}…`}
+            variant={stage === "waiting" ? "link" : "ghost"}
+          />
+        </div>
+      );
+  }
 }
 
 /**
@@ -337,36 +422,24 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
     ),
   },
   /**
-   * An eighth column V7 does not have, added because without it the consent
-   * request is unsendable after a reload.
+   * An eighth column V7 does not have: the one thing this row needs next.
    *
-   * Part 1 offers the send only in the render following a successful generate —
-   * it lives behind that component's local `done` state, which starts empty on
-   * every visit. Close the tab and the button is gone, and the confirmation
-   * cannot be generated a second time to bring it back, so the session sits
-   * waiting for a consent nobody can ask for. Clause 3(a) makes that terminal:
-   * the session is not confirmed until the practitioner consents.
+   * V7 spreads the work across three boxes — generate here, chase there, send
+   * the guide somewhere else — and leaves the table to be read rather than
+   * acted on. An admin had to know which box a session belonged in, and Part 1
+   * only offered its actions in the render following a successful generate, so
+   * closing the tab lost them with no way back.
    *
-   * Here rather than in Part 1 because this table already holds every generated
-   * confirmation and its consent status — the row that shows the request is
-   * outstanding is the honest place to offer to send it.
+   * A confirmation is only ever at one point in that sequence and each point
+   * has one sensible next action, so the row says what it needs and nothing
+   * else. Derived from stored facts by `consentStage`, never from what the page
+   * remembers, which is what makes it survive a reload.
    */
   {
-    key: "request",
-    header: "Consent request",
+    key: "next",
+    header: "Next step",
     requires: "mutate",
-    render: (row) =>
-      row.status === "Received" ? (
-        <span className="text-3xs text-ink-faint">Not needed</span>
-      ) : (
-        <RowAction
-          action={sendConsentRequest.bind(null, row.id)}
-          draft={{ kind: "consent-request", id: row.id }}
-          label="Send request"
-          pendingMessage={`Sending the consent request to ${row.practitioner}…`}
-          variant="ghost"
-        />
-      ),
+    render: (row) => <NextStep key={row.id} row={row} />,
   },
   {
     key: "sessionStatus",

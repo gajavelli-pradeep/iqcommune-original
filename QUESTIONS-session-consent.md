@@ -12,6 +12,23 @@ something that already happened. This one decides whether a session legally exis
 Legend — **A** is the working assumption. **Why** is what makes the question worth asking rather
 than guessing.
 
+## What the stage flow already settled
+
+Part 2's rows now show one next action each, derived by `lib/consent-stage.ts` from stored facts
+rather than from what the page remembers. That shipped, and it answers four of the questions
+below outright:
+
+| # | Question | How the flow answers it |
+|---|---|---|
+| **Q1** | Reaching a confirmation's actions after a reload | Every row carries its own next action, so nothing is lost by closing the tab |
+| **Q12** | Does generating notify anyone? | No — sending stays a separate act, and the row keeps offering it until it happens |
+| **Q17** | Confirmed before consent returns? | The question dissolves: **Confirm the session** only appears once consent is in. The contract's precondition is now an action that does not exist yet rather than a warning after the fact |
+| **Q32** | Should a session still appear if the guide was never sent? | Yes — it sits at the `guide` stage and keeps asking |
+
+Two more are now visible rather than fixed: **Q25** (resending) has a Resend button and the
+elapsed time beside it, so a request that has gone quiet is legible — but the five-minute
+duplicate window is still silent, which is **Q39**.
+
 ---
 
 ## Part 1 — Generate Confirmation
