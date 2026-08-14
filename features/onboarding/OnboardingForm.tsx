@@ -8,6 +8,7 @@ import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Stepper } from "@/components/ui/Stepper";
 import { useApiSubmit } from "@/hooks/useApiSubmit";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
+import { formatLiveClock, formatRecordedAt } from "@/lib/timestamp";
 import type { OnboardingPractitioner } from "@/types/link-pages";
 
 import { AGREEMENT_CLAUSES } from "@/constants/agreement";
@@ -77,14 +78,7 @@ export function OnboardingForm({
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setLiveTimestamp(
-        `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}  ` +
-          now.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-      );
+      setLiveTimestamp(formatLiveClock(now));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -420,14 +414,9 @@ export function OnboardingForm({
             signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
             signatureMode: signature.mode,
           });
-          if (receipt) {
-            setSignedAt(
-              new Date(receipt.at).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }),
-            );
-          }
+          // The same instant the PDF prints, rendered by the same function, so
+          // the receipt on screen and the archived agreement cannot disagree.
+          if (receipt) setSignedAt(formatRecordedAt(receipt.at));
         }}
       >
         {/* V7 .declaration-box — gold box, gold-dark title + list-marker points. */}

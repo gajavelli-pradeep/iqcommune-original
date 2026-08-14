@@ -13,6 +13,7 @@ import {
   sendPhotoGuide,
   setSessionStatus,
   type ConfirmationField,
+  type SessionStatusResult,
 } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
@@ -190,9 +191,27 @@ function AutoField({
  */
 function SessionStatusSelect({ row }: { row: ConsentRow }) {
   const [status, setStatus] = useState(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+  const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const [pending, start] = useTransition();
   const { pending: held, schedule, undo } = useDeferredSend();
   const [drafting, setDrafting] = useState(false);
+
+  /**
+   * Reads back what the server actually did.
+   *
+   * The toast said "Cancelling…" and then stopped, whatever happened next — so
+   * a cancellation with nobody to email looked exactly like one that went out.
+   * A refusal puts the control back; a warning keeps the change, because the
+   * status did move and reverting it would misreport the database.
+   */
+  const report = (result: SessionStatusResult, previous: string) => {
+    if (!result.ok) {
+      setStatus(previous);
+      setNotice({ text: result.message, failed: true });
+    } else {
+      setNotice(result.warning ? { text: result.warning, failed: false } : null);
+    }
+  };
 
   /**
    * Cancelling emails the client, so it goes through the draft dialog like
@@ -205,9 +224,11 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
    */
   const cancel = (edited: DraftOverride) => {
     setDrafting(false);
+    const previous = status;
     setStatus("Cancelled");
+    setNotice(null);
     schedule(async () => {
-      await setSessionStatus(row.sessionId, "Cancelled", edited);
+      report(await setSessionStatus(row.sessionId, "Cancelled", edited), previous);
     }, `Cancelling ${row.session}…`);
   };
 
@@ -226,9 +247,11 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
             setDrafting(true);
             return;
           }
+          const previous = status;
           setStatus(next);
+          setNotice(null);
           start(async () => {
-            await setSessionStatus(row.sessionId, next);
+            report(await setSessionStatus(row.sessionId, next), previous);
           });
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
@@ -241,6 +264,12 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
       </select>
       {row.sessionStatus === "Completed" ? (
         <span className="mt-0.5 block text-3xs text-ink-faint">Delivered</span>
+      ) : null}
+
+      {notice ? (
+        <p role="alert" className={`mt-1 max-w-[170px] text-3xs ${notice.failed ? "text-red" : "text-attention"}`}>
+          {notice.text}
+        </p>
       ) : null}
 
       {drafting ? (
@@ -306,6 +335,38 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
     render: (row) => (
       <DownloadLink href={`/api/consents/${row.id}/pdf`} label="Download" title={`Download ${row.reference}`} />
     ),
+  },
+  /**
+   * An eighth column V7 does not have, added because without it the consent
+   * request is unsendable after a reload.
+   *
+   * Part 1 offers the send only in the render following a successful generate —
+   * it lives behind that component's local `done` state, which starts empty on
+   * every visit. Close the tab and the button is gone, and the confirmation
+   * cannot be generated a second time to bring it back, so the session sits
+   * waiting for a consent nobody can ask for. Clause 3(a) makes that terminal:
+   * the session is not confirmed until the practitioner consents.
+   *
+   * Here rather than in Part 1 because this table already holds every generated
+   * confirmation and its consent status — the row that shows the request is
+   * outstanding is the honest place to offer to send it.
+   */
+  {
+    key: "request",
+    header: "Consent request",
+    requires: "mutate",
+    render: (row) =>
+      row.status === "Received" ? (
+        <span className="text-3xs text-ink-faint">Not needed</span>
+      ) : (
+        <RowAction
+          action={sendConsentRequest.bind(null, row.id)}
+          draft={{ kind: "consent-request", id: row.id }}
+          label="Send request"
+          pendingMessage={`Sending the consent request to ${row.practitioner}…`}
+          variant="ghost"
+        />
+      ),
   },
   {
     key: "sessionStatus",

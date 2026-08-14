@@ -63,6 +63,17 @@ import { toConsoleRole } from "./roles";
  */
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
+/**
+ * A session status change that succeeded, and may still have something to say.
+ *
+ * Cancelling is two acts — the record moves and the client is told — and they
+ * can succeed apart. `ok: false` would be wrong for the half-case, because the
+ * status genuinely changed and reverting the control would misreport the
+ * database; a warning keeps the change and still tells the truth about the
+ * email.
+ */
+export type SessionStatusResult = { ok: false; message: string } | { ok: true; warning?: string };
+
 function revalidateConsole() {
   revalidatePath("/console");
   revalidatePath("/globaladmin");
@@ -982,11 +993,22 @@ export async function setSessionStatus(
   sessionId: string,
   status: string,
   draft?: DraftOverride,
-): Promise<void> {
+): Promise<SessionStatusResult> {
   const { email: actor } = await requireCapability("mutate");
   if (!SESSION_STAGES.has(status)) throw new Error(`unknown session status: ${status}`);
 
   const supabase = createAdminClient();
+
+  // Composed before the status moves, not after. Cancelling is two acts — the
+  // record changes and the client is told — and the second one had three ways
+  // to be skipped in silence: no linked request, no resolvable requestor, or a
+  // draft that came back empty. The admin saw the same "Cancelling…" toast
+  // either way, which is how a cancellation nobody was told about looked
+  // identical to one that went out. Resolving first means the answer is known
+  // before anything is reported.
+  const cancellation =
+    status === "Cancelled" ? await draftMessage("session-cancellation", sessionId) : null;
+
   const { data, error } = await supabase
     .from("sessions")
     .update({ status })
@@ -996,10 +1018,7 @@ export async function setSessionStatus(
     .maybeSingle();
   if (error) throw new Error(`session status update failed: ${error.message}`);
 
-  if (status === "Cancelled" && data?.session_request_id) {
-    const composed = await draftMessage("session-cancellation", sessionId);
-    if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
-  }
+  if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
 
   await recordActivity({
     actorEmail: actor,
@@ -1009,6 +1028,17 @@ export async function setSessionStatus(
     detail: data?.reference ? `${data.reference} → ${status}.` : undefined,
   });
   revalidateConsole();
+
+  // The status did change, so this is not a failure — but it is not the whole
+  // of what the admin asked for either, and they came here through a dialog
+  // whose entire purpose was the email.
+  if (status === "Cancelled" && !cancellation) {
+    return {
+      ok: true,
+      warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
+    };
+  }
+  return { ok: true };
 }
 
 /**

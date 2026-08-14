@@ -196,16 +196,20 @@ canonical where.
 
 | # | Item | Where |
 |---|---|---|
-| 7 | Pin `timeZone: "Asia/Kolkata"` on both signature formatters and label the output | `app/api/agreements/[id]/pdf/route.ts:54`, `features/onboarding/OnboardingForm.tsx:425` |
+| ~~7~~ | ~~Pin the signature formatters to IST and label the output~~ | **Done** — `lib/timestamp.ts` |
 | 8 | `NEXT_PUBLIC_BASE_URL` still points at `iq-commune-vert.vercel.app` — every emailed tokenised link carries it | Vercel env; `lib/email/links.ts:38` reads it |
 | 9 | Console invite sender still uses `BREVO_SENDER_EMAIL`; verify it is no longer the `brevosend.com` fallback | Vercel env; `lib/email/send.ts:84` |
-| 10 | Map `audience` through `AUDIENCE_LABELS` in the confirmation PDF, as the email path already does | `lib/pdf/confirmation.ts:54`, `app/api/consents/[id]/pdf/route.ts:81` |
-| 11 | Add the expected payment date to the confirmation, which agreement clause 3(a) promises it carries | `lib/pdf/confirmation.ts` |
+| ~~10~~ | ~~Map `audience` through `AUDIENCE_LABELS` in the confirmation PDF~~ | **Done** — consents route |
+| 11 | Add the expected payment date to the confirmation, which agreement clause 3(a) promises it carries | `lib/pdf/confirmation.ts` — **blocked**: no such date is stored anywhere, so this needs a source before it needs code |
 
 ### Closed since this document was opened
 
 | Item | Evidence |
 |---|---|
+| **1 — execution timestamp 5½ hours out** | One `lib/timestamp.ts` pins `Asia/Kolkata` and labels the output; all four call sites use it. `tests/unit/timestamp.test.ts` pins 13:36:58 UTC → 7:06:58 pm IST — the exact numbers from the reported PDF and success page |
+| **9 — confirmation PDF printed the raw `audience` enum** | Mapped through `AUDIENCE_LABELS` in the consents route, as the email path already did |
+| **11 — Part 1's consent request unreachable after a reload** | Part 2 gained a role-gated `Consent request` column; the row that shows the request is outstanding now offers to send it |
+| **12 — "Cancelling…" told you nothing** | `setSessionStatus` returns `SessionStatusResult`, composes the email *before* moving the status, and the panel reverts on failure or warns when nobody could be told |
 | **B3 — rating request went to the practitioner** (marked *Blocking* by the client doc) | `features/console/actions.ts:1864` resolves the requestor; live email confirms |
 | **Both cancellation controls sent the same body** — an unmatched request was told its session was cancelled | Two distinct templates now: `sessionRequestCancelled` (193) and `sessionCancelled` (214) |
 | **Payout could be marked Paid with no invoice reference** | Server guard + UI now honours the result; regression test in `PayoutsPanel.test.tsx` |
