@@ -30,10 +30,17 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
  * Session Consent — "the critical junction of the whole loop", and the only
  * console tab that is a workflow rather than a table.
  *
- * Three parts in the order the work happens: generate the confirmation, track
- * whether it came back signed, then — once it has — send the photo guide. The
- * third part is gated on the second deliberately: the guide tells a
- * practitioner what to shoot at a session they have not yet agreed to deliver.
+ * Two parts now, where V7 has three. Part 1 creates a confirmation, which is
+ * real data entry and keeps its form. Everything after that — ask for consent,
+ * chase it, confirm the session, send the photo guide — is one sequence a
+ * confirmation moves through, and the table is where it lives.
+ *
+ * V7's Part 3 was a second picker asking an admin to find a session the table
+ * on the same screen was already showing them, and it could only be reached by
+ * knowing it was there. Its two actions moved onto the row: the send appears at
+ * the stage where it is the next thing to do, the download wherever the guide
+ * exists. Gating is unchanged and now structural — the guide cannot be offered
+ * before consent because that is a later stage than the one the row is at.
  */
 
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
@@ -180,8 +187,42 @@ function AutoField({
   );
 }
 
+/**
+ * What the select may show, and what it may offer.
+ *
+ * They differ on purpose. Confirmed is an outcome of consent coming back, not
+ * something an admin asserts — the agreement says a session is not confirmed
+ * until the practitioner consents, and offering it as a dropdown choice invited
+ * exactly that contradiction. It reaches the row through the Next step button,
+ * which appears only once consent is in.
+ *
+ * Cancelled stays, because cancelling is a decision rather than an outcome and
+ * this is where V7 puts it. Pending stays as the way back from a cancellation.
+ *
+ * `setSessionStatus` refuses an unconsented Confirmed regardless of who asks, so
+ * removing the option is the affordance and the server is the rule.
+ */
+const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
+const SESSION_STATUS_CHOICES = ["Pending", "Cancelled"];
+
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
+
+/**
+ * The shot list as a PDF, for a practitioner who wants it outside the email.
+ *
+ * Carried on the row because Part 3 used to own it, and Part 3 is gone: its
+ * picker asked an admin to find a session the table was already showing them.
+ */
+function GuideDownload({ row }: { row: ConsentRow }) {
+  return (
+    <DownloadLink
+      href={`/api/consents/${row.id}/pdf?doc=photo-guide`}
+      label="Photo guide (PDF)"
+      title={`Download the photo guide for ${row.session}`}
+    />
+  );
+}
 
 /**
  * The single action for wherever this confirmation has reached.
@@ -202,7 +243,14 @@ function NextStep({ row }: { row: ConsentRow }) {
     case "delivered":
       return <span className={SETTLED}>Delivered</span>;
     case "in-flight":
-      return <span className={SETTLED}>Waiting for the session</span>;
+      // Sent, but the guide stays downloadable: a practitioner who lost the
+      // email asks for it, and that is not a reason to send a second one.
+      return (
+        <div className="flex flex-col items-start gap-1">
+          <span className={SETTLED}>Waiting for the session</span>
+          <GuideDownload row={row} />
+        </div>
+      );
 
     case "confirm":
       // Confirming is offered only here, and only once consent is in. That is
@@ -234,13 +282,16 @@ function NextStep({ row }: { row: ConsentRow }) {
 
     case "guide":
       return (
-        <RowAction
-          action={sendPhotoGuide.bind(null, row.id)}
-          draft={{ kind: "photo-guide", id: row.id }}
-          label="Send photo guide"
-          pendingMessage={`Sending the photo guide to ${row.practitioner}…`}
-          variant="ghost"
-        />
+        <div className="flex flex-col items-start gap-1">
+          <RowAction
+            action={sendPhotoGuide.bind(null, row.id)}
+            draft={{ kind: "photo-guide", id: row.id }}
+            label="Send photo guide"
+            pendingMessage={`Sending the photo guide to ${row.practitioner}…`}
+            variant="ghost"
+          />
+          <GuideDownload row={row} />
+        </div>
       );
 
     case "request":
@@ -324,7 +375,10 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
       </label>
       <select
         id={`${row.id}-session-status`}
-        value={["Pending", "Confirmed", "Cancelled"].includes(status) ? status : "Pending"}
+        // Confirmed still DISPLAYS — a confirmed session must read as one — but
+        // it is not offered as a choice, so the value list and the option list
+        // are deliberately different.
+        value={SESSION_STATUS_VALUES.includes(status) ? status : "Pending"}
         disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
@@ -341,7 +395,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {["Pending", "Confirmed", "Cancelled"].map((option) => (
+        {SESSION_STATUS_CHOICES.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
@@ -727,83 +781,15 @@ function GenerateConfirmation({
   );
 }
 
-/** Part 3 — the photo guide, once consent is in. */
-function PhotoGuidePart({ sessions }: { sessions: readonly ConfirmableSession[] }) {
-  const [selected, setSelected] = useState("");
-  const session = sessions.find((entry) => entry.id === selected);
-
-  return (
-    <section className="mt-7">
-      <h2 className={PART}>Part 3 — Send Photo Guide</h2>
-      <div className={CARD}>
-        <h3 className="text-base font-semibold text-ink">Send the photo guide</h3>
-        <p className="mb-3.5 mt-0.5 text-xs text-ink-muted">
-          Only sessions marked Confirmed above show up here — this is the moment to tell the practitioner
-          what shots to capture, before the session happens.
-        </p>
-
-        <div className="mb-3.5">
-          <label className={LABEL} htmlFor="guide-session">
-            Select Confirmed session
-          </label>
-          <select
-            id="guide-session"
-            value={selected}
-            onChange={(event) => setSelected(event.target.value)}
-            className={`${PICKER} max-w-[480px]`}
-          >
-            <option value="">— Select a confirmed session —</option>
-            {sessions.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.sessionReference} — {entry.practitioner} — {entry.module}
-              </option>
-            ))}
-          </select>
-          {sessions.length === 0 ? (
-            <p className="mt-1.5 text-xs text-ink-faint">
-              Nothing here yet — a session appears once its practitioner has returned consent.
-            </p>
-          ) : null}
-        </div>
-
-        {session ? (
-          <>
-            <div className="mb-3.5 grid gap-x-5 gap-y-2 rounded-lg bg-surface-soft px-3.5 py-3 text-xs sm:grid-cols-2">
-              <AutoField label="Practitioner" value={session.practitioner} />
-              <AutoField label="Module" value={session.module} />
-              <AutoField label="Venue" value={session.venue ?? "Pending from SPOC"} />
-              <AutoField label="City" value={session.city} />
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              <DownloadLink
-                href={`/api/consents/${session.id}/pdf?doc=photo-guide`}
-                label="Download photo guide (PDF)"
-              />
-              <RowAction
-                action={sendPhotoGuide.bind(null, session.id)}
-                draft={{ kind: "photo-guide", id: session.id }}
-                label="Send photo guide email"
-                pendingMessage={`Sending the photo guide to ${session.practitioner}…`}
-                variant="ghost"
-              />
-            </div>
-          </>
-        ) : null}
-      </div>
-    </section>
-  );
-}
 
 export function ConsentPanel({
   rows,
   role,
   confirmable,
-  photoGuideSessions,
 }: {
   rows: readonly ConsentRow[];
   role: ConsoleRole;
   confirmable: readonly ConfirmableSession[];
-  photoGuideSessions: readonly ConfirmableSession[];
 }) {
   const mayEdit = can(role, "mutate");
   const [pendingOnly, setPendingOnly] = useState(false);
@@ -950,7 +936,6 @@ export function ConsentPanel({
         />
       </section>
 
-      {mayEdit ? <PhotoGuidePart sessions={photoGuideSessions} /> : null}
     </>
   );
 }

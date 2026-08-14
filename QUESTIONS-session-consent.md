@@ -22,8 +22,10 @@ below outright:
 |---|---|---|
 | **Q1** | Reaching a confirmation's actions after a reload | Every row carries its own next action, so nothing is lost by closing the tab |
 | **Q12** | Does generating notify anyone? | No — sending stays a separate act, and the row keeps offering it until it happens |
-| **Q17** | Confirmed before consent returns? | The question dissolves: **Confirm the session** only appears once consent is in. The contract's precondition is now an action that does not exist yet rather than a warning after the fact |
+| **Q17** | Confirmed before consent returns? | **Closed.** `Confirmed` is no longer offered by the status dropdown — it is an outcome, not a setting — and `setSessionStatus` refuses it outright when no consent is on file, so the gate holds however it is called, including from a stale tab |
 | **Q32** | Should a session still appear if the guide was never sent? | Yes — it sits at the `guide` stage and keeps asking |
+| **Q34** | Should the guide send automatically on consent? | No, and it no longer needs a prompt: the row asks until it has been sent |
+| **Q36** | Is the downloaded guide the same as the emailed one? | Both now sit on the same row, from the same assignment id, so there is one place for them to diverge instead of two |
 
 Two more are now visible rather than fixed: **Q25** (resending) has a Resend button and the
 elapsed time beside it, so a request that has gone quiet is legible — but the five-minute

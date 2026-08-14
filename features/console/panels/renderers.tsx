@@ -40,7 +40,6 @@ import { SessionsPanel } from "./SessionsPanel";
 export interface PanelExtra {
   assignable?: readonly AssignablePractitioner[];
   confirmable?: readonly ConfirmableSession[];
-  photoGuideSessions?: readonly ConfirmableSession[];
 }
 
 export const PANEL_RENDERERS: Record<
@@ -63,7 +62,6 @@ export const PANEL_RENDERERS: Record<
       rows={rows as readonly ConsentRow[]}
       role={role}
       confirmable={extra.confirmable ?? []}
-      photoGuideSessions={extra.photoGuideSessions ?? []}
     />
   ),
   sessions: (rows, role) => <SessionsPanel rows={rows as readonly SessionRow[]} role={role} />,

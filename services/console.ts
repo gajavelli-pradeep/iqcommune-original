@@ -724,16 +724,6 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
 /** Part 1's picker: matched sessions with no confirmation generated yet. */
 export const listConfirmableSessions = () => listAssignments(false);
 
-/**
- * Part 3's picker: sessions whose practitioner has returned consent. V7 gates
- * the photo guide on Confirmed for a reason — the guide tells them what to
- * shoot at a session they have not yet agreed to deliver.
- */
-export async function listPhotoGuideSessions(): Promise<ConfirmableSession[]> {
-  const generated = await listAssignments(true);
-  return generated.filter((row) => row.consentGiven);
-}
-
 // ── Payouts (per assignment) ────────────────────────────────────────────────
 
 export interface PayoutRow {

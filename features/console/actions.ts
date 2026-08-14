@@ -999,6 +999,31 @@ export async function setSessionStatus(
 
   const supabase = createAdminClient();
 
+  // Confirmed is an outcome, not a setting. The agreement is unambiguous — "The
+  // session is not confirmed until the Practitioner provides digital consent" —
+  // and the console let an admin assert it anyway, silently contradicting the
+  // contract the practitioner signed.
+  //
+  // Enforced here rather than only by hiding the option, because the option was
+  // never the whole of it: a stale page, a second tab, or any later caller can
+  // still ask. The Next step button is unaffected — it appears only once consent
+  // is in, so it always passes this.
+  if (status === "Confirmed") {
+    const { data: consented } = await supabase
+      .from("session_practitioners")
+      .select("id")
+      .eq("session_id", sessionId)
+      .is("deleted_at", null)
+      .not("consent_given_at", "is", null)
+      .limit(1);
+    if (!consented?.length) {
+      return {
+        ok: false,
+        message: "No consent on file yet — the practitioner has to return it before the session can be confirmed.",
+      };
+    }
+  }
+
   // Composed before the status moves, not after. Cancelling is two acts — the
   // record changes and the client is told — and the second one had three ways
   // to be skipped in silence: no linked request, no resolvable requestor, or a
