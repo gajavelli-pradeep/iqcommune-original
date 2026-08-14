@@ -12,7 +12,6 @@ import {
   listGallery,
   listPayouts,
   listMasterData,
-  listPhotoGuideSessions,
   listPhotoSubmissions,
   listPractitioners,
   listSessionRequests,
@@ -129,10 +128,9 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
   // Read once here rather than per row, and degrade to an empty list rather
   // than failing the panel — an admin with no select is still better than a
   // panel that will not load.
-  const [assignable, confirmable, photoGuideSessions, team, masterData] = await Promise.all([
+  const [assignable, confirmable, team, masterData] = await Promise.all([
     listAssignablePractitioners().catch(() => []),
     listConfirmableSessions().catch(() => []),
-    listPhotoGuideSessions().catch(() => []),
     // Every console role sees WHO is on the team — V7 leaves the table
     // ungated and marks only the Actions column and the invite box
     // `role-team`. Gating the read as well left an Admin looking at an empty
@@ -224,7 +222,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
         role={role}
         rows={confirmations.rows}
         failed={confirmations.failed}
-        extra={{ confirmable, photoGuideSessions }}
+        extra={{ confirmable }}
       />
     ),
     sessions: <CachedPanel tabId="sessions" role={role} rows={sessions.rows} failed={sessions.failed} />,

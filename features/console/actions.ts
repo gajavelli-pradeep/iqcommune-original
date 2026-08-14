@@ -999,6 +999,31 @@ export async function setSessionStatus(
 
   const supabase = createAdminClient();
 
+  // Confirmed is an outcome, not a setting. The agreement is unambiguous — "The
+  // session is not confirmed until the Practitioner provides digital consent" —
+  // and the console let an admin assert it anyway, silently contradicting the
+  // contract the practitioner signed.
+  //
+  // Enforced here rather than only by hiding the option, because the option was
+  // never the whole of it: a stale page, a second tab, or any later caller can
+  // still ask. The Next step button is unaffected — it appears only once consent
+  // is in, so it always passes this.
+  if (status === "Confirmed") {
+    const { data: consented } = await supabase
+      .from("session_practitioners")
+      .select("id")
+      .eq("session_id", sessionId)
+      .is("deleted_at", null)
+      .not("consent_given_at", "is", null)
+      .limit(1);
+    if (!consented?.length) {
+      return {
+        ok: false,
+        message: "No consent on file yet — the practitioner has to return it before the session can be confirmed.",
+      };
+    }
+  }
+
   // Composed before the status moves, not after. Cancelling is two acts — the
   // record changes and the client is told — and the second one had three ways
   // to be skipped in silence: no linked request, no resolvable requestor, or a
@@ -2020,25 +2045,83 @@ export async function generateConfirmation(
   return { ok: true };
 }
 
-export async function sendConsentRequest(assignmentId: string, draft?: DraftOverride): Promise<void> {
+/**
+ * The three sends that hang off an assignment. One helper because they differ
+ * only in template and log line, and because the bug below was in all three.
+ *
+ * `if (composed) dispatchEmail(...)` sat above an unconditional
+ * `recordActivity`, so a draft that came back empty sent nothing and logged
+ * that it had. Three ways that mattered. The admin saw the same Undo toast
+ * either way. The activity log — the audit trail — carried an entry for an
+ * email nobody received. And `listConsents` now derives a row's next step from
+ * exactly those entries, so a failed send would move the row to "Sent just now"
+ * and stop it asking, which is the same practitioner never being chased at all.
+ *
+ * Nothing is logged unless something was dispatched, and the caller is told.
+ */
+async function sendForAssignment(
+  kind: DraftKind,
+  action: string,
+  assignmentId: string,
+  draft: DraftOverride | undefined,
+  missing: string,
+): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
-  const composed = await draftMessage("consent-request", assignmentId);
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
-  await recordActivity({ actorEmail: actor, action: "consent.requested", entityType: "assignment", entityRef: assignmentId });
+  const composed = await draftMessage(kind, assignmentId);
+  if (!composed) return { ok: false, message: missing };
+
+  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  await recordActivity({ actorEmail: actor, action, entityType: "assignment", entityRef: assignmentId });
+  return { ok: true };
 }
 
-export async function sendRatingRequest(assignmentId: string, draft?: DraftOverride): Promise<void> {
-  const { email: actor } = await requireCapability("mutate");
-  const composed = await draftMessage("rating-request", assignmentId);
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
-  await recordActivity({ actorEmail: actor, action: "rating.requested", entityType: "assignment", entityRef: assignmentId });
+/**
+ * These three stay `async function` declarations rather than collapsing into
+ * consts assigned an arrow. This is a `"use server"` module and Next requires
+ * every exported action to be an async function — the build rejects the
+ * shorter form outright with "Server Actions must be async functions". The
+ * shared body above is where the duplication went; the declarations are the
+ * part the framework owns.
+ */
+export async function sendConsentRequest(
+  assignmentId: string,
+  draft?: DraftOverride,
+): Promise<ActionResult> {
+  return sendForAssignment(
+    "consent-request",
+    "consent.requested",
+    assignmentId,
+    draft,
+    "That confirmation no longer exists, so no request was sent.",
+  );
 }
 
-export async function sendPhotoGuide(assignmentId: string, draft?: DraftOverride): Promise<void> {
-  const { email: actor } = await requireCapability("mutate");
-  const composed = await draftMessage("photo-guide", assignmentId);
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
-  await recordActivity({ actorEmail: actor, action: "photo_guide.sent", entityType: "assignment", entityRef: assignmentId });
+export async function sendRatingRequest(
+  assignmentId: string,
+  draft?: DraftOverride,
+): Promise<ActionResult> {
+  return sendForAssignment(
+    "rating-request",
+    "rating.requested",
+    assignmentId,
+    draft,
+    // Distinct from the others: this one resolves the REQUESTOR, so an
+    // unreachable one is the likeliest reason it composed to nothing.
+    "No requestor could be found for that session, so nothing was sent.",
+  );
+}
+
+export async function sendPhotoGuide(
+  assignmentId: string,
+  draft?: DraftOverride,
+): Promise<ActionResult> {
+  return sendForAssignment(
+    "photo-guide",
+    "photo_guide.sent",
+    assignmentId,
+    draft,
+    "That session no longer exists, so no guide was sent.",
+  );
 }
 
 /**

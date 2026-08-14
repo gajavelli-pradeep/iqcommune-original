@@ -1,5 +1,7 @@
 import "server-only";
 
+import { sinceLabel } from "@/lib/consent-stage";
+
 import { toConsoleRole, type ConsoleRole } from "@/constants/roles";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -523,10 +525,74 @@ export interface ConsentRow {
   issuedOn: string;
   /** `YYYY-MM` of issue, for Part 2's "Issued in" filter. */
   issuedMonth: string;
+  /** When the consent request last went out — drives the row's next step. */
+  requestSentAt: string | null;
+  /**
+   * The same moment as words, e.g. "3 days ago".
+   *
+   * Rendered here rather than in the cell because a relative label computed
+   * during render differs between the server pass and the client one, and React
+   * calls that a hydration mismatch. The server's clock is as good as the
+   * browser's for "how long ago".
+   */
+  requestSentLabel: string | null;
+  /** When the photo guide last went out. */
+  guideSentAt: string | null;
 }
 
 const CONSENT_SELECT =
   "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status )";
+
+/**
+ * When each assignment was last sent its consent request and its photo guide.
+ *
+ * Read from the activity log rather than from a column on the assignment,
+ * because the log already records both against the assignment id and has an
+ * index on exactly that pair. A column would be the more direct model, but it
+ * would also be a migration to store a fact the system is already storing
+ * accurately — and the log is the record that survives the row being deleted.
+ *
+ * Newest first, so the first row seen for an assignment is its latest send;
+ * a re-sent request should read as sent now, not as sent the first time.
+ *
+ * Scoped to the assignments actually on the page, which is the whole reason
+ * this takes ids. Reading the newest N log entries globally looks equivalent
+ * and is not: the log grows forever, so past some volume the oldest sends fall
+ * out of the window, and an assignment whose request went out months ago loses
+ * its timestamp. `consentStage` would then read that row as never asked, put
+ * "Send consent request" back on it, and an admin would send a second one. A
+ * bug that appears only once the product has been used enough is the worst kind
+ * to leave in. Bounded by the page instead — `listConsents` caps at 500 — it is
+ * correct at any log size.
+ *
+ * The cost is that this can no longer run beside the consents read, since it
+ * needs their ids. One extra round trip against a silent wrong answer later.
+ */
+async function lastSendsByAssignment(
+  assignmentIds: readonly string[],
+): Promise<Map<string, { requested?: string; guided?: string }>> {
+  if (assignmentIds.length === 0) return new Map();
+
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("activity_log")
+    .select("action, entity_ref, created_at")
+    .eq("entity_type", "assignment")
+    .in("action", ["consent.requested", "photo_guide.sent"])
+    .in("entity_ref", assignmentIds)
+    .order("created_at", { ascending: false });
+
+  const sends = new Map<string, { requested?: string; guided?: string }>();
+  for (const row of data ?? []) {
+    const ref = row.entity_ref as string | null;
+    if (!ref) continue;
+    const entry = sends.get(ref) ?? {};
+    const key = row.action === "consent.requested" ? "requested" : "guided";
+    if (!entry[key]) entry[key] = row.created_at as string;
+    sends.set(ref, entry);
+  }
+  return sends;
+}
 
 export async function listConsents(): Promise<ConsentRow[]> {
   const supabase = createAdminClient();
@@ -544,7 +610,10 @@ export async function listConsents(): Promise<ConsentRow[]> {
 
   if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
 
+  const sends = await lastSendsByAssignment((data ?? []).map((row) => row.id as string));
+
   return (data ?? []).map((row) => {
+    const sent = sends.get(row.id as string);
     const practitioner = one<{ full_name: string }>(row.practitioners);
     const session = one<{ reference: string; session_date: string | null; status: string }>(row.sessions);
     return {
@@ -562,6 +631,9 @@ export async function listConsents(): Promise<ConsentRow[]> {
       // `issuedOn` is already formatted for display, so the period filter gets
       // its own sortable value rather than parsing a rendered date back.
       issuedMonth: (row.confirmation_generated_at as string | null)?.slice(0, 7) ?? "",
+      requestSentAt: sent?.requested ?? null,
+      requestSentLabel: sent?.requested ? sinceLabel(sent.requested, new Date()) : null,
+      guideSentAt: sent?.guided ?? null,
     };
   });
 }
@@ -667,16 +739,6 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
 
 /** Part 1's picker: matched sessions with no confirmation generated yet. */
 export const listConfirmableSessions = () => listAssignments(false);
-
-/**
- * Part 3's picker: sessions whose practitioner has returned consent. V7 gates
- * the photo guide on Confirmed for a reason — the guide tells them what to
- * shoot at a session they have not yet agreed to deliver.
- */
-export async function listPhotoGuideSessions(): Promise<ConfirmableSession[]> {
-  const generated = await listAssignments(true);
-  return generated.filter((row) => row.consentGiven);
-}
 
 // ── Payouts (per assignment) ────────────────────────────────────────────────
 

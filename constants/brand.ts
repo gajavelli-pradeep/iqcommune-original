@@ -16,3 +16,19 @@ export const BRAND_TITLE = "iqcommune — insight quotient unleashed";
 
 /** The line under the title, on the OpenGraph and Twitter cards. */
 export const BRAND_STRAPLINE = "real insights from active professionals";
+
+/**
+ * The line under the wordmark on generated documents — the agreement and the
+ * session confirmation.
+ *
+ * Those printed "WHERE FINANCIAL INTELLIGENCE CONNECTS", which appears in no
+ * client source at all: not in the eight delivered V7 pages, which all carry the
+ * line below, and not in the agreement JSON, whose `branding.tagline` is also
+ * the line below. It was invented, and it was invented on the two documents a
+ * practitioner keeps.
+ *
+ * Kept apart from `BRAND_STRAPLINE` because they are different registers doing
+ * different jobs: that one is the sentence under a share card, this one is the
+ * mark on a contract.
+ */
+export const BRAND_DOCUMENT_TAGLINE = "INSIGHT QUOTIENT — UNLEASHED";

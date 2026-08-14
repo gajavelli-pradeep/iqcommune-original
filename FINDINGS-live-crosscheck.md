@@ -70,6 +70,40 @@ behaviour.
 **Confirmed working.** `Group: 9-15 participants, Group (register as SPOC)` renders the human
 label, not the stored enum — appendix item **B6** satisfied.
 
+## The signing success page — exact match
+
+Confirmations doc item 1, checked line by line. Recorded because only its timestamp appears
+below, and a page that matched is a result rather than an absence of one.
+
+| Element | Client doc | Seen | |
+|---|---|---|---|
+| Heading | `Agreement signed. Welcome to iqcommune.` | identical | ✓ |
+| Body | the full sentence | identical, word for word | ✓ |
+| Receipt rows | Signed by · Agreement ref. · Timestamp · Status | all four, same order | ✓ |
+| Status value | `✓ Digitally signed` | identical | ✓ |
+| Footer | `Confidential · Questions? Reply to the email…hello@iqcommune.com` | identical | ✓ |
+
+Both open findings from the **v1** confirmations doc are closed by it: the receipt no longer
+shows "Module assigned.", and the footer trust line — recorded there as *"genuinely absent"* on
+this page — is present. Its timestamp is the exception, and is finding 1.
+
+## The first bug reported, and the reason this branch exists
+
+Not a copy cross-check, and it predates this document — recorded so the branch's own history is
+complete. On Practitioners, the email dialog opened **underneath** the console header.
+
+The z-index was never the problem: `--z-overlay` is 300 against the header's 100, so the dialog
+already outranked it. They were never in the same stacking context. `RowAction` renders its
+dialog inline, so the dialog sat inside the expanded row's card, and `ExpandableRows` wraps that
+card in `sticky left-0` to pin it during sideways scroll — and `position: sticky` creates a
+stacking context. The dialog was sealed inside it at the row's own depth, and the header painted
+over it however high the number went. Which is why the Settings invite dialog, rendered outside
+any row, looked fine.
+
+Fixed by portalling the shared `Modal` to `document.body`, so every dialog benefits rather than
+the one that was reported. Merged to `main` in PR #32. The two content-parity gates read modal
+copy off `render().container`, which a portal empties, so they now read `baseElement`.
+
 ## Part 2 — Signature convention
 
 Client convention (console doc, Conventions §): *"every email closes with the two-line block
@@ -185,12 +219,14 @@ canonical where.
 
 | # | Item | Source |
 |---|---|---|
-| 1 | Application acknowledgment sign-off — `Regards,` → `Warm regards,`? | console doc Appendix A, client's own recommendation |
-| 2 | Availability-check message — build it, or reword the four places that promise it? | console doc **B2** |
-| 3 | Apply `iqcommune-empanelment-agreement-content.json` as-is, per its own readme? | agreement JSON `_readme` |
-| 4 | Agreement header reference — IQC-EMP as the client's field asks, IQC-AGR as shipped, or both? | agreement JSON `headerFields[3]` |
-| 5 | Session follow-up — keep the app's grammatical fix, or restore the client's literal wording? | console doc msg 7 |
-| 6 | Which tagline is canonical, and where? | agreement JSON `branding.tagline` |
+| ~~1~~ | ~~Application acknowledgment sign-off~~ | **Done** — `Warm regards,` in both halves, taking the client's own recommendation |
+| 2 | Availability-check message — build it, or reword the four places that promise it? | console doc **B2** — **still open**, and the only one that cannot be closed by copy |
+| ~~3~~ | ~~Apply the agreement JSON as-is~~ | **Done** — generated from the delivery; the readme was the instruction |
+| ~~4~~ | ~~Agreement header reference~~ | **Done** — both, since the two documents ask for different ones |
+| 5 | Session follow-up — keep the app's grammatical fix, or restore the client's literal `before we can:`? | console doc msg 7 — **still open** |
+| ~~6~~ | ~~Which tagline is canonical~~ | **Done** — the client's, which is the only one in any client source |
+
+Two remain, and neither is code-shaped: **2** needs a product decision (build the availability check or soften four promises), **5** needs a ruling on one dangling clause in the client's own sentence.
 
 ### Ours to fix — no client input needed
 
@@ -200,12 +236,40 @@ canonical where.
 | 8 | `NEXT_PUBLIC_BASE_URL` still points at `iq-commune-vert.vercel.app` — every emailed tokenised link carries it | Vercel env; `lib/email/links.ts:38` reads it |
 | 9 | Console invite sender still uses `BREVO_SENDER_EMAIL`; verify it is no longer the `brevosend.com` fallback | Vercel env; `lib/email/send.ts:84` |
 | ~~10~~ | ~~Map `audience` through `AUDIENCE_LABELS` in the confirmation PDF~~ | **Done** — consents route |
-| 11 | Add the expected payment date to the confirmation, which agreement clause 3(a) promises it carries | `lib/pdf/confirmation.ts` — **blocked**: no such date is stored anywhere, so this needs a source before it needs code |
+| ~~11~~ | ~~Add the expected payment date to the confirmation~~ | **Done** — and it was never blocked. "No such date is stored" was true and the wrong conclusion: clause 3(c) fixes the rule at *"within 7 working days of the session date"*, and the session date is on the record, so `lib/working-days.ts` derives it. A stored copy would only be a second place to disagree with the clause it comes from. |
+
+**Attribution correction.** Finding 10 / item 11 was raised by me from reading clause 3(a), not
+reported from live use. The live payouts report was narrower and separate: the invoice reference
+and paid status persisted, and marking Paid needed a guard when no reference had been typed —
+which is the payouts fix in round 2. Recording that so the two are not conflated later.
+
+### 14 — the activity log recorded sends that never happened · P1
+
+Found while hardening the three parts. All three assignment sends shared this shape:
+
+```ts
+const composed = await draftMessage("consent-request", assignmentId);
+if (composed) dispatchEmail(...);          // may not run
+await recordActivity({ action: "consent.requested", ... });  // always runs
+```
+
+A draft that came back empty sent nothing and logged that it had. Three consequences, in
+increasing order of damage: the admin saw the same Undo toast either way; the audit trail carried
+an entry for an email nobody received; and — since `listConsents` now derives each row's next
+step from exactly those entries — a failed send would move the row to *"Sent just now"* and stop
+it asking, which is a practitioner never chased at all.
+
+Fixed by one shared `sendForAssignment`: nothing is logged unless something was dispatched, and
+the caller is told. `RowAction`'s `action` prop was typed `=> Promise<void>`, so no caller could
+have reported a failure even if one had been returned; it now accepts a result and shows it.
 
 ### Closed since this document was opened
 
 | Item | Evidence |
 |---|---|
+| **2, 3, 4, 5, 6 — the agreement was a summary, not the contract** | The client's JSON is vendored to `spec/v7/` and `constants/agreement.ts` is now generated from it by `scripts/build-agreement-content.mjs`. The page and the PDF read the same constants, so both now carry the platform party, the intro, the consent sentence, the Hyderabad seat and the full clause 5. Clause 4 runs (a)–(f) in order — `tests/unit/agreement-content.test.ts` pins that, and that no lettered sub-clause can ever precede the one before it |
+| **Client decision 1 — the application sign-off** | `Regards,` → `Warm regards,` in both the plain and HTML halves, taking the client's own recommendation. The waitlist ack keeps its `Regards,` — Appendix A exempts it |
+| **B10 — the dialog's `Re:` line disagreed with the real subject** | Removed, and `DRAFT_CHROME.subject` deleted with it. A subject nothing sends is a second source of truth waiting to drift; the editable Subject field below was always the real one |
 | **1 — execution timestamp 5½ hours out** | One `lib/timestamp.ts` pins `Asia/Kolkata` and labels the output; all four call sites use it. `tests/unit/timestamp.test.ts` pins 13:36:58 UTC → 7:06:58 pm IST — the exact numbers from the reported PDF and success page |
 | **9 — confirmation PDF printed the raw `audience` enum** | Mapped through `AUDIENCE_LABELS` in the consents route, as the email path already did |
 | **11 — Part 1's consent request unreachable after a reload** | Part 2 gained a role-gated `Consent request` column; the row that shows the request is outstanding now offers to send it |

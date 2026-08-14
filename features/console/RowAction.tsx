@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
+import type { ActionResult } from "./actions";
 import { DraftModal } from "./DraftModal";
 import type { DraftKind, DraftOverride } from "./draft-kinds";
 import { PendingSendToast } from "./PendingSendToast";
@@ -35,7 +36,15 @@ export function RowAction({
   icon,
   draft,
 }: {
-  action: (draft?: DraftOverride) => Promise<void>;
+  /**
+   * Widened from `Promise<void>` so a send can say it failed.
+   *
+   * The Undo toast used to be the whole of the feedback: it appeared, it
+   * elapsed, and whatever happened next was invisible. Actions that still
+   * return void are unaffected — the union accepts them — but any that report
+   * a refusal now have somewhere for it to go.
+   */
+  action: (draft?: DraftOverride) => Promise<void | ActionResult>;
   label: string;
   /** Shown in the toast while the Undo window is open, e.g. "Matching request…". */
   pendingMessage: string;
@@ -55,6 +64,15 @@ export function RowAction({
 }) {
   const { pending, schedule, undo } = useDeferredSend();
   const [drafting, setDrafting] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  /** Runs the action and keeps whatever it had to say about itself. */
+  const run = (edited?: DraftOverride) => async () => {
+    setError(null);
+    const result = await action(edited);
+    if (result && !result.ok) setError(result.message);
+  };
 
   const focus =
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50";
@@ -84,7 +102,7 @@ export function RowAction({
     <>
       <button
         type="button"
-        onClick={() => (draft ? setDrafting(true) : schedule(action, pendingMessage))}
+        onClick={() => (draft ? setDrafting(true) : schedule(run(), pendingMessage))}
         disabled={Boolean(pending)}
         className={CLASSES[variant]}
       >
@@ -99,9 +117,15 @@ export function RowAction({
           id={draft.id}
           onSend={(edited) => {
             setDrafting(false);
-            schedule(() => action(edited), pendingMessage);
+            schedule(run(edited), pendingMessage);
           }}
         />
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-1 max-w-[200px] text-3xs text-red">
+          {error}
+        </p>
       ) : null}
 
       {pending ? (

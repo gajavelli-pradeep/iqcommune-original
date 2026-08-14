@@ -27,6 +27,8 @@ export interface SessionConfirmation {
   spoc: string;
   audience: string;
   grossPayout: string;
+  /** Derived from the session date per clause 3(c); null when no date is set. */
+  expectedPayment: string | null;
   consentGivenAt: string | null;
 }
 
@@ -59,6 +61,10 @@ export async function renderConfirmation(session: SessionConfirmation): Promise<
   writer.gap(10);
 
   writer.amount("GROSS PAYOUT AMOUNT", session.grossPayout);
+  // Clause 3(a) says the confirmation sets out the payout "along with
+  // expected payment date", and it did not. Derived from the session date
+  // rather than stored, because the agreement already fixes the rule.
+  if (session.expectedPayment) writer.field("Expected payment", session.expectedPayment);
   // Copied from V7's own wording — this document must not imply the platform
   // has done a tax calculation it has not done.
   writer.text(
