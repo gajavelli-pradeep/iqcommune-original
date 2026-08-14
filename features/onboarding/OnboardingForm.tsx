@@ -142,7 +142,16 @@ export function OnboardingForm({
           Your empanelment is confirmed. We&apos;ll reach out the moment a session comes up that
           matches your profile and city — there&apos;s no fixed timeline, since it depends on
           demand in your area. Keep an eye on{" "}
-          <span className="font-medium text-ink">{practitioner.email}</span>.
+          {/* The literal words, at the client's instruction (2026-08-14) — the
+              confirmations delivery prints this sentence ending in "your inbox",
+              and that is what they want shown. V7 does something else: its span
+              is a placeholder its own script overwrites with the practitioner's
+              address (iqcommune-onboarding.html:564). No gate catches the
+              difference, because the whole success view is behind a signature and
+              is declared state-gated either way — so this note is the only record
+              that the departure is deliberate rather than a missed substitution.
+              Restoring V7's behaviour means rendering {practitioner.email} here. */}
+          <span className="font-medium text-ink">your inbox</span>.
         </p>
         <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
           {(
