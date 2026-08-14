@@ -1,4 +1,6 @@
 import { renderConfirmation, renderPhotoGuide } from "@/lib/pdf/confirmation";
+import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
+import { formatRecordedAt } from "@/lib/timestamp";
 import { log, newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConsoleSession } from "@/features/console/requireRole";
@@ -78,13 +80,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           venue: session.venue,
           participants: session.participants,
           spoc: session.spoc_name,
-          audience: session.audience,
+          // The stored value is an enum — `individual`, `corporate`, `finance`.
+          // The document printed it raw, so a confirmation went out reading
+          // "Audience: individual" for what the form calls "Group (register as
+          // SPOC)". The email path already resolves it; this one did not, which
+          // is how the same field shipped correct in one place and raw in the
+          // other. Falls back to the stored value rather than blanking, so an
+          // enum added to the database and not yet to the labels still prints
+          // something a reader can act on.
+          audience: AUDIENCE_LABELS[session.audience as Audience] ?? session.audience,
           grossPayout: money(data.gross_payout, data.currency),
           consentGivenAt: data.consent_given_at
-            ? new Date(data.consent_given_at).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "medium",
-              })
+            ? formatRecordedAt(data.consent_given_at as string)
             : null,
         });
   } catch (cause) {

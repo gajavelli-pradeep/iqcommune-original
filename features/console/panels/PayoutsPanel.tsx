@@ -62,9 +62,19 @@ function InvoiceReference({ row }: { row: PayoutRow }) {
   );
 }
 
-/** The Pending/Paid control. V7 keeps it separate from the status pill. */
+/**
+ * The Pending/Paid control. V7 keeps it separate from the status pill.
+ *
+ * The select moves before the server has answered, which is right — the round
+ * trip is not worth a frozen control. But the answer has to be read back: a
+ * refusal that left the optimistic "Paid" on screen would show a settled payout
+ * that was never recorded, and the finance view would disagree with the
+ * database with nobody told. So a failure puts the control back and says why,
+ * the same way the invoice cell above already does.
+ */
 function PayoutStatus({ row }: { row: PayoutRow }) {
   const [status, setStatus] = useState(row.status);
+  const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   return (
@@ -78,9 +88,15 @@ function PayoutStatus({ row }: { row: PayoutRow }) {
         disabled={pending}
         onChange={(event) => {
           const next = event.target.value as PayoutRow["status"];
+          const previous = status;
           setStatus(next);
+          setError(null);
           start(async () => {
-            await setPayoutStatus(row.id, next);
+            const result = await setPayoutStatus(row.id, next);
+            if (!result.ok) {
+              setStatus(previous);
+              setError(result.message);
+            }
           });
         }}
         className={`${FIELD} cursor-pointer`}
@@ -88,6 +104,11 @@ function PayoutStatus({ row }: { row: PayoutRow }) {
         <option value="Pending">Pending</option>
         <option value="Paid">Paid</option>
       </select>
+      {error ? (
+        <p role="alert" className="mt-1 max-w-[150px] text-3xs text-red">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }

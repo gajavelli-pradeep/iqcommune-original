@@ -1,4 +1,5 @@
 import { renderSignedAgreement } from "@/lib/pdf/agreement";
+import { formatRecordedAt } from "@/lib/timestamp";
 import { log, newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConsoleSession } from "@/features/console/requireRole";
@@ -50,9 +51,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     issuedOn: dateOnly(data.issued_on) ?? "—",
     signedName: data.signed_name,
     signedDesignation: data.signed_designation,
-    signedAt: data.signed_at
-      ? new Date(data.signed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "medium" })
-      : null,
+    signedAt: data.signed_at ? formatRecordedAt(data.signed_at as string) : null,
     signatureMode: data.signature_mode === "drawn" ? "Drawn" : data.signature_mode === "typed" ? "Typed" : null,
     signedIp: data.signed_ip,
     version: data.version,
