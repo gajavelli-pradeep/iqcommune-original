@@ -332,6 +332,163 @@ a business-rule gap, and it is consistent with how the codebase already treats t
 reconciliation goes wrong."* A payout paid against no reference is the same failure with
 nothing to reconcile against.
 
+## Round 3 — Session Consent panel
+
+### What was asked for, as stated
+
+Recorded verbatim in intent so the questions below are answered against the right thing:
+
+1. Downloaded the fallback PDF, **closed the site, reopened it** — "Send consent request" is no
+   longer active, and Part 2 below shows the record. Consent request was never sent.
+2. Part 2 shows the record, but "here missing the client stuff".
+3. Session status in Part 2 starts Pending; when an admin changes it (Confirmed or Cancelled),
+   **Consent status should change accordingly**. Many possibilities — enumerate the questions and
+   assumptions and implement the genuine ones.
+4. Same treatment for **all parts**, not just Part 2: as many questions and assumptions as can
+   be raised.
+5. The session-cancellation draft dialog appears and the site shows a sending message with
+   Undo — **cross-check why the email does not arrive**.
+
+Questions below are **not** to be answered now. They get raised during implementation, one at a
+time, against the code being changed.
+
+### Session cancellation draft — copy is an exact match
+
+Console doc message 9, lines 170-175. Compared line by line:
+
+| Element | Client doc | Popup | |
+|---|---|---|---|
+| Subject | `iqcommune — your session has been cancelled` | identical | ✓ |
+| Salutation | `Dear [First Name],` | `Dear Gajavellis,` | ✓ |
+| ¶1 | `…your confirmed session on [Module] (ref. [Session Ref]) has been cancelled.` | identical, both values filled | ✓ |
+| ¶2 | `If this was unexpected, or you would like to reschedule…` | identical | ✓ |
+| Sign-off | `Warm regards,` / `Team iqcommune` | identical | ✓ |
+| Recipient | "To: requestor" | `gajavellisbiz@gmail.com` | ✓ |
+| Reply routing | "Replies to: session mailbox" | session stream | ✓ |
+| Side effect | "Also sets the session to Cancelled" | dialog warns before sending | ✓ |
+
+`[Session Ref]` renders as `IQC-S0004`, which closes the last of the four references appendix
+**B4** listed as unreachable.
+
+**But the popup is a live instance of appendix B10.** The dialog shows
+`Re: Cancelling a booked session` directly above `Subject: iqcommune — your session has been
+cancelled`. B10 records exactly this: *"The console's draft dialog shows its own subject line
+next to the real one, and the two already disagree."* Only the `Subject:` field is ever sent;
+the `Re:` line is dialog chrome from `DRAFT_CHROME` and reaches nobody. It is visible on every
+one of the eleven console dialogs, and this is the copy you were reading when you asked whether
+it matched.
+
+### 11 — Part 1's send and download are unreachable after any reload · P1
+
+`ConsentPanel.tsx:345` holds the generated confirmation in local React state:
+
+```ts
+const [done, setDone] = useState<ConfirmableSession | null>(null);
+```
+
+It is initialised to `null` and never seeded from the server. `sendConsentRequest` appears
+**exactly once in the whole panel** (line 566), inside the `done ?` branch. So the only route to
+that button is the render immediately following a successful *Generate Confirmation*, in the
+same browser visit.
+
+Close the site and reopen it and `done` is `null` again, so both controls render as the dimmed,
+`aria-hidden` placeholders at lines 579-584 — *"Generate a confirmation to download it or
+request consent."* And the confirmation cannot be regenerated: it already exists, so the session
+has dropped out of the `confirmable` list.
+
+**The download is incidental.** Any reload does this; downloading first is not required.
+
+Impact is larger than the missing button suggests. Agreement clause 3(a): *"The session is not
+confirmed until the Practitioner provides digital consent."* A confirmation generated but not
+sent in that one visit strands the session with no route forward in the UI, and nothing on
+screen says why.
+
+**Part 3 already does this correctly** (lines 611-655): a server-provided list, pick a session,
+then download or send — no local-state gate. The fix is to make Part 1 behave the way Part 3
+already does, in the same file.
+
+### 12 — "Cancelling…" with Undo is not evidence that any email was sent · P1
+
+This is the answer to "why is the email not going to the user".
+
+`setSessionStatus` returns `Promise<void>` (`actions.ts:981`). The panel awaits it and reads
+nothing back (`ConsentPanel.tsx:209-211`). The email is dispatched fire-and-forget. So **every**
+outcome renders identically on screen — sent, dry run, duplicate-suppressed, provider-rejected,
+or never attempted.
+
+Three separate paths send nothing, all silent:
+
+| Path | Where |
+|---|---|
+| `session_request_id` is null — a session not raised from a request never mails | `actions.ts:999` |
+| `draftMessage` returns null — no session row, or no resolvable requestor | `actions.ts:1000-1001`, `1835-1838` |
+| `sendEmail` returns `duplicate` — same template, same recipient, inside **5 minutes** | `services/email-log.ts:21` (`DUPLICATE_WINDOW_MS`) |
+
+For this specific case the draft dialog resolved `To: gajavellisbiz@gmail.com`, which proves
+`requestorForSession` worked and `session_request_id` is set — so the first two paths were
+passed. That leaves the duplicate window or a delivery outcome, and **`email_log` is the only
+place that records which**: query it for `template = 'session-cancelled'`.
+
+Same defect family as the payouts bug fixed in round 2: an action whose result the UI discards.
+The difference is that `setPayoutStatus` at least returned one to discard; this returns `void`,
+so there is nothing to check until the signature changes.
+
+### 13 — "Download Signed Consent" hands over an unsigned document
+
+Part 2's column header promises a signed consent. `ConsentPanel.tsx:306-308` renders the
+`DownloadLink` unconditionally, with no reference to `row.status`, so it is offered while consent
+is still Pending — and the PDF then reads `CONSENT NOT YET RECEIVED`.
+
+The document is honest about itself, which is right. The column label is not. This may be what
+"missing the client stuff" refers to — the file you get is missing the client's consent — but
+that reading is unconfirmed; see Q11.
+
+All seven V7 columns are present, so nothing is missing from the table itself:
+`Confirmation ref. · Session · Practitioner · Gross payout · Consent status · Download Signed
+Consent · Session status` (V7 spec line 671).
+
+### Open questions and assumptions
+
+Each carries the assumption to be used **if no answer arrives before that line is touched**.
+None of these is implemented yet.
+
+#### Part 1 — Generate Confirmation
+
+| # | Question | Working assumption |
+|---|---|---|
+| Q1 | After a reload, should Part 1 offer an already-generated confirmation for download and send? | **Yes** — mirror Part 3's select-from-server-list. This is finding 11's fix. |
+| Q2 | Can a confirmation be regenerated when the start time or date was entered wrongly? | Reuse the existing `IQC-CONF` reference and overwrite the details, logged as an override. A second number for one session breaks the 1:1. |
+| Q3 | Clause 3(a) lists "session date and timing"; the PDF printed `Date: To be confirmed`. Block generation without a date? | Allow — consent can precede a date — but mark the absence on the PDF rather than printing a bare placeholder. |
+| Q4 | If the consent-request email fails, is the confirmation still "generated"? | Yes. They are separate acts; the record stands and the send is retryable — which is exactly why Q1 matters. |
+| Q5 | Can a consent request be re-sent as a reminder? | Yes, and the 5-minute duplicate window must say "already sent N minutes ago" rather than silently doing nothing. |
+
+#### Part 2 — Track Status
+
+| # | Question | Working assumption |
+|---|---|---|
+| Q6 | Session set to **Cancelled** — what does Consent status show? | Render `Void — was Given <date>`, leave `consent_given_at` untouched. Consent is evidence of what happened, and a late cancellation may still owe the payout. |
+| Q7 | Can Session be set **Confirmed** before consent is returned? | Warn but allow — consent may have arrived by phone, and the console records reality. Flag the row so the gap is visible. Blocking outright is the stricter reading of clause 3(a). |
+| Q8 | Can Consent status go backwards, Received → Pending? | No. Consent is evidence, not a toggle. |
+| Q9 | Cancelled → Pending (reopened): does the client get told? | No email — but it belongs in the Activity log, since the client was already told it was cancelled. |
+| Q10 | Unsigned consent — hide the download, disable it, or relabel the column? | Keep it available and relabel, since the PDF self-declares. A disabled control gives an admin no way to send the unsigned confirmation offline. |
+| Q11 | Does "missing the client stuff" mean Part 2 should show the requestor/SPOC? | Unresolved. V7 does not include it and all seven of its columns are present. **Needs your answer before anything is built.** |
+| Q12 | A Completed session shows as Confirmed in the select. Should the select lock once Completed? | Yes — a delivered session cannot be un-delivered, and the control currently allows exactly that. |
+| Q13 | Can a session be cancelled once its payout is **Paid**? | Warn at minimum. Money has moved; silently cancelling leaves a paid payout against a cancelled session. |
+
+#### Part 3 — Send Photo Guide
+
+| # | Question | Working assumption |
+|---|---|---|
+| Q14 | Should a Completed session still appear if the guide was never sent? | Yes — the guide is useless after delivery, so its absence is worth surfacing, not hiding. |
+| Q15 | Re-sending the photo guide as a reminder? | Same as Q5 — allowed, with the duplicate window reported rather than silent. |
+
+#### Cross-cutting
+
+| # | Question | Working assumption |
+|---|---|---|
+| Q16 | Every console send shows the same "…ing" toast with Undo regardless of what happened. Should it report the real outcome? | Yes. This is the root of finding 12 and the same shape as the payouts bug. Actions returning `void` cannot report, so the signatures change first. |
+| Q17 | Should the 5-minute duplicate window ever be visible to an admin? | Yes — silently swallowing a deliberate re-send is indistinguishable from a broken send, which is precisely the confusion that raised finding 12. |
+
 ## Recommended sequencing
 
 Findings 2, 3, 5, 6, 7 and 8 are one job: apply the client's JSON as the agreement's source of
