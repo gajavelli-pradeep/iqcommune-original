@@ -34,8 +34,12 @@ function Rows({ rows }: { rows: ReadonlyArray<[string, string]> }) {
 export function SessionSummary({ session }: { session: ConsentSession }) {
   return (
     <section className="rounded-[12px] border border-border bg-surface px-9 py-8">
-      <h1 className="mb-1.5 text-4xl font-semibold text-ink">Confirm your session details</h1>
-      <p className="mb-6 text-md leading-[1.6] text-ink-muted">
+      {/* This spec's .card-title and .card-sub both inherit the page's 1.7 —
+          unlike /rate, whose .card-sub sets 1.6 explicitly. */}
+      <h1 className="mb-1.5 text-4xl font-semibold leading-[1.7] text-ink">
+        Confirm your session details
+      </h1>
+      <p className="mb-6 text-md leading-[1.7] text-ink-muted">
         Please review everything below carefully. Your consent confirms acceptance of this session
         and the stated payout.
       </p>

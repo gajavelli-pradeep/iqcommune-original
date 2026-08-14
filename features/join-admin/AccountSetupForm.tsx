@@ -51,8 +51,10 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
 
   return (
     <section className="rounded-[12px] border border-border bg-surface px-9 py-8">
-      <h1 className="mb-1.5 text-4xl font-semibold text-ink">Set up your account</h1>
-      <p className="mb-6 text-md leading-[1.6] text-ink-muted">
+      {/* Both inherit this spec's 1.7; neither .card-title nor .card-sub sets a
+          line-height of its own here, unlike /rate's .card-sub. */}
+      <h1 className="mb-1.5 text-4xl font-semibold leading-[1.7] text-ink">Set up your account</h1>
+      <p className="mb-6 text-md leading-[1.7] text-ink-muted">
         You&apos;ve been invited to the iqcommune admin console. Confirm your details and choose a
         password to activate your account.
       </p>
