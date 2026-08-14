@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
+import { BRAND_STRAPLINE, BRAND_TITLE } from "@/constants/brand";
 import { siteUrl } from "@/lib/siteUrl";
 
 /**
@@ -46,7 +47,7 @@ const dmSans = localFont({
  */
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: "iqcommune — financial intelligence connects",
+  title: BRAND_TITLE,
   description:
     "iqcommune connects you with working finance professionals for small, in-person sessions.",
   applicationName: "iqcommune",
@@ -54,15 +55,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "iqcommune",
     url: siteUrl(),
-    title: "iqcommune — financial intelligence connects",
-    description:
-      "Real financial insight from active professionals — small, in-person sessions.",
+    title: BRAND_TITLE,
+    description: BRAND_STRAPLINE,
   },
   twitter: {
     card: "summary_large_image",
-    title: "iqcommune — financial intelligence connects",
-    description:
-      "Real financial insight from active professionals — small, in-person sessions.",
+    title: BRAND_TITLE,
+    description: BRAND_STRAPLINE,
   },
 };
 

@@ -1,12 +1,14 @@
 import { ImageResponse } from "next/og";
 
+import { BRAND_TITLE } from "@/constants/brand";
+
 /**
  * Default social card (audit H6). Satori cannot resolve `var(--token)`, so the
  * brand colours are the literal values from globals.css `:root`
  * (ink #0f1117, cream #f8f7f4, gold #c9982a) — kept in sync by hand.
  */
 export const runtime = "nodejs";
-export const alt = "iqcommune — financial intelligence connects";
+export const alt = BRAND_TITLE;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
