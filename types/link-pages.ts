@@ -60,6 +60,8 @@ export interface OnboardingPractitioner {
   role: string;
   organisation: string;
   city: string;
+  /** The agreement's "Practitioner" row reads `name · city · email`. */
+  email: string;
   agreementReference: string;
 }
 

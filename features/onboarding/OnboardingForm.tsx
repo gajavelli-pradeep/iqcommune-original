@@ -133,9 +133,18 @@ export function OnboardingForm({
 
   return (
     <>
-      <section className="rounded-lg border border-border bg-surface p-8">
-        <Stepper steps={STEPS} current={2} />
-        <h1 className="mb-1.5 text-2xl font-semibold text-ink">
+      {/* A sibling of the card, not a child: `.stepper` is its own bordered box
+          in V7 and Stepper already draws one, so nesting it here put a card
+          inside a card. */}
+      <Stepper steps={STEPS} current={2} />
+      {/* rounded-[12px], not rounded-lg: V7 `.card` is `var(--radius)` = 12px in
+          seven of the eight specs. `--radius-lg` is 8px here because audit H4
+          counted literal `border-radius:12px` and missed the variable — 8px is
+          right for `.summary-item`, which sets it literally, and wrong for the
+          card. The agreement card below already carries the correction. */}
+      <section className="rounded-[12px] border border-border bg-surface p-8">
+        {/* V7 .card-title — 18px/600/-0.01em, on the page's inherited 1.7 leading. */}
+        <h1 className="mb-1.5 text-2xl font-semibold leading-[1.7] tracking-[-0.01em] text-ink">
           Welcome to the iqcommune practitioner network.
         </h1>
         <p className="mb-6 text-md leading-[1.6] text-ink-muted">
@@ -157,10 +166,12 @@ export function OnboardingForm({
             ] as ReadonlyArray<[string, string]>
           ).map(([label, value]) => (
             <div key={label} className="rounded-lg bg-surface-soft px-4 py-3">
-              <dt className="mb-[3px] text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+              {/* Both inherit the page's 1.7 leading in V7; Tailwind's per-size
+                  defaults are tighter and shrank each card by ~7px. */}
+              <dt className="mb-[3px] text-xs font-medium uppercase leading-[1.7] tracking-eyebrow text-ink-faint">
                 {label}
               </dt>
-              <dd className="text-md font-medium text-ink">{value}</dd>
+              <dd className="text-md font-medium leading-[1.7] text-ink">{value}</dd>
             </div>
           ))}
         </dl>
@@ -171,10 +182,11 @@ export function OnboardingForm({
       </section>
 
       <section className="mt-6 rounded-[12px] border border-border bg-surface p-8">
-        <h2 className="mb-1.5 text-2xl font-semibold text-ink">
+        <h2 className="mb-1.5 text-2xl font-semibold leading-[1.7] tracking-[-0.01em] text-ink">
           Practitioner Empanelment Agreement
         </h2>
-        <p className="mb-4 text-md text-ink-muted">
+        {/* V7 .card-sub carries its own 1.6 leading, unlike the 1.7 around it. */}
+        <p className="mb-4 text-md leading-[1.6] text-ink-muted">
           Please read the full agreement below before signing. You must scroll to the end to
           proceed.
         </p>
@@ -226,33 +238,50 @@ export function OnboardingForm({
               const el = event.currentTarget;
               if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setReadToEnd(true);
             }}
-            className="max-h-[420px] overflow-y-auto overscroll-contain bg-surface-soft px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            /* V7 .agreement-body: 1.75rem 2rem padding on its own 1.75 leading,
+               which everything inside inherits unless it sets its own. */
+            className="max-h-[420px] overflow-y-auto overscroll-contain bg-surface-soft px-8 py-7 leading-[1.75] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
           >
           {/* Literal capitals, not `uppercase`: the spec's own text is capitalised
               and the parity gate compares characters, not rendered casing. */}
-          <p className="text-md font-semibold tracking-caps text-ink">
+          {/* `leading-[1.75]` is repeated on each of these rather than left to
+              the viewer: a Tailwind text-* utility sets its own line-height, so
+              it overrides the container's inherited value instead of taking it. */}
+          <p className="text-2xl font-semibold leading-[1.75] tracking-[-0.01em] text-ink">
             PRACTITIONER EMPANELMENT AGREEMENT
           </p>
-          <p className="mb-4 text-sm text-ink-faint">Non-Exclusive · Confidential · India</p>
+          <p className="mb-6 text-base leading-[1.75] text-ink-faint">
+            Non-Exclusive · Confidential · India
+          </p>
 
           <dl className="mb-4 overflow-hidden rounded-md border border-border">
             {(
               [
                 ["Agreement Date", agreementDate],
                 ["Platform", "InvestQ Commune, operating as iqcommune (\"the Platform\")"],
-                ["Practitioner", practitioner.name],
+                // V7 builds this row as `name · city · email` in script, which is
+                // why the copy gate never saw it missing.
+                [
+                  "Practitioner",
+                  `${practitioner.name} · ${practitioner.city} · ${practitioner.email}`,
+                ],
               ] as ReadonlyArray<[string, string]>
             ).map(([label, value]) => (
               <div key={label} className="flex border-b border-border last:border-b-0">
-                <dt className="w-[38%] shrink-0 bg-gold-light px-3 py-2 text-sm font-semibold text-gold-dark">
+                {/* V7 .ag-detail-table td: 0.6rem 0.9rem, 13px. */}
+                <dt className="w-[38%] shrink-0 bg-gold-light px-[0.9rem] py-[0.6rem] text-base font-semibold leading-[1.75] text-gold-dark">
                   {label}
                 </dt>
-                <dd className="flex-1 bg-surface px-3 py-2 text-sm font-medium text-ink">{value}</dd>
+                <dd className="flex-1 bg-surface px-[0.9rem] py-[0.6rem] text-base font-medium leading-[1.75] text-ink">
+                  {value}
+                </dd>
               </div>
             ))}
           </dl>
 
-          <p className="mb-4 text-sm leading-[1.7] text-ink-muted">
+          {/* V7 .ag-preamble is 13.5px; the scale's nearest step is 13px and no
+              token exists for the half-pixel. */}
+          <p className="mb-5 text-base leading-[1.7] text-ink-muted">
             This Agreement is entered into between the Platform and the Practitioner (individually
             a &quot;Party&quot;, collectively the &quot;Parties&quot;). Together they agree to the
             following terms governing the Practitioner&apos;s empanelment and participation in
@@ -261,28 +290,32 @@ export function OnboardingForm({
 
           {AGREEMENT_CLAUSES.map((clause) => (
             <section key={clause.title}>
-              <h3 className="mb-2 mt-6 text-md font-semibold text-ink">{clause.title}</h3>
+              <h3 className="mb-2 mt-6 text-md font-semibold leading-[1.75] text-ink">
+                {clause.title}
+              </h3>
               {clause.paragraphs.map((paragraph) => (
-                <p key={paragraph} className="mb-2 text-sm leading-[1.7] text-ink-muted">
+                <p key={paragraph} className="mb-2 text-base leading-[1.7] text-ink-muted">
                   {paragraph}
                 </p>
               ))}
               {clause.highlights?.map((highlight) => (
                 <p
                   key={highlight}
-                  className="my-3 rounded-r-md border-l-[3px] border-l-gold bg-gold-light px-4 py-3 text-sm leading-[1.65] text-gold-dark"
+                  className="my-4 rounded-r-md border-l-[3px] border-l-gold bg-gold-light px-4 py-3 text-base leading-[1.65] text-gold-dark"
                 >
                   {highlight}
                 </p>
               ))}
               {clause.subClauses?.map((sub) => (
-                <p key={sub} className="mb-1.5 pl-5 text-sm leading-[1.7] text-ink-muted">
+                <p key={sub} className="mb-1.5 pl-5 text-base leading-[1.7] text-ink-muted">
                   {sub}
                 </p>
               ))}
             </section>
           ))}
-          <p className="mt-6 border-t border-border pt-4 text-center text-sm text-ink-faint">
+          {/* V7 .ag-end is italic, 13px — the border stands in for the spec's
+              separate .ag-divider element rather than adding an empty node. */}
+          <p className="mt-6 border-t border-border pt-4 text-center text-base italic leading-[1.75] text-ink-faint">
             — End of Agreement — · iqcommune (InvestQ Commune) · hello@iqcommune.com
           </p>
           </div>
