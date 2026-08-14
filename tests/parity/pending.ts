@@ -102,8 +102,10 @@ export const LANDING_PENDING: PendingUnit[] = [
     reason:
       "Renders only after a successful POST, which this gate cannot perform. Proven to render " +
       "by features/landing/sections/modals.test.tsx — 'shows the receipt after a successful " +
-      "submission', for both dialogs. The waitlist receipt is greeted by name there, matching " +
-      "V7's own scripted version; the spec's unnamed static copy is its no-JS fallback.",
+      "submission', for both dialogs. The waitlist receipt keeps V7's heading and replaces its " +
+      "body: the client's confirmations delivery (2026-08-14) rewrote that sentence and dropped " +
+      "the name V7's script greeted by, so the popup now opens the way the confirmation email " +
+      "does. Both wordings live in content/session-request.ts.",
     kind: "state",
     matches: containing(
       "You're on the list!",

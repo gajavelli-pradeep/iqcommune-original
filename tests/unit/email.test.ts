@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SESSION_SHOTS } from "@/constants/photo-shots";
+import {
+  SESSION_REQUEST_ACK,
+  SESSION_REQUEST_ACKNOWLEDGMENTS,
+} from "@/content/session-request";
 import { buildLink } from "@/lib/email/links";
 import { replyToFor, sendEmail, senderFor, senderNameFor } from "@/lib/email/send";
 import * as templates from "@/lib/email/templates";
@@ -519,10 +523,19 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
   it("application acknowledgment", () => {
     const message = templates.applicationReceived("a@b.com", "Ananya", ID);
 
-    expect(message.subject).toBe("iqcommune — we've received your application");
+    // Reworded by the client's confirmations delivery, 2026-08-14, item 7:
+    // "Dear" over "Hi", full forms over contractions.
+    expect(message.subject).toBe("iqcommune — we have received your application");
+    expect(message.body).toContain("Dear Ananya,");
     expect(message.body).toContain(
-      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+      "Thank you for applying to join the iqcommune practitioner network. We have received your application.",
     );
+    expect(message.body).toContain(
+      "We will review it and reach out within 2–3 working days for a short, informal conversation. " +
+        "There is nothing to prepare — simply an opportunity for us to get to know each other a little better.",
+    );
+    // The delivery reviews wording and does not reproduce the link. It stays —
+    // the client asked for it separately, and it is not wording.
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
     // Sign-off updated by the client on 2026-08-13 — one signature everywhere,
@@ -533,8 +546,9 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     // The HTML version carries the same client-approved wording — only the
     // link's presentation (a button, not a bare URL) differs.
     expect(message.html).toContain(
-      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+      "Thank you for applying to join the iqcommune practitioner network. We have received your application.",
     );
+    expect(message.html).toContain("<p>Dear Ananya,</p>");
     expect(message.html).toContain("Regards,<br>Team iqcommune");
   });
 
@@ -588,15 +602,57 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.html).toContain("&lt;img");
   });
 
-  it("session-request acknowledgment, including the topic", () => {
-    const message = templates.sessionRequestReceived("a@b.com", "Rahul", "Equity Investing Simplified");
+  /**
+   * Both versions from the confirmations delivery (items 8 and 9), pinned
+   * against the document rather than against whichever one is switched on.
+   *
+   * The standard version ships unreached behind `SESSION_REQUEST_PHASE`, so no
+   * other test renders it and nothing would notice it drifting until the day it
+   * goes live — which is the day it is least convenient to find out.
+   */
+  const TOPIC = "Equity Investing Simplified";
 
-    expect(message.subject).toBe(
-      "Thank you for reposing faith in us - We have recorded your interest",
+  it("waitlist acknowledgment — the version currently live", () => {
+    const ack = SESSION_REQUEST_ACKNOWLEDGMENTS.waitlist;
+
+    expect(ack.popupTitle).toBe("You're on the list!");
+    expect(ack.popupBody).toBe(
+      "Thank you for your interest — you have been added to our waitlist. " +
+        "We will notify you as soon as sessions open in your city.",
     );
-    expect(message.body).toContain(
-      "we have received your request for a session on Equity Investing Simplified.",
+    expect(ack.subject).toBe("iqcommune — you're on the waitlist");
+    expect(ack.paragraphs(TOPIC)).toEqual([
+      `Thank you for your interest in a session on ${TOPIC}. You have been added to our waitlist.`,
+      "We are currently focused on expanding our practitioner network across India, and are not " +
+        "scheduling sessions at this time. You will be notified as soon as sessions open in your city.",
+      "Should your group's needs change in the meantime, please reply to this email and we will " +
+        "keep it on file.",
+    ]);
+  });
+
+  it("standard acknowledgment — on deck for when scheduling resumes", () => {
+    const ack = SESSION_REQUEST_ACKNOWLEDGMENTS.standard;
+
+    expect(ack.popupTitle).toBe("Request received!");
+    expect(ack.popupBody).toBe(
+      "Thank you — your session request has been received. We will be in touch within 2–3 working days.",
     );
+    expect(ack.subject).toBe("iqcommune — your session request has been received");
+    expect(ack.paragraphs(TOPIC)).toEqual([
+      `Thank you for reaching out to iqcommune. We have received your request for a session on ${TOPIC}.`,
+      "We will be in touch within 2–3 working days to better understand your group's needs and " +
+        "take things forward.",
+    ]);
+  });
+
+  it("session-request acknowledgment sends whichever version the phase selects", () => {
+    const message = templates.sessionRequestReceived("a@b.com", "Rahul", TOPIC);
+
+    expect(message.subject).toBe(SESSION_REQUEST_ACK.subject);
+    expect(message.body).toContain("Dear Rahul,");
+    for (const paragraph of SESSION_REQUEST_ACK.paragraphs(TOPIC)) {
+      expect(message.body).toContain(paragraph);
+    }
     // Client copy, 2026-08-12, generalised to every template on 2026-08-13.
     // Once the lone exception, now the house signature — still asserted here
     // because this is the template whose approved wording set it.
@@ -604,13 +660,17 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.body).not.toContain("The Session Commune Team");
   });
 
-  it("promises no reply window in the acknowledgment", () => {
-    // Sessions are not scheduled on arrival during the opening months, so the
-    // acknowledgment commits to the practitioner mapping and not to a date.
-    // A "2-3 working days" line reappearing here is the regression.
-    const message = templates.sessionRequestReceived("a@b.com", "Rahul", "Equity Investing Simplified");
+  it("promises a reply window in the standard version and none in the waitlist one", () => {
+    // The whole point of the two versions. Sessions are not scheduled on arrival
+    // during the waitlist phase, so that acknowledgment commits to the
+    // practitioner mapping and not to a date; the standard one commits to 2–3
+    // working days because by then there is a date to commit to. A window
+    // appearing in the waitlist copy is the regression this guards.
+    const paragraphs = (phase: "waitlist" | "standard") =>
+      SESSION_REQUEST_ACKNOWLEDGMENTS[phase].paragraphs(TOPIC).join(" ");
 
-    expect(message.body).not.toMatch(/working days/i);
-    expect(message.body).toContain("as soon as we are able to map the right practitioner");
+    expect(paragraphs("waitlist")).not.toMatch(/working days/i);
+    expect(SESSION_REQUEST_ACKNOWLEDGMENTS.waitlist.popupBody).not.toMatch(/working days/i);
+    expect(paragraphs("standard")).toMatch(/working days/i);
   });
 });

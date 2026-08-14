@@ -279,9 +279,11 @@ export function ApplyModal({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
+          {/* Client's 2026-08-14 confirmations delivery, which put this popup into
+              the same register as the acknowledgment email it is followed by. */}
           <p className="text-lg text-ink-muted">
-            Thanks for applying — we&apos;ll reach out within 2–3 working days for a quick,
-            informal chat.
+            Thank you for applying. We will reach out within 2–3 working days for a brief,
+            informal discussion.
           </p>
         </div>
       ) : (

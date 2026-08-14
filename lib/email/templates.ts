@@ -1,4 +1,5 @@
 import { SESSION_SHOTS } from "@/constants/photo-shots";
+import { SESSION_REQUEST_ACK } from "@/content/session-request";
 import { siteUrl } from "@/lib/siteUrl";
 
 import { escapeHtml, safeHref } from "./html";
@@ -81,34 +82,34 @@ function detailRow(label: string, value: string): string {
 }
 
 /**
- * Exact copy from the client's interest-acknowledgment spec (2026-08-12) —
- * subject and body specified verbatim, not the house style used elsewhere in
- * this file.
+ * Exact copy from the client's confirmations delivery (2026-08-14), which
+ * supersedes the interest-acknowledgment wording of 2026-08-12 — subject and
+ * body specified verbatim, not the house style used elsewhere in this file.
  *
- * One deliberate departure from the 2026-08-10 conventions, the client's own
- * wording: no reply window is promised, because for the opening months sessions
- * are not scheduled on arrival, so the commitment is to the practitioner
- * mapping rather than to a date.
+ * Subject and paragraphs come from `content/session-request.ts`, which also
+ * holds the standard-phase version the client has on deck and the popup wording
+ * that must not drift from this. Only the greeting and the sign-off are added
+ * here, because those belong to the email and not to the acknowledgment.
+ *
+ * The waitlist version still promises no reply window, for the client's own
+ * reason: sessions are not scheduled on arrival during this phase, so the
+ * commitment is to the practitioner mapping rather than to a date. The standard
+ * version restores the 2–3 day window, which is what makes it the version for
+ * after the phase ends.
  *
  * Its sign-off used to be the lone hardcoded "Team iqcommune" while every other
  * body signed per-stream. The client generalised this one to all of them on
- * 2026-08-13, so it now reads from `SIGN_OFF_TEAM` like the rest — the same
- * string it always rendered, no longer an exception.
+ * 2026-08-13, so it reads from `SIGN_OFF_TEAM` like the rest.
  */
 export function sessionRequestReceived(to: string, firstName: string, topic: string): EmailMessage {
   return {
     template: "session-request-received",
     stream: "session",
     to,
-    subject: "Thank you for reposing faith in us - We have recorded your interest",
+    subject: SESSION_REQUEST_ACK.subject,
     body: lines(
       `Dear ${firstName},`,
-      "",
-      `We are extremely delighted to record your interest & wish to confirm that we have received your request for a session on ${topic}. As you must be aware, we have just started and the process of practitioner empanelment is underway as we draft this response.`,
-      "",
-      "Be rest assured that we'll get in touch with you as soon as we are able to map the right practitioner in your city. Upon which, we will reach out directly to understand your group's needs a little better and take things forward from there.",
-      "",
-      "Again, on behalf of everyone at iqcommune, we thank you reposing your faith in us. Looking forward to seeing you in the session very soon.",
+      ...SESSION_REQUEST_ACK.paragraphs(topic).flatMap((paragraph) => ["", paragraph]),
       "",
       "Regards,",
       SIGN_OFF_TEAM,
@@ -295,23 +296,36 @@ export function newSessionRequestForAdmin(to: string, request: SessionRequestSum
   };
 }
 
-/** Exact copy from the client's request-acknowledgment spec, same as
- *  `sessionRequestReceived` above — plus a status link the spec did not ask
- *  for but the client separately requested: somewhere to check back rather
- *  than wait on the next email. */
+/**
+ * Exact copy from the client's confirmations delivery (2026-08-14), which
+ * rewrote this one to the same register as the rest of that review: "Dear"
+ * rather than "Hi", and full forms rather than contractions.
+ *
+ * The status link survives the rewrite. The delivery reviews wording and does
+ * not reproduce the link, but the link is not wording — the client asked for it
+ * separately, as somewhere to check back rather than wait on the next email. A
+ * copy review that does not mention a feature is not an instruction to remove it.
+ */
+const APPLICATION_RECEIVED = {
+  thanks: "Thank you for applying to join the iqcommune practitioner network. We have received your application.",
+  next:
+    "We will review it and reach out within 2–3 working days for a short, informal conversation. " +
+    "There is nothing to prepare — simply an opportunity for us to get to know each other a little better.",
+} as const;
+
 export function applicationReceived(to: string, firstName: string, applicationId: string): EmailMessage {
   const link = buildLink("status", applicationId);
   return {
     template: "application-received",
     stream: "practitioner",
     to,
-    subject: "iqcommune — we've received your application",
+    subject: "iqcommune — we have received your application",
     body: lines(
-      `Hi ${firstName},`,
+      `Dear ${firstName},`,
       "",
-      "Thanks for applying to join the iqcommune practitioner network — we've received your application.",
+      APPLICATION_RECEIVED.thanks,
       "",
-      "We'll go through it and reach out within 2–3 working days for a short, informal conversation. Nothing to prepare — just a chance for us to understand each other a little better.",
+      APPLICATION_RECEIVED.next,
       "",
       "Track your application:",
       link,
@@ -321,10 +335,9 @@ export function applicationReceived(to: string, firstName: string, applicationId
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
-      `<p>Hi ${escapeHtml(firstName)},</p>` +
-      `<p>Thanks for applying to join the iqcommune practitioner network — we've received your application.</p>` +
-      `<p>We'll go through it and reach out within 2–3 working days for a short, informal conversation. ` +
-      `Nothing to prepare — just a chance for us to understand each other a little better.</p>` +
+      `<p>Dear ${escapeHtml(firstName)},</p>` +
+      `<p>${APPLICATION_RECEIVED.thanks}</p>` +
+      `<p>${APPLICATION_RECEIVED.next}</p>` +
       goldButton(link, "Track your application →") +
       `<p>Regards,<br>${escapeHtml(SIGN_OFF_TEAM)}</p>` +
       `</div>`,

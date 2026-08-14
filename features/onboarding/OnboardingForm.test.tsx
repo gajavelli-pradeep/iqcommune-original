@@ -70,9 +70,11 @@ describe("OnboardingForm", () => {
 
     // Every string pending-onboarding.ts exempts against this test.
     expect(screen.getByText(/Your empanelment is confirmed/)).toBeInTheDocument();
-    // V7's script replaces its "your inbox" placeholder with the practitioner's
-    // address, so the receipt names the inbox the copy will actually arrive in.
-    expect(screen.getByText(practitioner.email)).toBeInTheDocument();
+    // The literal words the client's delivery prints, not V7's substituted
+    // address — see the note beside this copy in OnboardingForm.tsx. Asserted
+    // both ways round: the address appearing here again is the regression.
+    expect(screen.getByText("your inbox")).toBeInTheDocument();
+    expect(screen.queryByText(practitioner.email)).not.toBeInTheDocument();
     expect(screen.getByText("Signed by")).toBeInTheDocument();
     expect(screen.getByText("Agreement ref.")).toBeInTheDocument();
     expect(screen.getByText("Timestamp")).toBeInTheDocument();
