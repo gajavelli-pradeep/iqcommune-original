@@ -10,7 +10,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * `schedule(commit, label)` opens the window; `undo()` cancels it; the window
  * closes and `commit` runs when the timer elapses. `pending` drives the toast.
  * A second `schedule` supersedes the first (its timer is cleared), so rapid
- * actions never double-fire. The timer is always cleared on unmount.
+ * actions never double-fire.
+ *
+ * Unmounting with a window still open commits it early rather than dropping it.
+ * Only `undo()` cancels. The timer lives in the component that owns the button,
+ * so closing a profile or switching panel used to take the action with it: the
+ * admin saw a delete they never undid quietly undo itself, and the only way to
+ * make one stick was to sit on the screen for the full fifteen seconds. Leaving
+ * is not cancelling, so it now fires on the way out.
  */
 
 const UNDO_WINDOW_SECONDS = 15;
@@ -66,7 +73,16 @@ export function useDeferredSend() {
     setPending(null);
   }, [clear]);
 
-  useEffect(() => clear, [clear]);
+  // `clear` nulls the ref, so the action is read out before it runs. Nothing is
+  // left to flush once the timer has fired or `undo` has run — both clear it.
+  useEffect(
+    () => () => {
+      const run = commitRef.current;
+      clear();
+      void run?.();
+    },
+    [clear],
+  );
 
   return { pending, schedule, undo };
 }
