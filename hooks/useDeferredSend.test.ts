@@ -69,6 +69,47 @@ describe("useDeferredSend", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("commits a still-open window when the component unmounts", () => {
+    // The admin clicks Delete, then closes the profile or switches panel before
+    // the 15s is up. That unmounts the button holding the timer. Discarding the
+    // action there reads as the delete undoing itself: they undid nothing, and
+    // the only way to make it stick would be to sit on the screen and wait.
+    // Leaving is not undoing, so the window closes early rather than silently.
+    const commit = vi.fn();
+    const { result, unmount } = renderHook(() => useDeferredSend());
+
+    act(() => result.current.schedule(commit, "Deleting Vikram Kulkarni…"));
+    act(() => vi.advanceTimersByTime(4_000));
+    unmount();
+
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not commit an undone action when the component later unmounts", () => {
+    // The flush above must not resurrect what Undo already cancelled.
+    const commit = vi.fn();
+    const { result, unmount } = renderHook(() => useDeferredSend());
+
+    act(() => result.current.schedule(commit, "Deleting Vikram Kulkarni…"));
+    act(() => result.current.undo());
+    unmount();
+
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("does not commit twice when the window elapses and the component unmounts", () => {
+    // The timer already ran the action and cleared the ref; unmounting after
+    // must not send it a second time.
+    const commit = vi.fn();
+    const { result, unmount } = renderHook(() => useDeferredSend());
+
+    act(() => result.current.schedule(commit, "Deleting Vikram Kulkarni…"));
+    act(() => vi.advanceTimersByTime(15_000));
+    unmount();
+
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
   it("does not commit if undone within the window", () => {
     const commit = vi.fn();
     const { result } = renderHook(() => useDeferredSend());
