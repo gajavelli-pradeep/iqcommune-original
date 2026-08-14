@@ -202,7 +202,32 @@ Two remain, and neither is code-shaped: **2** needs a product decision (build th
 | 8 | `NEXT_PUBLIC_BASE_URL` still points at `iq-commune-vert.vercel.app` — every emailed tokenised link carries it | Vercel env; `lib/email/links.ts:38` reads it |
 | 9 | Console invite sender still uses `BREVO_SENDER_EMAIL`; verify it is no longer the `brevosend.com` fallback | Vercel env; `lib/email/send.ts:84` |
 | ~~10~~ | ~~Map `audience` through `AUDIENCE_LABELS` in the confirmation PDF~~ | **Done** — consents route |
-| 11 | Add the expected payment date to the confirmation, which agreement clause 3(a) promises it carries | `lib/pdf/confirmation.ts` — **blocked**: no such date is stored anywhere, so this needs a source before it needs code |
+| ~~11~~ | ~~Add the expected payment date to the confirmation~~ | **Done** — and it was never blocked. "No such date is stored" was true and the wrong conclusion: clause 3(c) fixes the rule at *"within 7 working days of the session date"*, and the session date is on the record, so `lib/working-days.ts` derives it. A stored copy would only be a second place to disagree with the clause it comes from. |
+
+**Attribution correction.** Finding 10 / item 11 was raised by me from reading clause 3(a), not
+reported from live use. The live payouts report was narrower and separate: the invoice reference
+and paid status persisted, and marking Paid needed a guard when no reference had been typed —
+which is the payouts fix in round 2. Recording that so the two are not conflated later.
+
+### 14 — the activity log recorded sends that never happened · P1
+
+Found while hardening the three parts. All three assignment sends shared this shape:
+
+```ts
+const composed = await draftMessage("consent-request", assignmentId);
+if (composed) dispatchEmail(...);          // may not run
+await recordActivity({ action: "consent.requested", ... });  // always runs
+```
+
+A draft that came back empty sent nothing and logged that it had. Three consequences, in
+increasing order of damage: the admin saw the same Undo toast either way; the audit trail carried
+an entry for an email nobody received; and — since `listConsents` now derives each row's next
+step from exactly those entries — a failed send would move the row to *"Sent just now"* and stop
+it asking, which is a practitioner never chased at all.
+
+Fixed by one shared `sendForAssignment`: nothing is logged unless something was dispatched, and
+the caller is told. `RowAction`'s `action` prop was typed `=> Promise<void>`, so no caller could
+have reported a failure even if one had been returned; it now accepts a result and shows it.
 
 ### Closed since this document was opened
 
