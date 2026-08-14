@@ -76,9 +76,13 @@ export function OnboardingForm({
   }, [readToEnd]);
 
   if (signedAt) {
+    // V7 .success-card is `var(--radius)` = 12px, as .card is.
     return (
-      <section role="status" className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
-        <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-green-light text-green">
+      <section
+        role="status"
+        className="rounded-[12px] border border-border bg-surface px-8 py-12 text-center"
+      >
+        <div className="mx-auto mb-6 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-green-light text-green">
           <svg
             width="34"
             height="34"
@@ -95,7 +99,8 @@ export function OnboardingForm({
         <h1
           ref={successRef}
           tabIndex={-1}
-          className="mb-1 text-2xl font-semibold text-ink outline-none"
+          /* V7 .success-title is 24px, not the 18px card title. */
+          className="mb-2 text-5xl font-semibold leading-[1.7] tracking-[-0.01em] text-ink outline-none"
         >
           Agreement signed. Welcome to iqcommune.
         </h1>
@@ -104,7 +109,8 @@ export function OnboardingForm({
             today is empanelled ahead of demand, and no session exists to send
             them. The 2-3 day window still holds for reviewing an *application*
             — see features/practitioners — but not for a session. */}
-        <p className="mb-5 text-base leading-[1.6] text-ink-muted">
+        {/* V7 .success-sub: 15px/1.65, centred and capped at 480px. */}
+        <p className="mx-auto mb-8 max-w-[480px] text-lg leading-[1.65] text-ink-muted">
           Your empanelment is confirmed. We&apos;ll be in touch with your first session details
           as soon as sessions open in your city. Keep an eye on your inbox.
         </p>
