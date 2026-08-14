@@ -33,6 +33,10 @@ const CONFIRMATIONS = [
   "You agree to the terms as stated, including Clause 5 (in-session conduct) and Clause 4 (disclosure tiers).",
   "You confirm that your details shown above are accurate.",
   "You understand this agreement is legally binding and digitally timestamped.",
+  // V7 lists this as the fifth thing the signer confirms, not as a note beside
+  // the pad. The distinction is the point: here it is part of the declaration
+  // being agreed to, and it appears exactly once in the spec.
+  "This digital signature has the same legal standing as a physical signature under the Information Technology Act, 2000.",
 ] as const;
 
 export function OnboardingForm({
@@ -66,6 +70,26 @@ export function OnboardingForm({
   // The signature pad is hand-built rather than a `Field`, so it wires its own
   // error message to the control the way `Field` does for everything else.
   const signatureErrorId = useId();
+
+  // V7 ticks this every second beside the sign button. Client-only, so it stays
+  // null through SSR and the markup matches the spec's "—" until it mounts.
+  const [liveTimestamp, setLiveTimestamp] = useState<string | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setLiveTimestamp(
+        `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}  ` +
+          now.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const agreementRef = useRef<HTMLDivElement>(null);
   // V7 hides the signing section until the agreement is read to the end, then
@@ -112,13 +136,15 @@ export function OnboardingForm({
         {/* V7 .success-sub: 15px/1.65, centred and capped at 480px. */}
         <p className="mx-auto mb-8 max-w-[480px] text-lg leading-[1.65] text-ink-muted">
           Your empanelment is confirmed. We&apos;ll be in touch with your first session details
-          as soon as sessions open in your city. Keep an eye on your inbox.
+          as soon as sessions open in your city. Keep an eye on{" "}
+          <span className="font-medium text-ink">{practitioner.email}</span>.
         </p>
         <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
           {(
             [
+              // Four rows, as V7 — no Designation row; it collects the field but
+              // does not read it back on the receipt.
               ["Signed by", fullName],
-              ["Designation", designation],
               ["Agreement ref.", practitioner.agreementReference],
               ["Timestamp", signedAt],
               ["Status", "✓ Digitally signed"],
@@ -429,7 +455,7 @@ export function OnboardingForm({
           className="outline-none"
         >
           <ErrorBoundary label="signature-pad">
-            <SignaturePad fullName={fullName} onChange={setSignature} />
+            <SignaturePad onChange={setSignature} />
           </ErrorBoundary>
           {errors.signature ? (
             <p id={signatureErrorId} role="alert" className="mt-1 text-sm text-red">
@@ -438,8 +464,15 @@ export function OnboardingForm({
           ) : null}
         </div>
 
-        <p className="mb-4 text-sm text-ink-faint">
-          Digital timestamp: Auto-captured at submission
+        {/* V7 .timestamp-row: a live clock on the left, the note pushed right.
+            The value starts as the spec's own "—" placeholder and is filled
+            after mount, so the server never renders a time the client disagrees
+            with — the same hydration trap `agreementDate` avoids. */}
+        <p className="mb-4 flex items-center gap-2 text-sm text-ink-faint">
+          <span>
+            Digital timestamp: <span className="font-medium text-ink">{liveTimestamp ?? "—"}</span>
+          </span>
+          <span className="ml-auto text-xs">Auto-captured at submission</span>
         </p>
 
         {/* Only what belongs to no single control still shows here; the field
@@ -456,11 +489,26 @@ export function OnboardingForm({
           </p>
         ) : null}
 
+        {/* V7 .btn-sign carries the same shield as the scroll gate, 8px before
+            the label, on 15px padding. */}
         <button
           type="submit"
           disabled={!readToEnd || busy}
-          className="min-h-11 w-full rounded-full bg-ink px-5 py-4 text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-ink p-[15px] text-lg font-semibold text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+            focusable="false"
+            className="shrink-0"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
           {busy ? "Signing…" : "I agree — sign & complete onboarding"}
         </button>
         <p className="mt-3 text-center text-sm leading-[1.5] text-ink-faint">

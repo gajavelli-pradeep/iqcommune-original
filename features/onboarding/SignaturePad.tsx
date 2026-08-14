@@ -20,10 +20,8 @@ export type Signature =
   | { mode: "typed"; text: string };
 
 export function SignaturePad({
-  fullName,
   onChange,
 }: {
-  fullName: string;
   onChange: (signature: Signature | null) => void;
 }) {
   const [mode, setMode] = useState<"drawn" | "typed">("drawn");
@@ -154,8 +152,9 @@ export function SignaturePad({
         </>
       )}
 
-      <div className="mt-2 flex items-center justify-between gap-4">
-        <p className="text-sm text-ink-faint">{fullName ? `Signing as ${fullName}` : ""}</p>
+      {/* No "Signing as …" line: V7 has none, and the name it echoed is in the
+          field directly above. */}
+      <div className="mt-2 flex items-center justify-end gap-4">
         <button
           type="button"
           onClick={clear}
@@ -164,11 +163,6 @@ export function SignaturePad({
           Clear
         </button>
       </div>
-
-      <p className="mt-1 text-sm leading-[1.5] text-ink-faint">
-        This digital signature has the same legal standing as a physical signature under the
-        Information Technology Act, 2000.
-      </p>
     </div>
   );
 }
