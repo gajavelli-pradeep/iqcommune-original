@@ -49,17 +49,26 @@ Two appendix items closed by this run:
   sequences: `IQC-AGR-0004` on the agreement email, `IQC-EMP-0004` on the welcome email.
 - **B6 — audience needs its label.** `Group (register as SPOC)` renders, not the stored enum.
 
-### Differences found in the emails
+### Email 5 — session request follow-up, examined in full
 
-**Session follow-up, lead-in sentence.** Client: *"We are ready to move ahead and need a
-little more from your side **before we can**:"* · Sent: *"…from your side:"*
-(`lib/email/templates.ts:144`). The client's sentence dangles — "before we can" *what?* — so
-this reads as the app correcting a slip in the delivered copy. No decision was recorded.
+Console doc message 7, lines 131-142. Three things worth recording, only one of which is a
+defect.
 
-**Not a difference:** the absent `Preferred window:` row in that email's echo block.
-`requestEchoRows` drops optional rows deliberately (`templates.ts:162-164`) because a field
-that is outstanding is by definition one we do not have. Printing an empty window row while
-asking for preferred dates would contradict itself. Correct as built.
+**Real difference.** Client: *"We are ready to move ahead and need a little more from your
+side **before we can**:"* · Sent: *"…from your side:"* (`lib/email/templates.ts:144`). The
+client's sentence dangles — "before we can" *what?* — so this reads as the app quietly fixing
+a slip in the delivered copy. Cosmetic, but it is a divergence from client text and nobody
+recorded the decision, so it belongs in the next round of client questions.
+
+**Not a difference — the missing `Preferred window: [Dates]` row.** Checked before flagging:
+`requestEchoRows` drops optional rows on purpose (`templates.ts:162-164`) because *"a field
+that is outstanding is by definition one we do not have."* No preferred window was submitted,
+which is precisely why "Your preferred dates" appears in the outstanding list above it.
+Printing an empty window row while asking for the dates would contradict itself. Correct
+behaviour.
+
+**Confirmed working.** `Group: 9-15 participants, Group (register as SPOC)` renders the human
+label, not the stored enum — appendix item **B6** satisfied.
 
 ## Part 2 — Signature convention
 
@@ -191,13 +200,20 @@ canonical where.
 | 8 | `NEXT_PUBLIC_BASE_URL` still points at `iq-commune-vert.vercel.app` — every emailed tokenised link carries it | Vercel env; `lib/email/links.ts:38` reads it |
 | 9 | Console invite sender still uses `BREVO_SENDER_EMAIL`; verify it is no longer the `brevosend.com` fallback | Vercel env; `lib/email/send.ts:84` |
 
-### Product gap now live
+### Product gap now live in the inbox
 
-**B2 — the availability check does not exist.** The welcome email promises *"we will reach
-out to check your availability before confirming anything."* There is no such console
-message. The client doc flags it against this exact email, and notes the practitioner pages
-and the empanelment agreement make the same promise — four places committing to something
-that has no way to be sent. Not closable by copy alone.
+**B2 — the availability check does not exist.** The welcome email (email 4) promises: *"we
+will reach out to check your availability before confirming anything."* The console has no
+such message.
+
+The client doc flags it against this exact email — console doc line 50: *"The availability
+promise in this message is not currently backed by any console message; see B2."* Appendix B2
+adds that the practitioner pages and the empanelment agreement make the same promise, so
+**four separate places commit to an availability check that has no way to be sent**. It exists
+only in the V7 prototype.
+
+This is not a copy mismatch. It is the one item the console document calls out as unclosable
+by copy alone: either it gets built, or the promise gets softened in all four places.
 
 ### Known gate blind spots
 
