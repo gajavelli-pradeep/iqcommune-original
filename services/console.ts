@@ -554,16 +554,33 @@ const CONSENT_SELECT =
  *
  * Newest first, so the first row seen for an assignment is its latest send;
  * a re-sent request should read as sent now, not as sent the first time.
+ *
+ * Scoped to the assignments actually on the page, which is the whole reason
+ * this takes ids. Reading the newest N log entries globally looks equivalent
+ * and is not: the log grows forever, so past some volume the oldest sends fall
+ * out of the window, and an assignment whose request went out months ago loses
+ * its timestamp. `consentStage` would then read that row as never asked, put
+ * "Send consent request" back on it, and an admin would send a second one. A
+ * bug that appears only once the product has been used enough is the worst kind
+ * to leave in. Bounded by the page instead — `listConsents` caps at 500 — it is
+ * correct at any log size.
+ *
+ * The cost is that this can no longer run beside the consents read, since it
+ * needs their ids. One extra round trip against a silent wrong answer later.
  */
-async function lastSendsByAssignment(): Promise<Map<string, { requested?: string; guided?: string }>> {
+async function lastSendsByAssignment(
+  assignmentIds: readonly string[],
+): Promise<Map<string, { requested?: string; guided?: string }>> {
+  if (assignmentIds.length === 0) return new Map();
+
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("activity_log")
     .select("action, entity_ref, created_at")
     .eq("entity_type", "assignment")
     .in("action", ["consent.requested", "photo_guide.sent"])
-    .order("created_at", { ascending: false })
-    .limit(2000);
+    .in("entity_ref", assignmentIds)
+    .order("created_at", { ascending: false });
 
   const sends = new Map<string, { requested?: string; guided?: string }>();
   for (const row of data ?? []) {
@@ -579,8 +596,7 @@ async function lastSendsByAssignment(): Promise<Map<string, { requested?: string
 
 export async function listConsents(): Promise<ConsentRow[]> {
   const supabase = createAdminClient();
-  const [{ data, error }, sends] = await Promise.all([
-    supabase
+  const { data, error } = await supabase
     .from("session_practitioners")
     .select(CONSENT_SELECT)
     .is("deleted_at", null)
@@ -590,11 +606,11 @@ export async function listConsents(): Promise<ConsentRow[]> {
     .not("confirmation_generated_at", "is", null)
     .order("confirmation_generated_at", { ascending: false })
     .order("id")
-    .limit(500),
-    lastSendsByAssignment(),
-  ]);
+    .limit(500);
 
   if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
+
+  const sends = await lastSendsByAssignment((data ?? []).map((row) => row.id as string));
 
   return (data ?? []).map((row) => {
     const sent = sends.get(row.id as string);
