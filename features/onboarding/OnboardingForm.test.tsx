@@ -70,6 +70,14 @@ describe("OnboardingForm", () => {
 
     // Every string pending-onboarding.ts exempts against this test.
     expect(screen.getByText(/Your empanelment is confirmed/)).toBeInTheDocument();
+    // The lede above opens both the old copy and the one the 2026-08-14 delivery
+    // replaced it with, so on its own it proves only that *a* lede rendered. The
+    // clause below exists solely in the client's wording — without it, reverting
+    // to the "within 2-3 working days" promise leaves this test green, and the
+    // parity gate cannot catch it either because the receipt is state-gated.
+    expect(
+      screen.getByText(/no fixed timeline, since it depends on demand in your area/),
+    ).toBeInTheDocument();
     // The literal words the client's delivery prints, not V7's substituted
     // address — see the note beside this copy in OnboardingForm.tsx. Asserted
     // both ways round: the address appearing here again is the regression.
