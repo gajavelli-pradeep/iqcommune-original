@@ -199,6 +199,16 @@ canonical where.
 | 7 | Pin `timeZone: "Asia/Kolkata"` on both signature formatters and label the output | `app/api/agreements/[id]/pdf/route.ts:54`, `features/onboarding/OnboardingForm.tsx:425` |
 | 8 | `NEXT_PUBLIC_BASE_URL` still points at `iq-commune-vert.vercel.app` — every emailed tokenised link carries it | Vercel env; `lib/email/links.ts:38` reads it |
 | 9 | Console invite sender still uses `BREVO_SENDER_EMAIL`; verify it is no longer the `brevosend.com` fallback | Vercel env; `lib/email/send.ts:84` |
+| 10 | Map `audience` through `AUDIENCE_LABELS` in the confirmation PDF, as the email path already does | `lib/pdf/confirmation.ts:54`, `app/api/consents/[id]/pdf/route.ts:81` |
+| 11 | Add the expected payment date to the confirmation, which agreement clause 3(a) promises it carries | `lib/pdf/confirmation.ts` |
+
+### Closed since this document was opened
+
+| Item | Evidence |
+|---|---|
+| **B3 — rating request went to the practitioner** (marked *Blocking* by the client doc) | `features/console/actions.ts:1864` resolves the requestor; live email confirms |
+| **Both cancellation controls sent the same body** — an unmatched request was told its session was cancelled | Two distinct templates now: `sessionRequestCancelled` (193) and `sessionCancelled` (214) |
+| **Payout could be marked Paid with no invoice reference** | Server guard + UI now honours the result; regression test in `PayoutsPanel.test.tsx` |
 
 ### Product gap now live in the inbox
 
@@ -227,6 +237,100 @@ Two reasons a green `pnpm test` does not mean the copy is right. Both confirmed 
    (`tests/parity/extract.ts:10-13`): a spec string must appear somewhere in the render, but
    the render may contain more. Copy the client *deleted* still sits on the live site and
    passes every gate.
+
+## Round 2 — rating email, confirmation PDF, payouts
+
+### Rating request email — exact match, and it closes a Blocking item
+
+Console doc message 10, lines 183-191. Subject, salutation, both paragraphs, the link, the
+privacy line, the closing line and the sign-off are identical, word for word. Reply routing to
+the session mailbox and the stated 14-day validity both correct.
+
+More importantly, **appendix B3 is resolved.** The console doc marks this message
+**Blocking**: *"this message is written for the requestor, and the rating page tells the reader
+their feedback is not shared with the practitioner. The console currently sends it to the
+practitioner."* Practitioners were being asked to rate themselves.
+
+`features/console/actions.ts:1864` now resolves the recipient with
+`requestorForSession(assignment.sessionId)` and passes `requestor.email` /
+`requestor.firstName`, with the practitioner appearing only as
+`practitionerName: assignment.practitioner.fullName` inside the body. Addressed to the
+requestor, about the practitioner — as written. The received email confirms that shape.
+
+### Session request not proceeding — exact match, and it closes a second defect
+
+Console doc message 8, lines 154-160. Subject, salutation, all three paragraphs and the
+sign-off identical, word for word. Reply routing to the session mailbox correct.
+
+The doc records a defect against this message: *"Why this is separate from 9: nothing was ever
+scheduled here, so the message must not say a session was cancelled. **Today both controls send
+the same body**; the previous revision wrote that shared body for the confirmed-session case,
+which would have told people their session was cancelled when no session existed."*
+
+That is now fixed. `lib/email/templates.ts` has two distinct templates —
+`sessionRequestCancelled` (line 193, *"update on your session request"* / *"not able to take
+your request … forward"*) and `sessionCancelled` (line 214, *"your session has been cancelled"*
+/ names the module and session reference). A request that was never matched and a confirmed
+session that falls through now say different things, as the client asked.
+
+### Confirmation PDF — two new findings
+
+**9 — Audience renders the raw stored value.** The PDF prints `Audience: individual` —
+lowercase, and not one of the three labels the client specified. `lib/pdf/confirmation.ts:54`
+passes `session.audience` straight through with no `AUDIENCE_LABELS` mapping, and
+`app/api/consents/[id]/pdf/route.ts:81` hands it over unmapped. The follow-up **email** maps it
+correctly, which is why appendix **B6** reads as satisfied there. It is satisfied in email and
+violated in the PDF — the same field, two paths, one of them raw.
+
+**10 — No expected payment date.** Agreement clause 3(a) states the Per-Session Confirmation
+sets out *"…confirmed gross payout amount (pre-tax), and **expected payment date**."* No such
+field exists anywhere in `lib/pdf/confirmation.ts`. The confirmation does not carry a term the
+agreement promises it will carry.
+
+**Worth a look, not yet a finding.** The PDF shows `Date: To be confirmed`. The console doc
+records that a consent request may be sent before a date is fixed, so this is plausibly by
+design — but clause 3(a) also lists "session date and timing" among what the confirmation sets
+out. Whether a confirmation document with no date satisfies that clause is a question for
+whoever owns the legal side.
+
+**Not a defect.** `City: Maharastra, Mumbai` looks reversed, but
+`lib/pdf/confirmation.ts:56` composes `[city, state]` in the correct order. The values were
+entered the wrong way round in the form. Data entry, not code.
+
+**Correct as built.** The unsigned state declares itself — `CONSENT NOT YET RECEIVED`, with
+*"This confirmation has been issued but the practitioner has not yet agreed to it. It is not
+evidence of an accepted engagement."* Same self-declaring pattern as the agreement's
+`NOT YET SIGNED`. Exactly right for a document that can be downloaded before it means anything.
+
+Finding 8 (tagline) recurs here: this PDF also prints `WHERE FINANCIAL INTELLIGENCE CONNECTS`.
+
+### Payouts — a payout could be marked Paid with no invoice reference
+
+Reported from live use: no `Invoice ref.` entered, yet the Actions control accepted **Paid**.
+
+Two defects in one path, both confirmed in source:
+
+1. **No server guard.** `setPayoutStatus` (`features/console/actions.ts`) set `paid_on` and
+   never read `invoice_reference` at all.
+2. **The refusal would have been invisible anyway.** `PayoutsPanel.tsx` set its optimistic
+   state and then discarded the returned `ActionResult`. Any guard added server-side would have
+   left the row still reading "Paid" on screen with the error swallowed — the finance view
+   disagreeing with the database and nobody told.
+
+Fixing only the first would have produced a worse bug than the one reported. The invoice cell
+in the same file already handled its result correctly, so it served as the pattern.
+
+**Fixed this round** — see the commit. `setPayoutStatus` now reads the row first and refuses
+`Paid` when `invoice_reference` is empty; the panel reverts the control and shows the message,
+mirroring the invoice cell. Reopening to `Pending` is still allowed without a reference — the
+reference is what a payment needs, not what undoing one needs. Covered by a regression test in
+`PayoutsPanel.test.tsx` that fails against the old behaviour.
+
+Note this is not a V7 divergence: V7's prototype does not couple the two controls either. It is
+a business-rule gap, and it is consistent with how the codebase already treats the reference —
+`setInvoiceReference` refuses duplicates because *"quoting one number for two payments is how a
+reconciliation goes wrong."* A payout paid against no reference is the same failure with
+nothing to reconcile against.
 
 ## Recommended sequencing
 

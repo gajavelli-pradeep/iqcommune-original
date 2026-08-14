@@ -1502,6 +1502,16 @@ export async function setInvoiceReference(
  * money, it records that someone did. So the date is what matters and it is set
  * to today rather than asked for: an admin marking it paid is asserting it
  * happened now.
+ *
+ * The invoice reference is required before that assertion can be made. It is
+ * the only thing tying this payout to the finance team's own books, and this
+ * file already treats it as reconciliation-critical — `setInvoiceReference`
+ * refuses a duplicate because "quoting one number for two payments is how a
+ * reconciliation goes wrong". A payout marked paid with no reference at all is
+ * the same failure with nothing to reconcile against, and it is invisible
+ * afterwards: the row reads Paid and the gap only surfaces when someone tries
+ * to match the bank statement. Reopening is still allowed without one — the
+ * reference is what a payment needs, not what undoing one needs.
  */
 export async function setPayoutStatus(assignmentId: string, status: string): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
@@ -1510,13 +1520,22 @@ export async function setPayoutStatus(assignmentId: string, status: string): Pro
   }
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data } = await supabase
+    .from("session_practitioners")
+    .select("confirmation_reference, gross_payout, currency, invoice_reference")
+    .eq("id", assignmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!data) return { ok: false, message: "That payout no longer exists." };
+  if (status === "Paid" && !data.invoice_reference) {
+    return { ok: false, message: "Add an invoice ref. before marking this payout paid." };
+  }
+
+  const { error } = await supabase
     .from("session_practitioners")
     .update({ paid_on: status === "Paid" ? new Date().toISOString().slice(0, 10) : null })
     .eq("id", assignmentId)
-    .is("deleted_at", null)
-    .select("confirmation_reference, gross_payout, currency")
-    .maybeSingle();
+    .is("deleted_at", null);
   if (error) throw new Error(`payout update failed: ${error.message}`);
 
   await recordActivity({
@@ -1524,7 +1543,7 @@ export async function setPayoutStatus(assignmentId: string, status: string): Pro
     action: status === "Paid" ? "payout.paid" : "payout.reopened",
     entityType: "assignment",
     entityRef: assignmentId,
-    detail: data ? `${data.confirmation_reference}, ${data.currency} ${data.gross_payout}` : undefined,
+    detail: `${data.confirmation_reference}, ${data.currency} ${data.gross_payout}`,
   });
   revalidateConsole();
   return { ok: true };
