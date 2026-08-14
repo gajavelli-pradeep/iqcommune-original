@@ -45,16 +45,19 @@ describe("content parity — P1 `/` against iqcommune-main-landing-page.html", (
     </>,
   );
 
-  let dialogText = renderedHaystack(dialogs.container);
+  // `baseElement`, not `container`: `Modal` portals to `document.body` so it can
+  // paint above the sticky header, which puts its copy outside the render
+  // container entirely. Reading `container` here silently found nothing.
+  let dialogText = renderedHaystack(dialogs.baseElement);
   for (const audience of ["Group (register as SPOC)", "Organisations & Institutions", "AMC / Wealth Firm"]) {
     fireEvent.click(screen.getByRole("button", { name: audience }));
-    dialogText += ` ${renderedHaystack(dialogs.container)}`;
+    dialogText += ` ${renderedHaystack(dialogs.baseElement)}`;
   }
   // The minimum-commitment callout needs Groups plus a chosen size.
   fireEvent.click(screen.getByRole("button", { name: "Group (register as SPOC)" }));
   for (const size of ["5-8", "9-15", "16-25"]) {
     fireEvent.change(screen.getByLabelText("Group size"), { target: { value: size } });
-    dialogText += ` ${renderedHaystack(dialogs.container)}`;
+    dialogText += ` ${renderedHaystack(dialogs.baseElement)}`;
   }
 
   const haystack = `${renderedHaystack(container)} ${dialogText}`;
