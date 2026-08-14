@@ -35,7 +35,10 @@ function Shell({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
+      {/* 13px: every V7 file sets `.form-group label` to 13px/500. The hint below
+          stays 12px because the specs disagree there (11px in onboarding, 12px
+          elsewhere) and one shared field cannot be both. */}
+      <label htmlFor={id} className="mb-1.5 block text-base font-medium text-ink">
         {label}
         {optional ? <span className="font-normal text-ink-faint"> (optional)</span> : null}
       </label>
