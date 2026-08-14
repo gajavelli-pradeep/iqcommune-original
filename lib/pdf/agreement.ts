@@ -34,6 +34,8 @@ import { FAINT, GREEN, INK, RED, startDocument } from "./document";
  */
 export interface SignedAgreement {
   reference: string;
+  /** The practitioner's IQC-EMP number — the client's fourth header field. */
+  empanelmentReference: string;
   practitioner: string;
   issuedOn: string;
   signedName: string | null;
@@ -54,6 +56,11 @@ export async function renderSignedAgreement(agreement: SignedAgreement): Promise
   // The other party, which this document did not name at all. A contract
   // between one named party and nobody is not a contract.
   writer.field(AGREEMENT_PLATFORM_LABEL, AGREEMENT_PLATFORM_NAME);
+  // Both references, because they answer different questions. The client's JSON
+  // asks for the empanelment number and the console document is equally clear
+  // that the agreement's own IQC-AGR reference is the one its email quotes —
+  // dropping either leaves a document that cannot be tied back to something.
+  writer.field("Empanelment Reference Number", agreement.empanelmentReference);
   writer.field("Agreement reference", agreement.reference);
   writer.field("Issued on", agreement.issuedOn);
   writer.field("Agreement version", agreement.version);

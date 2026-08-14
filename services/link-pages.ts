@@ -151,7 +151,7 @@ export async function getOnboardingPractitioner(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioner_agreements")
-    .select("reference, signed_at, practitioners ( full_name, role, organisation, city, email )")
+    .select("reference, signed_at, practitioners ( full_name, role, organisation, city, email, reference )")
     .eq("id", agreementId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -167,6 +167,7 @@ export async function getOnboardingPractitioner(
       organisation: string | null;
       city: string;
       email: string | null;
+      reference: string;
     } | null;
   } | null;
   if (!row?.practitioners) return null;
@@ -179,6 +180,7 @@ export async function getOnboardingPractitioner(
     // V7 falls back to this same phrase when the link carries no address.
     email: row.practitioners.email ?? "your registered email",
     agreementReference: row.reference,
+    empanelmentReference: row.practitioners.reference,
   };
 }
 

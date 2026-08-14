@@ -307,6 +307,12 @@ export function OnboardingForm({
                 // same party from the same constant, so the page and the archived
                 // contract cannot come to disagree about who it is with.
                 ["Platform", AGREEMENT_PLATFORM_NAME],
+                // The fourth header field the client's JSON lists, and the one
+                // neither surface carried. IQC-EMP identifies the practitioner's
+                // empanelment; the IQC-AGR reference below identifies this
+                // document. Quoting only the second leaves the person unlinked
+                // to the arrangement the contract is about.
+                ["Empanelment Reference Number", practitioner.empanelmentReference],
                 // V7 builds this row as `name · city · email` in script, which is
                 // why the copy gate never saw it missing.
                 [
