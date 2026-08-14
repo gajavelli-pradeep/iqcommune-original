@@ -313,6 +313,16 @@ function NextStep({ row }: { row: ConsentRow }) {
             pendingMessage={`Sending the consent request to ${row.practitioner}…`}
             variant={stage === "waiting" ? "link" : "ghost"}
           />
+          {/* The offline fallback, in the one place it is ever the answer: the
+              email cannot reach them, so the admin sends the confirmation by
+              hand. Unsigned by definition — which is why it is here and not
+              under a column headed "Download Signed Consent". */}
+          <DownloadLink
+            href={`/api/consents/${row.id}/pdf`}
+            label="Download PDF"
+            sublabel="(fallback, for sending offline)"
+            title={`Download ${row.reference} to send offline`}
+          />
         </div>
       );
   }
@@ -471,12 +481,27 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
       </div>
     ),
   },
+  /**
+   * Only once it has actually been signed.
+   *
+   * The column offered the download at every stage, so before consent came back
+   * it handed over a document stamped CONSENT NOT YET RECEIVED under a heading
+   * promising a signed one. The file was honest; the column was not.
+   *
+   * The unsigned version has a real use — an admin who cannot reach the
+   * practitioner by email sends it by hand — but that is a step in getting
+   * consent, not a record of having it, so it lives in `Next step` beside the
+   * send it belongs to.
+   */
   {
     key: "download",
     header: "Download Signed Consent",
-    render: (row) => (
-      <DownloadLink href={`/api/consents/${row.id}/pdf`} label="Download" title={`Download ${row.reference}`} />
-    ),
+    render: (row) =>
+      row.status === "Received" ? (
+        <DownloadLink href={`/api/consents/${row.id}/pdf`} label="Download" title={`Download ${row.reference}`} />
+      ) : (
+        <span className="text-3xs text-ink-faint">Not signed yet</span>
+      ),
   },
   /**
    * An eighth column V7 does not have: the one thing this row needs next.

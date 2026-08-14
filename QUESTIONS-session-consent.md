@@ -135,10 +135,19 @@ reading; allowing recognises that consent sometimes arrives by phone.
 **A** — No email; record it in Activity.
 **Why** — They were already told it was cancelled. Silence after that is its own problem.
 
-### Q20 · Unsigned consent — hide the download, disable it, or relabel the column?
-**A** — Keep it and relabel; the PDF already declares `CONSENT NOT YET RECEIVED` on its face.
-**Why** — The header promises a *signed* consent and hands over an unsigned one. Disabling it
-removes the admin's only way to send the confirmation offline.
+### ~~Q20~~ · Unsigned consent — hide the download, disable it, or relabel the column? · **ANSWERED, BUILT**
+**Ruling** — The column is the record of a signature, so it appears only once consent is
+Received. Before that it reads `Not signed yet`. The process is: send the request → they sign →
+the status changes → the signed PDF becomes downloadable.
+
+**My assumption was wrong.** I had proposed keeping the link and relabelling, because removing
+it seemed to strand the offline fallback — the unsigned confirmation an admin sends by hand when
+email cannot reach the practitioner. That reasoning treated one document as one job.
+
+It is two. The fallback is a step in *getting* consent; the download is a record of *having*
+it. So the fallback moved to `Next step`, beside the send it belongs to, and the column now
+means what its heading says. Nothing was lost, and the earlier answer was only tempting because
+the two uses had been sharing a control.
 
 ### Q21 · A Completed session shows as Confirmed in the select. Should the control lock?
 **A** — Yes, once Completed.
