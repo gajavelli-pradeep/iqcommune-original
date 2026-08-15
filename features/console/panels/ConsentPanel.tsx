@@ -345,18 +345,24 @@ function NextStep({ row }: { row: ConsentRow }) {
     case "request":
     case "waiting":
       return (
-        <div>
+        // Stacked with a gap, as the "guide" case above already does: two
+        // hairline pills are siblings now, and inline they would touch.
+        <div className="flex flex-col items-start gap-1">
           {/* How long it has been waiting, which is the only question anyone
               asks of a request that has not come back yet. */}
           {row.requestSentLabel ? (
-            <span className="mb-1 block text-3xs text-ink-faint">Sent {row.requestSentLabel}</span>
+            <span className="text-3xs text-ink-faint">Sent {row.requestSentLabel}</span>
           ) : null}
           <RowAction
             action={sendConsentRequest.bind(null, row.id)}
             draft={{ kind: "consent-request", id: row.id }}
             label={stage === "waiting" ? "Resend" : "Send consent request"}
             pendingMessage={`Sending the consent request to ${row.practitioner}…`}
-            variant={stage === "waiting" ? "link" : "ghost"}
+            // Both look like the button they are. Resend was the underlined
+            // `link` variant, which reads as a footnote next to the pill above
+            // it — and it sends a real email to a practitioner, which is not
+            // something to make look incidental.
+            variant="ghost"
           />
           {/* The offline fallback, in the one place it is ever the answer: the
               email cannot reach them, so the admin sends the confirmation by
