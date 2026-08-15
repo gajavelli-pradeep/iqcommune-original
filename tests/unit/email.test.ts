@@ -15,12 +15,14 @@ import { verifyToken } from "@/lib/tokens";
 const ID = "a4a7e0eb-dc63-4ca3-b779-2bd1a57f318e";
 
 /**
- * The values the bodies quote (console-messages doc, rev 2). References carry
- * their real prefixes — an agreement is IQC-AGR and a practitioner is IQC-EMP,
- * and a test that blurred them would not catch the two being swapped.
+ * The values the bodies quote. References carry their real prefixes, so a test
+ * cannot pass on a reference of the wrong kind: the sequences are separate
+ * (IQC-EMP practitioner, IQC-AGR agreement, IQC-S session, IQC-CONF
+ * confirmation) and only the first of those reaches an inbox now.
  */
 const MODULE = "Equity Investing Simplified";
-const AGREEMENT_REF = "IQC-AGR-0007";
+// No IQC-AGR fixture: the agreement record still has its own reference, but no
+// email quotes it any more — the agreement message names the practitioner's.
 const PRACTITIONER_REF = "IQC-EMP-0042";
 const CONSENT_DETAILS = {
   module: MODULE,
@@ -120,7 +122,7 @@ describe("emailed links", () => {
       templates.ratingRequest("a@b.com", "Vikram", ID, RATED_SESSION),
       templates.consentRequest("a@b.com", "Vikram", ID, CONSENT_DETAILS),
       templates.photoReminder("a@b.com", "Vikram", ID, MODULE),
-      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
+      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
       templates.adminInvite("a@b.com", ID, "Admin"),
       templates.applicationReceived("a@b.com", "Vikram", ID),
     ];
@@ -197,7 +199,7 @@ describe("email sender routing", () => {
   // read NEXT_PUBLIC_BASE_URL, which `beforeEach` has not stubbed yet when the
   // describe body runs.
   const practitionerMail = () => [
-    templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
+    templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
     templates.applicationReceived("a@b.com", "Vikram", ID),
     templates.newApplicationForAdmin("a@b.com", APPLICATION_SUMMARY),
     templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF),
@@ -207,7 +209,7 @@ describe("email sender routing", () => {
 
   const sessionMail = () => [
     templates.sessionRequestReceived("a@b.com", "Asha", "Equity Investing Simplified"),
-    templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."], REQUEST_ECHO),
+    templates.sessionRequestFollowUp("a@b.com", "Asha", REQUEST_ECHO),
     templates.sessionRequestCancelled("a@b.com", "Asha", MODULE),
     templates.sessionCancelled("a@b.com", "Asha", MODULE, "IQC-S0007"),
     templates.newSessionRequestForAdmin("a@b.com", SESSION_SUMMARY),
@@ -390,34 +392,37 @@ describe("email sender routing", () => {
 
     expect(request.body).not.toContain("cancelled");
     expect(request.body).toContain(`a session on ${MODULE} forward at this time`);
-    expect(session.body).toContain("your confirmed session");
+    expect(session.body).toContain(`your session on ${MODULE}`);
     expect(session.body).toContain("IQC-S0007");
   });
 
-  it("quotes the agreement's own reference, not the practitioner's", () => {
-    // IQC-AGR and IQC-EMP are separate sequences. The first revision of the
-    // console-messages document put the practitioner's on the agreement email,
-    // which sends someone looking for a document that does not exist.
-    const agreement = templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF);
-    expect(agreement.subject).toContain(AGREEMENT_REF);
-    expect(agreement.body).toContain(`Reference for this agreement: ${AGREEMENT_REF}`);
-    expect(agreement.body).not.toContain("IQC-EMP");
+  it("quotes the practitioner's reference on the agreement email", () => {
+    // The delivered document asks for IQC-EMP here, not the agreement's own
+    // IQC-AGR. The agreement record keeps its reference; this email stopped
+    // naming it, so the number a recipient quotes back identifies the person.
+    const agreement = templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF);
+    expect(agreement.subject).toContain(PRACTITIONER_REF);
+    expect(agreement.body).toContain(`Reference number for this agreement: ${PRACTITIONER_REF}`);
+    expect(agreement.body).not.toContain("IQC-AGR");
 
     const welcome = templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF);
     expect(welcome.body).toContain(`Your empanelment reference: ${PRACTITIONER_REF}`);
   });
 
-  it("names what a follow-up is waiting on, and echoes only what it holds", () => {
-    // The list is the message. A follow-up that drops it is a "just checking in"
-    // that never gets the venue it exists to ask for.
-    const full = templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."], REQUEST_ECHO);
-    expect(full.body).toContain("- The venue.");
+  it("reads as a progress update, echoing only the request fields it holds", () => {
+    // The outstanding-items list was removed by the delivered document — this
+    // email now reports that a practitioner is being aligned. What is missing
+    // survives on the activity record (`outstandingFor` in console/actions.ts).
+    const full = templates.sessionRequestFollowUp("a@b.com", "Asha", REQUEST_ECHO);
+    expect(full.body).toContain("aligning a suitable practitioner");
     expect(full.body).toContain("Group: 16-25 participants, Organisations & Institutions");
     expect(full.body).toContain("Preferred window: Early March");
-    // No turnaround promise: the waitlist phase withdrew it from the site.
-    expect(full.body).not.toContain("working days");
+    expect(full.body).toContain("Please reply to this email if anything has changed.");
+    // The document reinstates the turnaround the waitlist phase withdrew from
+    // the site — asserted so the disagreement is deliberate, not a drift.
+    expect(full.body).toContain("within 2–3 working days");
 
-    const sparse = templates.sessionRequestFollowUp("a@b.com", "Asha", ["Your preferred dates."], {
+    const sparse = templates.sessionRequestFollowUp("a@b.com", "Asha", {
       topic: MODULE,
       audience: "Organisations & Institutions",
     });
@@ -426,48 +431,70 @@ describe("email sender routing", () => {
     expect(sparse.body).not.toContain("undefined");
   });
 
-  it("tells the rating recipient their rating stays internal", () => {
+  it("closes the rating request on the name alone, with no internal-use note", () => {
+    // Both are the delivered document's: it drops the "stays internal" line and
+    // signs this one message without the two-line block it specifies elsewhere.
     const message = templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION);
     expect(message.body).toContain(`the session on ${MODULE} with Vikram Rao`);
-    expect(message.body).toContain("never with the practitioner directly");
+    expect(message.body).not.toContain("never with the practitioner directly");
+    expect(message.body.endsWith("Thank you for your time.\n\nTeam iqcommune")).toBe(true);
   });
 
-  it("names the role in the console invite and keeps the single-use warning", () => {
+  it("agrees the article with the role in the console invite", () => {
+    // "as a [Role]" is the document's wording; a fixed "a" would send
+    // "as a Admin". The single-use and 72-hour sentences are gone from the copy,
+    // not from the behaviour — the link and the invite still expire.
+    expect(templates.adminInvite("a@b.com", ID, "Global Admin").body).toContain(
+      "admin console as a Global Admin",
+    );
+    expect(templates.adminInvite("a@b.com", ID, "Admin").body).toContain("admin console as an Admin");
+    expect(templates.adminInvite("a@b.com", ID, "User").body).toContain("admin console as a User");
+
     const message = templates.adminInvite("a@b.com", ID, "Global Admin");
-    expect(message.body).toContain("admin console as Global Admin");
-    expect(message.body).toContain("This link can only be used once");
-    expect(message.body).toContain("expires in 72 hours");
+    expect(message.body).toContain("This will take only a minute to complete.");
+    expect(message.body).not.toContain("72 hours");
   });
 
-  it("carries all eight shots, from the one list the checklist and PDF also read", () => {
+  it("asks for the document's five suggestions, leaving the eight-shot list alone", () => {
+    // A deliberate divergence: the document rewrote this email only, so
+    // SESSION_SHOTS still carries the eight labelled shots for the upload page's
+    // checklist and the confirmation PDF, which it does not cover.
     const message = templates.photoReminder("a@b.com", "Vikram", ID, MODULE);
-    for (const [index, shot] of SESSION_SHOTS.entries()) {
-      expect(message.body).toContain(`${index + 1}. ${shot.label}: ${shot.note}`);
-    }
+    expect(message.body).toContain("A few suggestions:");
+    expect(message.body).toContain("1. A wide shot of the room");
+    expect(message.body).toContain("5. A group photo at the end of the session");
     expect(message.body).toContain(`Ahead of your session on ${MODULE}`);
+
+    expect(SESSION_SHOTS).toHaveLength(8);
+    for (const shot of SESSION_SHOTS) expect(message.body).not.toContain(shot.note);
   });
 
   it("opens every console message with Dear, not Hi", () => {
-    // One register across the eleven (console-messages doc, rev 2). The two
-    // acknowledgment emails are client-verbatim copy and are not in this set.
+    // One register across the eleven. The two acknowledgment emails are
+    // client-verbatim copy and are not in this set. The eleventh message,
+    // `sessionRequestCancelled`, is absent from the delivered document — silence
+    // about a console control is not an instruction to remove it.
+    const rating = templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION);
     const consoleMail = [
-      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
+      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
       templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF),
       templates.applicationRejected("a@b.com", "Vikram"),
       templates.practitionerDeactivated("a@b.com", "Vikram"),
       templates.consentRequest("a@b.com", "Vikram", ID, CONSENT_DETAILS),
       templates.photoReminder("a@b.com", "Vikram", ID, MODULE),
-      templates.sessionRequestFollowUp("a@b.com", "Asha", ["The venue."], REQUEST_ECHO),
+      templates.sessionRequestFollowUp("a@b.com", "Asha", REQUEST_ECHO),
       templates.sessionRequestCancelled("a@b.com", "Asha", MODULE),
       templates.sessionCancelled("a@b.com", "Asha", MODULE, "IQC-S0007"),
-      templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION),
+      rating,
       templates.adminInvite("a@b.com", ID, "Admin"),
     ];
     expect(consoleMail).toHaveLength(11);
     for (const message of consoleMail) {
       expect(message.body.startsWith("Dear ")).toBe(true);
-      expect(message.body.endsWith("Warm regards,\nTeam iqcommune")).toBe(true);
       expect(message.subject).toContain("iqcommune");
+      // The rating request is the document's own exception to the signature it
+      // states on its first page; every other body carries the two-line block.
+      expect(message.body.endsWith("Warm regards,\nTeam iqcommune")).toBe(message !== rating);
     }
   });
 
@@ -477,7 +504,7 @@ describe("email sender routing", () => {
     const bodies = [
       templates.sessionRequestCancelled("a@b.com", "Asha", MODULE).body,
       templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF).body,
-      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF).body,
+      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF).body,
       templates.applicationReceived("a@b.com", "Vikram", ID).body,
     ];
 
@@ -491,7 +518,7 @@ describe("email sender routing", () => {
   it("keeps the organisation's name out of the signature", () => {
     // "iqcommune" elsewhere in the copy names the company, not the sender, and
     // is left alone — the signature is the only line that changed.
-    const welcome = templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF);
+    const welcome = templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF);
     expect(welcome.subject).toContain("iqcommune");
     expect(templates.applicationReceived("a@b.com", "Vikram", ID).body).toContain(
       "iqcommune practitioner network",

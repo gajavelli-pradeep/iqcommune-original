@@ -1,4 +1,3 @@
-import { SESSION_SHOTS } from "@/constants/photo-shots";
 import { SESSION_REQUEST_ACK } from "@/content/session-request";
 import { siteUrl } from "@/lib/siteUrl";
 
@@ -7,11 +6,14 @@ import { buildLink } from "./links";
 import type { EmailMessage } from "./send";
 
 /**
- * How a body signs off — one signature on every email (client, 2026-08-13),
- * as the two-line block the console-messages document specifies (rev 2,
- * 2026-08-14). It replaced a single hyphenated line; `SIGN_OFF_TEAM` is the
- * bare name, kept for the two acknowledgment emails whose copy is client
- * verbatim and already carries its own "Regards," line.
+ * How a body signs off — one signature on every email (client, 2026-08-13), as
+ * the two-line block the console-messages document specifies. It replaced a
+ * single hyphenated line.
+ *
+ * `SIGN_OFF_TEAM` is the bare name, used by three bodies: the two acknowledgment
+ * emails, whose copy is client verbatim and already carries its own "Regards,"
+ * line, and the rating request, which the delivered document closes on the name
+ * alone despite stating the two-line convention itself.
  *
  * Supersedes the per-stream sign-off of 2026-08-10, where session mail signed
  * "Session Commune" and practitioner mail "Practitioner Commune". The client
@@ -118,37 +120,34 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
 }
 
 /**
- * The console's "Send follow-up to client" — chasing a request that is waiting
- * on something from the requester's side.
+ * The console's "Send follow-up to client" — an update while a practitioner is
+ * being aligned to the request.
  *
- * It names what is outstanding rather than asking them to guess: the commonest
- * reason a request stalls is a venue nobody has confirmed, and "just checking
- * in" does not get one.
+ * It no longer lists what the request is waiting on. The delivered document
+ * writes this as a progress update rather than a chase, so the outstanding
+ * items are computed for the activity record only (`outstandingFor` in
+ * `features/console/actions.ts`) and never reach the reader.
+ *
+ * The 2–3 working day commitment is the document's. The site withdrew that
+ * promise for the waitlist phase, so this message and
+ * `content/session-request.ts` currently disagree by instruction.
  */
-export function sessionRequestFollowUp(
-  to: string,
-  firstName: string,
-  outstanding: readonly string[],
-  request: RequestEcho,
-): EmailMessage {
+export function sessionRequestFollowUp(to: string, firstName: string, request: RequestEcho): EmailMessage {
   return {
     template: "session-request-follow-up",
     stream: "session",
     to,
-    subject: "iqcommune — following up on your session request",
+    subject: "iqcommune — update on your training session request",
     body: lines(
       `Dear ${firstName},`,
       "",
-      `Thank you for your interest in iqcommune, and for your request for a session on ${request.topic}.`,
+      `Thank you for your interest in iqcommune. We have reviewed your request for a session on ${request.topic}.`,
       "",
-      "We are ready to move ahead and need a little more from your side:",
+      "We are currently aligning a suitable practitioner for your group and will confirm the session details — date, time, and venue — within 2–3 working days.",
       "",
-      ...outstanding.map((item) => `- ${item}`),
-      "",
-      "Please reply to this email with the above and we will take it forward.",
-      "",
-      "Your request as it stands:",
       ...requestEchoRows(request),
+      "",
+      "Please reply to this email if anything has changed.",
       "",
       SIGN_OFF,
     ),
@@ -159,9 +158,8 @@ export function sessionRequestFollowUp(
  * What the follow-up echoes back, so the reader can see what we hold without
  * digging out their own submission.
  *
- * Optional rows are dropped rather than shown empty — and a field that is
- * outstanding is by definition one we do not have, so an echo that printed
- * "Group: participants" would be contradicting the list directly above it.
+ * Optional rows are dropped rather than shown empty: a field we are still
+ * waiting on has nothing to echo, and "Group: participants" reads as a bug.
  */
 export interface RequestEcho {
   topic: string;
@@ -210,7 +208,13 @@ export function sessionRequestCancelled(to: string, firstName: string, topic: st
   };
 }
 
-/** The status dropdown's "Cancelled" — a session that was already confirmed. */
+/**
+ * The status dropdown's "Cancelled" — a session that was already confirmed.
+ *
+ * The body no longer says "confirmed", per the delivered document, so what
+ * separates this from `sessionRequestCancelled` above is now the word
+ * "cancelled" alone. Keep that word out of the request-stage message.
+ */
 export function sessionCancelled(
   to: string,
   firstName: string,
@@ -225,7 +229,7 @@ export function sessionCancelled(
     body: lines(
       `Dear ${firstName},`,
       "",
-      `We are writing to inform you that your confirmed session on ${module} (ref. ${sessionReference}) has been cancelled.`,
+      `We are writing to inform you that your session on ${module} (ref. ${sessionReference}) has been cancelled.`,
       "",
       "If this was unexpected, or you would like to reschedule, please reply to this email and we will assist. We apologise for any inconvenience caused.",
       "",
@@ -419,15 +423,16 @@ export function ratingRequest(
       "",
       `We hope the session on ${session.module} with ${session.practitionerName} was valuable for your group.`,
       "",
-      "We would appreciate a brief rating for the practitioner, to help us maintain quality across our practitioner network. It takes less than a minute:",
+      "We would appreciate a brief rating for the practitioner, to help us maintain quality across our practitioner network. This takes less than a minute:",
       "",
       buildLink("rate", assignmentId),
       "",
-      "Your rating is shared internally with iqcommune only — never with the practitioner directly. The link expires in 14 days.",
-      "",
       "Thank you for your time.",
       "",
-      SIGN_OFF,
+      // The only body that does not carry the two-line block. The delivered
+      // document closes this one on the name alone, against the convention it
+      // states on its own first page.
+      SIGN_OFF_TEAM,
     ),
   };
 }
@@ -451,18 +456,39 @@ export function consentRequest(
     body: lines(
       `Dear ${firstName},`,
       "",
-      `Please find below the revenue confirmation for your upcoming session on ${session.module} (session ref. ${session.sessionReference}). Kindly review the session details and the payout figure, then confirm your consent using the link below:`,
+      `Please find below the revenue confirmation for your upcoming session (${session.module}, session ref. ${session.sessionReference}). Kindly review the session details and payout figures, then confirm your consent using the link below.`,
       "",
       buildLink("consent", assignmentId),
       "",
-      "Confirming here locks the session in on our end, so please review the details carefully before proceeding. The link expires in 7 days.",
+      "This confirms the session on our end, so please review carefully before proceeding.",
       "",
-      `Confirmation reference: ${session.confirmationReference}`,
+      `Reference number: ${session.confirmationReference}`,
       "",
       SIGN_OFF,
     ),
   };
 }
+
+/**
+ * What the photo email asks for — five suggestions, in the delivered document's
+ * own words.
+ *
+ * Deliberately not `SESSION_SHOTS`, which is still the eight labelled shots read
+ * by the upload page's checklist and the confirmation PDF. The document rewrote
+ * this email and says nothing about either of those surfaces, so changing the
+ * shared constant would have silently rewritten two things nobody reviewed.
+ *
+ * The cost is that the three surfaces no longer agree on how many shots there
+ * are. Point them back at `SESSION_SHOTS` to close that, once the list the
+ * client wants everywhere is settled.
+ */
+const EMAIL_SHOT_SUGGESTIONS = [
+  "A wide shot of the room",
+  "Yourself in focus, from the back, with the audience visible",
+  "The audience engaged, from your point of view",
+  "A candid Q&A moment",
+  "A group photo at the end of the session",
+] as const;
 
 export function photoReminder(
   to: string,
@@ -470,31 +496,23 @@ export function photoReminder(
   assignmentId: string,
   module: string,
 ): EmailMessage {
-  // Carries the shot ideas ahead of the session, not just the link (audit G4b):
-  // the procedure wants the practitioner to have them ready before they need them.
-  // One list, three surfaces — this email, the upload page's checklist and the
-  // confirmation PDF — so the wording is owned by the constant, not by any of them.
-  // Colon, not a dash: half the labels contain a dash of their own, and
-  // "Candid — Q&A or discussion moment — Natural interaction" reads as three
-  // things rather than a shot and its note.
-  const shots = SESSION_SHOTS.map((shot, index) => `${index + 1}. ${shot.label}: ${shot.note}`);
   return {
     template: "photo-reminder",
     // Sent to a practitioner, but about a session — and the reply ("which
     // session is this?") belongs with whoever runs sessions.
     stream: "session",
     to,
-    subject: "iqcommune — your session photos: shot guide and upload link",
+    subject: "iqcommune — a quick ask ahead of your session",
     body: lines(
       `Dear ${firstName},`,
       "",
       `Ahead of your session on ${module}, we would appreciate a few photographs from the room for our website, if convenient. Phone photographs are entirely sufficient.`,
       "",
-      "Here are the eight shots that make a session gallery look great — keep this handy so you have them ready on the day:",
+      "A few suggestions:",
       "",
-      ...shots,
+      ...EMAIL_SHOT_SUGGESTIONS.map((shot, index) => `${index + 1}. ${shot}`),
       "",
-      "When the session wraps, upload them using this link — bookmark it now:",
+      "Once available, please share them using this link:",
       "",
       buildLink("photos", assignmentId),
       "",
@@ -506,21 +524,29 @@ export function photoReminder(
 }
 
 /**
- * `agreementReference` is the agreement's own IQC-AGR reference, not the
- * practitioner's IQC-EMP one — they are separate sequences and quoting the
- * wrong one here sends someone looking for a document that does not exist.
+ * Quotes the practitioner's `IQC-EMP` reference, which is what the delivered
+ * document asks for — not the agreement's own `IQC-AGR` one.
+ *
+ * They are separate sequences, and the agreement record still has its own
+ * reference; this message simply no longer names it. A recipient quoting this
+ * number back is therefore identifying themselves, not the document they signed.
+ *
+ * The value exists by the time this is sent: `sendAgreement` creates the
+ * practitioner row, and its reference, before composing the email. A draft
+ * previewed against an application that has not been promoted yet has no
+ * practitioner row, so it shows `REFERENCE_PLACEHOLDER` until the send.
  */
 export function onboardingLink(
   to: string,
   firstName: string,
   agreementId: string,
-  agreementReference: string,
+  practitionerReference: string,
 ): EmailMessage {
   return {
     template: "onboarding-link",
     stream: "practitioner",
     to,
-    subject: `iqcommune — your empanelment agreement (Ref. ${agreementReference})`,
+    subject: `iqcommune — your empanelment agreement (Ref. ${practitionerReference})`,
     body: lines(
       `Dear ${firstName},`,
       "",
@@ -528,9 +554,9 @@ export function onboardingLink(
       "",
       buildLink("onboarding", agreementId),
       "",
-      "It takes only a couple of minutes — review the terms, then sign directly on the page. The link is unique to you and expires in 14 days; if it lapses, reply here and we will send a fresh one.",
+      "It takes only a couple of minutes — review the terms, then sign directly on the page.",
       "",
-      `Reference for this agreement: ${agreementReference}`,
+      `Reference number for this agreement: ${practitionerReference}`,
       "",
       "Please let us know if anything requires clarification before signing.",
       "",
@@ -539,22 +565,33 @@ export function onboardingLink(
   };
 }
 
-/** `roleLabel` is what a person says — "Global Admin", "Admin", "User". */
+/**
+ * `roleLabel` is what a person says — "Global Admin", "Admin", "User".
+ *
+ * The document writes "as a [Role]", so the article agrees with the role rather
+ * than being fixed: a literal "a" would send "as a Admin" to a colleague.
+ *
+ * The invitation still expires in 72 hours and the link still works once — the
+ * document drops the sentence that said so, not the behaviour.
+ */
 export function adminInvite(to: string, inviteId: string, roleLabel: string): EmailMessage {
+  // "u" is left out deliberately: it is a vowel letter but a consonant sound,
+  // so the three real roles read "a Global Admin", "an Admin", "a User".
+  const article = /^[aeio]/i.test(roleLabel) ? "an" : "a";
   return {
     template: "admin-invite",
     to,
-    subject: "iqcommune — you've been invited to the admin console",
+    subject: "iqcommune — you’ve been invited to the admin console",
     body: lines(
       "Dear Team Member,",
       "",
-      `You have been invited to join the iqcommune admin console as ${roleLabel}.`,
+      `You have been invited to join the iqcommune admin console as ${article} ${roleLabel}.`,
       "",
       "Please set up your account and choose a password using the link below:",
       "",
       buildLink("invite", inviteId),
       "",
-      "This link can only be used once, and the invitation expires in 72 hours. If it lapses, ask whoever invited you to send a fresh one.",
+      "This will take only a minute to complete.",
       "",
       SIGN_OFF,
     ),
@@ -571,8 +608,10 @@ export function adminInvite(to: string, inviteId: string, roleLabel: string): Em
 /**
  * The availability promise in the second paragraph is the client's, and the
  * practitioner pages and the empanelment agreement both make it too — but no
- * availability-check message exists in the console yet (console-messages doc,
- * rev 2, B2). The copy is what was approved; the mechanism is outstanding.
+ * availability-check message exists anywhere in this application. The delivered
+ * document omits it on the grounds that the template exists but is unwired;
+ * it does not exist here at all, only in the V7 prototype. The copy is what was
+ * approved; the mechanism is still outstanding.
  */
 export function practitionerWelcome(
   to: string,
@@ -583,13 +622,13 @@ export function practitionerWelcome(
     template: "practitioner-welcome",
     stream: "practitioner",
     to,
-    subject: "Welcome to iqcommune — you're officially empanelled",
+    subject: "Welcome to iqcommune — you’re officially empanelled",
     body: lines(
       `Dear ${firstName},`,
       "",
-      "We are pleased to confirm that your signed agreement is in, and you are now officially empanelled as an iqcommune practitioner.",
+      "We are pleased to confirm that your agreement is in, and you are now officially empanelled as an iqcommune practitioner.",
       "",
-      "As session requests come in that match your profile and city, we will reach out to check your availability before confirming anything. You are never obligated to accept a session, and there is no minimum commitment on your end. We will be in touch with your first session details as soon as we have a match.",
+      "As session requests come in that match your profile and city, we will reach out to check your availability before confirming anything. You are never obligated to accept a session, and there is no minimum commitment on your end.",
       "",
       `Your empanelment reference: ${practitionerReference}`,
       "",
@@ -613,9 +652,9 @@ export function applicationRejected(to: string, firstName: string): EmailMessage
       "",
       "Thank you for your interest in joining iqcommune, and for the time you invested through the application and screening process.",
       "",
-      "After careful review, we will not be moving forward with your application at this time. This is not a reflection of your expertise — we are often working within a specific mix of modules, cities and experience bands at any given time, and this can change as our requirements evolve.",
+      "After careful review, we will not be moving forward with your application at this time. This is not a reflection of your expertise — we are often working within a specific mix of modules, cities, and experience bands at any given time, and this can change as our requirements evolve.",
       "",
-      "We would genuinely welcome a future application should circumstances change, and we wish you the very best.",
+      "We would welcome a future application should circumstances change.",
       "",
       SIGN_OFF,
     ),
@@ -639,8 +678,6 @@ export function practitionerDeactivated(to: string, firstName: string): EmailMes
       "This is to inform you that we have paused matching you to new sessions for the time being.",
       "",
       "This does not affect any existing arrangement — your signed agreement and session history remain unchanged. Should your circumstances change and you wish to be considered again, please let us know and we will reactivate your profile.",
-      "",
-      "If you believe this has happened in error, please reply to this email and we will take a look.",
       "",
       "Thank you for your contribution so far.",
       "",

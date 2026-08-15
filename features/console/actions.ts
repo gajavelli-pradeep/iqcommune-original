@@ -486,17 +486,15 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
   // link in an old email keeps working.
   const { data: openAgreement } = await supabase
     .from("practitioner_agreements")
-    .select("id, reference")
+    .select("id")
     .eq("practitioner_id", practitionerId)
     .is("signed_at", null)
     .is("deleted_at", null)
     .maybeSingle();
 
   let agreementId: string;
-  let agreementReference: string;
   if (openAgreement) {
     agreementId = openAgreement.id as string;
-    agreementReference = openAgreement.reference as string;
   } else {
     const { data: application } = applicationId
       ? await supabase
@@ -506,19 +504,19 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
           .maybeSingle()
       : { data: null };
 
-    const reference = await nextReference(supabase, "agreement");
+    // The agreement keeps its own IQC-AGR reference — the record needs one, and
+    // the signed PDF quotes it. The email no longer does (see `onboardingLink`).
     const { data: created, error: agreementError } = await supabase
       .from("practitioner_agreements")
       .insert({
         practitioner_id: practitionerId,
-        reference,
+        reference: await nextReference(supabase, "agreement"),
         modules: application?.modules ?? [],
       })
       .select("id")
       .single();
     if (agreementError) throw new Error(`agreement create failed: ${agreementError.message}`);
     agreementId = created.id as string;
-    agreementReference = reference;
   }
 
   if (applicationId) {
@@ -530,15 +528,16 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
 
   const contact = await practitionerContact(supabase, practitionerId);
   if (contact) {
-    // The agreement exists now, so the link and the reference the draft only
-    // stood in for can finally be put back where the placeholders sat.
+    // Both stand-ins can be resolved now: the agreement exists, so the link is
+    // real, and the practitioner row exists, so its IQC-EMP reference — the one
+    // this message quotes — is real too.
     dispatchEmail(
       newTraceId(),
       applyDraft(
-        onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
+        onboardingLink(contact.email, contact.firstName, agreementId, contact.reference),
         draft,
         buildLink("onboarding", agreementId),
-        agreementReference,
+        contact.reference,
       ),
     );
   }
@@ -1700,7 +1699,7 @@ async function draftMessage(
 
     const outstanding = outstandingFor(data);
     return {
-      message: sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding, {
+      message: sessionRequestFollowUp(data.email as string, data.first_name as string, {
         topic: data.topic as string,
         // The label, never the stored value — "corporate" is not a thing anyone
         // asked to be called.
@@ -1767,41 +1766,31 @@ async function draftMessage(
 
   if (kind === "onboarding-link") {
     const { table, id: rowRef } = pipelineId(id);
-    let contact: { email: string; firstName: string } | null = null;
+    let contact: { email: string; firstName: string; reference: string } | null = null;
 
     if (table === "practitioner") {
       contact = await practitionerContact(supabase, rowRef);
     } else {
       // Not promoted yet — the practitioner record is created by the send, so
-      // the applicant's own row is what the draft is addressed from.
+      // the applicant's own row is what the draft is addressed from, and the
+      // IQC-EMP reference this message quotes stands in exactly as the link does.
       const { data } = await supabase
         .from("practitioner_applications")
         .select("email, first_name")
         .eq("id", rowRef)
         .is("deleted_at", null)
         .maybeSingle();
-      if (data) contact = { email: data.email as string, firstName: data.first_name as string };
+      if (data) {
+        contact = {
+          email: data.email as string,
+          firstName: data.first_name as string,
+          reference: REFERENCE_PLACEHOLDER,
+        };
+      }
     }
     if (!contact) return null;
 
-    // A resend quotes the agreement it is resending. A first issue has no
-    // agreement yet, so the reference stands in exactly as the link does.
-    const { data: openAgreement } = table === "practitioner"
-      ? await supabase
-          .from("practitioner_agreements")
-          .select("reference")
-          .eq("practitioner_id", rowRef)
-          .is("signed_at", null)
-          .is("deleted_at", null)
-          .maybeSingle()
-      : { data: null };
-
-    const message = onboardingLink(
-      contact.email,
-      contact.firstName,
-      PREVIEW_ID,
-      (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER,
-    );
+    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, contact.reference);
     return { message: { ...message, body: maskLink(message.body) } };
   }
 
