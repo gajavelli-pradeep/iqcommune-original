@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const composeDraft = vi.fn();
-vi.mock("./actions", () => ({ composeDraft: (...args: unknown[]) => composeDraft(...args) }));
+const recordWhatsAppOpened = vi.fn();
+vi.mock("./actions", () => ({
+  composeDraft: (...args: unknown[]) => composeDraft(...args),
+  recordWhatsAppOpened: (...args: unknown[]) => recordWhatsAppOpened(...args),
+}));
 
 const { DraftModal } = await import("./DraftModal");
 
@@ -161,5 +165,71 @@ describe("DraftModal — WhatsApp tab", () => {
 
     expect(await screen.findByText(/select the text above instead/i)).toBeTruthy();
     expect(screen.queryByText(/copied to clipboard/i)).toBeNull();
+  });
+});
+
+/**
+ * The footer belongs to whichever tab is open.
+ *
+ * It used to be the email send regardless, so an admin reading the WhatsApp copy
+ * and pressing the only button on screen sent the email — two different messages
+ * on two different channels behind one control.
+ */
+describe("the send follows the tab", () => {
+  const WITH_WHATSAPP = {
+    ...READY,
+    whatsapp: "Hi Vikram, how was your session?",
+    phone: "9876543210",
+  };
+
+  const openWhatsAppTab = async () => {
+    const user = userEvent.setup();
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+    await user.click(await screen.findByRole("tab", { name: "WhatsApp" }));
+    return user;
+  };
+
+  it("offers the email send on the email tab and no WhatsApp button", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    expect(await screen.findByRole("button", { name: /click to send/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+  });
+
+  it("swaps to the WhatsApp link and withdraws the email send", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    await openWhatsAppTab();
+
+    expect(screen.getByRole("link", { name: /open in whatsapp/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /click to send/i })).not.toBeInTheDocument();
+  });
+
+  it("addresses the link to the recipient with the WhatsApp copy, not the email body", async () => {
+    // The two halves are different messages. Sending the email body over
+    // WhatsApp would deliver a subject line's worth of formality into a chat.
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    await openWhatsAppTab();
+
+    const href = screen.getByRole("link", { name: /open in whatsapp/i }).getAttribute("href");
+    expect(href).toContain("https://wa.me/919876543210");
+    expect(href).toContain(encodeURIComponent("how was your session?"));
+    expect(href).not.toContain(encodeURIComponent("Please rate it."));
+  });
+
+  it("says so rather than offering a dead button when no number is on file", async () => {
+    composeDraft.mockResolvedValue({ ...WITH_WHATSAPP, phone: null });
+    await openWhatsAppTab();
+
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no number on file/i)).toBeInTheDocument();
+  });
+
+  it("records the open without claiming the message was sent", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    const user = await openWhatsAppTab();
+
+    await user.click(screen.getByRole("link", { name: /open in whatsapp/i }));
+    expect(recordWhatsAppOpened).toHaveBeenCalledWith("rating-request", "assignment-1");
   });
 });

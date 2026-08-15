@@ -1150,6 +1150,8 @@ const ACTION_PHRASE: Record<string, string> = {
   "session.reopened": "Reopened a session",
   "rating.requested": "Sent a rating request",
   "rating.recorded_manually": "Recorded a rating from a verbal report",
+  // "Opened", not "sent": handing off to WhatsApp is the last thing we can see.
+  "whatsapp.opened": "Opened a message in WhatsApp",
   "payout.invoice_set": "Set a payout's invoice reference",
   "payout.paid": "Marked a payout paid",
   "payout.reopened": "Reopened a payout",

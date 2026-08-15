@@ -92,16 +92,20 @@ function revalidateConsole() {
 async function practitionerContact(
   supabase: ReturnType<typeof createAdminClient>,
   practitionerId: string,
-): Promise<{ email: string; firstName: string; reference: string } | null> {
+): Promise<{ email: string; phone: string | null; firstName: string; reference: string } | null> {
   const { data } = await supabase
     .from("practitioners")
-    .select("email, full_name, reference")
+    .select("email, phone, full_name, reference")
     .eq("id", practitionerId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!data) return null;
   return {
     email: data.email,
+    // Null for a practitioner who predates migration 0021 and whose application
+    // is gone. The draft dialog offers no WhatsApp button rather than a link
+    // that opens the app on nobody.
+    phone: (data.phone as string | null) ?? null,
     firstName: (data.full_name as string).split(" ")[0],
     reference: data.reference as string,
   };
@@ -471,7 +475,7 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     applicationId = id;
     const { data: application, error: readError } = await supabase
       .from("practitioner_applications")
-      .select("id, first_name, last_name, email, job_title, city, state, modules")
+      .select("id, first_name, last_name, email, phone, job_title, city, state, modules")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -503,9 +507,11 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
           role: application.job_title,
           city: application.city,
           // Carried onto the practitioner rather than left on the application:
-          // the agreement header renders State from this record (migration 0017).
+          // the agreement header renders State from this record (migration 0017),
+          // and the console's WhatsApp send reads Phone from it (0021).
           state: application.state,
           email: application.email,
+          phone: application.phone,
           application_id: application.id,
         })
         .select("id")
@@ -1133,6 +1139,33 @@ export async function recordRatingManually(
   return { ok: true };
 }
 
+/**
+ * That an admin opened WhatsApp on a draft — not that anything was sent.
+ *
+ * The distinction is the whole point. Handing off to `wa.me` ends our knowledge
+ * of the message: the admin may send it, edit it first, or close the tab, and
+ * none of that comes back. So this writes a trace someone can read later and
+ * stops there.
+ *
+ * Deliberately its own action rather than the email one. `consent.requested`
+ * and its siblings are what Part 2 reads to decide a row's next step, and
+ * borrowing them here would move a row to "Resend" on the strength of a tab
+ * having been opened — the console asserting a delivery it never saw.
+ *
+ * Not awaited by the dialog either: the link opens on click, and a log write
+ * has no business delaying it.
+ */
+export async function recordWhatsAppOpened(kind: DraftKind, id: string): Promise<void> {
+  const { email: actor } = await requireCapability("mutate");
+  await recordActivity({
+    actorEmail: actor,
+    action: "whatsapp.opened",
+    entityType: "draft",
+    entityRef: id,
+    detail: `${kind} — opened in WhatsApp, delivery not confirmed.`,
+  });
+}
+
 // ── Team & access (V7 tab 9) ────────────────────────────────────────────────
 
 /** How long an invite link stays usable. */
@@ -1694,7 +1727,7 @@ export async function deletePhotoSubmission(submissionId: string): Promise<void>
  * for the link pages; this is the same shape, trimmed to what a body needs.
  */
 async function assignmentDetails(id: string): Promise<{
-  practitioner: { email: string; firstName: string; fullName: string };
+  practitioner: { email: string; phone: string | null; firstName: string; fullName: string };
   module: string;
   sessionId: string;
   sessionReference: string;
@@ -1711,7 +1744,7 @@ async function assignmentDetails(id: string): Promise<{
 
   const { data: practitioner } = await supabase
     .from("practitioners")
-    .select("email, full_name")
+    .select("email, phone, full_name")
     .eq("id", data.practitioner_id as string)
     .is("deleted_at", null)
     .maybeSingle();
@@ -1722,7 +1755,12 @@ async function assignmentDetails(id: string): Promise<{
 
   const fullName = practitioner.full_name as string;
   return {
-    practitioner: { email: practitioner.email as string, firstName: fullName.split(" ")[0], fullName },
+    practitioner: {
+      email: practitioner.email as string,
+      phone: (practitioner.phone as string | null) ?? null,
+      firstName: fullName.split(" ")[0],
+      fullName,
+    },
     module: session.module,
     sessionId: data.session_id as string,
     sessionReference: session.reference,
@@ -1738,7 +1776,9 @@ async function assignmentDetails(id: string): Promise<{
  * same way it treats a missing row — nothing to send — rather than falling back
  * to whoever else is on the record.
  */
-async function requestorForSession(sessionId: string): Promise<{ email: string; firstName: string } | null> {
+async function requestorForSession(
+  sessionId: string,
+): Promise<{ email: string; phone: string | null; firstName: string } | null> {
   const supabase = createAdminClient();
   const { data: session } = await supabase
     .from("sessions")
@@ -1750,12 +1790,16 @@ async function requestorForSession(sessionId: string): Promise<{ email: string; 
 
   const { data: request } = await supabase
     .from("session_requests")
-    .select("first_name, email")
+    .select("first_name, email, phone")
     .eq("id", session.session_request_id as string)
     .is("deleted_at", null)
     .maybeSingle();
   if (!request) return null;
-  return { email: request.email as string, firstName: request.first_name as string };
+  return {
+    email: request.email as string,
+    phone: (request.phone as string | null) ?? null,
+    firstName: request.first_name as string,
+  };
 }
 
 /** What a follow-up is still waiting on, derived from the record. */
@@ -1788,13 +1832,13 @@ function outstandingFor(request: Record<string, unknown>): string[] {
 async function draftMessage(
   kind: DraftKind,
   id: string,
-): Promise<{ message: EmailMessage; whatsapp?: string; detail?: string } | null> {
+): Promise<{ message: EmailMessage; whatsapp?: string; phone?: string | null; detail?: string } | null> {
   const supabase = createAdminClient();
 
   if (kind === "request-follow-up") {
     const { data, error } = await supabase
       .from("session_requests")
-      .select("first_name, email, topic, audience, venue_details, preferred_window, min_commitment, group_size")
+      .select("first_name, email, phone, topic, audience, venue_details, preferred_window, min_commitment, group_size")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -1814,6 +1858,7 @@ async function draftMessage(
       preferredWindow: (data.preferred_window as string | null) ?? undefined,
     };
     return {
+      phone: (data.phone as string | null) ?? null,
       message: sessionRequestFollowUp(data.email as string, firstName, echo),
       whatsapp: whatsapp.sessionRequestFollowUp(firstName, echo).body,
       detail: outstanding.join(" "),
@@ -1823,12 +1868,13 @@ async function draftMessage(
   if (kind === "request-cancellation") {
     const { data } = await supabase
       .from("session_requests")
-      .select("first_name, email, topic")
+      .select("first_name, email, phone, topic")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) return null;
     return {
+      phone: (data.phone as string | null) ?? null,
       message: sessionRequestCancelled(data.email as string, data.first_name as string, data.topic as string),
     };
   }
@@ -1840,10 +1886,12 @@ async function draftMessage(
     if (!contact) return null;
     return kind === "practitioner-welcome"
       ? {
+          phone: contact.phone,
           message: practitionerWelcome(contact.email, contact.firstName, contact.reference),
           whatsapp: whatsapp.practitionerWelcome(contact.firstName).body,
         }
       : {
+          phone: contact.phone,
           message: practitionerDeactivated(contact.email, contact.firstName),
           whatsapp: whatsapp.practitionerDeactivated(contact.firstName).body,
         };
@@ -1854,13 +1902,14 @@ async function draftMessage(
     if (table !== "application") throw new Error("only an application can be rejected");
     const { data } = await supabase
       .from("practitioner_applications")
-      .select("email, first_name")
+      .select("email, phone, first_name")
       .eq("id", applicationId)
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) return null;
     const firstName = data.first_name as string;
     return {
+      phone: (data.phone as string | null) ?? null,
       message: applicationRejected(data.email as string, firstName),
       whatsapp: whatsapp.applicationRejected(firstName).body,
     };
@@ -1943,6 +1992,7 @@ async function draftMessage(
     const sessionModule = session.module as string;
     const reference = session.reference as string;
     return {
+      phone: requestor.phone,
       message: sessionCancelled(requestor.email, requestor.firstName, sessionModule, reference),
       whatsapp: whatsapp.sessionCancelled(requestor.firstName, sessionModule, reference).body,
     };
@@ -1952,6 +2002,7 @@ async function draftMessage(
   if (!assignment) return null;
   if (kind === "consent-request") {
     return {
+      phone: assignment.practitioner.phone,
       message: consentRequest(assignment.practitioner.email, assignment.practitioner.firstName, id, {
         module: assignment.module,
         sessionReference: assignment.sessionReference,
@@ -1976,11 +2027,13 @@ async function draftMessage(
       practitionerName: assignment.practitioner.fullName,
     };
     return {
+      phone: requestor.phone,
       message: ratingRequest(requestor.email, requestor.firstName, id, rated),
       whatsapp: whatsapp.ratingRequest(requestor.firstName, id, rated).body,
     };
   }
   return {
+    phone: assignment.practitioner.phone,
     message: photoReminder(
       assignment.practitioner.email,
       assignment.practitioner.firstName,
@@ -2026,7 +2079,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
-  return { to, subject, body, whatsapp: draft.whatsapp };
+  return { to, subject, body, whatsapp: draft.whatsapp, phone: draft.phone ?? null };
 }
 
 /**

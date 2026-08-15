@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { Modal } from "@/components/ui/Modal";
+import { waLink } from "@/lib/whatsapp/link";
 
-import { composeDraft } from "./actions";
+import { composeDraft, recordWhatsAppOpened } from "./actions";
 import { DRAFT_CHROME, type Draft, type DraftKind, type DraftOverride } from "./draft-kinds";
 
 /**
@@ -96,6 +97,28 @@ export function DraftModal({
   const chrome = DRAFT_CHROME[kind];
   const ready = Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0;
 
+  /**
+   * Null when there is no usable number, which is what hides the button.
+   *
+   * Built from the draft's own WhatsApp copy rather than the edited body: this
+   * half is not editable, and the email body is a different message — sending it
+   * over WhatsApp would deliver the subject line's worth of formality into a
+   * chat window.
+   */
+  const waHref = draft?.whatsapp ? waLink(draft.phone, draft.whatsapp) : null;
+
+  /**
+   * Logged, but not counted as sent.
+   *
+   * All that is knowable from here is that WhatsApp was opened — whether the
+   * admin pressed send inside it never comes back to us. So this leaves a trace
+   * an admin can read, and deliberately does not advance the row's next step,
+   * which would have the console claim a delivery it cannot see.
+   */
+  const onWhatsApp = () => {
+    void recordWhatsAppOpened(kind, id);
+  };
+
   /** The Clipboard API is absent on an insecure origin and in older browsers.
    *  The textarea stays selectable either way, so a failure says so rather
    *  than leaving the admin to wonder whether the copy took. */
@@ -116,23 +139,53 @@ export function DraftModal({
       title={chrome.title}
       description={draft ? `Send to ${draft.to}` : "Preparing the draft…"}
       footer={
-        <>
-          <p className="flex-1 text-xs leading-[1.5] text-ink-faint">
-            Review before sending — nothing goes out until you click Send.
-          </p>
-          <button
-            type="button"
-            disabled={!ready}
-            onClick={() => onSend({ subject: subject.trim(), body })}
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-            Click to send
-          </button>
-        </>
+        // The footer belongs to whichever tab is open. It used to be the email
+        // send whatever was on screen, so reading the WhatsApp copy and pressing
+        // the only button sent the email instead — the two halves are different
+        // messages on different channels, and one button cannot mean both.
+        channel === "whatsapp" ? (
+          <>
+            <p className="flex-1 text-xs leading-[1.5] text-ink-faint">
+              {waHref
+                ? "Opens WhatsApp with this message ready — you still press send there."
+                : "No number on file for this recipient, so WhatsApp cannot be opened. Copy the message instead."}
+            </p>
+            {waHref ? (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onWhatsApp}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-sm font-medium text-ink transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+              >
+                {/* WhatsApp's own mark, and its own green. Ink text rather than
+                    white: white on #25D366 is 1.8:1 and fails AA. */}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm5.8 14.2c-.2.7-1.2 1.3-1.9 1.4-.5.1-1.1.1-1.8-.1a13.7 13.7 0 0 1-6.6-5.7c-.5-.8-.8-1.7-.8-2.5 0-.9.4-1.6.8-2 .2-.2.4-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.9c.1.2 0 .4-.1.5l-.4.5c-.1.2-.3.3-.1.6.5.9 1.2 1.6 2 2.1.3.2.5.2.6 0l.6-.7c.2-.2.3-.2.5-.1l1.8.9c.2.1.3.2.3.3.1.3 0 .6-.3 1.2z" />
+                </svg>
+                Open in WhatsApp
+              </a>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="flex-1 text-xs leading-[1.5] text-ink-faint">
+              Review before sending — nothing goes out until you click Send.
+            </p>
+            <button
+              type="button"
+              disabled={!ready}
+              onClick={() => onSend({ subject: subject.trim(), body })}
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              Click to send
+            </button>
+          </>
+        )
       }
     >
       {error ? (
