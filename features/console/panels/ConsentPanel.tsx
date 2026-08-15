@@ -414,7 +414,34 @@ function NextStep({ row }: { row: ConsentRow }) {
  * same rather than showing a value the select cannot represent.
  */
 function SessionStatusSelect({ row }: { row: ConsentRow }) {
-  const [status, setStatus] = useState(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+  // Completed has no option of its own — V7 shows a delivered session as
+  // Confirmed rather than a value the select cannot represent, and the note
+  // under the control carries the real state.
+  const reported = row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus;
+
+  const [status, setStatus] = useState(reported);
+  /**
+   * The last thing the server said, so a new answer can overtake the local one.
+   *
+   * The control holds its own value in order to move the moment it is used —
+   * before the round trip, and back again if the server refuses. Held alone
+   * though, it was set once at mount and never again, and the table keeps a row
+   * mounted across a revalidate. Confirming from the Next step column beside it
+   * therefore left this cell reading "Pending" for the rest of the visit: the
+   * two halves of one row disagreeing about the same session, with the wrong
+   * half being the one that looks authoritative.
+   *
+   * Compared during render rather than in an effect so the select never paints
+   * the stale value first (React's own "adjusting state when props change").
+   * Only a *change* in what the server reports overtakes the local value, so an
+   * optimistic Cancelled still survives its Undo window.
+   */
+  const [lastReported, setLastReported] = useState(reported);
+  if (lastReported !== reported) {
+    setLastReported(reported);
+    setStatus(reported);
+  }
+
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const [pending, start] = useTransition();
   const { pending: held, schedule, undo } = useDeferredSend();
@@ -513,7 +540,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
           pending={held}
           onUndo={() => {
             undo();
-            setStatus(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+            setStatus(reported);
           }}
         />
       ) : null}

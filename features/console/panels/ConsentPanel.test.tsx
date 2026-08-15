@@ -174,6 +174,55 @@ describe("Session status says what the session is", () => {
     show({ sessionStatus: "Cancelled" });
     expect(statusSelect().value).toBe("Cancelled");
   });
+
+  /**
+   * The live path, and the one the fresh-render tests above cannot reach.
+   *
+   * Confirming happens in the Next step column beside this one. The action
+   * revalidates, so the row arrives again as new props — but the table keeps
+   * the row mounted, so a value read once at mount is never read again. The
+   * cell went on saying "Pending" for the rest of the visit while the column
+   * next to it had already moved on to the photo guide: two halves of one row
+   * disagreeing, the wrong half looking authoritative.
+   */
+  describe("when the answer arrives as new props", () => {
+    const panel = (only: Partial<ConsentRow>) => (
+      <ConsentPanel rows={[row(only)]} role="global_admin" confirmable={[]} />
+    );
+
+    it("follows the server from Pending to Confirmed without remounting", () => {
+      const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
+      expect(statusSelect().value).toBe("Pending");
+
+      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+      expect(statusSelect().value).toBe("Confirmed");
+    });
+
+    it("agrees with the Next step column after the same change", () => {
+      // The two cells read the same row. Confirming moves Next step on to the
+      // photo guide, and the status cell claiming Pending underneath it is the
+      // contradiction an admin actually sees.
+      const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
+      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+
+      expect(statusSelect().value).toBe("Confirmed");
+      expect(screen.getByRole("button", { name: "Send photo guide email" })).toBeInTheDocument();
+    });
+
+    it("leaves the local value alone while the server keeps saying the same thing", async () => {
+      // The control moves before the round trip so it feels immediate. A
+      // re-render that reports nothing new must not undo that — otherwise any
+      // unrelated revalidation would snap the select back mid-Undo-window.
+      const user = userEvent.setup();
+      const { rerender } = render(panel({ sessionStatus: "Cancelled" }));
+
+      await user.selectOptions(statusSelect(), "Pending");
+      expect(statusSelect().value).toBe("Pending");
+
+      rerender(panel({ sessionStatus: "Cancelled" }));
+      expect(statusSelect().value).toBe("Pending");
+    });
+  });
 });
 
 describe("Next step — the rows that must stop asking", () => {
