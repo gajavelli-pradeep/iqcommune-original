@@ -100,7 +100,7 @@ describe("POST /api/agreements", () => {
 
     expect(response.status).toBe(201);
     expect(mocks.signAgreement).toHaveBeenCalledWith(AGREEMENT_ID, expect.anything(), "203.0.113.4");
-    expect(mocks.empanelBySignature).toHaveBeenCalledWith(AGREEMENT_ID);
+    expect(mocks.empanelBySignature).toHaveBeenCalledWith(expect.any(String), AGREEMENT_ID);
     expect(mocks.dispatchEmail).not.toHaveBeenCalled();
     // The signed document is kept at this moment, not re-made on download. If
     // this stops happening the download silently starts answering with whatever

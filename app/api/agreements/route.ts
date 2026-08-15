@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     // 2026-08-15) — every message to a practitioner is read by an admin in the
     // draft dialog before it leaves, and this was the one send that bypassed
     // that. It is now "Send welcome message" on the empanelled profile.
-    await empanelBySignature(token.payload.id);
+    await empanelBySignature(traceId, token.payload.id);
 
     return ok(receipt, 201);
   } catch (cause) {
