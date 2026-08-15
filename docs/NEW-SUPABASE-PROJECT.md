@@ -21,7 +21,7 @@ checked out.
 | # | Step | Where |
 |---|---|---|
 | 1 | Create the project | Supabase dashboard |
-| 2 | Run `supabase/consolidated-0001-0017.sql` | Supabase → SQL Editor |
+| 2 | Run `supabase/consolidated-0001-0018.sql` | Supabase → SQL Editor |
 | 3 | Verify the schema landed | Supabase → SQL Editor |
 | 4 | Collect four values | Supabase → Settings → API |
 | 5 | Point your local app at it and smoke-test | `.env.local` |
@@ -57,12 +57,12 @@ public site reads.** Nothing before it affects production.
 
 ## Step 2 — Run the schema
 
-The whole schema is one file: **`supabase/consolidated-0001-0017.sql`** in this
-repo. It is generated from the sixteen numbered migrations in
+The whole schema is one file: **`supabase/consolidated-0001-0018.sql`** in this
+repo. It is generated from the eighteen numbered migrations in
 `supabase/migrations/` and produces the same end state in a single run.
 
 1. Supabase → **SQL Editor** (left sidebar) → **New query**.
-2. Open `supabase/consolidated-0001-0017.sql`, copy **all** of it, paste it in.
+2. Open `supabase/consolidated-0001-0018.sql`, copy **all** of it, paste it in.
 3. Press **Run** (or Ctrl/Cmd + Enter).
 
 ### What you should see
@@ -82,9 +82,10 @@ it ran. It is a result, not an error.
   `practitioners`, `practitioner_agreements`, `sessions`,
   `session_practitioners`, `session_ratings`, `gallery_photos`,
   `photo_submissions`, `admin_invites`, `activity_log`, `email_log`
-- **2 storage buckets** — `gallery` (public; the landing-page photos) and
-  `session-photos` (private). **You do not need to create these by hand** — the
-  script does it.
+- **3 storage buckets** — `gallery` (public; the landing-page photos),
+  `session-photos` (private) and `agreements` (private; the PDF each
+  practitioner actually signed). **You do not need to create these by hand** —
+  the script does it.
 - Row-level security enabled on every table, indexes, triggers, and the
   reference-number generators.
 
@@ -115,12 +116,13 @@ select
   (select count(*) from information_schema.columns
      where table_schema = 'public' and table_name = 'practitioners'
        and column_name = 'full_name')                                            as has_full_name,
-  (select count(*) from storage.buckets where id in ('gallery','session-photos')) as buckets,
+  (select count(*) from storage.buckets
+     where id in ('gallery','session-photos','agreements'))                       as buckets,
   (select count(*) from pg_enum e join pg_type t on t.oid = e.enumtypid
      where t.typname = 'practitioner_application_status')                        as application_statuses;
 ```
 
-**Expected:** `tables_found = 12`, `has_full_name = 1`, `buckets = 2`,
+**Expected:** `tables_found = 12`, `has_full_name = 1`, `buckets = 3`,
 `application_statuses = 9`.
 
 Anything lower means the script did not finish. Scroll back through the SQL
@@ -300,7 +302,7 @@ data. Put the three previous values back in Vercel and redeploy.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `column practitioners_1.full_name does not exist` | Pointing at the old V6 schema | The redeploy did not run, or the vars are on the wrong environment |
-| `55P04 unsafe use of new value` | Ran the sixteen migration files as one paste instead of the consolidated file | Use `consolidated-0001-0017.sql` — it exists for this |
+| `55P04 unsafe use of new value` | Ran the sixteen migration files as one paste instead of the consolidated file | Use `consolidated-0001-0018.sql` — it exists for this |
 | Final `setval` returns something other than 1 | The project was not empty | Check the project ref; you are probably on an existing database |
 | Console loads, every list is empty | `anon` key in the `SUPABASE_SERVICE_ROLE_KEY` slot | Swap them; RLS is hiding everything |
 | Build fails: *must be set at build time* | Env vars missing for that environment | Expected on preview branches; on Production, add the vars |
@@ -317,7 +319,7 @@ is Brevo's own event feed
 
 ## Related
 
-- `supabase/consolidated-0001-0017.sql` — the schema, one run
+- `supabase/consolidated-0001-0018.sql` — the schema, one run
 - `supabase/migrations/` — the numbered files; source of truth, and what an
   existing database takes
 - `docs/ENVIRONMENT.md` — the variables in depth

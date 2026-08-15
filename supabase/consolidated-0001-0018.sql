@@ -1,4 +1,4 @@
--- iqcommune V7 — consolidated schema (migrations 0001-0017)
+-- iqcommune V7 — consolidated schema (migrations 0001-0018)
 --
 -- Generated from supabase/migrations/*.sql. Same end state as replaying them in
 -- order, with one deliberate difference: every enum is CREATEd with its final
@@ -315,6 +315,11 @@ create table if not exists practitioner_agreements (
   signature_data     text,
   signature_mode     text,
   signed_ip          text,
+  -- Storage key of the PDF rendered at the moment of signature (0018). The
+  -- download serves these bytes rather than re-rendering, so a later change to
+  -- the contract text cannot rewrite a contract somebody already signed. Null on
+  -- rows signed before this existed; those still re-render.
+  signed_pdf_path    text,
 
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
@@ -1116,5 +1121,23 @@ create index if not exists email_log_failures_idx
 -- the system has ever mailed, and the console reaches it through a server
 -- action that has already checked the caller.
 alter table public.email_log enable row level security;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- 0018_agreement_archive.sql
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Where the signed agreement PDF is kept, so the download serves the document
+-- that was signed instead of making a new one from today's clause text.
+--
+-- Provisioned here for the same reason session-photos is: a bucket that exists
+-- only where someone remembered to create it by hand is how signing works in
+-- dev and silently stops archiving in production.
+--
+-- Private, with no storage policies. Every read goes through a console route
+-- holding the service-role key, which bypasses them — and an anon policy would
+-- make executed contracts reachable by path.
+insert into storage.buckets (id, name, public)
+values ('agreements', 'agreements', false)
+on conflict (id) do nothing;
 
 commit;
