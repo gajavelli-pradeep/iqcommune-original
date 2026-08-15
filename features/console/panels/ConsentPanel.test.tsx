@@ -127,6 +127,104 @@ describe("Next step — one action per stage", () => {
   });
 });
 
+/**
+ * What the Session status cell says a session is.
+ *
+ * Confirmed is withheld from the options on purpose — confirming is the Next
+ * step button's job, and only once consent is in. But a select cannot display
+ * a value it has no option for, so the browser resolved a confirmed row to the
+ * first option it did have and the cell read "Pending". Not a blank an admin
+ * would question: a definite, wrong answer on the control they use to see
+ * where a session stands.
+ */
+describe("Session status says what the session is", () => {
+  const statusSelect = () => screen.getByLabelText<HTMLSelectElement>(/session status for/i);
+
+  it("reads Confirmed once the session is confirmed", () => {
+    show({ status: "Received", sessionStatus: "Confirmed" });
+    expect(statusSelect().value).toBe("Confirmed");
+  });
+
+  it("offers Confirmed as a display, never as a choice", () => {
+    // The server refuses an unconsented Confirmed whoever asks, so this is the
+    // affordance rather than the rule — but an option that usually refuses is
+    // not one to offer.
+    show({ status: "Received", sessionStatus: "Confirmed" });
+    expect(screen.getByRole("option", { name: "Confirmed" })).toBeDisabled();
+  });
+
+  it("does not offer it at all until it is the answer", () => {
+    show({ sessionStatus: "Pending" });
+    expect(statusSelect().value).toBe("Pending");
+    expect(screen.queryByRole("option", { name: "Confirmed" })).not.toBeInTheDocument();
+  });
+
+  it("reads Confirmed for a delivered session, with Delivered beneath", () => {
+    // Completed has no option of its own — V7 shows it as Confirmed rather than
+    // a value the select cannot represent — so this is the same bug's other
+    // route in, and the note underneath is what carries the real state.
+    show({ status: "Received", sessionStatus: "Completed" });
+    expect(statusSelect().value).toBe("Confirmed");
+    // "Delivered" also renders in the Next step cell, so this counts rather
+    // than expecting one — the point is the select does not swallow the state.
+    expect(screen.getAllByText(/^Delivered$/).length).toBeGreaterThan(0);
+  });
+
+  it("still reads Cancelled on a cancelled session", () => {
+    show({ sessionStatus: "Cancelled" });
+    expect(statusSelect().value).toBe("Cancelled");
+  });
+
+  /**
+   * The live path, and the one the fresh-render tests above cannot reach.
+   *
+   * Confirming happens in the Next step column beside this one. The action
+   * revalidates, so the row arrives again as new props — but the table keeps
+   * the row mounted, so a value read once at mount is never read again. The
+   * cell went on saying "Pending" for the rest of the visit while the column
+   * next to it had already moved on to the photo guide: two halves of one row
+   * disagreeing, the wrong half looking authoritative.
+   */
+  describe("when the answer arrives as new props", () => {
+    const panel = (only: Partial<ConsentRow>) => (
+      <ConsentPanel rows={[row(only)]} role="global_admin" confirmable={[]} />
+    );
+
+    it("follows the server from Pending to Confirmed without remounting", () => {
+      const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
+      expect(statusSelect().value).toBe("Pending");
+
+      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+      expect(statusSelect().value).toBe("Confirmed");
+    });
+
+    it("agrees with the Next step column after the same change", () => {
+      // The two cells read the same row. Confirming moves Next step on to the
+      // photo guide, and the status cell claiming Pending underneath it is the
+      // contradiction an admin actually sees.
+      const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
+      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+
+      expect(statusSelect().value).toBe("Confirmed");
+      expect(screen.getByRole("button", { name: "Send photo guide email" })).toBeInTheDocument();
+    });
+
+    it("leaves the local value alone while the server keeps saying the same thing", async () => {
+      // The control moves before the round trip so it feels immediate. A
+      // re-render that reports nothing new must not undo that — otherwise any
+      // unrelated revalidation would snap the select back mid-Undo-window.
+      const user = userEvent.setup();
+      const { rerender } = render(panel({ sessionStatus: "Cancelled" }));
+
+      await user.selectOptions(statusSelect(), "Pending");
+      expect(statusSelect().value).toBe("Pending");
+
+      rerender(panel({ sessionStatus: "Cancelled" }));
+      expect(statusSelect().value).toBe("Pending");
+    });
+  });
+});
+
 describe("Next step — the rows that must stop asking", () => {
   /**
    * The one that reaches a person. A cancelled session offering "Send consent

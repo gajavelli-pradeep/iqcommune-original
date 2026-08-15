@@ -250,6 +250,24 @@ function AutoField({
 const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 const SESSION_STATUS_CHOICES = ["Pending", "Cancelled"];
 
+/**
+ * What the select may show, which is not the same as what it may be set to.
+ *
+ * A select cannot display a value it has no option for. Confirmed was withheld
+ * from the option list — correctly, since confirming is the Next step button's
+ * job and only once consent is in — but that left the browser resolving a
+ * confirmed row to the first option it did have. The cell read "Pending" for a
+ * session that was confirmed: not a blank to puzzle over but a definite, wrong
+ * answer, on the one control an admin uses to see where a session stands.
+ *
+ * Offered only when it is already the answer, and disabled, so it stays a thing
+ * being displayed rather than becoming a thing to pick. Moving the row to
+ * Pending drops it again, which is right — Confirmed is an outcome, and the way
+ * back to it is consent, not this control.
+ */
+const statusOptions = (status: string) =>
+  status === "Confirmed" ? SESSION_STATUS_VALUES : SESSION_STATUS_CHOICES;
+
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
 
@@ -396,7 +414,34 @@ function NextStep({ row }: { row: ConsentRow }) {
  * same rather than showing a value the select cannot represent.
  */
 function SessionStatusSelect({ row }: { row: ConsentRow }) {
-  const [status, setStatus] = useState(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+  // Completed has no option of its own — V7 shows a delivered session as
+  // Confirmed rather than a value the select cannot represent, and the note
+  // under the control carries the real state.
+  const reported = row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus;
+
+  const [status, setStatus] = useState(reported);
+  /**
+   * The last thing the server said, so a new answer can overtake the local one.
+   *
+   * The control holds its own value in order to move the moment it is used —
+   * before the round trip, and back again if the server refuses. Held alone
+   * though, it was set once at mount and never again, and the table keeps a row
+   * mounted across a revalidate. Confirming from the Next step column beside it
+   * therefore left this cell reading "Pending" for the rest of the visit: the
+   * two halves of one row disagreeing about the same session, with the wrong
+   * half being the one that looks authoritative.
+   *
+   * Compared during render rather than in an effect so the select never paints
+   * the stale value first (React's own "adjusting state when props change").
+   * Only a *change* in what the server reports overtakes the local value, so an
+   * optimistic Cancelled still survives its Undo window.
+   */
+  const [lastReported, setLastReported] = useState(reported);
+  if (lastReported !== reported) {
+    setLastReported(reported);
+    setStatus(reported);
+  }
+
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const [pending, start] = useTransition();
   const { pending: held, schedule, undo } = useDeferredSend();
@@ -465,8 +510,8 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {SESSION_STATUS_CHOICES.map((option) => (
-          <option key={option} value={option}>
+        {statusOptions(status).map((option) => (
+          <option key={option} value={option} disabled={option === "Confirmed"}>
             {option}
           </option>
         ))}
@@ -495,7 +540,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
           pending={held}
           onUndo={() => {
             undo();
-            setStatus(row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus);
+            setStatus(reported);
           }}
         />
       ) : null}
