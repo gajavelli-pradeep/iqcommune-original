@@ -270,9 +270,17 @@ export async function matchSessionRequest(id: string): Promise<ActionResult> {
 }
 
 /**
- * "Send follow-up to client" — chases a request that is waiting on the
- * requester. What is outstanding is derived from the record rather than left to
- * the admin to remember, so the email says which thing is missing.
+ * "Send update to client" — tells the requester a practitioner is being aligned.
+ *
+ * It chased them until the delivered console-messages document rewrote it into a
+ * progress report, so the email no longer names what is outstanding. That is
+ * still derived from the record, but it goes to the activity entry below rather
+ * than to the reader — an admin can see what the request is waiting on without
+ * the client being asked for it again.
+ *
+ * The function keeps its `FollowUp` name, and the draft kind its
+ * `request-follow-up` slug: both are identifiers, and the slug in particular is
+ * written into `activity_log` rows that already exist.
  */
 export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Promise<void> {
   const { email: actor } = await requireCapability("mutate");

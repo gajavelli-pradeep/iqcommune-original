@@ -117,7 +117,9 @@ export interface Draft extends DraftOverride {
  * nothing reads is a second source of truth waiting to drift again.
  */
 export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
-  "request-follow-up": { title: "Send follow-up" },
+  // Follows the button that opens it — a dialog headed "Send follow-up" above a
+  // control labelled "Send update to client" reads as the wrong dialog.
+  "request-follow-up": { title: "Send update" },
   "request-cancellation": { title: "Send cancellation" },
   "consent-request": { title: "Send consent request" },
   "rating-request": { title: "Seek feedback" },

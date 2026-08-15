@@ -1116,7 +1116,10 @@ const ACTION_PHRASE: Record<string, string> = {
   "request.matched": "Matched a session request",
   "request.cancelled": "Cancelled a session request",
   "request.reopened": "Reopened a session request",
-  "request.followed_up": "Sent a follow-up to a client",
+  // The slug stays `followed_up` — rows carrying it are already written, and
+  // renaming it would leave every past entry unlabelled. Only what a reader
+  // sees moves, which is the whole job of this map.
+  "request.followed_up": "Sent an update to a client",
   "request.cancellation_sent": "Sent a cancellation message",
   "request.deleted": "Deleted a session request",
   "confirmation.generated": "Generated a session confirmation",

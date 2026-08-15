@@ -120,7 +120,7 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
 }
 
 /**
- * The console's "Send follow-up to client" — an update while a practitioner is
+ * The console's "Send update to client" — an update while a practitioner is
  * being aligned to the request.
  *
  * It no longer lists what the request is waiting on. The delivered document
