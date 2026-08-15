@@ -54,6 +54,21 @@ vi.mock("@/services/link-writes", () => ({
  */
 vi.mock("@/lib/email/dispatch", () => ({ dispatchEmail: mocks.dispatchEmail }));
 
+/**
+ * The limiter is the route's one network dependency, and it runs before every
+ * assertion below. CI sets `UPSTASH_REDIS_REST_*`, so the real `checkRateLimit`
+ * dials Upstash, the rejection reaches the route's generic `catch`, and both
+ * cases return 500 — a suite that passes only on a machine with no credentials
+ * configured is testing the machine, not the route.
+ *
+ * `clientIdentifier` is kept real: the IP it derives is what the happy path
+ * asserts `signAgreement` received, so stubbing it would assert the stub.
+ */
+vi.mock("@/lib/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+  checkRateLimit: async () => ({ allowed: true, enforced: true }),
+}));
+
 function signRequest(token: string): Request {
   return new Request("http://localhost/api/agreements", {
     method: "POST",
