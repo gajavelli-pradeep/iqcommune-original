@@ -1032,30 +1032,26 @@ export async function setSessionStatus(
 
   const supabase = createAdminClient();
 
-  // Confirmed is an outcome, not a setting. The agreement is unambiguous — "The
-  // session is not confirmed until the Practitioner provides digital consent" —
-  // and the console let an admin assert it anyway, silently contradicting the
-  // contract the practitioner signed.
+  // Confirmed no longer waits on consent (client, 2026-08-16).
   //
-  // Enforced here rather than only by hiding the option, because the option was
-  // never the whole of it: a stale page, a second tab, or any later caller can
-  // still ask. The Next step button is unaffected — it appears only once consent
-  // is in, so it always passes this.
-  if (status === "Confirmed") {
-    const { data: consented } = await supabase
-      .from("session_practitioners")
-      .select("id")
-      .eq("session_id", sessionId)
-      .is("deleted_at", null)
-      .not("consent_given_at", "is", null)
-      .limit(1);
-    if (!consented?.length) {
-      return {
-        ok: false,
-        message: "No consent on file yet — the practitioner has to return it before the session can be confirmed.",
-      };
-    }
-  }
+  // This refused an unconsented Confirmed, on the agreement's own words: "The
+  // session is not confirmed until the Practitioner provides digital consent".
+  // The gap it left is that consent does not always arrive digitally — signed on
+  // paper, or agreed in a reply — and nothing could record that, so a session
+  // with a real agreement behind it stayed unconfirmable, which also kept the
+  // photo guide and the delivery dashboard out of reach.
+  //
+  // The client's answer is that the two are independent: the status column says
+  // where the session stands, the consent column says whether consent is in, and
+  // an admin reads both. Recording offline consent was offered as the narrower
+  // fix and rejected in favour of this.
+  //
+  // What that costs is worth stating plainly rather than leaving to be
+  // rediscovered: the console can now mark Confirmed with the consent column
+  // still reading Pending, which is a state the signed agreement does not
+  // describe. The confirmation PDF is unaffected — it prints "CONSENT NOT YET
+  // RECEIVED" from `consent_given_at`, which only a practitioner's submission
+  // writes, so no document claims a consent nobody gave.
 
   // Composed before the status moves, not after. Cancelling is two acts — the
   // record changes and the client is told — and the second one had three ways

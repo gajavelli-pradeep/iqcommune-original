@@ -150,9 +150,9 @@ describe("Session status says what the session is", () => {
   });
 
   it("lets an admin set any of the three", () => {
-    // An affordance decision, not a loosening of the rule: `setSessionStatus`
-    // still refuses an unconsented Confirmed whoever asks, and the refusal
-    // comes back as a message this cell shows.
+    // Including Confirmed, and on a row whose consent has not come back —
+    // consent sometimes arrives on paper, and a session with a real agreement
+    // behind it must not be stuck Pending because of how the agreement arrived.
     show({ status: "Received", sessionStatus: "Confirmed" });
     for (const option of ["Pending", "Confirmed", "Cancelled"]) {
       expect(screen.getByRole("option", { name: option }), option).toBeEnabled();

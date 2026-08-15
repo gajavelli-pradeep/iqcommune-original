@@ -1,7 +1,6 @@
 import { renderConfirmation, renderPhotoGuide } from "@/lib/pdf/confirmation";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { formatRecordedAt } from "@/lib/timestamp";
-import { expectedPaymentDate } from "@/lib/working-days";
 import { log, newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConsoleSession } from "@/features/console/requireRole";
@@ -91,10 +90,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           // something a reader can act on.
           audience: AUDIENCE_LABELS[session.audience as Audience] ?? session.audience,
           grossPayout: money(data.gross_payout, data.currency),
-          expectedPayment: (() => {
-            const due = expectedPaymentDate(session.session_date as string | null);
-            return due ? due.toLocaleDateString("en-IN", { dateStyle: "medium" }) : null;
-          })(),
           consentGivenAt: data.consent_given_at
             ? formatRecordedAt(data.consent_given_at as string)
             : null,
