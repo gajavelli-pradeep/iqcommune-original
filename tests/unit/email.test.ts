@@ -6,7 +6,7 @@ import {
   SESSION_REQUEST_ACKNOWLEDGMENTS,
 } from "@/content/session-request";
 import { buildLink } from "@/lib/email/links";
-import { replyToFor, sendEmail, senderFor, senderNameFor } from "@/lib/email/send";
+import { adminInboxFor, replyToFor, sendEmail, senderFor, senderNameFor } from "@/lib/email/send";
 import * as templates from "@/lib/email/templates";
 import { verifyToken } from "@/lib/tokens";
 
@@ -252,6 +252,49 @@ describe("email sender routing", () => {
 
     expect(senderFor("practitioner")).toBe("hello@iqcommune.com");
     expect(senderFor("session")).toBe("hello@iqcommune.com");
+  });
+
+  it("delivers each stream's admin notification to that team's inbox", () => {
+    // Client, 2026-08-15: a session request announces itself to whoever runs
+    // sessions, an application to whoever runs the practitioner pipeline —
+    // rather than both arriving at the shared hello@ and being sorted by hand.
+    vi.stubEnv("ADMIN_NOTIFY_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("ADMIN_NOTIFY_SESSION", "session@iqcommune.com");
+    vi.stubEnv("ADMIN_NOTIFY_PRACTITIONER", "practitioner@iqcommune.com");
+
+    expect(adminInboxFor("session")).toBe("session@iqcommune.com");
+    expect(adminInboxFor("practitioner")).toBe("practitioner@iqcommune.com");
+    expect(adminInboxFor("platform")).toBe("hello@iqcommune.com");
+  });
+
+  it("keeps both notifications at the shared inbox until each team's is set", () => {
+    vi.stubEnv("BREVO_SENDER_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("ADMIN_NOTIFY_EMAIL", "hello@iqcommune.com");
+    vi.stubEnv("ADMIN_NOTIFY_SESSION", "");
+    vi.stubEnv("ADMIN_NOTIFY_PRACTITIONER", "");
+
+    expect(adminInboxFor("session")).toBe("hello@iqcommune.com");
+    expect(adminInboxFor("practitioner")).toBe("hello@iqcommune.com");
+
+    // And with nothing configured at all it still resolves, so a deployment
+    // that has not set ADMIN_NOTIFY_EMAIL yet still notifies somebody.
+    vi.stubEnv("ADMIN_NOTIFY_EMAIL", "");
+    expect(adminInboxFor("session")).toBe("hello@iqcommune.com");
+  });
+
+  it("never resolves an admin inbox from a sender variable", () => {
+    // The trap this split exists to prevent: BREVO_SENDER_SESSION is an address
+    // Brevo has verified to send AS. Reading it here would mean that changing
+    // where notifications arrive silently stops the stream sending at all.
+    vi.stubEnv("BREVO_SENDER_EMAIL", "");
+    vi.stubEnv("BREVO_SENDER_SESSION", "session-sender@iqcommune.com");
+    vi.stubEnv("BREVO_SENDER_PRACTITIONER", "practitioner-sender@iqcommune.com");
+    vi.stubEnv("ADMIN_NOTIFY_EMAIL", "");
+    vi.stubEnv("ADMIN_NOTIFY_SESSION", "");
+    vi.stubEnv("ADMIN_NOTIFY_PRACTITIONER", "");
+
+    expect(adminInboxFor("session")).toBeFalsy();
+    expect(adminInboxFor("practitioner")).toBeFalsy();
   });
 
   it("sends from the stream's address, not the shared one", async () => {

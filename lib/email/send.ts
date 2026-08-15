@@ -85,6 +85,37 @@ export function senderFor(stream: EmailStream = "platform"): string | undefined 
   return process.env[SENDER_ENV[stream]] || process.env.BREVO_SENDER_EMAIL;
 }
 
+/** The env var holding the inbox each stream's admin notifications go TO. */
+const ADMIN_INBOX_ENV: Record<EmailStream, string> = {
+  practitioner: "ADMIN_NOTIFY_PRACTITIONER",
+  session: "ADMIN_NOTIFY_SESSION",
+  platform: "ADMIN_NOTIFY_EMAIL",
+};
+
+/**
+ * Where a stream's "something arrived" notification lands (client, 2026-08-15):
+ * a session request to whoever runs sessions, a practitioner application to
+ * whoever runs the practitioner pipeline, rather than both to the shared inbox.
+ *
+ * Deliberately NOT `senderFor`, even though the two usually name the same
+ * mailbox. `BREVO_SENDER_SESSION` is a sender *identity* — Brevo will only send
+ * from an address it has verified — so pointing it at a plain inbox to change
+ * where notifications arrive would silently break every outbound session email.
+ * `content/../CONTACT_EMAIL` was split out from that same variable for exactly
+ * this reason; this is the same split for the receiving side.
+ *
+ * Falls back the same way the senders do, so the app ships ready: unset, both
+ * notifications keep arriving at `ADMIN_NOTIFY_EMAIL` as they do today, and
+ * setting a variable moves that stream's mail with no deploy.
+ */
+export function adminInboxFor(stream: EmailStream = "platform"): string | undefined {
+  return (
+    process.env[ADMIN_INBOX_ENV[stream]] ||
+    process.env.ADMIN_NOTIFY_EMAIL ||
+    process.env.BREVO_SENDER_EMAIL
+  );
+}
+
 /** The env var holding each stream's display name. */
 const SENDER_NAME_ENV: Record<EmailStream, string> = {
   practitioner: "BREVO_SENDER_NAME_PRACTITIONER",
