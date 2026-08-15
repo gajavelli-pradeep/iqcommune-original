@@ -4,6 +4,7 @@ import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { verifyToken } from "@/lib/tokens";
+import { archiveSignedAgreement } from "@/services/agreement-archive";
 import {
   AlreadyRecordedError,
   empanelBySignature,
@@ -74,6 +75,12 @@ export async function POST(request: Request) {
       ip,
     );
     log.info(traceId, "agreement recorded", { id: token.payload.id });
+
+    // Kept, not re-made later. On the response path on purpose: the archive is
+    // the document, so it should exist before the practitioner is told they are
+    // done. It never throws — a storage failure logs and leaves the row to
+    // re-render, rather than voiding a signature that is already recorded.
+    await archiveSignedAgreement(traceId, token.payload.id);
 
     // Automatic transition (audit G3, step 5): a signature empanels the
     // practitioner. The welcome email is deliberately not sent here (client,
