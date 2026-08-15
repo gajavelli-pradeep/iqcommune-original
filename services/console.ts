@@ -68,7 +68,7 @@ const date = (value: string | null) =>
  * as an array even for a to-one FK; at runtime a to-one is a single object. This
  * returns the one row (or null) regardless of which shape arrives.
  */
-function one<T>(relation: unknown): T | null {
+export function one<T>(relation: unknown): T | null {
   if (Array.isArray(relation)) return (relation[0] ?? null) as T | null;
   return (relation ?? null) as T | null;
 }
