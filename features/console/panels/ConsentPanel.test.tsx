@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -85,6 +85,22 @@ describe("Next step — one action per stage", () => {
     expect(screen.queryByRole("button", { name: "Send consent request" })).not.toBeInTheDocument();
   });
 
+  it("draws Resend as the same pill as every other action in the column", () => {
+    // It was the underlined `link` variant while its neighbours were pills, so
+    // the one control that emails a practitioner a second time read as the
+    // least consequential thing in the cell. Asserting the two match, rather
+    // than asserting a class list, keeps this about the column being coherent.
+    show({ requestSentAt: SENT, requestSentLabel: "3 days ago" });
+    const resend = screen.getByRole("button", { name: "Resend" }).className;
+
+    cleanup();
+    show({});
+    const send = screen.getByRole("button", { name: "Send consent request" }).className;
+
+    expect(resend).toBe(send);
+    expect(resend).not.toMatch(/underline/);
+  });
+
   it("offers the confirm only once consent is in", () => {
     show({ status: "Received", requestSentAt: SENT });
     expect(screen.getByRole("button", { name: /confirm the session/i })).toBeInTheDocument();
@@ -143,7 +159,17 @@ describe("Download Signed Consent means what it says", () => {
    */
   it("keeps the offline fallback while consent is outstanding", () => {
     show({});
-    expect(screen.getByRole("link", { name: /fallback, for sending offline/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Download PDF/i })).toBeInTheDocument();
+  });
+
+  it("explains the fallback on hover rather than in the pill", () => {
+    // The cell is narrow and the qualifier was longer than the action it
+    // labelled. Dropping it outright would lose why this download exists, so it
+    // has to still be reachable — asserting the title is what keeps it from
+    // being quietly deleted as dead words later.
+    show({});
+    const title = screen.getByRole("link", { name: /Download PDF/i }).getAttribute("title");
+    expect(title).toContain("fallback, for sending offline");
   });
 });
 

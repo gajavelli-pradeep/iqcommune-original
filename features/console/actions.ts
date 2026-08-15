@@ -2143,6 +2143,16 @@ async function sendForAssignment(
 
   dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({ actorEmail: actor, action, entityType: "assignment", entityRef: assignmentId });
+  // Part 2 derives its next step from the entry just written, so without this
+  // the send is real and the table still offers to send it. Every other action
+  // in this file revalidates; these three were the exception, and the panel's
+  // "Check for updates now" was the only way to see what had already happened.
+  //
+  // It matters most where the two halves of the panel disagree: Part 1's send
+  // sits directly above a Part 2 row that goes on saying "Send consent request"
+  // — the same practitioner, the same button, one screen apart — and an admin
+  // reading the stale half sends a second email to someone who already has one.
+  revalidateConsole();
   return { ok: true };
 }
 
