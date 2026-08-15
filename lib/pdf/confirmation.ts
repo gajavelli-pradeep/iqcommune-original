@@ -5,6 +5,12 @@ import { SESSION_SHOTS } from "@/constants/photo-shots";
 import { FAINT, GREEN, INK, MUTED, RED, startDocument } from "./document";
 
 /**
+ * Clause 3(c)'s number, kept as a constant so the figure on the document and
+ * the figure in the agreement cannot drift apart silently.
+ */
+const PAYOUT_WORKING_DAYS = 7;
+
+/**
  * The two documents the Session Consent tab produces.
  *
  * Both are generated server-side for the same reason as the agreement: the
@@ -27,8 +33,6 @@ export interface SessionConfirmation {
   spoc: string;
   audience: string;
   grossPayout: string;
-  /** Derived from the session date per clause 3(c); null when no date is set. */
-  expectedPayment: string | null;
   consentGivenAt: string | null;
 }
 
@@ -61,10 +65,12 @@ export async function renderConfirmation(session: SessionConfirmation): Promise<
   writer.gap(10);
 
   writer.amount("GROSS PAYOUT AMOUNT", session.grossPayout);
-  // Clause 3(a) says the confirmation sets out the payout "along with
-  // expected payment date", and it did not. Derived from the session date
-  // rather than stored, because the agreement already fixes the rule.
-  if (session.expectedPayment) writer.field("Expected payment", session.expectedPayment);
+  // A turnaround, not a date (client, 2026-08-16). This used to print a date
+  // derived from the session date, per clause 3(c). The clock now starts at
+  // invoice receipt, which the platform does not see — so any date computed
+  // here would be a commitment to a day nobody can know yet, on a document the
+  // practitioner is asked to consent to.
+  writer.field("Payment TAT", `+${PAYOUT_WORKING_DAYS} working days from invoice receipt`);
   // Copied from V7's own wording — this document must not imply the platform
   // has done a tax calculation it has not done.
   writer.text(
