@@ -231,8 +231,17 @@ export function RequestDetail({
               <RowAction
                 action={sendRequestFollowUp.bind(null, row.id)}
                 draft={{ kind: "request-follow-up", id: row.id }}
-                label="Send follow-up to client"
-                pendingMessage={`Sending a follow-up to ${row.name}…`}
+                // "Send update to client" (client, 2026-08-15), where V7's
+                // console page still reads "Send follow-up to client". A
+                // deliberate departure from the spec, and one no gate catches:
+                // the console sits behind auth and has no parity suite.
+                //
+                // The message stopped being a chase when the delivered
+                // console-messages document rewrote it — it reports that a
+                // practitioner is being aligned rather than asking for anything
+                // — so "follow-up" had already stopped describing it.
+                label="Send update to client"
+                pendingMessage={`Sending an update to ${row.name}…`}
                 variant="dark"
                 icon={
                   <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
