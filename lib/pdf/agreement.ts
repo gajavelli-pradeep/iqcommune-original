@@ -1,6 +1,14 @@
 import "server-only";
 
-import { AGREEMENT_CLAUSES } from "@/constants/agreement";
+import {
+  AGREEMENT_CLAUSES,
+  AGREEMENT_CONSENT_TEXT,
+  AGREEMENT_DOCUMENT_TITLE,
+  AGREEMENT_INTRO,
+  AGREEMENT_PLATFORM_LABEL,
+  AGREEMENT_PLATFORM_NAME,
+  AGREEMENT_SIGNATURE_HEADING,
+} from "@/constants/agreement";
 
 import { FAINT, GREEN, INK, RED, startDocument } from "./document";
 
@@ -26,6 +34,8 @@ import { FAINT, GREEN, INK, RED, startDocument } from "./document";
  */
 export interface SignedAgreement {
   reference: string;
+  /** The practitioner's IQC-EMP number — the client's fourth header field. */
+  empanelmentReference: string;
   practitioner: string;
   issuedOn: string;
   signedName: string | null;
@@ -39,30 +49,38 @@ export interface SignedAgreement {
 export async function renderSignedAgreement(agreement: SignedAgreement): Promise<Uint8Array> {
   const { doc, writer } = await startDocument(
     `Empanelment agreement — ${agreement.practitioner} (${agreement.reference})`,
-    "PRACTITIONER EMPANELMENT AGREEMENT",
+    AGREEMENT_DOCUMENT_TITLE,
   );
 
   writer.field("Practitioner", agreement.practitioner);
+  // The other party, which this document did not name at all. A contract
+  // between one named party and nobody is not a contract.
+  writer.field(AGREEMENT_PLATFORM_LABEL, AGREEMENT_PLATFORM_NAME);
+  // Both references, because they answer different questions. The client's JSON
+  // asks for the empanelment number and the console document is equally clear
+  // that the agreement's own IQC-AGR reference is the one its email quotes —
+  // dropping either leaves a document that cannot be tied back to something.
+  writer.field("Empanelment Reference Number", agreement.empanelmentReference);
   writer.field("Agreement reference", agreement.reference);
   writer.field("Issued on", agreement.issuedOn);
   writer.field("Agreement version", agreement.version);
-  writer.gap(14);
+  writer.gap(12);
+
+  // Names both parties and fixes when the agreement takes effect. Also absent
+  // before, so nothing in the file said what it was or when it began.
+  writer.text(AGREEMENT_INTRO);
+  writer.gap(10);
 
   for (const clause of AGREEMENT_CLAUSES) {
     writer.gap(8);
     writer.text(clause.title, { size: 10, bold: true, colour: INK });
     writer.gap(3);
+    // One flat list, in the client's order. Splitting it into sub-clauses and
+    // highlights and printing the groups separately is what put clause 4's
+    // "(f)" above the (a)–(e) it follows.
     for (const paragraph of clause.paragraphs) {
       writer.text(paragraph);
       writer.gap(4);
-    }
-    for (const sub of clause.subClauses ?? []) {
-      writer.text(sub, { indent: 14 });
-      writer.gap(3);
-    }
-    for (const highlight of clause.highlights ?? []) {
-      writer.text(highlight, { indent: 14, colour: INK, bold: true });
-      writer.gap(3);
     }
   }
 
@@ -70,8 +88,13 @@ export async function renderSignedAgreement(agreement: SignedAgreement): Promise
   writer.gap(18);
   writer.rule();
   writer.gap(10);
-  writer.text("EXECUTION", { size: 10, bold: true, colour: INK });
+  writer.text(AGREEMENT_SIGNATURE_HEADING, { size: 10, bold: true, colour: INK });
   writer.gap(6);
+
+  // What signing means. The block below records how and when the signature was
+  // captured, which is provenance — this is the sentence that makes it consent.
+  writer.text(AGREEMENT_CONSENT_TEXT);
+  writer.gap(10);
 
   if (agreement.signedAt) {
     writer.field("Signed by", agreement.signedName ?? agreement.practitioner);

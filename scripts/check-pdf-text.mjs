@@ -12,7 +12,30 @@
 import zlib from "node:zlib";
 import { chromium } from "@playwright/test";
 
-const EXPECT = ["PRACTITIONER EMPANELMENT AGREEMENT", "1. NATURE OF ENGAGEMENT", "EXECUTION"];
+/**
+ * The strings whose absence would mean something, chosen so a layout bug that
+ * silently drops a page is caught by what went missing rather than by a page
+ * count.
+ *
+ * The last four are the terms the document went out without while its text was
+ * transcribed from the V7 page instead of the client's contract: the platform
+ * party, the sentence that makes a signature consent, the seat of arbitration,
+ * and clause 4's first sub-clause — which used to be (f), printed above the
+ * (a)-(e) it follows.
+ *
+ * "SIGNATURE" rather than "EXECUTION" since the block takes the client's own
+ * heading. A checker that keeps asserting the old one passes on a document
+ * nobody delivered.
+ */
+const EXPECT = [
+  "PRACTITIONER EMPANELMENT AGREEMENT",
+  "1. NATURE OF ENGAGEMENT",
+  "SIGNATURE",
+  "InvestQ Commune",
+  "agree to be bound by all clauses",
+  "Hyderabad as the seat of arbitration",
+  "(a) The Practitioner",
+];
 
 const browser = await chromium.launch();
 const page = await browser.newPage();

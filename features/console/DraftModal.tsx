@@ -176,10 +176,14 @@ export function DraftModal({
             aria-labelledby="draft-tab-email"
             hidden={channel !== "email"}
           >
+            {/* No "Re:" line. V7 prints a second, shorter subject here and the
+                editable Subject field below holds the real one — so the dialog
+                showed two subjects that disagreed, and only the lower one was ever
+                sent (appendix B10). Showing the true subject twice would be
+                honest but redundant; the field below is already the truth and is
+                the one the admin can change. */}
             <div className="mb-4 rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
               <span className="font-medium text-ink">To:</span> {draft.to}
-              <br />
-              <span className="font-medium text-ink">Re:</span> {chrome.subject}
             </div>
 
             <p className="mb-1.5 flex items-center gap-[5px] text-2xs text-ink-faint">

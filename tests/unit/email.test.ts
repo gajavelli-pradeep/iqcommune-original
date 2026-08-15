@@ -565,10 +565,16 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     // the client asked for it separately, and it is not wording.
     expect(message.body).toContain("Track your application:");
     expect(message.body).toContain("https://iqcommune.example/status?t=");
-    // Sign-off updated by the client on 2026-08-13 — one signature everywhere,
-    // superseding the per-stream "The Practitioner Commune Team" of 2026-08-10.
-    // The prose above it is untouched: that names the organisation, not the sender.
-    expect(message.body).toContain("Regards,\nTeam iqcommune");
+    // "Warm regards," since the client's own recommendation was taken (console
+    // doc, Appendix A: "bring it in line with the convention above"). Until
+    // then this email was the last one signing off differently from every other
+    // stream, which is the inconsistency that appendix knowingly left open.
+    //
+    // Asserted as the whole two-line block, not just the first word: "Regards,"
+    // is a substring of "Warm regards," so a `toContain` on the old value would
+    // have passed against the new one and pinned nothing at all.
+    expect(message.body).toContain("Warm regards,\nTeam iqcommune");
+    expect(message.body).not.toContain("\nRegards,");
 
     // The HTML version carries the same client-approved wording — only the
     // link's presentation (a button, not a bare URL) differs.
@@ -576,7 +582,9 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
       "Thank you for applying to join the iqcommune practitioner network. We have received your application.",
     );
     expect(message.html).toContain("<p>Dear Ananya,</p>");
-    expect(message.html).toContain("Regards,<br>Team iqcommune");
+    // The rich half signs off the same way as the plain one, or a recipient
+    // whose client renders HTML reads a different sign-off from one who does not.
+    expect(message.html).toContain("Warm regards,<br>Team iqcommune");
   });
 
   it("admin notification for a new application names the applicant, modules and a console link", () => {

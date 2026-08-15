@@ -17,8 +17,10 @@ import type { PayoutRow } from "@/services/console";
  * id.
  */
 
-const setInvoiceReference = vi.fn(async () => ({ ok: true as const }));
-const setPayoutStatus = vi.fn(async () => ({ ok: true as const }));
+type ActionResult = { ok: true } | { ok: false; message: string };
+
+const setInvoiceReference = vi.fn(async (): Promise<ActionResult> => ({ ok: true }));
+const setPayoutStatus = vi.fn(async (): Promise<ActionResult> => ({ ok: true }));
 
 vi.mock("../actions", () => ({
   setInvoiceReference: (...args: unknown[]) => setInvoiceReference(...(args as [])),
@@ -98,6 +100,38 @@ describe("PayoutsPanel — every row is its own record", () => {
     await userEvent.selectOptions(selects[1], "Paid");
 
     expect(setPayoutStatus).toHaveBeenCalledWith("a2", "Paid");
+  });
+});
+
+/**
+ * The status control set its own state optimistically and threw the result
+ * away, so a refusal left the row reading "Paid" while nothing had been
+ * recorded — the one outcome worse than the refusal itself, because the finance
+ * view then disagrees with the database and nobody is told.
+ */
+describe("PayoutsPanel — a refused payout must not look paid", () => {
+  it("puts the control back and says why when the server refuses", async () => {
+    setPayoutStatus.mockResolvedValueOnce({
+      ok: false,
+      message: "Add an invoice ref. before marking this payout paid.",
+    });
+    render(<PayoutsPanel rows={ROWS} role="global_admin" />);
+    const selects = screen.getAllByLabelText(/^Payment status for/i) as HTMLSelectElement[];
+
+    await userEvent.selectOptions(selects[1], "Paid");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/invoice ref/i);
+    expect(selects[1]).toHaveValue("Pending");
+  });
+
+  it("leaves the row paid when the server accepts", async () => {
+    render(<PayoutsPanel rows={ROWS} role="global_admin" />);
+    const selects = screen.getAllByLabelText(/^Payment status for/i) as HTMLSelectElement[];
+
+    await userEvent.selectOptions(selects[1], "Paid");
+
+    expect(selects[1]).toHaveValue("Paid");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 

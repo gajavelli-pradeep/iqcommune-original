@@ -18,6 +18,7 @@ const practitioner = {
   city: "Pune",
   email: "jane@example.com",
   agreementReference: "IQC-AGR-0007",
+  empanelmentReference: "IQC-EMP-0007",
 };
 
 afterEach(() => vi.unstubAllGlobals());

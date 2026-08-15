@@ -16,7 +16,8 @@ const PRACTITIONER: OnboardingPractitioner = {
   organisation: "Kotak Securities",
   city: "Mumbai",
   email: "vikram@example.com",
-  agreementReference: "IQC-EMP-0042",
+  agreementReference: "IQC-AGR-0042",
+  empanelmentReference: "IQC-EMP-0042",
 };
 
 function report(label: string, items: readonly string[]): string {

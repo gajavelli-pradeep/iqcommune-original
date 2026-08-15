@@ -1,4 +1,5 @@
 import { renderSignedAgreement } from "@/lib/pdf/agreement";
+import { formatRecordedAt } from "@/lib/timestamp";
 import { log, newTraceId } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConsoleSession } from "@/features/console/requireRole";
@@ -26,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from("practitioner_agreements")
     .select(
-      "reference, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name )",
+      "reference, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name, reference )",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -46,13 +47,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const pdf = await renderSignedAgreement({
     reference: data.reference,
+    empanelmentReference: (practitioner?.reference as string) ?? "—",
     practitioner: name,
     issuedOn: dateOnly(data.issued_on) ?? "—",
     signedName: data.signed_name,
     signedDesignation: data.signed_designation,
-    signedAt: data.signed_at
-      ? new Date(data.signed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "medium" })
-      : null,
+    signedAt: data.signed_at ? formatRecordedAt(data.signed_at as string) : null,
     signatureMode: data.signature_mode === "drawn" ? "Drawn" : data.signature_mode === "typed" ? "Typed" : null,
     signedIp: data.signed_ip,
     version: data.version,

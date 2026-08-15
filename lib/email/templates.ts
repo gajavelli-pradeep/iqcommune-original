@@ -334,8 +334,11 @@ export function applicationReceived(to: string, firstName: string, applicationId
       "Track your application:",
       link,
       "",
-      "Regards,",
-      SIGN_OFF_TEAM,
+      // "Warm regards," since the client's recommendation was taken (console
+      // doc, Appendix A): one signature across every stream. The session-request
+      // acknowledgment keeps its plain "Regards," because the same appendix
+      // records that copy as client-approved word for word and exempt.
+      SIGN_OFF,
     ),
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
@@ -343,7 +346,7 @@ export function applicationReceived(to: string, firstName: string, applicationId
       `<p>${APPLICATION_RECEIVED.thanks}</p>` +
       `<p>${APPLICATION_RECEIVED.next}</p>` +
       goldButton(link, "Track your application →") +
-      `<p>Regards,<br>${escapeHtml(SIGN_OFF_TEAM)}</p>` +
+      `<p>Warm regards,<br>${escapeHtml(SIGN_OFF_TEAM)}</p>` +
       `</div>`,
   };
 }

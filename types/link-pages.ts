@@ -63,6 +63,12 @@ export interface OnboardingPractitioner {
   /** The agreement's "Practitioner" row reads `name · city · email`. */
   email: string;
   agreementReference: string;
+  /**
+   * The practitioner's own IQC-EMP number, which the client's agreement JSON
+   * lists as a header field. Distinct from `agreementReference` (IQC-AGR): one
+   * identifies the person's empanelment, the other this document.
+   */
+  empanelmentReference: string;
 }
 
 export interface AdminInvite {

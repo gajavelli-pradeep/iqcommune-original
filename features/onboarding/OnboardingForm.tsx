@@ -8,9 +8,15 @@ import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Stepper } from "@/components/ui/Stepper";
 import { useApiSubmit } from "@/hooks/useApiSubmit";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
+import { formatLiveClock, formatRecordedAt } from "@/lib/timestamp";
 import type { OnboardingPractitioner } from "@/types/link-pages";
 
-import { AGREEMENT_CLAUSES } from "@/constants/agreement";
+import {
+  AGREEMENT_CLAUSES,
+  AGREEMENT_CONSENT_TEXT,
+  AGREEMENT_INTRO,
+  AGREEMENT_PLATFORM_NAME,
+} from "@/constants/agreement";
 import { SignaturePad, type Signature } from "./SignaturePad";
 
 /** P6 — review and sign the empanelment agreement. */
@@ -77,14 +83,7 @@ export function OnboardingForm({
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setLiveTimestamp(
-        `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}  ` +
-          now.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-      );
+      setLiveTimestamp(formatLiveClock(now));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -304,7 +303,16 @@ export function OnboardingForm({
             {(
               [
                 ["Agreement Date", agreementDate],
-                ["Platform", "InvestQ Commune, operating as iqcommune (\"the Platform\")"],
+                // From the client's delivery, not retyped here: the PDF names the
+                // same party from the same constant, so the page and the archived
+                // contract cannot come to disagree about who it is with.
+                ["Platform", AGREEMENT_PLATFORM_NAME],
+                // The fourth header field the client's JSON lists, and the one
+                // neither surface carried. IQC-EMP identifies the practitioner's
+                // empanelment; the IQC-AGR reference below identifies this
+                // document. Quoting only the second leaves the person unlinked
+                // to the arrangement the contract is about.
+                ["Empanelment Reference Number", practitioner.empanelmentReference],
                 // V7 builds this row as `name · city · email` in script, which is
                 // why the copy gate never saw it missing.
                 [
@@ -326,35 +334,31 @@ export function OnboardingForm({
           </dl>
 
           {/* V7 .ag-preamble is 13.5px; the scale's nearest step is 13px and no
-              token exists for the half-pixel. */}
-          <p className="mb-5 text-base leading-[1.7] text-ink-muted">
-            This Agreement is entered into between the Platform and the Practitioner (individually
-            a &quot;Party&quot;, collectively the &quot;Parties&quot;). Together they agree to the
-            following terms governing the Practitioner&apos;s empanelment and participation in
-            iqcommune sessions.
-          </p>
+              token exists for the half-pixel.
+
+              The wording is the client's own introParagraph rather than V7's,
+              because this sentence fixes when the agreement takes effect and the
+              PDF prints the same one. Two preambles for one contract is how the
+              page and the archive end up saying different things. */}
+          <p className="mb-5 text-base leading-[1.7] text-ink-muted">{AGREEMENT_INTRO}</p>
 
           {AGREEMENT_CLAUSES.map((clause) => (
             <section key={clause.title}>
               <h3 className="mb-2 mt-6 text-md font-semibold leading-[1.75] text-ink">
                 {clause.title}
               </h3>
+              {/* One flat list in the client's order. A lettered sub-clause is
+                  indented on the strength of its own "(a)" rather than a
+                  separate field, so the order on screen is the order in the
+                  contract — which is what the PDF was getting wrong. */}
               {clause.paragraphs.map((paragraph) => (
-                <p key={paragraph} className="mb-2 text-base leading-[1.7] text-ink-muted">
-                  {paragraph}
-                </p>
-              ))}
-              {clause.highlights?.map((highlight) => (
                 <p
-                  key={highlight}
-                  className="my-4 rounded-r-md border-l-[3px] border-l-gold bg-gold-light px-4 py-3 text-base leading-[1.65] text-gold-dark"
+                  key={paragraph}
+                  className={`mb-2 text-base leading-[1.7] text-ink-muted ${
+                    /^\([a-z]\)/.test(paragraph) ? "pl-5" : ""
+                  }`}
                 >
-                  {highlight}
-                </p>
-              ))}
-              {clause.subClauses?.map((sub) => (
-                <p key={sub} className="mb-1.5 pl-5 text-base leading-[1.7] text-ink-muted">
-                  {sub}
+                  {paragraph}
                 </p>
               ))}
             </section>
@@ -420,14 +424,9 @@ export function OnboardingForm({
             signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
             signatureMode: signature.mode,
           });
-          if (receipt) {
-            setSignedAt(
-              new Date(receipt.at).toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }),
-            );
-          }
+          // The same instant the PDF prints, rendered by the same function, so
+          // the receipt on screen and the archived agreement cannot disagree.
+          if (receipt) setSignedAt(formatRecordedAt(receipt.at));
         }}
       >
         {/* V7 .declaration-box — gold box, gold-dark title + list-marker points. */}
@@ -442,6 +441,12 @@ export function OnboardingForm({
               </li>
             ))}
           </ul>
+          {/* The client's own consent sentence, and the one the PDF prints above
+              the signature block. The bullets above are what the practitioner is
+              confirming; this is what confirming them means. */}
+          <p className="mt-3.5 border-t border-gold-border pt-3 text-base leading-[1.7] text-gold-dark">
+            {AGREEMENT_CONSENT_TEXT}
+          </p>
         </div>
 
         <TextField
