@@ -25,6 +25,13 @@ vi.mock("../actions", () => ({
   sendConsentRequest: vi.fn(async () => ({ ok: true })),
   sendPhotoGuide: vi.fn(async () => ({ ok: true })),
   setSessionStatus: vi.fn(async () => ({ ok: true })),
+  // The draft dialog stands between every send button and its Undo window, so
+  // the duplicate-send test below cannot reach one without it.
+  composeDraft: vi.fn(async () => ({
+    to: "priya@example.com",
+    subject: "Your session confirmation",
+    body: "Hi Priya,",
+  })),
 }));
 
 const SENT = "2026-08-14T10:00:00.000Z";
@@ -283,5 +290,70 @@ describe("the fields the admin fills in open empty", () => {
       startTime: "",
       durationHours: 0,
     });
+  });
+});
+
+/**
+ * The same email offered from both halves of the panel.
+ *
+ * Once a confirmation is generated, Part 1 keeps its "Send consent request" in
+ * local state while the revalidation moves that assignment into Part 2's table
+ * — so for the rest of the admin's visit both halves offer the identical send
+ * for the identical practitioner, one above the other.
+ *
+ * `useDeferredSend.test.ts` proves the shared key holds and releases. This
+ * proves the two buttons an admin actually sees carry the same key, which is
+ * the half that would silently not be true if either side ever keyed off the
+ * session rather than the assignment.
+ */
+describe("one email, two buttons", () => {
+  const confirmable: ConfirmableSession = {
+    id: "a1",
+    sessionReference: "IQC-S0001",
+    confirmationReference: "IQC-CONF-0001",
+    practitioner: "Priya Sharma",
+    agreementReference: "IQC-AGR-0001",
+    module: "Equity Investing Simplified",
+    sessionDate: "2026-09-01",
+    city: "Mumbai",
+    state: "Maharashtra",
+    venue: "Kotak Securities, BKC",
+    participants: "16-25",
+    spoc: "Rahul Mehta",
+    audience: "corporate",
+    grossPayout: 12000,
+    currency: "INR",
+    startTime: null,
+    durationMinutes: null,
+    consentGiven: false,
+    confirmationGenerated: false,
+  };
+
+  const sends = () => screen.getAllByRole("button", { name: "Send consent request" });
+
+  it("disables the twin while one send is counting down", async () => {
+    const user = userEvent.setup();
+    // The same assignment in both halves: Part 1 from local state after
+    // generating, Part 2 from the row the revalidation brought in.
+    render(
+      <ConsentPanel rows={[row({ id: "a1" })]} role="global_admin" confirmable={[confirmable]} />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a1");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Minute"), "30");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>(/duration/i), "3");
+    await user.click(screen.getByRole("button", { name: /generate confirmation/i }));
+
+    // Both halves offer it now, and both are live.
+    expect(sends()).toHaveLength(2);
+    for (const button of sends()) expect(button).toBeEnabled();
+
+    await user.click(sends()[0]);
+    await user.click(await screen.findByRole("button", { name: /click to send/i }));
+
+    // The clicked one is held by its own window, the other by the shared key.
+    for (const button of sends()) expect(button).toBeDisabled();
   });
 });

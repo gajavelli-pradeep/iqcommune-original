@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import { useDeferredSend } from "@/hooks/useDeferredSend";
+import { useDeferredSend, useSendHeld } from "@/hooks/useDeferredSend";
 
 import type { ActionResult } from "./actions";
 import { DraftModal } from "./DraftModal";
@@ -62,7 +62,13 @@ export function RowAction({
    */
   draft?: { kind: DraftKind; id: string };
 }) {
-  const { pending, schedule, undo } = useDeferredSend();
+  // What this button would send, and to whom. Two buttons offering the same
+  // message about the same record are the same intent, however far apart they
+  // sit — `draft` already carries both halves, so nothing new has to be passed
+  // down to say so. Actions without a draft keep their hold to themselves.
+  const key = draft ? `${draft.kind}:${draft.id}` : undefined;
+  const { pending, schedule, undo } = useDeferredSend(key);
+  const held = useSendHeld(key);
   const [drafting, setDrafting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +109,12 @@ export function RowAction({
       <button
         type="button"
         onClick={() => (draft ? setDrafting(true) : schedule(run(), pendingMessage))}
-        disabled={Boolean(pending)}
+        // `held` covers this button's own window too, since it takes the key.
+        // The countdown toast is fixed to the viewport, so an admin who finds
+        // the twin greyed out is already looking at what is holding it, and at
+        // the Undo that releases it.
+        disabled={Boolean(pending) || held}
+        title={held && !pending ? "Already sending — see the countdown below" : undefined}
         className={CLASSES[variant]}
       >
         {variant !== "link" && icon ? icon : null}

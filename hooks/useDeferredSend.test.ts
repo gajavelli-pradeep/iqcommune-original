@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useDeferredSend } from "./useDeferredSend";
+import { useDeferredSend, useSendHeld } from "./useDeferredSend";
 
 /**
  * The console's 15-second Undo window (procedure §114). The action must fire
@@ -135,5 +135,99 @@ describe("useDeferredSend", () => {
 
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Two buttons, one email.
+ *
+ * The window is per-button, which is fine until two buttons send the same thing
+ * — Part 1's "Send consent request" sits directly above the Part 2 row offering
+ * it for the same practitioner. During the fifteen seconds nothing has been sent
+ * yet, so the row below still reads as unsent, and an admin who clicks it too
+ * gets two windows counting down and the practitioner gets two emails.
+ *
+ * Keys are unique per test on purpose: the register is module-level, so a test
+ * that leaked a hold would silently arm the next one.
+ */
+describe("the same send offered twice", () => {
+  it("shows as held everywhere while one window is open", () => {
+    const key = "consent-request:held";
+    const button = renderHook(() => useDeferredSend(key));
+    const twin = renderHook(() => useSendHeld(key));
+
+    expect(twin.result.current).toBe(false);
+    act(() => button.result.current.schedule(vi.fn(), "Sending…"));
+    expect(twin.result.current).toBe(true);
+  });
+
+  it("leaves a different message to the same person alone", () => {
+    // Two emails, not one sent twice. Holding both would stop an admin doing
+    // two legitimate things to the same record in the same minute.
+    const button = renderHook(() => useDeferredSend("consent-request:distinct"));
+    const other = renderHook(() => useSendHeld("photo-guide:distinct"));
+
+    act(() => button.result.current.schedule(vi.fn(), "Sending…"));
+    expect(other.result.current).toBe(false);
+  });
+
+  it("releases once the send has actually gone, so a real resend still works", async () => {
+    // The point of the whole feature: this is a hold for the length of one
+    // window, not a send-once lock. A practitioner who never got the email is
+    // chased by pressing the same button again.
+    const key = "consent-request:released";
+    const button = renderHook(() => useDeferredSend(key));
+    const twin = renderHook(() => useSendHeld(key));
+
+    act(() => button.result.current.schedule(vi.fn(), "Sending…"));
+    expect(twin.result.current).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    expect(twin.result.current).toBe(false);
+  });
+
+  it("releases immediately on undo", () => {
+    // Nothing was sent, so nothing should stay locked — the admin who undid it
+    // may well want to send a corrected version straight away.
+    const key = "consent-request:undone";
+    const button = renderHook(() => useDeferredSend(key));
+    const twin = renderHook(() => useSendHeld(key));
+
+    act(() => button.result.current.schedule(vi.fn(), "Sending…"));
+    act(() => button.result.current.undo());
+    expect(twin.result.current).toBe(false);
+  });
+
+  it("does not let the other button give away a hold it never took", async () => {
+    // The subtle one. Both buttons share a key, and the panel unmounts the
+    // second routinely — every revalidation re-renders the table. If unmounting
+    // released by key rather than by ownership, the row disappearing would
+    // re-arm the button whose send is still counting down.
+    //
+    // Awaited, not synchronous: the release runs off a promise, so asserting
+    // straight after the unmount passes whether or not the guard is there.
+    const key = "consent-request:ownership";
+    const button = renderHook(() => useDeferredSend(key));
+    const twin = renderHook(() => useDeferredSend(key));
+    const watcher = renderHook(() => useSendHeld(key));
+
+    act(() => button.result.current.schedule(vi.fn(), "Sending…"));
+    await act(async () => {
+      twin.unmount();
+    });
+
+    expect(watcher.result.current).toBe(true);
+  });
+
+  it("keeps the hold to itself when no key is given", () => {
+    // Actions only one control offers — a delete, a status change — carry no
+    // key and must not start colliding with each other.
+    const button = renderHook(() => useDeferredSend());
+    const watcher = renderHook(() => useSendHeld(undefined));
+
+    act(() => button.result.current.schedule(vi.fn(), "Deleting…"));
+    expect(watcher.result.current).toBe(false);
   });
 });
