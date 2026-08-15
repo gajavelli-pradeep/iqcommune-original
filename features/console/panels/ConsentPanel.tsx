@@ -250,6 +250,24 @@ function AutoField({
 const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 const SESSION_STATUS_CHOICES = ["Pending", "Cancelled"];
 
+/**
+ * What the select may show, which is not the same as what it may be set to.
+ *
+ * A select cannot display a value it has no option for. Confirmed was withheld
+ * from the option list — correctly, since confirming is the Next step button's
+ * job and only once consent is in — but that left the browser resolving a
+ * confirmed row to the first option it did have. The cell read "Pending" for a
+ * session that was confirmed: not a blank to puzzle over but a definite, wrong
+ * answer, on the one control an admin uses to see where a session stands.
+ *
+ * Offered only when it is already the answer, and disabled, so it stays a thing
+ * being displayed rather than becoming a thing to pick. Moving the row to
+ * Pending drops it again, which is right — Confirmed is an outcome, and the way
+ * back to it is consent, not this control.
+ */
+const statusOptions = (status: string) =>
+  status === "Confirmed" ? SESSION_STATUS_VALUES : SESSION_STATUS_CHOICES;
+
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
 
@@ -465,8 +483,8 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {SESSION_STATUS_CHOICES.map((option) => (
-          <option key={option} value={option}>
+        {statusOptions(status).map((option) => (
+          <option key={option} value={option} disabled={option === "Confirmed"}>
             {option}
           </option>
         ))}

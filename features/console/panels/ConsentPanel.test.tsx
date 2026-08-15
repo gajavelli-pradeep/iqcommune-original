@@ -127,6 +127,55 @@ describe("Next step — one action per stage", () => {
   });
 });
 
+/**
+ * What the Session status cell says a session is.
+ *
+ * Confirmed is withheld from the options on purpose — confirming is the Next
+ * step button's job, and only once consent is in. But a select cannot display
+ * a value it has no option for, so the browser resolved a confirmed row to the
+ * first option it did have and the cell read "Pending". Not a blank an admin
+ * would question: a definite, wrong answer on the control they use to see
+ * where a session stands.
+ */
+describe("Session status says what the session is", () => {
+  const statusSelect = () => screen.getByLabelText<HTMLSelectElement>(/session status for/i);
+
+  it("reads Confirmed once the session is confirmed", () => {
+    show({ status: "Received", sessionStatus: "Confirmed" });
+    expect(statusSelect().value).toBe("Confirmed");
+  });
+
+  it("offers Confirmed as a display, never as a choice", () => {
+    // The server refuses an unconsented Confirmed whoever asks, so this is the
+    // affordance rather than the rule — but an option that usually refuses is
+    // not one to offer.
+    show({ status: "Received", sessionStatus: "Confirmed" });
+    expect(screen.getByRole("option", { name: "Confirmed" })).toBeDisabled();
+  });
+
+  it("does not offer it at all until it is the answer", () => {
+    show({ sessionStatus: "Pending" });
+    expect(statusSelect().value).toBe("Pending");
+    expect(screen.queryByRole("option", { name: "Confirmed" })).not.toBeInTheDocument();
+  });
+
+  it("reads Confirmed for a delivered session, with Delivered beneath", () => {
+    // Completed has no option of its own — V7 shows it as Confirmed rather than
+    // a value the select cannot represent — so this is the same bug's other
+    // route in, and the note underneath is what carries the real state.
+    show({ status: "Received", sessionStatus: "Completed" });
+    expect(statusSelect().value).toBe("Confirmed");
+    // "Delivered" also renders in the Next step cell, so this counts rather
+    // than expecting one — the point is the select does not swallow the state.
+    expect(screen.getAllByText(/^Delivered$/).length).toBeGreaterThan(0);
+  });
+
+  it("still reads Cancelled on a cancelled session", () => {
+    show({ sessionStatus: "Cancelled" });
+    expect(statusSelect().value).toBe("Cancelled");
+  });
+});
+
 describe("Next step — the rows that must stop asking", () => {
   /**
    * The one that reaches a person. A cancelled session offering "Send consent
