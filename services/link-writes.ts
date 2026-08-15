@@ -2,6 +2,7 @@ import "server-only";
 
 import { log } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { nextReference } from "@/services/references";
 import { recordActivity } from "@/services/console";
 
 /**
@@ -179,7 +180,10 @@ export async function signAgreement(
  * an admin action in the console, so nothing downstream needs a return value —
  * the activity entry is how the empanelment is announced.
  */
-export async function empanelBySignature(traceId: string, agreementId: string): Promise<void> {
+export async function empanelBySignature(
+  traceId: string,
+  agreementId: string,
+): Promise<string | null> {
   const supabase = createAdminClient();
 
   const { data: agreement } = await supabase
@@ -188,11 +192,31 @@ export async function empanelBySignature(traceId: string, agreementId: string): 
     .eq("id", agreementId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!agreement) return;
+  if (!agreement) return null;
+
+  // The IQC-EMP number is issued here, not when the agreement went out: it
+  // records an empanelment, and until this moment there was not one.
+  //
+  // Only when the row does not already carry one. Rows created before migration
+  // 0019 were given a number at agreement time, and that number is the one
+  // their agreement email quoted — minting a second would leave the practitioner
+  // holding a reference the platform no longer knows them by.
+  //
+  // The read-then-allocate is safe despite looking like a race: the update below
+  // only matches a row that is not yet Empanelled, so of two concurrent
+  // submissions exactly one writes. The loser wastes a sequence value, which
+  // costs a gap and nothing else.
+  const { data: existing } = await supabase
+    .from("practitioners")
+    .select("reference")
+    .eq("id", agreement.practitioner_id)
+    .maybeSingle();
+
+  const reference = (existing?.reference as string | null) ?? (await nextReference(supabase, "practitioner"));
 
   const { data: practitioner } = await supabase
     .from("practitioners")
-    .update({ status: "Empanelled" })
+    .update({ status: "Empanelled", reference })
     .eq("id", agreement.practitioner_id)
     .is("deleted_at", null)
     .neq("status", "Empanelled")
@@ -202,7 +226,10 @@ export async function empanelBySignature(traceId: string, agreementId: string): 
     // `application_id` is what keeps the applicant's own tracker honest.
     .select("id, application_id")
     .maybeSingle();
-  if (!practitioner) return;
+  // No row moved. Usually because they were empanelled already — a manual mark,
+  // or a resubmitted form — so hand back the number they were given then rather
+  // than null, or the receipt would show a blank to someone who has one.
+  if (!practitioner) return (existing?.reference as string | null) ?? null;
 
   // Keep the application in step, exactly as `empanelPractitioner` does for the
   // manual path. Without it the practitioner is empanelled and the application
@@ -232,6 +259,10 @@ export async function empanelBySignature(traceId: string, agreementId: string): 
     entityRef: agreement.practitioner_id as string,
     detail: "Automatic — empanelment agreement signed.",
   });
+
+  // Handed back so the receipt can print it. The page cannot have loaded it —
+  // it did not exist when the page was rendered.
+  return reference;
 }
 
 /**

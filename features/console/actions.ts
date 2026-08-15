@@ -26,6 +26,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import * as whatsapp from "@/lib/whatsapp/templates";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
+import { nextReference } from "@/services/references";
 
 import {
   maskLink,
@@ -477,12 +478,15 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     if (existing) {
       practitionerId = existing.id as string;
     } else {
-      const reference = await nextReference(supabase, "practitioner");
+      // No `reference` — the IQC-EMP number is allocated when a signature
+      // empanels them (migration 0019), not when the agreement goes out. The
+      // row exists now only because the agreement has to point at a
+      // practitioner; an applicant who never signs must not consume a number
+      // that says they were empanelled.
       const { data: created, error: createError } = await supabase
         .from("practitioners")
         .insert({
           status: "Pending",
-          reference,
           full_name: `${application.first_name} ${application.last_name}`,
           role: application.job_title,
           city: application.city,
@@ -503,15 +507,17 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
   // link in an old email keeps working.
   const { data: openAgreement } = await supabase
     .from("practitioner_agreements")
-    .select("id")
+    .select("id, reference")
     .eq("practitioner_id", practitionerId)
     .is("signed_at", null)
     .is("deleted_at", null)
     .maybeSingle();
 
   let agreementId: string;
+  let agreementReference: string;
   if (openAgreement) {
     agreementId = openAgreement.id as string;
+    agreementReference = openAgreement.reference as string;
   } else {
     const { data: application } = applicationId
       ? await supabase
@@ -521,19 +527,22 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
           .maybeSingle()
       : { data: null };
 
-    // The agreement keeps its own IQC-AGR reference — the record needs one, and
-    // the signed PDF quotes it. The email no longer does (see `onboardingLink`).
+    // The IQC-AGR number identifies this document, and it is what the email
+    // quotes: the practitioner's own IQC-EMP does not exist yet, and will not
+    // until they sign (client's agreement JSON, 2026-08-15).
+    const reference = await nextReference(supabase, "agreement");
     const { data: created, error: agreementError } = await supabase
       .from("practitioner_agreements")
       .insert({
         practitioner_id: practitionerId,
-        reference: await nextReference(supabase, "agreement"),
+        reference,
         modules: application?.modules ?? [],
       })
       .select("id")
       .single();
     if (agreementError) throw new Error(`agreement create failed: ${agreementError.message}`);
     agreementId = created.id as string;
+    agreementReference = reference;
   }
 
   if (applicationId) {
@@ -545,16 +554,16 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
 
   const contact = await practitionerContact(supabase, practitionerId);
   if (contact) {
-    // Both stand-ins can be resolved now: the agreement exists, so the link is
-    // real, and the practitioner row exists, so its IQC-EMP reference — the one
-    // this message quotes — is real too.
+    // Both stand-ins can be resolved now: the agreement exists, so the link and
+    // its IQC-AGR reference are both real. The practitioner's IQC-EMP number is
+    // deliberately not used here — it is not allocated until they sign.
     dispatchEmail(
       newTraceId(),
       applyDraft(
-        onboardingLink(contact.email, contact.firstName, agreementId, contact.reference),
+        onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
         draft,
         buildLink("onboarding", agreementId),
-        contact.reference,
+        agreementReference,
       ),
     );
   }
@@ -567,16 +576,6 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     detail: openAgreement ? "Resent the existing agreement link." : "Generated and sent the empanelment agreement.",
   });
   revalidateConsole();
-}
-
-/** Asks Postgres for the next reference (migration 0008) — see the sequence note there. */
-async function nextReference(
-  supabase: ReturnType<typeof createAdminClient>,
-  kind: "practitioner" | "agreement" | "session" | "confirmation",
-): Promise<string> {
-  const { data, error } = await supabase.rpc("next_reference", { kind });
-  if (error || !data) throw new Error(`could not allocate a ${kind} reference: ${error?.message ?? "no value"}`);
-  return data as string;
 }
 
 /** "Send rejection message" — sets the stage and tells the applicant. */
@@ -622,16 +621,33 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
     throw new Error("send the agreement first — there is no practitioner record to empanel yet");
   }
 
-  const composed = await draftMessage("practitioner-welcome", rowId);
   const supabase = createAdminClient();
+
+  // This path empanels too, so it allocates the IQC-EMP number the same way the
+  // signature path does — someone who signed on paper is no less empanelled.
+  const { data: existing } = await supabase
+    .from("practitioners")
+    .select("reference")
+    .eq("id", id)
+    .maybeSingle();
+  const reference =
+    (existing?.reference as string | null) ?? (await nextReference(supabase, "practitioner"));
+
   const { data, error } = await supabase
     .from("practitioners")
-    .update({ status: "Empanelled" })
+    .update({ status: "Empanelled", reference })
     .eq("id", id)
     .is("deleted_at", null)
     .select("application_id")
     .maybeSingle();
   if (error) throw new Error(`empanel failed: ${error.message}`);
+
+  // Composed AFTER the write, unlike every other draftable send. Those are
+  // composed first because the write changes nothing the template prints; this
+  // one changes the empanelment reference, and the welcome email quotes it. On
+  // the old order the message went out reading "Your empanelment reference:"
+  // followed by nothing.
+  const composed = await draftMessage("practitioner-welcome", rowId);
 
   // Keep the application in step, or the union read would show the stage it
   // stopped at forever.
@@ -1864,32 +1880,40 @@ async function draftMessage(
 
   if (kind === "onboarding-link") {
     const { table, id: rowRef } = pipelineId(id);
-    let contact: { email: string; firstName: string; reference: string } | null = null;
+    let contact: { email: string; firstName: string } | null = null;
 
     if (table === "practitioner") {
       contact = await practitionerContact(supabase, rowRef);
     } else {
       // Not promoted yet — the practitioner record is created by the send, so
-      // the applicant's own row is what the draft is addressed from, and the
-      // IQC-EMP reference this message quotes stands in exactly as the link does.
+      // the applicant's own row is what the draft is addressed from.
       const { data } = await supabase
         .from("practitioner_applications")
         .select("email, first_name")
         .eq("id", rowRef)
         .is("deleted_at", null)
         .maybeSingle();
-      if (data) {
-        contact = {
-          email: data.email as string,
-          firstName: data.first_name as string,
-          reference: REFERENCE_PLACEHOLDER,
-        };
-      }
+      if (data) contact = { email: data.email as string, firstName: data.first_name as string };
     }
     if (!contact) return null;
 
-    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, contact.reference);
-    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, contact.reference);
+    // The agreement's own IQC-AGR number, which is what this message quotes. A
+    // resend has one already; a first issue has no agreement row yet, so it
+    // stands in exactly as the link does and the send substitutes both.
+    const { data: openAgreement } =
+      table === "practitioner"
+        ? await supabase
+            .from("practitioner_agreements")
+            .select("reference")
+            .eq("practitioner_id", rowRef)
+            .is("signed_at", null)
+            .is("deleted_at", null)
+            .maybeSingle()
+        : { data: null };
+    const agreementReference = (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER;
+
+    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, agreementReference);
+    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, agreementReference);
     return {
       message: { ...message, body: maskLink(message.body) },
       whatsapp: maskLink(wa.body),

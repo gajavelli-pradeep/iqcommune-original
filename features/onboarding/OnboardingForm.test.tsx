@@ -72,9 +72,18 @@ describe("OnboardingForm", () => {
       "fetch",
       vi.fn(() =>
         Promise.resolve(
-          new Response(JSON.stringify({ data: { at: "2026-01-01T10:00:00Z" }, error: null }), {
-            status: 201,
-          }),
+          // The empanelment number comes back on the receipt, not from the
+          // loader: it is allocated while this very request is handled, so the
+          // page could not have had it. Deliberately different from the
+          // fixture's `empanelmentReference` so a receipt that quietly read the
+          // prop instead of the response would fail here.
+          new Response(
+            JSON.stringify({
+              data: { at: "2026-01-01T10:00:00Z", empanelmentReference: "IQC-EMP-0099" },
+              error: null,
+            }),
+            { status: 201 },
+          ),
         ),
       ),
     );
@@ -124,7 +133,11 @@ describe("OnboardingForm", () => {
     // submitting is what produces it. The page showed the agreement number
     // before this point, so the two must swap here and not before.
     expect(screen.getByText("Empanelment Reference Number")).toBeInTheDocument();
-    expect(screen.getByText(practitioner.empanelmentReference)).toBeInTheDocument();
+    // The number the SUBMISSION returned, not the one the fixture carries — the
+    // page is loaded before anyone is empanelled, so a receipt reading the prop
+    // would be showing a number that did not exist when it was rendered.
+    expect(screen.getByText("IQC-EMP-0099")).toBeInTheDocument();
+    expect(screen.queryByText(practitioner.empanelmentReference)).not.toBeInTheDocument();
     expect(screen.getByText("Execution Date")).toBeInTheDocument();
     expect(screen.getByText("Signature Method")).toBeInTheDocument();
     // Typed, because this test drove the typed path — asserted rather than

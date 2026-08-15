@@ -527,29 +527,34 @@ export function photoReminder(
 }
 
 /**
- * Quotes the practitioner's `IQC-EMP` reference, which is what the delivered
- * document asks for — not the agreement's own `IQC-AGR` one.
+ * Quotes the agreement's own `IQC-AGR` reference — the document being sent.
  *
- * They are separate sequences, and the agreement record still has its own
- * reference; this message simply no longer names it. A recipient quoting this
- * number back is therefore identifying themselves, not the document they signed.
+ * The console-messages document (rev 1) asked for the practitioner's IQC-EMP
+ * number here, and it was built that way. The client's agreement JSON, a day
+ * later, is explicit that the two are different and that the earlier one was
+ * wrong: IQC-AGR is "assigned earlier by the admin when the agreement is
+ * issued" and is what the onboarding page shows, while IQC-EMP is "generated
+ * once the practitioner submits the signed agreement".
  *
- * The value exists by the time this is sent: `sendAgreement` creates the
- * practitioner row, and its reference, before composing the email. A draft
- * previewed against an application that has not been promoted yet has no
- * practitioner row, so it shows `REFERENCE_PLACEHOLDER` until the send.
+ * So quoting IQC-EMP here was not merely the wrong label — it named a number
+ * that, under the newer rule, does not exist yet. Nothing is empanelled at the
+ * moment an agreement goes out; that is the point of sending it.
+ *
+ * A first issue and a resend both have an IQC-AGR, because the agreement row is
+ * created before this is composed. Only the draft preview can lack one, and it
+ * shows `REFERENCE_PLACEHOLDER` until the send allocates it.
  */
 export function onboardingLink(
   to: string,
   firstName: string,
   agreementId: string,
-  practitionerReference: string,
+  agreementReference: string,
 ): EmailMessage {
   return {
     template: "onboarding-link",
     stream: "practitioner",
     to,
-    subject: `iqcommune — your empanelment agreement (Ref. ${practitionerReference})`,
+    subject: `iqcommune — your empanelment agreement (Ref. ${agreementReference})`,
     body: lines(
       `Dear ${firstName},`,
       "",
@@ -559,7 +564,7 @@ export function onboardingLink(
       "",
       "It takes only a couple of minutes — review the terms, then sign directly on the page.",
       "",
-      `Reference number for this agreement: ${practitionerReference}`,
+      `Reference number for this agreement: ${agreementReference}`,
       "",
       "Please let us know if anything requires clarification before signing.",
       "",
@@ -619,6 +624,8 @@ export function adminInvite(to: string, inviteId: string, roleLabel: string): Em
 export function practitionerWelcome(
   to: string,
   firstName: string,
+  /** IQC-EMP, and it exists by now: the signature that triggers this is what
+   *  allocates it (migration 0019). */
   practitionerReference: string,
 ): EmailMessage {
   return {

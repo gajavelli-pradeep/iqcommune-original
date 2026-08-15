@@ -63,6 +63,13 @@ export function OnboardingForm({
   const [fullName, setFullName] = useState(practitioner.name);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
+  /**
+   * Allocated by the submission itself, so it cannot come from the loader: this
+   * page is rendered before the practitioner is empanelled, and the IQC-EMP
+   * number does not exist until they press the button (migration 0019). It
+   * travels back on the receipt.
+   */
+  const [empanelmentReference, setEmpanelmentReference] = useState<string | null>(null);
   // Client-side validation, keyed by the control at fault so the message can sit
   // beside it. `form` is the one problem that belongs to no single control.
   // `submitError` is the network/route path, now shared (audit H8).
@@ -161,7 +168,7 @@ export function OnboardingForm({
               // Number, and the receipt is the first surface that can show the
               // Empanelment one, because that is what submitting produces.
               ["Signed by", fullName],
-              ["Empanelment Reference Number", practitioner.empanelmentReference],
+              ["Empanelment Reference Number", empanelmentReference ?? "—"],
               ["Execution Date", signedAt],
               ["Signature Method", signature?.mode === "drawn" ? "Drawn" : "Typed"],
               ["Status", "✓ Digitally signed"],
@@ -424,14 +431,23 @@ export function OnboardingForm({
           if (!fullName.trim()) return fail({ fullName: "Your full name is required." });
           if (!signature) return fail({ signature: "Please draw or type your signature." });
           setErrors({});
-          const receipt = await submit("/api/agreements", {
-            fullName,
-            signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
-            signatureMode: signature.mode,
-          });
+          // Typed at the call site rather than widening the shared hook: this is
+          // the one route that answers with more than a timestamp, because it
+          // allocates the empanelment number while handling the request.
+          const receipt = await submit<{ at: string; empanelmentReference: string | null }>(
+            "/api/agreements",
+            {
+              fullName,
+              signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
+              signatureMode: signature.mode,
+            },
+          );
           // The same instant the PDF prints, rendered by the same function, so
           // the receipt on screen and the archived agreement cannot disagree.
-          if (receipt) setSignedAt(formatRecordedAt(receipt.at));
+          if (receipt) {
+            setEmpanelmentReference(receipt.empanelmentReference ?? null);
+            setSignedAt(formatRecordedAt(receipt.at));
+          }
         }}
       >
         {/* V7 .declaration-box — gold box, gold-dark title + list-marker points. */}
