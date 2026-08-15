@@ -458,7 +458,7 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     applicationId = id;
     const { data: application, error: readError } = await supabase
       .from("practitioner_applications")
-      .select("id, first_name, last_name, email, job_title, city, modules")
+      .select("id, first_name, last_name, email, job_title, city, state, modules")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -486,6 +486,9 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
           full_name: `${application.first_name} ${application.last_name}`,
           role: application.job_title,
           city: application.city,
+          // Carried onto the practitioner rather than left on the application:
+          // the agreement header renders State from this record (migration 0017).
+          state: application.state,
           email: application.email,
           application_id: application.id,
         })
@@ -922,9 +925,9 @@ export async function overrideConfirmationField(
  * `mutate`, because correcting a system-of-record value is a different power
  * from progressing a record through its pipeline.
  *
- * Writes to the application, which is where these fields live. The two columns
- * the practitioner record duplicates (email, city) are kept in step so the
- * table and the card cannot disagree.
+ * Writes to the application, which is where these fields live. The three
+ * columns the practitioner record duplicates (email, city, state) are kept in
+ * step so the table, the card and the signed agreement cannot disagree.
  */
 export async function overridePractitionerField(
   rowId: string,
@@ -949,8 +952,8 @@ export async function overridePractitionerField(
     .is("deleted_at", null);
   if (error) throw new Error(`override failed: ${error.message}`);
 
-  // The practitioner record carries its own copy of these two.
-  if (table === "practitioner" && (field === "email" || field === "city")) {
+  // The practitioner record carries its own copy of these three.
+  if (table === "practitioner" && (field === "email" || field === "city" || field === "state")) {
     await supabase.from("practitioners").update({ [field]: trimmed }).eq("id", id);
   }
 

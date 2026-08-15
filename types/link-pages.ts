@@ -60,6 +60,12 @@ export interface OnboardingPractitioner {
   role: string;
   organisation: string;
   city: string;
+  /**
+   * The agreement header's third row (client's agreement JSON, 2026-08-15).
+   * Empty string, never a placeholder, when a record predating migration 0017
+   * never captured one — a blank on a contract is honest, a guess is not.
+   */
+  state: string;
   /** The agreement's "Practitioner" row reads `name · city · email`. */
   email: string;
   agreementReference: string;

@@ -1,4 +1,4 @@
--- iqcommune V7 — consolidated schema (migrations 0001-0016)
+-- iqcommune V7 — consolidated schema (migrations 0001-0017)
 --
 -- Generated from supabase/migrations/*.sql. Same end state as replaying them in
 -- order, with one deliberate difference: every enum is CREATEd with its final
@@ -277,6 +277,9 @@ create table if not exists practitioners (
   role         text not null,
   organisation text,
   city         text not null,
+  -- Nullable where city is not: state arrived after the earliest applications,
+  -- and the agreement header would rather print a blank than a guess (0017).
+  state        text,
   email        text not null,
   application_id uuid references practitioner_applications (id),
   created_at   timestamptz not null default now(),
