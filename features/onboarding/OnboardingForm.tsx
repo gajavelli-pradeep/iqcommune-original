@@ -15,7 +15,6 @@ import {
   AGREEMENT_CLAUSES,
   AGREEMENT_CONSENT_TEXT,
   AGREEMENT_INTRO,
-  AGREEMENT_PLATFORM_NAME,
 } from "@/constants/agreement";
 import { SignaturePad, type Signature } from "./SignaturePad";
 
@@ -45,25 +44,23 @@ const CONFIRMATIONS = [
   "This digital signature has the same legal standing as a physical signature under the Information Technology Act, 2000.",
 ] as const;
 
+/**
+ * No `agreementDate`. It existed for the "Agreement Date" header row and the
+ * toolbar line beside the reference, and v2 removed both — the document is dated
+ * by its Execution Date once signed, not by when it was opened. It was computed
+ * on the server in IST (audit M7) because deriving it in the client render body
+ * made server and client disagree at the day boundary; that hazard leaves with
+ * the prop, and the live clock below still avoids it the same way.
+ */
 export function OnboardingForm({
   practitioner,
   token,
-  agreementDate,
 }: {
   practitioner: OnboardingPractitioner;
   token: string;
-  /**
-   * The on-screen "Date:" line, computed once on the server in IST (audit M7).
-   * Deriving it in the client render body made the server (UTC) and client (IST)
-   * disagree at the day boundary — a hydration mismatch, and a wrong date on a
-   * legally-binding agreement. The authoritative signing time is the server's
-   * `signedAt`; this is display only.
-   */
-  agreementDate: string;
 }) {
   const [readToEnd, setReadToEnd] = useState(false);
   const [fullName, setFullName] = useState(practitioner.name);
-  const [designation, setDesignation] = useState(practitioner.role);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
   // Client-side validation, keyed by the control at fault so the message can sit
@@ -155,11 +152,14 @@ export function OnboardingForm({
         <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
           {(
             [
-              // Four rows, as V7 — no Designation row; it collects the field but
-              // does not read it back on the receipt.
+              // v2's receipt. The reference changes identity here, not just
+              // label: before signing the page shows the Agreement Reference
+              // Number, and the receipt is the first surface that can show the
+              // Empanelment one, because that is what submitting produces.
               ["Signed by", fullName],
-              ["Agreement ref.", practitioner.agreementReference],
-              ["Timestamp", signedAt],
+              ["Empanelment Reference Number", practitioner.empanelmentReference],
+              ["Execution Date", signedAt],
+              ["Signature Method", signature?.mode === "drawn" ? "Drawn" : "Typed"],
               ["Status", "✓ Digitally signed"],
             ] as ReadonlyArray<[string, string]>
           ).map(([label, value]) => (
@@ -198,16 +198,19 @@ export function OnboardingForm({
           digital signature to complete the onboarding.
         </p>
         {/* V7 .summary-item: filled surface-soft cards, two columns that collapse
-            to one at the spec's 600px breakpoint — a half-width card holds an
-            organisation name badly on a phone. */}
+            to one at the spec's 600px breakpoint.
+
+            v2 replaced Current role and Organisation with State, and spelled the
+            reference label out in full. The two dropped rows are the same two the
+            agreement itself stopped printing — the page no longer shows a
+            practitioner anything the contract does not carry. */}
         <dl className="grid grid-cols-1 gap-3 min-[600px]:grid-cols-2">
           {(
             [
               ["Name", practitioner.name],
-              ["Current role", practitioner.role],
-              ["Organisation", practitioner.organisation],
               ["City", practitioner.city],
-              ["Agreement reference", practitioner.agreementReference],
+              ["State", practitioner.state],
+              ["Agreement Reference Number", practitioner.agreementReference],
             ] as ReadonlyArray<[string, string]>
           ).map(([label, value]) => (
             <div key={label} className="rounded-lg bg-surface-soft px-4 py-3">
@@ -243,8 +246,10 @@ export function OnboardingForm({
               <p className="truncate text-base font-medium text-surface">
                 iqcommune — Practitioner Empanelment Agreement
               </p>
+              {/* Reference alone in v2 — the date left the toolbar with the
+                  Agreement Date row it mirrored. */}
               <p className="truncate text-xs text-on-dark-faint">
-                {practitioner.agreementReference} · {agreementDate}
+                {practitioner.agreementReference}
               </p>
             </div>
             <span
@@ -302,23 +307,20 @@ export function OnboardingForm({
           <dl className="mb-4 overflow-hidden rounded-md border border-border">
             {(
               [
-                ["Agreement Date", agreementDate],
-                // From the client's delivery, not retyped here: the PDF names the
-                // same party from the same constant, so the page and the archived
-                // contract cannot come to disagree about who it is with.
-                ["Platform", AGREEMENT_PLATFORM_NAME],
-                // The fourth header field the client's JSON lists, and the one
-                // neither surface carried. IQC-EMP identifies the practitioner's
-                // empanelment; the IQC-AGR reference below identifies this
-                // document. Quoting only the second leaves the person unlinked
-                // to the arrangement the contract is about.
-                ["Empanelment Reference Number", practitioner.empanelmentReference],
-                // V7 builds this row as `name · city · email` in script, which is
-                // why the copy gate never saw it missing.
-                [
-                  "Practitioner",
-                  `${practitioner.name} · ${practitioner.city} · ${practitioner.email}`,
-                ],
+                // v2's four rows. Deliberately NOT `AGREEMENT_HEADER_FIELDS`,
+                // which is the *executed document's* header: that one ends on
+                // the Empanelment Reference Number, and this one ends on the
+                // Agreement Reference Number. The client's readme is explicit
+                // that the difference is intentional — IQC-EMP does not exist
+                // until submission, so the page before signing cannot show it.
+                //
+                // The Platform row went with the same delivery: the preamble
+                // below now names InvestQ Commune inline, and a row repeating it
+                // would state the same party twice.
+                ["Name", practitioner.name],
+                ["City", practitioner.city],
+                ["State", practitioner.state],
+                ["Agreement Reference Number", practitioner.agreementReference],
               ] as ReadonlyArray<[string, string]>
             ).map(([label, value]) => (
               <div key={label} className="flex border-b border-border last:border-b-0">
@@ -420,7 +422,6 @@ export function OnboardingForm({
           setErrors({});
           const receipt = await submit("/api/agreements", {
             fullName,
-            designation,
             signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
             signatureMode: signature.mode,
           });
@@ -449,19 +450,16 @@ export function OnboardingForm({
           </p>
         </div>
 
+        {/* Designation was removed by the v2 delivery, along with the Current
+            role and Organisation rows above — the agreement no longer prints any
+            of them, so collecting one would be asking for something nothing
+            reads. */}
         <TextField
-          label="Full name (as it should appear on the agreement)"
+          label="Full name (as per any valid ID proof)"
           placeholder="Your full legal name"
           value={fullName}
           onChange={setFullName}
           error={errors.fullName}
-        />
-        <TextField
-          label="Designation"
-          placeholder="e.g. Equity Analyst"
-          value={designation}
-          onChange={setDesignation}
-          hint="As per your current employment."
         />
 
         {/* `tabIndex={-1}` so an unsigned form can send focus here: the pad is a
@@ -486,7 +484,7 @@ export function OnboardingForm({
         {/* V7 .timestamp-row: a live clock on the left, the note pushed right.
             The value starts as the spec's own "—" placeholder and is filled
             after mount, so the server never renders a time the client disagrees
-            with — the same hydration trap `agreementDate` avoids. */}
+            with — the UTC/IST day-boundary trap (audit M7). */}
         <p className="mb-4 flex items-center gap-2 text-sm text-ink-faint">
           <span>
             Digital timestamp: <span className="font-medium text-ink">{liveTimestamp ?? "—"}</span>

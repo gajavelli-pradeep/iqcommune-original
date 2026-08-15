@@ -18,14 +18,31 @@ export interface AgreementClause {
   paragraphs: readonly string[];
 }
 
+/**
+ * One row of the header or signature block: the client's label, and the key
+ * naming the value that fills it. Every one is substituted at render time — see
+ * `dynamicFields` in the source JSON for what each key means.
+ */
+export interface AgreementField {
+  key: string;
+  label: string;
+}
+
 /** The document's own heading. */
 export const AGREEMENT_DOCUMENT_TITLE = "PRACTITIONER EMPANELMENT AGREEMENT";
 
-/** The other party. A contract that names only one of its two is not one. */
-export const AGREEMENT_PLATFORM_NAME = "InvestQ Commune, operating as iqcommune (“the Platform”)";
-
-/** The label the client puts beside it. */
-export const AGREEMENT_PLATFORM_LABEL = "Platform Name";
+/**
+ * The four rows above the preamble: who, where, and which empanelment.
+ *
+ * The platform is no longer one of them — v2 names it inside `AGREEMENT_INTRO`
+ * instead, so a header row repeating it would say the same thing twice.
+ */
+export const AGREEMENT_HEADER_FIELDS: readonly AgreementField[] = [
+  { key: "practitionerName", label: "Name of the Practitioner" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "empanelmentRef", label: "Empanelment Reference Number" },
+];
 
 /** Names the parties and the moment the agreement takes effect. */
 export const AGREEMENT_INTRO = "This Empanelment Agreement (“Agreement”) is entered into between InvestQ Commune, operating as iqcommune (“the Platform”), and the Practitioner named above, effective as of the date of digital signature captured through the Platform’s onboarding process.";
@@ -38,6 +55,13 @@ export const AGREEMENT_INTRO = "This Empanelment Agreement (“Agreement”) is 
 export const AGREEMENT_CONSENT_TEXT = "By providing digital consent through the Platform’s onboarding page, the Practitioner confirms they have read, understood, and agree to be bound by all clauses of this Agreement.";
 
 export const AGREEMENT_SIGNATURE_HEADING = "SIGNATURE";
+
+/** What the execution block records: who signed, when, and by which method. */
+export const AGREEMENT_SIGNATURE_FIELDS: readonly AgreementField[] = [
+  { key: "practitionerName", label: "Signed by" },
+  { key: "signatureTimestamp", label: "Execution Date" },
+  { key: "signatureMethod", label: "Signature Method" },
+];
 
 export const AGREEMENT_CLAUSES: readonly AgreementClause[] = [
   {
@@ -132,7 +156,7 @@ export const AGREEMENT_CLAUSES: readonly AgreementClause[] = [
   {
     title: "10. TERM & TERMINATION",
     paragraphs: [
-      "This Agreement begins on the date signed above and remains in effect until terminated by either Party with 14 days’ written notice (email is sufficient).",
+      "This Agreement begins on the date of digital signature and remains in effect until terminated by either Party with 14 days’ written notice (email is sufficient).",
       "The Platform may terminate this Agreement immediately and without notice if the Practitioner breaches Clause 5 (Conduct During Sessions), Clause 7 (Confidentiality), or engages in conduct that brings the Platform into disrepute.",
       "Upon termination, the Practitioner’s revenue share for sessions already conducted remains payable as per the agreed terms.",
     ],

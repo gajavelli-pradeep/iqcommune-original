@@ -21,8 +21,13 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
         "your inbox",
         "Signed by",
         "Type your name to generate signature",
-        "Agreement ref.",
-        "Timestamp",
+        // v2 renamed all three and added the method row. The reference also
+        // changes identity here: the page shows the Agreement number before
+        // signing and the Empanelment number after, because submitting is what
+        // produces the second one.
+        "Empanelment Reference Number",
+        "Execution Date",
+        "Signature Method",
         "Status",
         "Digitally signed",
       ].some((needle) => text.includes(needle)),
@@ -36,9 +41,14 @@ export const ONBOARDING_PENDING: PendingUnit[] = [
       "and the signed PDF both show the client's wording and V7's summary no longer appears. " +
       "The summary is not merely shorter — it omitted the platform party, the consent sentence " +
       "and the seat of arbitration, and weakened clause 5. This range is the whole agreement " +
-      "body, preamble through clause 13; the clause TITLES are unchanged and still render.",
+      "body, preamble through clause 13; the clause TITLES are unchanged and still render. " +
+      "Note the page's preamble and the contract's own introParagraph are different sentences — " +
+      "the page states who the Parties are, the executed document states when it takes effect — " +
+      "so this range covers the page's, and constants/agreement.ts carries the document's.",
     kind: "deviation",
-    lines: [372, 424],
+    // Re-measured against the v2 delivery: removing the Agreement Date and
+    // Platform rows moved the whole body up by three lines.
+    lines: [369, 421],
   },
   {
     unit: "State · document title",

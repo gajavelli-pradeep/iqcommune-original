@@ -50,7 +50,6 @@ function signRequest(token: string): Request {
     body: JSON.stringify({
       t: token,
       fullName: "Vikram Kulkarni",
-      designation: "Equity Analyst",
       signature: "Vikram Kulkarni",
       signatureMode: "typed",
     }),

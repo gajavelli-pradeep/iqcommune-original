@@ -21,7 +21,10 @@ import {
 const bodySchema = z.object({
   t: z.string().min(1),
   fullName: z.string().trim().min(1, "Your full name is required").max(160),
-  designation: z.string().trim().max(160),
+  // No `designation`: the v2 delivery removed the field from the page, and the
+  // agreement no longer prints it. Absent rather than optional — a schema that
+  // still accepted one would let a stale client keep sending a value nothing
+  // renders, into a column nothing reads.
   // Capped (audit M2): a drawn signature is a base64 PNG data URL. Without a
   // ceiling a holder of a valid onboarding token could POST a multi-MB string
   // straight into signature_data. 200k chars comfortably fits a real signature
@@ -65,7 +68,6 @@ export async function POST(request: Request) {
       token.payload.id,
       {
         fullName: parsed.data.fullName,
-        designation: parsed.data.designation,
         signature: parsed.data.signature,
         signatureMode: parsed.data.signatureMode,
       },

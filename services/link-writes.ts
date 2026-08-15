@@ -119,7 +119,6 @@ export async function recordConsent(assignmentId: string, ip: string): Promise<R
 
 export interface SignedAgreement {
   fullName: string;
-  designation: string;
   signature: string;
   signatureMode: "drawn" | "typed";
 }
@@ -135,7 +134,10 @@ export async function signAgreement(
     .update({
       signed_at: new Date().toISOString(),
       signed_name: input.fullName,
-      signed_designation: input.designation,
+      // `signed_designation` is deliberately not written. The v2 delivery
+      // removed the field, so there is no practitioner-supplied value to store;
+      // the column stays for the rows that already have one, and can be dropped
+      // once nothing depends on reading those back.
       signature_data: input.signature,
       signature_mode: input.signatureMode,
       // Origin evidence for a legally-binding e-signature (audit H5).

@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { data, error } = await supabase
     .from("practitioner_agreements")
     .select(
-      "reference, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name, reference )",
+      "reference, issued_on, version, signed_at, signed_name, signature_mode, signed_ip, practitioners ( full_name, city, state, reference )",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -49,9 +49,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     reference: data.reference,
     empanelmentReference: (practitioner?.reference as string) ?? "—",
     practitioner: name,
+    city: (practitioner?.city as string | undefined) ?? "",
+    // Empty rather than a dash: the header prints "—" for a blank itself, and a
+    // record predating migration 0017 genuinely has no state to show.
+    state: (practitioner?.state as string | undefined) ?? "",
     issuedOn: dateOnly(data.issued_on) ?? "—",
     signedName: data.signed_name,
-    signedDesignation: data.signed_designation,
     signedAt: data.signed_at ? formatRecordedAt(data.signed_at as string) : null,
     signatureMode: data.signature_mode === "drawn" ? "Drawn" : data.signature_mode === "typed" ? "Typed" : null,
     signedIp: data.signed_ip,

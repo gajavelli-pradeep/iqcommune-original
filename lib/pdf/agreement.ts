@@ -4,9 +4,9 @@ import {
   AGREEMENT_CLAUSES,
   AGREEMENT_CONSENT_TEXT,
   AGREEMENT_DOCUMENT_TITLE,
+  AGREEMENT_HEADER_FIELDS,
   AGREEMENT_INTRO,
-  AGREEMENT_PLATFORM_LABEL,
-  AGREEMENT_PLATFORM_NAME,
+  AGREEMENT_SIGNATURE_FIELDS,
   AGREEMENT_SIGNATURE_HEADING,
 } from "@/constants/agreement";
 
@@ -31,15 +31,24 @@ import { FAINT, GREEN, INK, RED, startDocument } from "./document";
  * agreement's detail table, so carrying one here would put a term in the
  * archived contract that never appeared on the page it was signed from — the
  * exact divergence the note above rules out.
+ *
+ * No `signedDesignation` either, for the same reason: v2 (2026-08-15) removed
+ * the Designation input from the onboarding page, so there is no longer a value
+ * the practitioner ever supplied to print.
  */
 export interface SignedAgreement {
+  /** IQC-AGR — this document's own reference. Not a header row in v2: it names
+   *  the file and appears in the attestation, while the header carries the
+   *  practitioner's IQC-EMP number instead. */
   reference: string;
   /** The practitioner's IQC-EMP number — the client's fourth header field. */
   empanelmentReference: string;
   practitioner: string;
+  city: string;
+  /** Blank on records predating migration 0017, never a placeholder. */
+  state: string;
   issuedOn: string;
   signedName: string | null;
-  signedDesignation: string | null;
   signedAt: string | null;
   signatureMode: string | null;
   signedIp: string | null;
@@ -52,18 +61,19 @@ export async function renderSignedAgreement(agreement: SignedAgreement): Promise
     AGREEMENT_DOCUMENT_TITLE,
   );
 
-  writer.field("Practitioner", agreement.practitioner);
-  // The other party, which this document did not name at all. A contract
-  // between one named party and nobody is not a contract.
-  writer.field(AGREEMENT_PLATFORM_LABEL, AGREEMENT_PLATFORM_NAME);
-  // Both references, because they answer different questions. The client's JSON
-  // asks for the empanelment number and the console document is equally clear
-  // that the agreement's own IQC-AGR reference is the one its email quotes —
-  // dropping either leaves a document that cannot be tied back to something.
-  writer.field("Empanelment Reference Number", agreement.empanelmentReference);
-  writer.field("Agreement reference", agreement.reference);
-  writer.field("Issued on", agreement.issuedOn);
-  writer.field("Agreement version", agreement.version);
+  // The header is the client's list, walked in their order, rather than rows
+  // this file names — so the next header change is a JSON edit and a rebuild.
+  // The generator refuses to emit a key that has no value here, which is what
+  // stops an unrecognised field printing a silent dash on a contract.
+  const headerValues: Record<string, string> = {
+    practitionerName: agreement.practitioner,
+    city: agreement.city,
+    state: agreement.state,
+    empanelmentRef: agreement.empanelmentReference,
+  };
+  for (const field of AGREEMENT_HEADER_FIELDS) {
+    writer.field(field.label, headerValues[field.key] || "—");
+  }
   writer.gap(12);
 
   // Names both parties and fixes when the agreement takes effect. Also absent
@@ -97,16 +107,25 @@ export async function renderSignedAgreement(agreement: SignedAgreement): Promise
   writer.gap(10);
 
   if (agreement.signedAt) {
-    writer.field("Signed by", agreement.signedName ?? agreement.practitioner);
-    writer.field("Designation", agreement.signedDesignation ?? "—");
-    writer.field("Signed at", agreement.signedAt, GREEN);
-    writer.field("Signature method", agreement.signatureMode ?? "—");
-    // The IP is part of what makes an online signature evidential; it is
-    // captured server-side where the signer cannot edit it.
-    writer.field("Recorded from", agreement.signedIp ?? "—");
+    // Three rows, the client's, walked the same way as the header.
+    const signatureValues: Record<string, string> = {
+      practitionerName: agreement.signedName ?? agreement.practitioner,
+      signatureTimestamp: agreement.signedAt,
+      signatureMethod: agreement.signatureMode ?? "—",
+    };
+    for (const field of AGREEMENT_SIGNATURE_FIELDS) {
+      // The execution date is the one value a reader looks for first.
+      const colour = field.key === "signatureTimestamp" ? GREEN : undefined;
+      writer.field(field.label, signatureValues[field.key] || "—", colour);
+    }
     writer.gap(10);
+    // The IP, the version and this document's own reference are what make an
+    // online signature evidential, and v2's three-row block has no place for
+    // them. They belong in the platform's attestation rather than among the
+    // contract's own fields — dropping them to match the row count would throw
+    // away the provenance the block below exists to assert.
     writer.text(
-      "Signed electronically through the iqcommune onboarding link. The timestamp, originating address and agreement version above were recorded by the platform at the moment of submission and cannot be edited from the practitioner's side.",
+      `Signed electronically through the iqcommune onboarding link. Recorded by the platform at the moment of submission, and not editable from the practitioner's side: originating address ${agreement.signedIp ?? "not recorded"}, agreement ${agreement.reference}, version ${agreement.version}, issued ${agreement.issuedOn}.`,
       { size: 8, colour: FAINT },
     );
   } else {
