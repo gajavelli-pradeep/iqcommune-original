@@ -45,11 +45,25 @@ function clockTime(value: string | null): string {
   return `${((hours + 11) % 12) + 1}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
+/**
+ * The agreement is reached through the practitioner, not through the assignment.
+ *
+ * `session_practitioners.agreement_id` exists in the schema and is written by
+ * nothing — no code in the repository sets it, and it is null on every row. So
+ * embedding `practitioner_agreements` at this level resolved through a column
+ * that is always empty, and the consent page told every practitioner their
+ * Empanelment Agreement Ref. was "—" on the document they were being asked to
+ * agree to.
+ *
+ * The console's own panel already reads it the working way, through the
+ * practitioner's agreements, and a practitioner has one live agreement at a
+ * time. Matching that here needs no migration and no backfill, and fixes the
+ * rows that already exist.
+ */
 const ASSIGNMENT_SELECT = `
   id, gross_payout, currency, confirmation_reference, confirmation_issued_on, consent_given_at,
-  practitioners ( reference, full_name, role ),
-  sessions ( reference, module, session_date, start_time, duration_minutes, venue, city, state, audience, participants, spoc_name ),
-  practitioner_agreements ( reference )
+  practitioners ( reference, full_name, role, practitioner_agreements ( reference, deleted_at ) ),
+  sessions ( reference, module, session_date, start_time, duration_minutes, venue, city, state, audience, participants, spoc_name )
 `;
 
 interface AssignmentRow {
@@ -58,7 +72,12 @@ interface AssignmentRow {
   confirmation_reference: string;
   confirmation_issued_on: string;
   consent_given_at: string | null;
-  practitioners: { reference: string; full_name: string; role: string } | null;
+  practitioners: {
+    reference: string;
+    full_name: string;
+    role: string;
+    practitioner_agreements: { reference: string; deleted_at: string | null }[] | null;
+  } | null;
   sessions: {
     reference: string;
     module: string;
@@ -72,7 +91,6 @@ interface AssignmentRow {
     participants: string | null;
     spoc_name: string;
   } | null;
-  practitioner_agreements: { reference: string } | null;
 }
 
 async function loadAssignment(assignmentId: string): Promise<AssignmentRow | null> {
@@ -108,7 +126,11 @@ export async function getConsentSession(assignmentId: string): Promise<ConsentSe
 
   return {
     reference: row.confirmation_reference,
-    agreementReference: row.practitioner_agreements?.reference ?? "—",
+    // The live one: a withdrawn agreement must not name itself on a
+    // confirmation issued under its replacement.
+    agreementReference:
+      row.practitioners.practitioner_agreements?.find((agreement) => !agreement.deleted_at)
+        ?.reference ?? "—",
     issuedOn: date(row.confirmation_issued_on),
     // The spec greets by first name only.
     firstName: row.practitioners.full_name.split(" ")[0],
