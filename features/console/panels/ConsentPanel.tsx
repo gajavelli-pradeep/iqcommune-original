@@ -273,10 +273,16 @@ const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
 
-/** The shot list as a PDF, for a practitioner who wants it outside the email. */
+/**
+ * The shot list as a PDF, for a practitioner who wants it outside the email.
+ *
+ * V7 draws this one `.btn-dark` where every other download on the console is a
+ * ghost pill — the filled treatment is deliberate there, so it is kept.
+ */
 function GuideDownload({ row }: { row: ConsentRow }) {
   return (
     <DownloadLink
+      tone="dark"
       href={`/api/consents/${row.id}/pdf?doc=photo-guide`}
       label="Download photo guide (PDF)"
       title={`Download the photo guide for ${row.session}`}
@@ -966,7 +972,10 @@ function SendPhotoGuide({ rows }: { rows: readonly ConsentRow[] }) {
   const session = useMemo(() => confirmed.find((row) => row.id === selected), [confirmed, selected]);
 
   return (
-    <section>
+    // V7 sets `margin-top:1.75rem` on this heading. Everywhere else on the
+    // panel the gap comes from the previous card's bottom margin, and Part 2
+    // ends in a table that has none — so without this Part 3 butts against it.
+    <section className="mt-7">
       <h2 className={PART}>Part 3 — Send Photo Guide</h2>
       <div className={CARD}>
         <h3 className="text-sm font-semibold text-ink">Send the photo guide</h3>

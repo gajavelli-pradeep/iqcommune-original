@@ -30,17 +30,22 @@ export function DownloadLink({
   /**
    * `ghost` is the resting look everywhere. `gold` is V7's post-generate state
    * on the consent panel, where the colour change is what reports that the
-   * confirmation was created.
+   * confirmation was created. `dark` is V7 `.btn-dark`, which it uses for the
+   * photo guide download in Part 3 — the one download it draws as the filled
+   * action rather than the quiet one.
    *
    * Gold takes an ink label, not V7's white: white on `--color-gold` is 2.1:1
-   * and fails AA (same call as `RowAction`'s `primary`).
+   * and fails AA (same call as `RowAction`'s `primary`). Dark keeps white —
+   * white on `--color-ink` is 17:1.
    */
-  tone?: "ghost" | "gold";
+  tone?: "ghost" | "gold" | "dark";
 }) {
-  const look =
-    tone === "gold"
-      ? "bg-gold text-ink shadow-gold hover:brightness-[1.08]"
-      : "border border-border-strong bg-surface text-ink-muted hover:bg-surface-soft hover:text-ink";
+  const LOOKS = {
+    gold: "bg-gold text-ink shadow-gold hover:brightness-[1.08]",
+    dark: "bg-ink text-surface hover:opacity-90",
+    ghost: "border border-border-strong bg-surface text-ink-muted hover:bg-surface-soft hover:text-ink",
+  };
+  const look = LOOKS[tone];
 
   return (
     <a
