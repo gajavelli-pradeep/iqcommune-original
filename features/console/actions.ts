@@ -21,6 +21,9 @@ import {
 import { newTraceId } from "@/lib/logger";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
+// Namespaced: the WhatsApp templates deliberately share their email
+// counterparts' names, being the same message in the other channel.
+import * as whatsapp from "@/lib/whatsapp/templates";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
@@ -1684,7 +1687,7 @@ function outstandingFor(request: Record<string, unknown>): string[] {
 async function draftMessage(
   kind: DraftKind,
   id: string,
-): Promise<{ message: EmailMessage; detail?: string } | null> {
+): Promise<{ message: EmailMessage; whatsapp?: string; detail?: string } | null> {
   const supabase = createAdminClient();
 
   if (kind === "request-follow-up") {
@@ -1698,15 +1701,20 @@ async function draftMessage(
     if (!data) return null;
 
     const outstanding = outstandingFor(data);
+    const firstName = data.first_name as string;
+    // One echo for both halves — they quote the same request, and building it
+    // twice is how the two would eventually disagree.
+    const echo = {
+      topic: data.topic as string,
+      // The label, never the stored value — "corporate" is not a thing anyone
+      // asked to be called.
+      audience: AUDIENCE_LABELS[data.audience as Audience],
+      groupSize: (data.group_size as string | null) ?? undefined,
+      preferredWindow: (data.preferred_window as string | null) ?? undefined,
+    };
     return {
-      message: sessionRequestFollowUp(data.email as string, data.first_name as string, {
-        topic: data.topic as string,
-        // The label, never the stored value — "corporate" is not a thing anyone
-        // asked to be called.
-        audience: AUDIENCE_LABELS[data.audience as Audience],
-        groupSize: (data.group_size as string | null) ?? undefined,
-        preferredWindow: (data.preferred_window as string | null) ?? undefined,
-      }),
+      message: sessionRequestFollowUp(data.email as string, firstName, echo),
+      whatsapp: whatsapp.sessionRequestFollowUp(firstName, echo).body,
       detail: outstanding.join(" "),
     };
   }
@@ -1729,12 +1737,15 @@ async function draftMessage(
     if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
     const contact = await practitionerContact(supabase, practitionerId);
     if (!contact) return null;
-    return {
-      message:
-        kind === "practitioner-welcome"
-          ? practitionerWelcome(contact.email, contact.firstName, contact.reference)
-          : practitionerDeactivated(contact.email, contact.firstName),
-    };
+    return kind === "practitioner-welcome"
+      ? {
+          message: practitionerWelcome(contact.email, contact.firstName, contact.reference),
+          whatsapp: whatsapp.practitionerWelcome(contact.firstName).body,
+        }
+      : {
+          message: practitionerDeactivated(contact.email, contact.firstName),
+          whatsapp: whatsapp.practitionerDeactivated(contact.firstName).body,
+        };
   }
 
   if (kind === "application-rejected") {
@@ -1747,7 +1758,11 @@ async function draftMessage(
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) return null;
-    return { message: applicationRejected(data.email as string, data.first_name as string) };
+    const firstName = data.first_name as string;
+    return {
+      message: applicationRejected(data.email as string, firstName),
+      whatsapp: whatsapp.applicationRejected(firstName).body,
+    };
   }
 
   if (kind === "admin-invite") {
@@ -1760,8 +1775,14 @@ async function draftMessage(
     const address = (separator === -1 ? id : id.slice(separator + 1)).trim().toLowerCase();
     const role = separator === -1 ? "admin" : id.slice(0, separator);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return null;
-    const message = adminInvite(address, PREVIEW_ID, ROLE_WORD[role] ?? ROLE_WORD.admin);
-    return { message: { ...message, body: maskLink(message.body) } };
+    const roleLabel = ROLE_WORD[role] ?? ROLE_WORD.admin;
+    const message = adminInvite(address, PREVIEW_ID, roleLabel);
+    return {
+      message: { ...message, body: maskLink(message.body) },
+      // Masked for the same reason: the invite row, and its one-time link, are
+      // created by the send.
+      whatsapp: maskLink(whatsapp.adminInvite(PREVIEW_ID, roleLabel).body),
+    };
   }
 
   if (kind === "onboarding-link") {
@@ -1791,7 +1812,11 @@ async function draftMessage(
     if (!contact) return null;
 
     const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, contact.reference);
-    return { message: { ...message, body: maskLink(message.body) } };
+    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, contact.reference);
+    return {
+      message: { ...message, body: maskLink(message.body) },
+      whatsapp: maskLink(wa.body),
+    };
   }
 
   if (kind === "session-cancellation") {
@@ -1806,13 +1831,11 @@ async function draftMessage(
 
     const requestor = await requestorForSession(id);
     if (!requestor) return null;
+    const sessionModule = session.module as string;
+    const reference = session.reference as string;
     return {
-      message: sessionCancelled(
-        requestor.email,
-        requestor.firstName,
-        session.module as string,
-        session.reference as string,
-      ),
+      message: sessionCancelled(requestor.email, requestor.firstName, sessionModule, reference),
+      whatsapp: whatsapp.sessionCancelled(requestor.firstName, sessionModule, reference).body,
     };
   }
 
@@ -1825,6 +1848,12 @@ async function draftMessage(
         sessionReference: assignment.sessionReference,
         confirmationReference: assignment.confirmationReference,
       }),
+      // No session reference in this half — the WhatsApp copy quotes only the
+      // confirmation one.
+      whatsapp: whatsapp.consentRequest(assignment.practitioner.firstName, id, {
+        module: assignment.module,
+        confirmationReference: assignment.confirmationReference,
+      }).body,
     };
   }
   if (kind === "rating-request") {
@@ -1833,11 +1862,13 @@ async function draftMessage(
     // being rated.
     const requestor = await requestorForSession(assignment.sessionId);
     if (!requestor) return null;
+    const rated = {
+      module: assignment.module,
+      practitionerName: assignment.practitioner.fullName,
+    };
     return {
-      message: ratingRequest(requestor.email, requestor.firstName, id, {
-        module: assignment.module,
-        practitionerName: assignment.practitioner.fullName,
-      }),
+      message: ratingRequest(requestor.email, requestor.firstName, id, rated),
+      whatsapp: whatsapp.ratingRequest(requestor.firstName, id, rated).body,
     };
   }
   return {
@@ -1847,6 +1878,7 @@ async function draftMessage(
       id,
       assignment.module,
     ),
+    whatsapp: whatsapp.photoReminder(assignment.practitioner.firstName, id, assignment.module).body,
   };
 }
 
@@ -1885,7 +1917,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
-  return { to, subject, body };
+  return { to, subject, body, whatsapp: draft.whatsapp };
 }
 
 /**

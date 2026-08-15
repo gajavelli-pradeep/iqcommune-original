@@ -95,6 +95,15 @@ export interface DraftOverride {
 /** A composed message, ready to show. */
 export interface Draft extends DraftOverride {
   to: string;
+  /**
+   * The same message written for WhatsApp, where the delivered document
+   * supplies one. Absent on `request-cancellation`, which it does not cover —
+   * that send shows no WhatsApp tab rather than an invented body.
+   *
+   * Copy-only: there is no WhatsApp delivery integration, so this leaves the
+   * dialog through the clipboard and an admin's own handset.
+   */
+  whatsapp?: string;
 }
 
 /** Dialog chrome per kind — V7 sets a title and a subtitle on every open. */

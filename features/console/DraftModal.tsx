@@ -24,13 +24,30 @@ import { DRAFT_CHROME, type Draft, type DraftKind, type DraftOverride } from "./
  *    edit is silently discarded. Here the edited subject and body are handed to
  *    the server action, which is the entire point of offering the edit.
  *
- * The WhatsApp tab is not built. In the prototype it is a second text buffer
- * whose only exit is the clipboard — no `wa.me` link, no phone number, no send —
- * and in this same automated mode its Copy button is hidden, so the text cannot
- * leave the dialog at all. Building it means inventing eleven more pieces of
- * copy while the client's real templates are still outstanding, so it waits for
- * them. The client called it optional.
+ * The WhatsApp tab shows the delivered document's copy for the same send, and
+ * its only exit is the clipboard — there is no provider, no `wa.me` link and no
+ * phone number, so an admin copies the text and sends it from their own
+ * handset. That is one better than the prototype, which hid the Copy button in
+ * this mode and so trapped the text in the dialog.
+ *
+ * It is deliberately not editable. The email half is edited because the edit is
+ * what gets sent; nothing here is sent, so an edit would be discarded the
+ * moment the dialog closed — the defect noted in point 2, reintroduced.
+ *
+ * `request-cancellation` has no WhatsApp copy in the document, so that send
+ * shows no tab rather than an invented body.
  */
+type Channel = "email" | "whatsapp";
+type CopyState = "idle" | "copied" | "failed";
+
+/** The two tabs, at the dialog's own scale — the console has no segmented
+ *  control to reuse, and the public `Button` variants are all page-sized.
+ *  `min-h-11` keeps the target at 44px under a coarse pointer. */
+const TAB_BASE =
+  "min-h-11 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold";
+const TAB_ON = "bg-ink text-surface";
+const TAB_OFF = "text-ink-muted hover:bg-surface-soft";
+
 export function DraftModal({
   onClose,
   kind,
@@ -47,6 +64,8 @@ export function DraftModal({
   const [error, setError] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [channel, setChannel] = useState<Channel>("email");
+  const [copy, setCopy] = useState<CopyState>("idle");
 
   // Mounted only while open (see `RowAction`), so every open starts from these
   // initial values. That is why there is no reset here: clearing state
@@ -76,6 +95,18 @@ export function DraftModal({
 
   const chrome = DRAFT_CHROME[kind];
   const ready = Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0;
+
+  /** The Clipboard API is absent on an insecure origin and in older browsers.
+   *  The textarea stays selectable either way, so a failure says so rather
+   *  than leaving the admin to wonder whether the copy took. */
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopy("copied");
+    } catch {
+      setCopy("failed");
+    }
+  }
 
   return (
     <Modal
@@ -117,49 +148,122 @@ export function DraftModal({
         </div>
       ) : (
         <>
-          <div className="mb-4 rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
-            <span className="font-medium text-ink">To:</span> {draft.to}
-            <br />
-            <span className="font-medium text-ink">Re:</span> {chrome.subject}
-          </div>
+          {draft.whatsapp ? (
+            <div role="tablist" aria-label="Message channel" className="mb-4 flex gap-1">
+              {(["email", "whatsapp"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="tab"
+                  id={`draft-tab-${option}`}
+                  aria-selected={channel === option}
+                  aria-controls={`draft-panel-${option}`}
+                  onClick={() => {
+                    setChannel(option);
+                    setCopy("idle");
+                  }}
+                  className={`${TAB_BASE} ${channel === option ? TAB_ON : TAB_OFF}`}
+                >
+                  {option === "email" ? "Email" : "WhatsApp"}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          <p className="mb-1.5 flex items-center gap-[5px] text-2xs text-ink-faint">
-            <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            Click into the text below to edit before sending
-          </p>
+          <div
+            role="tabpanel"
+            id="draft-panel-email"
+            aria-labelledby="draft-tab-email"
+            hidden={channel !== "email"}
+          >
+            <div className="mb-4 rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
+              <span className="font-medium text-ink">To:</span> {draft.to}
+              <br />
+              <span className="font-medium text-ink">Re:</span> {chrome.subject}
+            </div>
 
-          <div className="mb-3 flex items-baseline gap-1.5 border-b border-border pb-2.5">
-            <label htmlFor="draft-subject" className="shrink-0 text-base font-semibold text-ink">
-              Subject:
-            </label>
-            <input
-              id="draft-subject"
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              spellCheck={false}
-              className="min-w-0 flex-1 border-b border-dashed border-border-strong bg-transparent px-0.5 py-px text-base font-semibold text-ink focus:border-gold focus:outline-none"
-            />
-          </div>
-
-          <label htmlFor="draft-body" className="sr-only">
-            Message
-          </label>
-          <textarea
-            id="draft-body"
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            spellCheck={false}
-            rows={14}
-            className="block w-full resize-y rounded-lg border border-border bg-surface-soft p-4 text-base leading-[1.85] text-ink-muted focus:border-gold focus:bg-surface focus:outline-none"
-          />
-
-          {!ready ? (
-            <p role="alert" className="mt-2 text-xs text-red">
-              A subject and a message are both needed before this can be sent.
+            <p className="mb-1.5 flex items-center gap-[5px] text-2xs text-ink-faint">
+              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              Click into the text below to edit before sending
             </p>
+
+            <div className="mb-3 flex items-baseline gap-1.5 border-b border-border pb-2.5">
+              <label htmlFor="draft-subject" className="shrink-0 text-base font-semibold text-ink">
+                Subject:
+              </label>
+              <input
+                id="draft-subject"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                spellCheck={false}
+                className="min-w-0 flex-1 border-b border-dashed border-border-strong bg-transparent px-0.5 py-px text-base font-semibold text-ink focus:border-gold focus:outline-none"
+              />
+            </div>
+
+            <label htmlFor="draft-body" className="sr-only">
+              Message
+            </label>
+            <textarea
+              id="draft-body"
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              spellCheck={false}
+              rows={14}
+              className="block w-full resize-y rounded-lg border border-border bg-surface-soft p-4 text-base leading-[1.85] text-ink-muted focus:border-gold focus:bg-surface focus:outline-none"
+            />
+
+            {!ready ? (
+              <p role="alert" className="mt-2 text-xs text-red">
+                A subject and a message are both needed before this can be sent.
+              </p>
+            ) : null}
+          </div>
+
+          {draft.whatsapp ? (
+            <div
+              role="tabpanel"
+              id="draft-panel-whatsapp"
+              aria-labelledby="draft-tab-whatsapp"
+              hidden={channel !== "whatsapp"}
+            >
+              <p className="mb-3 rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
+                Copy this and send it from your own WhatsApp — we have no WhatsApp connection, so
+                nothing here goes out on its own. <span className="font-medium text-ink">Click to send</span>{" "}
+                delivers the email only.
+              </p>
+
+              <label htmlFor="draft-whatsapp" className="sr-only">
+                WhatsApp message
+              </label>
+              <textarea
+                id="draft-whatsapp"
+                readOnly
+                value={draft.whatsapp}
+                rows={14}
+                className="block w-full resize-y rounded-lg border border-border bg-surface-soft p-4 text-base leading-[1.85] text-ink-muted focus:border-gold focus:outline-none"
+              />
+
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(draft.whatsapp ?? "")}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border-strong px-4 text-sm font-medium text-ink transition-colors hover:border-gold hover:bg-gold-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                >
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  Copy message
+                </button>
+                <p aria-live="polite" className="text-xs text-ink-faint">
+                  {copy === "copied" ? "Copied to clipboard." : null}
+                  {copy === "failed" ? "Could not copy — select the text above instead." : null}
+                </p>
+              </div>
+            </div>
           ) : null}
         </>
       )}
