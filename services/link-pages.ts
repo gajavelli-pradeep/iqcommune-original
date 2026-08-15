@@ -170,7 +170,7 @@ export async function getOnboardingPractitioner(
       city: string;
       state: string | null;
       email: string | null;
-      reference: string;
+      reference: string | null;
     } | null;
   } | null;
   if (!row?.practitioners) return null;

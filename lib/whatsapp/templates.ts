@@ -58,13 +58,13 @@ export interface WhatsAppMessage {
 export function onboardingLink(
   firstName: string,
   agreementId: string,
-  practitionerReference: string,
+  agreementReference: string,
 ): WhatsAppMessage {
   return {
     template: "onboarding-link",
     body: message(
       // The only body whose first sentence runs on from the greeting.
-      `${greeting(firstName)} Your empanelment agreement (Ref. ${practitionerReference}) is ready — please review and sign online here:`,
+      `${greeting(firstName)} Your empanelment agreement (Ref. ${agreementReference}) is ready — please review and sign online here:`,
       buildLink("onboarding", agreementId),
     ),
   };

@@ -11,7 +11,7 @@ import * as whatsapp from "@/lib/whatsapp/templates";
  */
 
 const ID = "a4a7e0eb-dc63-4ca3-b779-2bd1a57f318e";
-const REF = "IQC-EMP-0042";
+const AGREEMENT_REF = "IQC-AGR-0007";
 const MODULE = "Equity Investing Simplified";
 
 beforeEach(() => {
@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 const every = () => [
-  whatsapp.onboardingLink("Asha", ID, REF),
+  whatsapp.onboardingLink("Asha", ID, AGREEMENT_REF),
   whatsapp.practitionerWelcome("Asha"),
   whatsapp.applicationRejected("Asha"),
   whatsapp.practitionerDeactivated("Asha"),
@@ -67,10 +67,12 @@ describe("WhatsApp copy", () => {
     expect(whatsapp.adminInvite(ID, "Admin").body.startsWith("Hi, this is iqcommune.")).toBe(true);
   });
 
-  it("quotes the practitioner's reference on the agreement, as the email does", () => {
-    const message = whatsapp.onboardingLink("Asha", ID, REF);
-    expect(message.body).toContain(`Your empanelment agreement (Ref. ${REF}) is ready`);
-    expect(message.body).not.toContain("IQC-AGR");
+  it("quotes the agreement's own reference, as the email does", () => {
+    // Same rule as the email half: IQC-AGR identifies the document being sent,
+    // and the practitioner's IQC-EMP does not exist until they sign it.
+    const message = whatsapp.onboardingLink("Asha", ID, AGREEMENT_REF);
+    expect(message.body).toContain(`Your empanelment agreement (Ref. ${AGREEMENT_REF}) is ready`);
+    expect(message.body).not.toContain("IQC-EMP");
   });
 
   it("agrees the article with the role", () => {
@@ -105,7 +107,7 @@ describe("WhatsApp copy", () => {
 
   it("carries a real link wherever the copy promises one", () => {
     const linked = [
-      whatsapp.onboardingLink("Asha", ID, REF),
+      whatsapp.onboardingLink("Asha", ID, AGREEMENT_REF),
       whatsapp.consentRequest("Asha", ID, { module: MODULE, confirmationReference: "IQC-CONF-0012" }),
       whatsapp.photoReminder("Asha", ID, MODULE),
       whatsapp.ratingRequest("Asha", ID, { module: MODULE, practitionerName: "Vikram Rao" }),
@@ -122,6 +124,6 @@ describe("WhatsApp copy", () => {
     expect(whatsapp.ratingRequest("Asha", ID, { module: MODULE, practitionerName: "V" }).template).toBe(
       "rating-request",
     );
-    expect(whatsapp.onboardingLink("Asha", ID, REF).template).toBe("onboarding-link");
+    expect(whatsapp.onboardingLink("Asha", ID, AGREEMENT_REF).template).toBe("onboarding-link");
   });
 });
