@@ -114,7 +114,10 @@ describe("OnboardingForm", () => {
     // The literal words the client's delivery prints, not V7's substituted
     // address — see the note beside this copy in OnboardingForm.tsx. Asserted
     // both ways round: the address appearing here again is the regression.
-    expect(screen.getByText("your inbox")).toBeInTheDocument();
+    // Matched inside the sentence rather than as its own element: "your inbox"
+    // is plain prose now, not an emphasised span, and asserting on the element
+    // would only re-pin the styling this deliberately removed.
+    expect(screen.getByText(/Keep an eye on your inbox\./)).toBeInTheDocument();
     expect(screen.queryByText(practitioner.email)).not.toBeInTheDocument();
     expect(screen.getByText("Signed by")).toBeInTheDocument();
     // The receipt is the first surface that can show the EMPANELMENT number —
