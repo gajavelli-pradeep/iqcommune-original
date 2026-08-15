@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ConsentPanel } from "./ConsentPanel";
-import type { ConsentRow } from "@/services/console";
+import { generateConfirmation } from "../actions";
+import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
 /**
  * The Next step column is the whole point of the tab: one row, one next action.
@@ -150,5 +152,110 @@ describe("a view-only role", () => {
     render(<ConsentPanel rows={[row({ status: "Received" })]} role="user" confirmable={[]} />);
     expect(screen.queryByRole("button", { name: /send|confirm/i })).not.toBeInTheDocument();
     expect(screen.getByText("IQC-CONF-0001")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Part 1's three "(admin enters)" fields, as they appear before anyone types.
+ *
+ * They used to open at 10:00 AM and 3 hours — values no admin had chosen, on a
+ * document a practitioner signs. `confirmation-fields.test.ts` proves the guard
+ * refuses them; these prove the form actually presents them as empty, which is
+ * the half a unit test cannot see. A dropdown with no empty option silently
+ * selects its first item, so "the state is empty" and "the control shows
+ * nothing" are two different claims.
+ */
+describe("the fields the admin fills in open empty", () => {
+  const confirmable: ConfirmableSession = {
+    id: "a1",
+    sessionReference: "IQC-S0001",
+    confirmationReference: "IQC-CONF-0001",
+    practitioner: "Priya Sharma",
+    agreementReference: "IQC-AGR-0001",
+    module: "Equity Investing Simplified",
+    // A date already on the record — the box must still open blank.
+    sessionDate: "2026-08-16",
+    city: "Mumbai",
+    state: "Maharashtra",
+    venue: "Kotak Securities, BKC",
+    participants: "16-25",
+    spoc: "Rahul Mehta",
+    audience: "corporate",
+    grossPayout: 12000,
+    currency: "INR",
+    startTime: null,
+    durationMinutes: null,
+    consentGiven: false,
+    confirmationGenerated: false,
+  };
+
+  /** A second session to switch to, so nothing can carry across. */
+  const other: ConfirmableSession = {
+    ...confirmable,
+    id: "a2",
+    sessionReference: "IQC-S0002",
+    confirmationReference: "IQC-CONF-0002",
+    practitioner: "Arjun Nair",
+  };
+
+  const openForm = async () => {
+    const user = userEvent.setup();
+    render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable, other]} />);
+    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a1");
+    return user;
+  };
+
+  it("shows no date, no time and no duration", async () => {
+    await openForm();
+    expect(screen.getByLabelText<HTMLInputElement>(/session date/i).value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("Minute").value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("AM or PM").value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>(/duration/i).value).toBe("");
+  });
+
+  it("offers a placeholder in each picker, not a real value", async () => {
+    // Without these the browser picks "01" and "3 hours" on the admin's behalf.
+    await openForm();
+    expect(screen.getByRole("option", { name: "Hour" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Min" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "AM/PM" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Select duration" })).toBeInTheDocument();
+  });
+
+  it("keeps what the admin picks", async () => {
+    const user = await openForm();
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
+    expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("02");
+  });
+
+  it("forgets what was typed when a different session is chosen", async () => {
+    // Otherwise the second confirmation of the day opens holding the first
+    // one's date and time, which read as this session's because nothing on
+    // screen says they are not. Same defect as the invented 10:00 AM, one
+    // session further along.
+    const user = await openForm();
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
+    await user.type(screen.getByLabelText(/session date/i), "2026-09-01");
+
+    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a2");
+    expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("AM or PM").value).toBe("");
+    expect(screen.getByLabelText<HTMLInputElement>(/session date/i).value).toBe("");
+  });
+
+  it("sends the blanks through, so the guard can name them", async () => {
+    // The link between an empty form and the error message. Without this the
+    // other two tests and `confirmation-fields.test.ts` could both pass while
+    // the panel quietly substituted the stored date or a half-built "10:" on
+    // the way out — which is exactly what it used to do.
+    const user = await openForm();
+    await user.click(screen.getByRole("button", { name: /generate confirmation/i }));
+    expect(vi.mocked(generateConfirmation)).toHaveBeenCalledWith("a1", {
+      sessionDate: "",
+      startTime: "",
+      durationHours: 0,
+    });
   });
 });

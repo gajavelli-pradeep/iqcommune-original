@@ -91,18 +91,24 @@ function to24Hour(hour: string, minute: string, meridiem: string): string {
 }
 
 /**
- * What the pickers should show before the admin touches them.
+ * What the pickers should show before the admin touches them: the session's own
+ * values if it has them, and otherwise nothing at all.
  *
- * The session's own values when it has them, falling back to 10:00 AM and a
- * single module. `startTime` and `durationMinutes` were fetched onto this
- * payload and then read by nothing, so the form always opened at the fallback —
- * harmless while Part 1 only ever lists sessions that have never been
- * confirmed, and silently destructive the moment it lists one that has: the
- * admin would reconfirm a 2pm session at 10am without being shown that it moved.
+ * These three are labelled "(admin enters)" and used to open at 10:00 AM and 3
+ * hours — values no admin had chosen, on a document a practitioner signs. An
+ * admin could generate without touching the form and send a practitioner a
+ * start time nobody agreed to, which reads as a decision precisely because it
+ * is printed on a signed confirmation. An empty picker cannot be mistaken for
+ * one; the guard in `confirmation-fields` then refuses to generate until they
+ * are filled.
  *
- * Derived at render from the selected session rather than held in state, which
- * is how the date box beside them already works. State seeded once would keep
- * the first session's time after the admin picks a different one.
+ * The inheritance stays, because it is not an invention: a session that really
+ * does hold 2:00 PM should show 2:00 PM. Today nothing does — Part 1 lists only
+ * sessions never confirmed, and these two columns are written by the generate
+ * action alone — so in practice every picker opens blank.
+ *
+ * Derived at render rather than held in state: state seeded once would keep the
+ * first session's time after the admin picks a different session.
  */
 export function seedFrom(session: ConfirmableSession | undefined): {
   hour: string;
@@ -110,16 +116,15 @@ export function seedFrom(session: ConfirmableSession | undefined): {
   meridiem: string;
   duration: string;
 } {
-  const fallback = { hour: "10", minute: "00", meridiem: "AM", duration: "3" };
-
-  // Only the two the picker offers. A stored 240 would seed "4", which matches
-  // no option — the select renders blank and submits Number("") as the duration.
+  // Only the two lengths the picker offers. A stored 240 would seed "4", which
+  // matches no option — the select falls back to its placeholder and submits
+  // Number("") as the duration.
   const stored = session?.durationMinutes ? String(session.durationMinutes / 60) : "";
-  const duration = stored === "3" || stored === "6" ? stored : fallback.duration;
+  const duration = stored === "3" || stored === "6" ? stored : "";
 
   // Postgres hands back "14:30:00"; anything else is not a time we can seed from.
   const match = session?.startTime?.match(/^(\d{2}):(\d{2})/);
-  if (!match) return { ...fallback, duration };
+  if (!match) return { hour: "", minute: "", meridiem: "", duration };
 
   const hour24 = Number(match[1]);
   return {
@@ -605,6 +610,32 @@ function GenerateConfirmation({
   const session = useMemo(() => sessions.find((entry) => entry.id === selected), [sessions, selected]);
   const seeded = useMemo(() => seedFrom(session), [session]);
 
+  // What the form is actually holding: the admin's choice where they made one,
+  // the session's own value where they have not, and "" where neither exists.
+  // The pickers and the submit both read this, so what is sent is what is shown.
+  const picked = {
+    hour: hour || seeded.hour,
+    minute: minute || seeded.minute,
+    meridiem: meridiem || seeded.meridiem,
+    duration: duration || seeded.duration,
+  };
+
+  /**
+   * Everything typed into the form belongs to the session it was typed for.
+   *
+   * Switching sessions leaves the four pickers and the date box holding the
+   * previous one's answers, which then read as the new session's — the exact
+   * failure the empty fields exist to prevent, moved one session along. The
+   * date carried across even before the pickers did.
+   */
+  const clearEntry = () => {
+    setDate("");
+    setHour("");
+    setMinute("");
+    setMeridiem("");
+    setDuration("");
+  };
+
   // Shared by every field in the grid; only the label, value and column differ.
   const auto = { assignmentId: session?.id ?? "", canOverride: can(role, "override") };
 
@@ -630,6 +661,7 @@ function GenerateConfirmation({
               setSelected(event.target.value);
               setDone(null);
               setError(null);
+              clearEntry();
             }}
             className={`${PICKER} max-w-[480px]`}
           >
@@ -685,10 +717,14 @@ function GenerateConfirmation({
                 <label className={LABEL} htmlFor="confirm-date">
                   Session date <span className="font-normal text-ink-faint">(admin enters)</span>
                 </label>
+                {/* Not pre-filled from `session.sessionDate`. A date already on
+                    the record is one the admin has not looked at on this screen,
+                    and this screen is where it becomes a term of a signed
+                    document. */}
                 <input
                   id="confirm-date"
                   type="date"
-                  value={date || (session.sessionDate ?? "")}
+                  value={date}
                   onChange={(event) => setDate(event.target.value)}
                   className={FIELD}
                 />
@@ -701,7 +737,11 @@ function GenerateConfirmation({
                   <label className="sr-only" htmlFor="confirm-hour">
                     Hour
                   </label>
-                  <select id="confirm-hour" value={hour || seeded.hour} onChange={(e) => setHour(e.target.value)} className={PICKER}>
+                  {/* The empty option is what lets a dropdown say "nothing
+                      chosen". Without one the browser selects the first item,
+                      so the control can only ever report a value. */}
+                  <select id="confirm-hour" value={picked.hour} onChange={(e) => setHour(e.target.value)} className={PICKER}>
+                    <option value="">Hour</option>
                     {HOURS.map((value) => (
                       <option key={value}>{value}</option>
                     ))}
@@ -711,10 +751,11 @@ function GenerateConfirmation({
                   </label>
                   <select
                     id="confirm-minute"
-                    value={minute || seeded.minute}
+                    value={picked.minute}
                     onChange={(e) => setMinute(e.target.value)}
                     className={PICKER}
                   >
+                    <option value="">Min</option>
                     {MINUTES.map((value) => (
                       <option key={value}>{value}</option>
                     ))}
@@ -724,10 +765,11 @@ function GenerateConfirmation({
                   </label>
                   <select
                     id="confirm-meridiem"
-                    value={meridiem || seeded.meridiem}
+                    value={picked.meridiem}
                     onChange={(e) => setMeridiem(e.target.value)}
                     className={PICKER}
                   >
+                    <option value="">AM/PM</option>
                     <option>AM</option>
                     <option>PM</option>
                   </select>
@@ -739,10 +781,11 @@ function GenerateConfirmation({
                 </label>
                 <select
                   id="confirm-duration"
-                  value={duration || seeded.duration}
+                  value={picked.duration}
                   onChange={(event) => setDuration(event.target.value)}
                   className={PICKER}
                 >
+                  <option value="">Select duration</option>
                   <option value="3">3 hours — single module</option>
                   <option value="6">6 hours — bundled, two modules</option>
                 </select>
@@ -779,18 +822,15 @@ function GenerateConfirmation({
               onClick={() =>
                 start(async () => {
                   setError(null);
-                  // The effective values, not the raw state: each box holds ""
-                  // until the admin touches it and shows `seeded` through in the
-                  // meantime, so sending the state would send nothing at all for
-                  // every field they were happy to leave alone.
+                  // Half a time is not a time: `to24Hour("10", "", "")` returns
+                  // "10:", which reads as malformed rather than as missing and
+                  // would earn a message about the format of something the admin
+                  // never filled in. Send "" and let the guard name the field.
+                  const complete = picked.hour && picked.minute && picked.meridiem;
                   const result = await generateConfirmation(session.id, {
-                    startTime: to24Hour(
-                      hour || seeded.hour,
-                      minute || seeded.minute,
-                      meridiem || seeded.meridiem,
-                    ),
-                    durationHours: Number(duration || seeded.duration),
-                    sessionDate: date || session.sessionDate,
+                    startTime: complete ? to24Hour(picked.hour, picked.minute, picked.meridiem) : "",
+                    durationHours: Number(picked.duration),
+                    sessionDate: date,
                   });
                   if (result.ok) {
                     setDone(session);
