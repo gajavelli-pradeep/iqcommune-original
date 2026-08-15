@@ -620,6 +620,22 @@ function GenerateConfirmation({
     duration: duration || seeded.duration,
   };
 
+  /**
+   * Everything typed into the form belongs to the session it was typed for.
+   *
+   * Switching sessions leaves the four pickers and the date box holding the
+   * previous one's answers, which then read as the new session's — the exact
+   * failure the empty fields exist to prevent, moved one session along. The
+   * date carried across even before the pickers did.
+   */
+  const clearEntry = () => {
+    setDate("");
+    setHour("");
+    setMinute("");
+    setMeridiem("");
+    setDuration("");
+  };
+
   // Shared by every field in the grid; only the label, value and column differ.
   const auto = { assignmentId: session?.id ?? "", canOverride: can(role, "override") };
 
@@ -645,6 +661,7 @@ function GenerateConfirmation({
               setSelected(event.target.value);
               setDone(null);
               setError(null);
+              clearEntry();
             }}
             className={`${PICKER} max-w-[480px]`}
           >

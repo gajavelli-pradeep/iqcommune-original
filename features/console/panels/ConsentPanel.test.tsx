@@ -189,9 +189,18 @@ describe("the fields the admin fills in open empty", () => {
     confirmationGenerated: false,
   };
 
+  /** A second session to switch to, so nothing can carry across. */
+  const other: ConfirmableSession = {
+    ...confirmable,
+    id: "a2",
+    sessionReference: "IQC-S0002",
+    confirmationReference: "IQC-CONF-0002",
+    practitioner: "Arjun Nair",
+  };
+
   const openForm = async () => {
     const user = userEvent.setup();
-    render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable]} />);
+    render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable, other]} />);
     await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a1");
     return user;
   };
@@ -218,6 +227,22 @@ describe("the fields the admin fills in open empty", () => {
     const user = await openForm();
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
     expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("02");
+  });
+
+  it("forgets what was typed when a different session is chosen", async () => {
+    // Otherwise the second confirmation of the day opens holding the first
+    // one's date and time, which read as this session's because nothing on
+    // screen says they are not. Same defect as the invented 10:00 AM, one
+    // session further along.
+    const user = await openForm();
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
+    await user.type(screen.getByLabelText(/session date/i), "2026-09-01");
+
+    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a2");
+    expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("AM or PM").value).toBe("");
+    expect(screen.getByLabelText<HTMLInputElement>(/session date/i).value).toBe("");
   });
 
   it("sends the blanks through, so the guard can name them", async () => {
