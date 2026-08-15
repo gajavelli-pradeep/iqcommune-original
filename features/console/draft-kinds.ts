@@ -100,10 +100,17 @@ export interface Draft extends DraftOverride {
    * supplies one. Absent on `request-cancellation`, which it does not cover —
    * that send shows no WhatsApp tab rather than an invented body.
    *
-   * Copy-only: there is no WhatsApp delivery integration, so this leaves the
-   * dialog through the clipboard and an admin's own handset.
+   * Delivered by handing the admin a `wa.me` link, not by an integration —
+   * pressing send stays a human act in WhatsApp itself.
    */
   whatsapp?: string;
+  /**
+   * The recipient's number, for that link. Null where none is on file: a
+   * practitioner who predates migration 0021 and whose application is gone, or
+   * the admin invite, which has a mailbox and no handset. The dialog offers no
+   * WhatsApp button rather than opening the app on nobody.
+   */
+  phone?: string | null;
 }
 
 /**

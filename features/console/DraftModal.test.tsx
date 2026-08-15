@@ -3,9 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const composeDraft = vi.fn();
-vi.mock("./actions", () => ({ composeDraft: (...args: unknown[]) => composeDraft(...args) }));
+const recordWhatsAppOpened = vi.fn();
+vi.mock("./actions", () => ({
+  composeDraft: (...args: unknown[]) => composeDraft(...args),
+  recordWhatsAppOpened: (...args: unknown[]) => recordWhatsAppOpened(...args),
+}));
 
 const { DraftModal } = await import("./DraftModal");
+const { LINK_PLACEHOLDER, REFERENCE_PLACEHOLDER } = await import("./draft-kinds");
 
 /**
  * The draft dialog exists so an admin can change a message before it goes out.
@@ -92,10 +97,13 @@ describe("DraftModal", () => {
 });
 
 /**
- * The WhatsApp half is copy only — there is no provider behind it. So the tab
- * exists to get the text out of the dialog, and these hold the two ways that
- * fails silently: a tab offered for a send the document never wrote copy for,
- * and a Copy button that reports success when the clipboard refused.
+ * The tab itself, and the clipboard route out of it.
+ *
+ * Copy is still here now that the tab can open WhatsApp directly: a recipient
+ * with no number on file, and a message whose link is not allocated yet, both
+ * leave the dialog this way. These hold the two ways the tab fails silently — a
+ * tab offered for a send the document never wrote copy for, and a Copy button
+ * that reports success when the clipboard refused.
  */
 describe("DraftModal — WhatsApp tab", () => {
   const WITH_WHATSAPP = { ...READY, whatsapp: "Hi Vikram, this is iqcommune.\n\n— iqcommune team" };
@@ -161,5 +169,99 @@ describe("DraftModal — WhatsApp tab", () => {
 
     expect(await screen.findByText(/select the text above instead/i)).toBeTruthy();
     expect(screen.queryByText(/copied to clipboard/i)).toBeNull();
+  });
+});
+
+/**
+ * The footer belongs to whichever tab is open.
+ *
+ * It used to be the email send regardless, so an admin reading the WhatsApp copy
+ * and pressing the only button on screen sent the email — two different messages
+ * on two different channels behind one control.
+ */
+describe("the send follows the tab", () => {
+  const WITH_WHATSAPP = {
+    ...READY,
+    whatsapp: "Hi Vikram, how was your session?",
+    phone: "9876543210",
+  };
+
+  const openWhatsAppTab = async () => {
+    const user = userEvent.setup();
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+    await user.click(await screen.findByRole("tab", { name: "WhatsApp" }));
+    return user;
+  };
+
+  it("offers the email send on the email tab and no WhatsApp button", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    expect(await screen.findByRole("button", { name: /click to send/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+  });
+
+  it("swaps to the WhatsApp link and withdraws the email send", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    await openWhatsAppTab();
+
+    expect(screen.getByRole("link", { name: /open in whatsapp/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /click to send/i })).not.toBeInTheDocument();
+  });
+
+  it("addresses the link to the recipient with the WhatsApp copy, not the email body", async () => {
+    // The two halves are different messages. Sending the email body over
+    // WhatsApp would deliver a subject line's worth of formality into a chat.
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    await openWhatsAppTab();
+
+    const href = screen.getByRole("link", { name: /open in whatsapp/i }).getAttribute("href");
+    expect(href).toContain("https://wa.me/919876543210");
+    expect(href).toContain(encodeURIComponent("how was your session?"));
+    expect(href).not.toContain(encodeURIComponent("Please rate it."));
+  });
+
+  it("says so rather than offering a dead button when no number is on file", async () => {
+    composeDraft.mockResolvedValue({ ...WITH_WHATSAPP, phone: null });
+    await openWhatsAppTab();
+
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no number on file/i)).toBeInTheDocument();
+  });
+
+  it("records the open without claiming the message was sent", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    const user = await openWhatsAppTab();
+
+    await user.click(screen.getByRole("link", { name: /open in whatsapp/i }));
+    expect(recordWhatsAppOpened).toHaveBeenCalledWith("rating-request", "assignment-1");
+  });
+
+  /**
+   * The agreement send and the console invite are composed before the row they
+   * point at exists, so their link is stand-in prose that the *email send*
+   * replaces once it has allocated one. WhatsApp never goes through that send.
+   */
+  it("withholds the button while the link is still a placeholder", async () => {
+    composeDraft.mockResolvedValue({
+      ...WITH_WHATSAPP,
+      whatsapp: `Your agreement is ready — sign here:\n\n${LINK_PLACEHOLDER}`,
+    });
+    await openWhatsAppTab();
+
+    // Offering it would send a practitioner the placeholder prose itself, which
+    // reads as working and is not.
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/only exists once the email is sent/i)).toBeInTheDocument();
+  });
+
+  it("withholds it for an unallocated reference too", async () => {
+    composeDraft.mockResolvedValue({
+      ...WITH_WHATSAPP,
+      whatsapp: `Your agreement (Ref. ${REFERENCE_PLACEHOLDER}) is ready.`,
+    });
+    await openWhatsAppTab();
+
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
   });
 });
