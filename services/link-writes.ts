@@ -1,5 +1,6 @@
 import "server-only";
 
+import { log } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordActivity } from "@/services/console";
 
@@ -119,7 +120,6 @@ export async function recordConsent(assignmentId: string, ip: string): Promise<R
 
 export interface SignedAgreement {
   fullName: string;
-  designation: string;
   signature: string;
   signatureMode: "drawn" | "typed";
 }
@@ -135,7 +135,10 @@ export async function signAgreement(
     .update({
       signed_at: new Date().toISOString(),
       signed_name: input.fullName,
-      signed_designation: input.designation,
+      // `signed_designation` is deliberately not written. The v2 delivery
+      // removed the field, so there is no practitioner-supplied value to store;
+      // the column stays for the rows that already have one, and can be dropped
+      // once nothing depends on reading those back.
       signature_data: input.signature,
       signature_mode: input.signatureMode,
       // Origin evidence for a legally-binding e-signature (audit H5).
@@ -176,7 +179,7 @@ export async function signAgreement(
  * an admin action in the console, so nothing downstream needs a return value —
  * the activity entry is how the empanelment is announced.
  */
-export async function empanelBySignature(agreementId: string): Promise<void> {
+export async function empanelBySignature(traceId: string, agreementId: string): Promise<void> {
   const supabase = createAdminClient();
 
   const { data: agreement } = await supabase
@@ -193,12 +196,35 @@ export async function empanelBySignature(agreementId: string): Promise<void> {
     .eq("id", agreement.practitioner_id)
     .is("deleted_at", null)
     .neq("status", "Empanelled")
-    // Selected only to learn whether a row moved: no update means the
-    // practitioner was already Empanelled (or gone), and a second activity
-    // entry for an empanelment that did not happen is noise in the audit trail.
-    .select("id")
+    // `id` tells us whether a row moved: no update means the practitioner was
+    // already Empanelled (or gone), and a second activity entry for an
+    // empanelment that did not happen is noise in the audit trail.
+    // `application_id` is what keeps the applicant's own tracker honest.
+    .select("id, application_id")
     .maybeSingle();
   if (!practitioner) return;
+
+  // Keep the application in step, exactly as `empanelPractitioner` does for the
+  // manual path. Without it the practitioner is empanelled and the application
+  // stays at "Agreement Sent" forever — and it is the APPLICATION that /status
+  // reads, so the "Track your application" link in the acknowledgment email
+  // tells someone who has already signed to go and sign. Migration 0009 states
+  // the rule this was breaking: a read-time reconciliation is not a reason to
+  // store the wrong value, because the next writer would trust it.
+  if (practitioner.application_id) {
+    const { error } = await supabase
+      .from("practitioner_applications")
+      .update({ status: "Empanelled" })
+      .eq("id", practitioner.application_id);
+    // Logged rather than thrown: the signature and the empanelment both stand,
+    // and losing them over a stale tracker would be the worse trade.
+    if (error) {
+      log.error(traceId, "application status not advanced after signature", {
+        applicationId: practitioner.application_id,
+        message: error.message,
+      });
+    }
+  }
 
   await recordActivity({
     action: "practitioner.empanelled",

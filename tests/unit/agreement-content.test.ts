@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   AGREEMENT_CLAUSES,
   AGREEMENT_CONSENT_TEXT,
+  AGREEMENT_HEADER_FIELDS,
   AGREEMENT_INTRO,
-  AGREEMENT_PLATFORM_NAME,
+  AGREEMENT_SIGNATURE_FIELDS,
 } from "@/constants/agreement";
 
 /**
@@ -21,7 +22,33 @@ const everyParagraph = AGREEMENT_CLAUSES.flatMap((clause) => clause.paragraphs).
 
 describe("the agreement carries the client's contract, not a summary of it", () => {
   it("names the platform as a party", () => {
-    expect(AGREEMENT_PLATFORM_NAME).toContain("InvestQ Commune");
+    // v2 moved the platform out of its own header row and into the preamble.
+    // The assertion follows it rather than being deleted with the row: what
+    // matters is that the document names both parties, not where it does so.
+    expect(AGREEMENT_INTRO).toContain("InvestQ Commune");
+    expect(AGREEMENT_INTRO).toContain("the Platform");
+  });
+
+  it("heads the document with the client's four fields, in their order", () => {
+    expect(AGREEMENT_HEADER_FIELDS.map((field) => field.key)).toEqual([
+      "practitionerName",
+      "city",
+      "state",
+      "empanelmentRef",
+    ]);
+    // The executed document carries the empanelment number. The onboarding page
+    // carries the agreement number instead, and the client's readme says the
+    // difference is deliberate — so a header that drifted onto IQC-AGR would be
+    // rendering the wrong identifier on the signed copy.
+    expect(AGREEMENT_HEADER_FIELDS[3].label).toBe("Empanelment Reference Number");
+  });
+
+  it("records who signed, when, and by which method", () => {
+    expect(AGREEMENT_SIGNATURE_FIELDS.map((field) => field.label)).toEqual([
+      "Signed by",
+      "Execution Date",
+      "Signature Method",
+    ]);
   });
 
   it("states when the agreement takes effect", () => {

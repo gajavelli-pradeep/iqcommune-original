@@ -4,6 +4,7 @@ import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { verifyToken } from "@/lib/tokens";
+import { archiveSignedAgreement } from "@/services/agreement-archive";
 import {
   AlreadyRecordedError,
   empanelBySignature,
@@ -21,7 +22,10 @@ import {
 const bodySchema = z.object({
   t: z.string().min(1),
   fullName: z.string().trim().min(1, "Your full name is required").max(160),
-  designation: z.string().trim().max(160),
+  // No `designation`: the v2 delivery removed the field from the page, and the
+  // agreement no longer prints it. Absent rather than optional — a schema that
+  // still accepted one would let a stale client keep sending a value nothing
+  // renders, into a column nothing reads.
   // Capped (audit M2): a drawn signature is a base64 PNG data URL. Without a
   // ceiling a holder of a valid onboarding token could POST a multi-MB string
   // straight into signature_data. 200k chars comfortably fits a real signature
@@ -65,7 +69,6 @@ export async function POST(request: Request) {
       token.payload.id,
       {
         fullName: parsed.data.fullName,
-        designation: parsed.data.designation,
         signature: parsed.data.signature,
         signatureMode: parsed.data.signatureMode,
       },
@@ -73,12 +76,18 @@ export async function POST(request: Request) {
     );
     log.info(traceId, "agreement recorded", { id: token.payload.id });
 
+    // Kept, not re-made later. On the response path on purpose: the archive is
+    // the document, so it should exist before the practitioner is told they are
+    // done. It never throws — a storage failure logs and leaves the row to
+    // re-render, rather than voiding a signature that is already recorded.
+    await archiveSignedAgreement(traceId, token.payload.id);
+
     // Automatic transition (audit G3, step 5): a signature empanels the
     // practitioner. The welcome email is deliberately not sent here (client,
     // 2026-08-15) — every message to a practitioner is read by an admin in the
     // draft dialog before it leaves, and this was the one send that bypassed
     // that. It is now "Send welcome message" on the empanelled profile.
-    await empanelBySignature(token.payload.id);
+    await empanelBySignature(traceId, token.payload.id);
 
     return ok(receipt, 201);
   } catch (cause) {

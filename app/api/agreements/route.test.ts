@@ -25,6 +25,17 @@ const mocks = vi.hoisted(() => ({
   signAgreement: vi.fn(),
   empanelBySignature: vi.fn(),
   dispatchEmail: vi.fn(),
+  archiveSignedAgreement: vi.fn(),
+}));
+
+/**
+ * Archiving renders a PDF and uploads it, so it needs a Supabase client. Mocked
+ * for the same reason the limiter is: it happens to stay hermetic today only
+ * because `createAdminClient` throws without env and the archive swallows it —
+ * a test that passes by accident stops passing when the accident changes.
+ */
+vi.mock("@/services/agreement-archive", () => ({
+  archiveSignedAgreement: mocks.archiveSignedAgreement,
 }));
 
 vi.mock("@/services/link-writes", () => ({
@@ -43,6 +54,21 @@ vi.mock("@/services/link-writes", () => ({
  */
 vi.mock("@/lib/email/dispatch", () => ({ dispatchEmail: mocks.dispatchEmail }));
 
+/**
+ * The limiter is the route's one network dependency, and it runs before every
+ * assertion below. CI sets `UPSTASH_REDIS_REST_*`, so the real `checkRateLimit`
+ * dials Upstash, the rejection reaches the route's generic `catch`, and both
+ * cases return 500 — a suite that passes only on a machine with no credentials
+ * configured is testing the machine, not the route.
+ *
+ * `clientIdentifier` is kept real: the IP it derives is what the happy path
+ * asserts `signAgreement` received, so stubbing it would assert the stub.
+ */
+vi.mock("@/lib/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+  checkRateLimit: async () => ({ allowed: true, enforced: true }),
+}));
+
 function signRequest(token: string): Request {
   return new Request("http://localhost/api/agreements", {
     method: "POST",
@@ -50,7 +76,6 @@ function signRequest(token: string): Request {
     body: JSON.stringify({
       t: token,
       fullName: "Vikram Kulkarni",
-      designation: "Equity Analyst",
       signature: "Vikram Kulkarni",
       signatureMode: "typed",
     }),
@@ -75,8 +100,12 @@ describe("POST /api/agreements", () => {
 
     expect(response.status).toBe(201);
     expect(mocks.signAgreement).toHaveBeenCalledWith(AGREEMENT_ID, expect.anything(), "203.0.113.4");
-    expect(mocks.empanelBySignature).toHaveBeenCalledWith(AGREEMENT_ID);
+    expect(mocks.empanelBySignature).toHaveBeenCalledWith(expect.any(String), AGREEMENT_ID);
     expect(mocks.dispatchEmail).not.toHaveBeenCalled();
+    // The signed document is kept at this moment, not re-made on download. If
+    // this stops happening the download silently starts answering with whatever
+    // the contract text says today, under a signature given to the old one.
+    expect(mocks.archiveSignedAgreement).toHaveBeenCalledWith(expect.any(String), AGREEMENT_ID);
   });
 
   it("sends nothing when the token is not a valid onboarding link", async () => {
@@ -87,5 +116,8 @@ describe("POST /api/agreements", () => {
     expect(response.status).toBe(403);
     expect(mocks.signAgreement).not.toHaveBeenCalled();
     expect(mocks.dispatchEmail).not.toHaveBeenCalled();
+    // Nothing signed means nothing to keep — an archive here would be a
+    // contract object for an agreement that was never executed.
+    expect(mocks.archiveSignedAgreement).not.toHaveBeenCalled();
   });
 });

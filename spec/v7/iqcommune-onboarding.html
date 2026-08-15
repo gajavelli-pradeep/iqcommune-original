@@ -152,7 +152,7 @@
   .declaration-title { font-size: 14px; font-weight: 600; color: var(--gold-dark); margin-bottom: 0.75rem; }
   .declaration-points { font-size: 13px; color: var(--gold-dark); line-height: 1.7; }
   .declaration-points li { margin-bottom: 0.35rem; margin-left: 1rem; }
-  .sign-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .sign-name-row { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
   .form-group { margin-bottom: 1rem; }
   .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 5px; }
   .form-group input {
@@ -316,19 +316,15 @@
         <div class="summary-value" id="disp-name">—</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Current role</div>
-        <div class="summary-value" id="disp-role">—</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-label">Organisation</div>
-        <div class="summary-value" id="disp-org">—</div>
-      </div>
-      <div class="summary-item">
         <div class="summary-label">City</div>
         <div class="summary-value" id="disp-city">—</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Agreement reference</div>
+        <div class="summary-label">State</div>
+        <div class="summary-value" id="disp-state">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Agreement Reference Number</div>
         <div class="summary-value" id="disp-ref">—</div>
       </div>
     </div>
@@ -348,7 +344,7 @@
       <div class="agreement-toolbar">
         <div>
           <div class="agreement-toolbar-title">iqcommune — Practitioner Empanelment Agreement</div>
-          <div class="agreement-toolbar-sub">IQC-EMP-<span id="ref-in-toolbar">—</span> &nbsp;·&nbsp; <span id="date-in-toolbar">—</span></div>
+          <div class="agreement-toolbar-sub"><span id="ref-in-toolbar">—</span></div>
         </div>
         <div class="scroll-indicator" id="scroll-indicator">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
@@ -362,14 +358,15 @@
         <div class="ag-sub">Non-Exclusive · Confidential · India</div>
 
         <table class="ag-detail-table">
-          <tr><td class="ag-label">Agreement Date</td><td class="ag-populated" id="ag-date">—</td></tr>
-          <tr><td class="ag-label">Platform</td><td class="ag-populated">InvestQ Commune, operating as <strong>iqcommune</strong> ("the Platform")</td></tr>
-          <tr><td class="ag-label">Practitioner</td><td class="ag-populated" id="ag-practitioner">—</td></tr>
+          <tr><td class="ag-label">Name</td><td class="ag-populated" id="ag-practitioner">—</td></tr>
+          <tr><td class="ag-label">City</td><td class="ag-populated" id="ag-city">—</td></tr>
+          <tr><td class="ag-label">State</td><td class="ag-populated" id="ag-state">—</td></tr>
+          <tr><td class="ag-label">Agreement Reference Number</td><td class="ag-populated" id="ag-ref">—</td></tr>
         </table>
 
         <div class="ag-divider"></div>
 
-        <p class="ag-preamble">This Agreement is entered into between the Platform and the Practitioner (individually a "Party", collectively the "Parties"). Together they agree to the following terms governing the Practitioner's empanelment and participation in iqcommune sessions.</p>
+        <p class="ag-preamble">This Agreement is entered into between InvestQ Commune, operating as iqcommune ("the Platform"), and the Practitioner named above (individually a "Party", collectively the "Parties"). Together they agree to the following terms governing the Practitioner's empanelment and participation in iqcommune sessions.</p>
 
         <div class="ag-clause-title">1. NATURE OF ENGAGEMENT</div>
         <p class="ag-clause-body">The Practitioner is empanelled as an independent contributor — not an employee, agent, or partner of the Platform. No employment relationship, joint venture, or partnership is created by this Agreement.</p>
@@ -450,13 +447,8 @@
 
       <div class="sign-name-row">
         <div class="form-group">
-          <label for="sign-fullname">Full name (as it should appear on the agreement)</label>
+          <label for="sign-fullname">Full name (as per any valid ID proof)</label>
           <input type="text" id="sign-fullname" placeholder="Your full legal name"/>
-        </div>
-        <div class="form-group">
-          <label for="sign-designation">Designation</label>
-          <input type="text" id="sign-designation" placeholder="e.g. Equity Analyst"/>
-          <div class="form-hint">As per your current employment.</div>
         </div>
       </div>
 
@@ -492,7 +484,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         I agree — sign & complete onboarding
       </button>
-      <p class="sign-fine">This action is irreversible. A copy of the signed agreement will be sent to your registered email.</p>
+      <p class="sign-fine">This action is irreversible.</p>
     </div>
   </div>
 
@@ -514,12 +506,16 @@
         <span class="receipt-value" id="receipt-name">—</span>
       </div>
       <div class="receipt-row">
-        <span class="receipt-label">Agreement ref.</span>
+        <span class="receipt-label">Empanelment Reference Number</span>
         <span class="receipt-value" id="receipt-ref">—</span>
       </div>
       <div class="receipt-row">
-        <span class="receipt-label">Timestamp</span>
+        <span class="receipt-label">Execution Date</span>
         <span class="receipt-value green" id="receipt-ts">—</span>
+      </div>
+      <div class="receipt-row">
+        <span class="receipt-label">Signature Method</span>
+        <span class="receipt-value" id="receipt-method">—</span>
       </div>
       <div class="receipt-row">
         <span class="receipt-label">Status</span>
@@ -540,32 +536,33 @@
 const params = new URLSearchParams(window.location.search);
 
 const pName   = params.get('name')   || 'Practitioner Name';
-const pRole   = params.get('role')   || 'Current Role';
-const pOrg    = params.get('org')    || 'Organisation';
 const pCity   = params.get('city')   || 'City';
+const pState  = params.get('state')  || 'State';
 const pRef    = params.get('ref')    || '0001';
 const pEmail  = params.get('email')  || 'your registered email';
 
-const refCode  = 'IQC-EMP-' + pRef;
-const dateStr  = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+// Agreement Reference Number — generated by the admin when the agreement
+// is issued (embedded in this link). Distinct from the Empanelment
+// Reference Number, which is only generated once the practitioner submits
+// — see submitAgreement() below.
+const agreementRefCode  = 'IQC-AGR-' + pRef;
 
 // Populate display fields
 document.getElementById('disp-name').textContent    = pName;
-document.getElementById('disp-role').textContent    = pRole;
-document.getElementById('disp-org').textContent     = pOrg;
 document.getElementById('disp-city').textContent    = pCity;
-document.getElementById('disp-ref').textContent     = refCode;
+document.getElementById('disp-state').textContent   = pState;
+document.getElementById('disp-ref').textContent     = agreementRefCode;
 
 // Populate agreement inline
-document.getElementById('ag-date').textContent         = dateStr;
-document.getElementById('ag-practitioner').textContent = `${pName} · ${pCity} · ${pEmail}`;
-document.getElementById('ref-in-toolbar').textContent  = pRef;
-document.getElementById('date-in-toolbar').textContent = dateStr;
+document.getElementById('ag-practitioner').textContent = pName;
+document.getElementById('ag-city').textContent         = pCity;
+document.getElementById('ag-state').textContent        = pState;
+document.getElementById('ag-ref').textContent          = agreementRefCode;
+document.getElementById('ref-in-toolbar').textContent  = agreementRefCode;
 document.getElementById('success-email').textContent   = pEmail;
 
 // Pre-fill sign name
 document.getElementById('sign-fullname').value = pName;
-document.getElementById('sign-designation').value = pRole;
 
 // ── LIVE TIMESTAMP ────────────────────────────────────────────────────────
 function updateTimestamp() {
@@ -663,6 +660,13 @@ function submitAgreement() {
   const tsStr = ts.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) + '  ' +
                 ts.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
+  // Empanelment Reference Number — generated at the moment of submission,
+  // distinct from the Agreement Reference Number issued earlier by the
+  // admin. In production this would come from the backend as part of the
+  // real submission response; this is a placeholder generator standing in
+  // for that until a backend exists.
+  const empanelmentRefCode = 'IQC-EMP-' + Math.floor(1000 + Math.random() * 9000);
+
   // ── SEND THE SUBMISSION BACK ──────────────────────────────────────────
   // In production this is a real API call: POST the signature, method,
   // and timestamp to the backend, which then updates the admin console
@@ -681,14 +685,17 @@ function submitAgreement() {
       method: sigMode === 'draw' ? 'Drawn' : 'Typed',
       signedAt: ts.toISOString(),
       signerName: fullname,
+      agreementRef: agreementRefCode,
+      empanelmentRef: empanelmentRefCode,
     };
     localStorage.setItem(key, JSON.stringify(existing));
   } catch (e) { /* localStorage unavailable — submission still succeeds visually below */ }
 
   // Populate success screen
   document.getElementById('receipt-name').textContent   = fullname;
-  document.getElementById('receipt-ref').textContent    = refCode;
+  document.getElementById('receipt-ref').textContent    = empanelmentRefCode;
   document.getElementById('receipt-ts').textContent     = tsStr;
+  document.getElementById('receipt-method').textContent = sigMode === 'draw' ? 'Drawn' : 'Typed';
 
   // Switch screens
   document.getElementById('onboarding-screen').style.display = 'none';

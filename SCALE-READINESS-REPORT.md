@@ -18,7 +18,7 @@ There are **three problems that will bite first**, and they will bite in this or
 
 | # | Problem | When it starts | Who notices | How bad |
 |---|---|---|---|---|
-| 1 | The console only ever shows the newest 500 records per section. Older ones become invisible. | The 501st application | Your team | **Severe** — real applications get silently lost from view |
+| 1 | Most console sections only ever *show* the newest 500 records. Nothing is lost — every record stays stored — but older ones become invisible. | The 501st application | Your team | **Severe** — real applications get silently lost from view |
 | 2 | Genuine applicants get blocked by the anti-spam limit because Indian mobile networks share IP addresses | Almost immediately, in bursts | Your applicants and clients | **Severe** — you pay for the click and then block the person |
 | 3 | Every console page load makes about 24 separate trips to the database | As soon as 2-3 admins work at the same time | Your team | **Moderate now, severe later** — console gets slow, then times out |
 
@@ -30,7 +30,11 @@ Everything else in this report is real but less urgent.
 
 ## What actually happens
 
-Every section of the console (Practitioners, Requests, Sessions, Payouts, and so on) asks the database for **the 500 most recent records and nothing else**. It then does all the filtering and searching *inside the browser*, on those 500 records only.
+**First, the thing to be clear about: nothing is ever lost.** No record is refused, overwritten or deleted because of any limit. Every application, practitioner, session and request you have ever received is stored, permanently and in full. This is entirely a problem with what the console *shows you*, not with what the system *keeps*.
+
+With that said: most sections of the console (Practitioners, Requests, Sessions, Payouts, Confirmations, Photos, Agreements) ask the database for **the 500 most recent records and nothing else**. It then does all the filtering and searching *inside the browser*, on those 500 records only.
+
+The 500 is **per section, not shared** — 500 practitioners and 500 sessions are both fetched in full; they do not compete for one budget. A few sections differ: the Gallery and the Team list stop at 200, and the Activity tab has no limit at all because it pages properly.
 
 That sounds fine until you cross 500. Then:
 
@@ -38,8 +42,11 @@ That sounds fine until you cross 500. Then:
 - Clicking the "Applied" filter does not go and look for older applications — it only filters the 500 already on screen.
 - Typing a name into the search box only searches those 500.
 - The little count badge in the sidebar says **500**, which your team will read as "there are 500 of these".
+- Older practitioners lose *fields*, not just rows. Phone, state, address, T-shirt size and experience all come from the application record. Once a practitioner's application falls outside the newest 500 applications, those columns render as "—" — so the Master Data tab, whose whole purpose is offline contact details, shows practitioners with no phone number.
 
-There is no "Page 2". There is no warning message. The records are in the database, safe and sound — the console simply never asks for them.
+**The Practitioners tab lies worse than the others.** It merges two separate 500-limits — the newest 500 applications and the newest 500 practitioners — so its badge can read anything up to **1,000**. A round "500" at least looks like a limit; a number like 947 reads as a genuine total, and nobody thinks to question it. With 3,000 applications and 800 practitioners you would see roughly 1,000 rows and around 2,800 people would be invisible.
+
+There is no "Page 2". There is no warning message. The records are all in the database, safe and complete — the console simply never asks for them.
 
 ## Why this is the number one risk
 

@@ -1,8 +1,8 @@
-import { renderSignedAgreement } from "@/lib/pdf/agreement";
-import { formatRecordedAt } from "@/lib/timestamp";
-import { log, newTraceId } from "@/lib/logger";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getConsoleSession } from "@/features/console/requireRole";
+import { log, newTraceId } from "@/lib/logger";
+import { renderSignedAgreement } from "@/lib/pdf/agreement";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { buildSignedAgreement, readArchivedAgreement } from "@/services/agreement-archive";
 import { recordActivity } from "@/services/console";
 
 /**
@@ -14,6 +14,13 @@ import { recordActivity } from "@/services/console";
  * download only", so every console role may take a copy. Reading it is still
  * logged — a download of a signed contract is an access event worth having in
  * the trail.
+ *
+ * Serves the archived bytes when there are any. That is the whole point: the
+ * document a practitioner signed is a fixed artefact, and re-rendering it from
+ * today's clause text would hand back a contract they never agreed to. Only two
+ * kinds of row have no archive — an unsigned agreement, which has nothing to
+ * archive yet, and one signed before `signed_pdf_path` existed. Both fall back
+ * to rendering, and the unsigned one says so on its face.
  */
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,9 +33,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioner_agreements")
-    .select(
-      "reference, issued_on, version, signed_at, signed_name, signed_designation, signature_mode, signed_ip, practitioners ( full_name, reference )",
-    )
+    .select("reference, signed_at, signed_pdf_path")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -39,24 +44,24 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   if (!data) return new Response("No such agreement.", { status: 404 });
 
-  const practitioner = Array.isArray(data.practitioners) ? data.practitioners[0] : data.practitioners;
-  const name = (practitioner?.full_name as string | undefined) ?? "Practitioner";
+  const archivePath = data.signed_pdf_path as string | null;
+  const archived = archivePath ? await readArchivedAgreement(archivePath) : null;
+  if (archivePath && !archived) {
+    // The row claims an archive that storage will not give back. Rendering a
+    // replacement here would quietly answer a request for the executed document
+    // with a different one, which is exactly what the archive exists to prevent.
+    log.error(traceId, "agreement archive missing from storage", { id, archivePath });
+    return new Response("The signed copy of that agreement could not be retrieved.", {
+      status: 500,
+    });
+  }
 
-  const dateOnly = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString("en-IN", { dateStyle: "medium" }) : null;
-
-  const pdf = await renderSignedAgreement({
-    reference: data.reference,
-    empanelmentReference: (practitioner?.reference as string) ?? "—",
-    practitioner: name,
-    issuedOn: dateOnly(data.issued_on) ?? "—",
-    signedName: data.signed_name,
-    signedDesignation: data.signed_designation,
-    signedAt: data.signed_at ? formatRecordedAt(data.signed_at as string) : null,
-    signatureMode: data.signature_mode === "drawn" ? "Drawn" : data.signature_mode === "typed" ? "Typed" : null,
-    signedIp: data.signed_ip,
-    version: data.version,
-  });
+  let pdf = archived;
+  if (!pdf) {
+    const agreement = await buildSignedAgreement(id);
+    if (!agreement) return new Response("No such agreement.", { status: 404 });
+    pdf = await renderSignedAgreement(agreement);
+  }
 
   // Best-effort: a failure to log must never withhold the document.
   void recordActivity({
@@ -64,7 +69,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     action: "agreement.downloaded",
     entityType: "agreement",
     entityRef: id,
-    detail: data.signed_at ? "Signed copy." : "Unsigned copy — no signature recorded.",
+    detail: archived
+      ? "Signed copy, as archived at signature."
+      : data.signed_at
+        ? "Signed copy — re-rendered, no archive on this row."
+        : "Unsigned copy — no signature recorded.",
   });
 
   // The filename is what the practitioner's own records will show, so it

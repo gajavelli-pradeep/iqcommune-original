@@ -151,7 +151,9 @@ export async function getOnboardingPractitioner(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("practitioner_agreements")
-    .select("reference, signed_at, practitioners ( full_name, role, organisation, city, email, reference )")
+    .select(
+      "reference, signed_at, practitioners ( full_name, role, organisation, city, state, email, reference )",
+    )
     .eq("id", agreementId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -166,6 +168,7 @@ export async function getOnboardingPractitioner(
       role: string;
       organisation: string | null;
       city: string;
+      state: string | null;
       email: string | null;
       reference: string;
     } | null;
@@ -177,6 +180,9 @@ export async function getOnboardingPractitioner(
     role: row.practitioners.role,
     organisation: row.practitioners.organisation ?? "Independent",
     city: row.practitioners.city,
+    // Blank rather than invented when a pre-0017 record never captured one —
+    // the agreement header shows an empty State, which is at least true.
+    state: row.practitioners.state ?? "",
     // V7 falls back to this same phrase when the link carries no address.
     email: row.practitioners.email ?? "your registered email",
     agreementReference: row.reference,

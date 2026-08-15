@@ -16,6 +16,7 @@ const practitioner = {
   role: "Senior Analyst",
   organisation: "Acme Capital",
   city: "Pune",
+  state: "Maharashtra",
   email: "jane@example.com",
   agreementReference: "IQC-AGR-0007",
   empanelmentReference: "IQC-EMP-0007",
@@ -24,15 +25,46 @@ const practitioner = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("OnboardingForm", () => {
-  it("shows the agreement date from the server prop and blocks signing until read", () => {
-    render(<OnboardingForm practitioner={practitioner} token="tok" agreementDate="1 January 2026" />);
+  it("heads the agreement with v2's four rows, and blocks signing until read", () => {
+    render(<OnboardingForm practitioner={practitioner} token="tok" />);
 
     expect(screen.getByText("PRACTITIONER EMPANELMENT AGREEMENT")).toBeInTheDocument();
-    // The server-computed IST date (audit M7), rendered verbatim.
-    expect(screen.getByText("1 January 2026")).toBeInTheDocument();
+
+    // v2's header. The Agreement Date and Platform rows went with the same
+    // delivery — the first because the document is dated by its Execution Date
+    // once signed, the second because the preamble now names the party inline.
+    // Two lists carry these four, as the spec does: the summary card at the top
+    // and the agreement's own header below it. Asserting both are present is the
+    // point — updating one and not the other is exactly how they drifted before.
+    for (const label of ["Name", "City", "State", "Agreement Reference Number"]) {
+      expect(screen.getAllByText(label, { selector: "dt" })).toHaveLength(2);
+    }
+    // Gone from the summary with the same delivery that removed them from the
+    // contract, so the page cannot show a practitioner a term the PDF omits.
+    expect(screen.queryByText("Current role", { selector: "dt" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Organisation", { selector: "dt" })).not.toBeInTheDocument();
+    // The value, not just the label — a State row rendering blank would satisfy
+    // the labels above and still be the bug.
+    expect(screen.getAllByText("Maharashtra")).toHaveLength(2);
+
+    // Before signing the page shows the AGREEMENT number. The empanelment one
+    // does not exist yet, and showing it here is the substitution the client's
+    // readme calls out as wrong.
+    expect(screen.getAllByText(practitioner.agreementReference).length).toBeGreaterThan(0);
+    expect(screen.queryByText(practitioner.empanelmentReference)).not.toBeInTheDocument();
+
     expect(
       screen.getByText(/scroll through and read the full agreement/i),
     ).toBeInTheDocument();
+  });
+
+  it("collects a full name as per ID proof, and no designation", () => {
+    render(<OnboardingForm practitioner={practitioner} token="tok" />);
+
+    expect(screen.getByLabelText("Full name (as per any valid ID proof)")).toBeInTheDocument();
+    // Removed by v2. Nothing renders it, so collecting it would be asking for
+    // something no document prints.
+    expect(screen.queryByLabelText(/Designation/i)).not.toBeInTheDocument();
   });
 
   it("drives read-to-end → typed signature → submit and renders the signed receipt", async () => {
@@ -47,7 +79,7 @@ describe("OnboardingForm", () => {
       ),
     );
 
-    render(<OnboardingForm practitioner={practitioner} token="tok" agreementDate="1 January 2026" />);
+    render(<OnboardingForm practitioner={practitioner} token="tok" />);
 
     // Satisfy the scroll-to-end gate. jsdom has no layout, so the scroll metrics
     // are stubbed to represent a panel scrolled to its end.
@@ -85,8 +117,16 @@ describe("OnboardingForm", () => {
     expect(screen.getByText("your inbox")).toBeInTheDocument();
     expect(screen.queryByText(practitioner.email)).not.toBeInTheDocument();
     expect(screen.getByText("Signed by")).toBeInTheDocument();
-    expect(screen.getByText("Agreement ref.")).toBeInTheDocument();
-    expect(screen.getByText("Timestamp")).toBeInTheDocument();
+    // The receipt is the first surface that can show the EMPANELMENT number —
+    // submitting is what produces it. The page showed the agreement number
+    // before this point, so the two must swap here and not before.
+    expect(screen.getByText("Empanelment Reference Number")).toBeInTheDocument();
+    expect(screen.getByText(practitioner.empanelmentReference)).toBeInTheDocument();
+    expect(screen.getByText("Execution Date")).toBeInTheDocument();
+    expect(screen.getByText("Signature Method")).toBeInTheDocument();
+    // Typed, because this test drove the typed path — asserted rather than
+    // taken on trust, since a hardcoded "Typed" would pass either way.
+    expect(screen.getByText("Typed")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("✓ Digitally signed")).toBeInTheDocument();
   });
@@ -95,7 +135,7 @@ describe("OnboardingForm", () => {
     // The three checks used to share one message at the foot of the form: it
     // said what was wrong but never which control, on a page long enough that
     // the field is routinely scrolled away by the time you read it.
-    render(<OnboardingForm practitioner={practitioner} token="tok" agreementDate="1 January 2026" />);
+    render(<OnboardingForm practitioner={practitioner} token="tok" />);
 
     const region = screen.getByLabelText("Practitioner Empanelment Agreement");
     Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
@@ -115,7 +155,7 @@ describe("OnboardingForm", () => {
   it("keeps the submit button disabled until the agreement is read", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    render(<OnboardingForm practitioner={practitioner} token="tok" agreementDate="1 January 2026" />);
+    render(<OnboardingForm practitioner={practitioner} token="tok" />);
 
     const submit = screen.getByRole("button", { name: /sign & complete onboarding/i });
     expect(submit).toBeDisabled();
