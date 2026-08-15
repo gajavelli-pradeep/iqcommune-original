@@ -9,7 +9,7 @@ _Waves complete: 0 (pre-cutover), 1 (boundaries/H6 + server-only), 2 (design tok
 ### Console + send pipeline (C6 — built this cycle)
 - **10 panels** (practitioners, agreements, requests, consent, sessions, photos, payouts, gallery, settings, activity) via one `ConsoleTable` + `StatusPill` dictionaries + shared `loadPanels` loader wired to all 3 role routes.
 - **Send pipeline**: `Toast` + `useDeferredSend` (the 15-second Undo, procedure §114) + `features/console/actions.ts` — empanel/deactivate/match/cancel + send agreement/consent/rating/photo. Every action re-checks the capability server-side (`requireCapability`), dispatches email off the response path, and logs to `activity_log`.
-- **G3** automatic transition: signing the agreement empanels the practitioner + sends the welcome. **G4a** welcome/rejection/deactivation templates. **G4b** photo guide now carries the shot ideas. **M9** `activity_log` table + audit trail. **H2** status values added (expand-only migration `0007`).
+- **G3** automatic transition: signing the agreement empanels the practitioner. It sent the welcome email here too until 2026-08-15, when the client moved that send to the console so every practitioner message is read in the draft dialog first; the signature no longer sends anything. **G4a** welcome/rejection/deactivation templates. **G4b** photo guide now carries the shot ideas. **M9** `activity_log` table + audit trail. **H2** status values added (expand-only migration `0007`).
 
 This file is the single living ledger. It consolidates three sources:
 1. **This document** — the cross-domain production audit (2 remediation cycles below).

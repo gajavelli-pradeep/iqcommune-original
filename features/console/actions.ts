@@ -21,6 +21,9 @@ import {
 import { newTraceId } from "@/lib/logger";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";
 import { createAdminClient } from "@/lib/supabase/admin";
+// Namespaced: the WhatsApp templates deliberately share their email
+// counterparts' names, being the same message in the other channel.
+import * as whatsapp from "@/lib/whatsapp/templates";
 import { GALLERY_LIMIT } from "@/constants/gallery";
 import { recordActivity } from "@/services/console";
 
@@ -497,17 +500,15 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
   // link in an old email keeps working.
   const { data: openAgreement } = await supabase
     .from("practitioner_agreements")
-    .select("id, reference")
+    .select("id")
     .eq("practitioner_id", practitionerId)
     .is("signed_at", null)
     .is("deleted_at", null)
     .maybeSingle();
 
   let agreementId: string;
-  let agreementReference: string;
   if (openAgreement) {
     agreementId = openAgreement.id as string;
-    agreementReference = openAgreement.reference as string;
   } else {
     const { data: application } = applicationId
       ? await supabase
@@ -517,19 +518,19 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
           .maybeSingle()
       : { data: null };
 
-    const reference = await nextReference(supabase, "agreement");
+    // The agreement keeps its own IQC-AGR reference — the record needs one, and
+    // the signed PDF quotes it. The email no longer does (see `onboardingLink`).
     const { data: created, error: agreementError } = await supabase
       .from("practitioner_agreements")
       .insert({
         practitioner_id: practitionerId,
-        reference,
+        reference: await nextReference(supabase, "agreement"),
         modules: application?.modules ?? [],
       })
       .select("id")
       .single();
     if (agreementError) throw new Error(`agreement create failed: ${agreementError.message}`);
     agreementId = created.id as string;
-    agreementReference = reference;
   }
 
   if (applicationId) {
@@ -541,15 +542,16 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
 
   const contact = await practitionerContact(supabase, practitionerId);
   if (contact) {
-    // The agreement exists now, so the link and the reference the draft only
-    // stood in for can finally be put back where the placeholders sat.
+    // Both stand-ins can be resolved now: the agreement exists, so the link is
+    // real, and the practitioner row exists, so its IQC-EMP reference — the one
+    // this message quotes — is real too.
     dispatchEmail(
       newTraceId(),
       applyDraft(
-        onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
+        onboardingLink(contact.email, contact.firstName, agreementId, contact.reference),
         draft,
         buildLink("onboarding", agreementId),
-        agreementReference,
+        contact.reference,
       ),
     );
   }
@@ -1759,7 +1761,7 @@ function outstandingFor(request: Record<string, unknown>): string[] {
 async function draftMessage(
   kind: DraftKind,
   id: string,
-): Promise<{ message: EmailMessage; detail?: string } | null> {
+): Promise<{ message: EmailMessage; whatsapp?: string; detail?: string } | null> {
   const supabase = createAdminClient();
 
   if (kind === "request-follow-up") {
@@ -1773,15 +1775,20 @@ async function draftMessage(
     if (!data) return null;
 
     const outstanding = outstandingFor(data);
+    const firstName = data.first_name as string;
+    // One echo for both halves — they quote the same request, and building it
+    // twice is how the two would eventually disagree.
+    const echo = {
+      topic: data.topic as string,
+      // The label, never the stored value — "corporate" is not a thing anyone
+      // asked to be called.
+      audience: AUDIENCE_LABELS[data.audience as Audience],
+      groupSize: (data.group_size as string | null) ?? undefined,
+      preferredWindow: (data.preferred_window as string | null) ?? undefined,
+    };
     return {
-      message: sessionRequestFollowUp(data.email as string, data.first_name as string, outstanding, {
-        topic: data.topic as string,
-        // The label, never the stored value — "corporate" is not a thing anyone
-        // asked to be called.
-        audience: AUDIENCE_LABELS[data.audience as Audience],
-        groupSize: (data.group_size as string | null) ?? undefined,
-        preferredWindow: (data.preferred_window as string | null) ?? undefined,
-      }),
+      message: sessionRequestFollowUp(data.email as string, firstName, echo),
+      whatsapp: whatsapp.sessionRequestFollowUp(firstName, echo).body,
       detail: outstanding.join(" "),
     };
   }
@@ -1804,12 +1811,15 @@ async function draftMessage(
     if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
     const contact = await practitionerContact(supabase, practitionerId);
     if (!contact) return null;
-    return {
-      message:
-        kind === "practitioner-welcome"
-          ? practitionerWelcome(contact.email, contact.firstName, contact.reference)
-          : practitionerDeactivated(contact.email, contact.firstName),
-    };
+    return kind === "practitioner-welcome"
+      ? {
+          message: practitionerWelcome(contact.email, contact.firstName, contact.reference),
+          whatsapp: whatsapp.practitionerWelcome(contact.firstName).body,
+        }
+      : {
+          message: practitionerDeactivated(contact.email, contact.firstName),
+          whatsapp: whatsapp.practitionerDeactivated(contact.firstName).body,
+        };
   }
 
   if (kind === "application-rejected") {
@@ -1822,7 +1832,11 @@ async function draftMessage(
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) return null;
-    return { message: applicationRejected(data.email as string, data.first_name as string) };
+    const firstName = data.first_name as string;
+    return {
+      message: applicationRejected(data.email as string, firstName),
+      whatsapp: whatsapp.applicationRejected(firstName).body,
+    };
   }
 
   if (kind === "admin-invite") {
@@ -1835,48 +1849,48 @@ async function draftMessage(
     const address = (separator === -1 ? id : id.slice(separator + 1)).trim().toLowerCase();
     const role = separator === -1 ? "admin" : id.slice(0, separator);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return null;
-    const message = adminInvite(address, PREVIEW_ID, ROLE_WORD[role] ?? ROLE_WORD.admin);
-    return { message: { ...message, body: maskLink(message.body) } };
+    const roleLabel = ROLE_WORD[role] ?? ROLE_WORD.admin;
+    const message = adminInvite(address, PREVIEW_ID, roleLabel);
+    return {
+      message: { ...message, body: maskLink(message.body) },
+      // Masked for the same reason: the invite row, and its one-time link, are
+      // created by the send.
+      whatsapp: maskLink(whatsapp.adminInvite(PREVIEW_ID, roleLabel).body),
+    };
   }
 
   if (kind === "onboarding-link") {
     const { table, id: rowRef } = pipelineId(id);
-    let contact: { email: string; firstName: string } | null = null;
+    let contact: { email: string; firstName: string; reference: string } | null = null;
 
     if (table === "practitioner") {
       contact = await practitionerContact(supabase, rowRef);
     } else {
       // Not promoted yet — the practitioner record is created by the send, so
-      // the applicant's own row is what the draft is addressed from.
+      // the applicant's own row is what the draft is addressed from, and the
+      // IQC-EMP reference this message quotes stands in exactly as the link does.
       const { data } = await supabase
         .from("practitioner_applications")
         .select("email, first_name")
         .eq("id", rowRef)
         .is("deleted_at", null)
         .maybeSingle();
-      if (data) contact = { email: data.email as string, firstName: data.first_name as string };
+      if (data) {
+        contact = {
+          email: data.email as string,
+          firstName: data.first_name as string,
+          reference: REFERENCE_PLACEHOLDER,
+        };
+      }
     }
     if (!contact) return null;
 
-    // A resend quotes the agreement it is resending. A first issue has no
-    // agreement yet, so the reference stands in exactly as the link does.
-    const { data: openAgreement } = table === "practitioner"
-      ? await supabase
-          .from("practitioner_agreements")
-          .select("reference")
-          .eq("practitioner_id", rowRef)
-          .is("signed_at", null)
-          .is("deleted_at", null)
-          .maybeSingle()
-      : { data: null };
-
-    const message = onboardingLink(
-      contact.email,
-      contact.firstName,
-      PREVIEW_ID,
-      (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER,
-    );
-    return { message: { ...message, body: maskLink(message.body) } };
+    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, contact.reference);
+    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, contact.reference);
+    return {
+      message: { ...message, body: maskLink(message.body) },
+      whatsapp: maskLink(wa.body),
+    };
   }
 
   if (kind === "session-cancellation") {
@@ -1891,13 +1905,11 @@ async function draftMessage(
 
     const requestor = await requestorForSession(id);
     if (!requestor) return null;
+    const sessionModule = session.module as string;
+    const reference = session.reference as string;
     return {
-      message: sessionCancelled(
-        requestor.email,
-        requestor.firstName,
-        session.module as string,
-        session.reference as string,
-      ),
+      message: sessionCancelled(requestor.email, requestor.firstName, sessionModule, reference),
+      whatsapp: whatsapp.sessionCancelled(requestor.firstName, sessionModule, reference).body,
     };
   }
 
@@ -1910,6 +1922,12 @@ async function draftMessage(
         sessionReference: assignment.sessionReference,
         confirmationReference: assignment.confirmationReference,
       }),
+      // No session reference in this half — the WhatsApp copy quotes only the
+      // confirmation one.
+      whatsapp: whatsapp.consentRequest(assignment.practitioner.firstName, id, {
+        module: assignment.module,
+        confirmationReference: assignment.confirmationReference,
+      }).body,
     };
   }
   if (kind === "rating-request") {
@@ -1918,11 +1936,13 @@ async function draftMessage(
     // being rated.
     const requestor = await requestorForSession(assignment.sessionId);
     if (!requestor) return null;
+    const rated = {
+      module: assignment.module,
+      practitionerName: assignment.practitioner.fullName,
+    };
     return {
-      message: ratingRequest(requestor.email, requestor.firstName, id, {
-        module: assignment.module,
-        practitionerName: assignment.practitioner.fullName,
-      }),
+      message: ratingRequest(requestor.email, requestor.firstName, id, rated),
+      whatsapp: whatsapp.ratingRequest(requestor.firstName, id, rated).body,
     };
   }
   return {
@@ -1932,6 +1952,7 @@ async function draftMessage(
       id,
       assignment.module,
     ),
+    whatsapp: whatsapp.photoReminder(assignment.practitioner.firstName, id, assignment.module).body,
   };
 }
 
@@ -1970,7 +1991,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
-  return { to, subject, body };
+  return { to, subject, body, whatsapp: draft.whatsapp };
 }
 
 /**

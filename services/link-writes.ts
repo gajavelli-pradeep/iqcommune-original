@@ -169,12 +169,14 @@ export async function signAgreement(
  * empanelment agreement empanels the practitioner. Runs after `signAgreement`
  * from the agreements route. Best-effort and idempotent — it only promotes a
  * practitioner who is not already Empanelled, and a failure here must not undo a
- * signature that succeeded. Returns the practitioner's contact so the caller can
- * send the welcome email; null if nothing changed.
+ * signature that succeeded.
+ *
+ * The status is the whole outcome. This used to hand the practitioner's contact
+ * back so the route could send the welcome email on the spot; the welcome is now
+ * an admin action in the console, so nothing downstream needs a return value —
+ * the activity entry is how the empanelment is announced.
  */
-export async function empanelBySignature(
-  agreementId: string,
-): Promise<{ email: string; firstName: string; reference: string } | null> {
+export async function empanelBySignature(agreementId: string): Promise<void> {
   const supabase = createAdminClient();
 
   const { data: agreement } = await supabase
@@ -183,7 +185,7 @@ export async function empanelBySignature(
     .eq("id", agreementId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!agreement) return null;
+  if (!agreement) return;
 
   const { data: practitioner } = await supabase
     .from("practitioners")
@@ -191,9 +193,12 @@ export async function empanelBySignature(
     .eq("id", agreement.practitioner_id)
     .is("deleted_at", null)
     .neq("status", "Empanelled")
-    .select("email, full_name, reference")
+    // Selected only to learn whether a row moved: no update means the
+    // practitioner was already Empanelled (or gone), and a second activity
+    // entry for an empanelment that did not happen is noise in the audit trail.
+    .select("id")
     .maybeSingle();
-  if (!practitioner) return null;
+  if (!practitioner) return;
 
   await recordActivity({
     action: "practitioner.empanelled",
@@ -201,12 +206,6 @@ export async function empanelBySignature(
     entityRef: agreement.practitioner_id as string,
     detail: "Automatic — empanelment agreement signed.",
   });
-
-  return {
-    email: practitioner.email as string,
-    firstName: (practitioner.full_name as string).split(" ")[0],
-    reference: practitioner.reference as string,
-  };
 }
 
 /**

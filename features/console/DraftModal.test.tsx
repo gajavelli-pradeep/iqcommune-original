@@ -90,3 +90,76 @@ describe("DraftModal", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/could not be prepared/i));
   });
 });
+
+/**
+ * The WhatsApp half is copy only — there is no provider behind it. So the tab
+ * exists to get the text out of the dialog, and these hold the two ways that
+ * fails silently: a tab offered for a send the document never wrote copy for,
+ * and a Copy button that reports success when the clipboard refused.
+ */
+describe("DraftModal — WhatsApp tab", () => {
+  const WITH_WHATSAPP = { ...READY, whatsapp: "Hi Vikram, this is iqcommune.\n\n— iqcommune team" };
+
+  /** Must run AFTER `userEvent.setup()`, which installs a clipboard stub of its
+   *  own and would otherwise replace this one. */
+  function stubClipboard(writeText: () => Promise<void>) {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+  }
+
+  it("offers no tab for a send the document has no WhatsApp copy for", async () => {
+    composeDraft.mockResolvedValue(READY);
+
+    render(<DraftModal kind="request-cancellation" id="request-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    await screen.findByLabelText("Message");
+    expect(screen.queryByRole("tab", { name: "WhatsApp" })).toBeNull();
+  });
+
+  it("shows the WhatsApp copy, read-only, once the tab is chosen", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    const user = userEvent.setup();
+
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    await user.click(await screen.findByRole("tab", { name: "WhatsApp" }));
+
+    const message = screen.getByRole("textbox", { name: "WhatsApp message" });
+    expect(message).toHaveValue(WITH_WHATSAPP.whatsapp);
+    // Not editable on purpose: nothing here is sent, so an edit would be lost.
+    expect(message).toHaveAttribute("readonly");
+    // The email half is hidden, not unmounted — the edit survives a tab switch.
+    expect(screen.queryByRole("textbox", { name: "Message" })).toBeNull();
+  });
+
+  it("copies the message and says it did", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    stubClipboard(writeText);
+
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    await user.click(await screen.findByRole("tab", { name: "WhatsApp" }));
+    await user.click(screen.getByRole("button", { name: /copy message/i }));
+
+    expect(writeText).toHaveBeenCalledWith(WITH_WHATSAPP.whatsapp);
+    expect(await screen.findByText(/copied to clipboard/i)).toBeTruthy();
+  });
+
+  it("points at the text instead of claiming success when the clipboard refuses", async () => {
+    composeDraft.mockResolvedValue(WITH_WHATSAPP);
+    const user = userEvent.setup();
+    stubClipboard(() => Promise.reject(new Error("denied")));
+
+    render(<DraftModal kind="rating-request" id="assignment-1" onClose={() => {}} onSend={vi.fn()} />);
+
+    await user.click(await screen.findByRole("tab", { name: "WhatsApp" }));
+    await user.click(screen.getByRole("button", { name: /copy message/i }));
+
+    expect(await screen.findByText(/select the text above instead/i)).toBeTruthy();
+    expect(screen.queryByText(/copied to clipboard/i)).toBeNull();
+  });
+});
