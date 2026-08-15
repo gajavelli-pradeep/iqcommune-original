@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /**
  * The console's deferred-action window (procedure §114, audit C6): an admin
@@ -29,8 +29,71 @@ export interface PendingAction {
   secondsLeft: number;
 }
 
-export function useDeferredSend() {
+/**
+ * Sends currently waiting out their window, keyed by what would be sent to whom.
+ *
+ * The Undo window is per-button, which is right until two buttons send the same
+ * thing. The consent panel has exactly that: Part 1 offers "Send consent
+ * request" straight after generating, and the Part 2 row for the same
+ * practitioner offers it too, one above the other. Clicking the first starts a
+ * fifteen-second hold during which nothing has been sent yet — so the row below
+ * still, correctly, reads as unsent. An admin who clicks that one as well gets
+ * two windows counting down independently, and the practitioner gets the same
+ * email twice.
+ *
+ * Shared here rather than lifted into a context because the buttons that
+ * collide are not siblings and do not share a subtree — they are in different
+ * halves of the panel, and in `PractitionerProfile` different branches again.
+ * What identifies a duplicate is the message and the recipient, which is
+ * exactly the key, so a module-level set is both the smallest thing that works
+ * and the honest shape of the problem.
+ *
+ * This is not a send-once lock. It lasts only while a window is open, and
+ * clears the moment the send commits — a practitioner who never received the
+ * email still gets chased by Resend, which is the whole point of that button.
+ */
+const holding = new Set<string>();
+const listeners = new Set<() => void>();
+
+function hold(key: string) {
+  if (holding.has(key)) return;
+  holding.add(key);
+  for (const listener of listeners) listener();
+}
+
+function release(key: string) {
+  if (!holding.delete(key)) return;
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
+/**
+ * Whether an identical send is already waiting out its window somewhere else on
+ * the page. Always false on the server, where nothing has been clicked yet.
+ */
+export function useSendHeld(key: string | undefined): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => (key ? holding.has(key) : false),
+    () => false,
+  );
+}
+
+/**
+ * `key` identifies what this send would deliver and to whom. Passing one makes
+ * the window visible to every other button carrying the same key; omitting it
+ * keeps the hold local, which is right for an action only one control offers.
+ */
+export function useDeferredSend(key?: string) {
   const [pending, setPending] = useState<PendingAction | null>(null);
+  // Only the instance that took the key may give it back. Two buttons share a
+  // key, so releasing on any unmount would hand away a hold this one never had
+  // — and the panel unmounts the other button routinely, on every revalidate.
+  const held = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ticker = useRef<ReturnType<typeof setInterval> | null>(null);
   const commitRef = useRef<(() => void | Promise<void>) | null>(null);
@@ -43,9 +106,30 @@ export function useDeferredSend() {
     commitRef.current = null;
   }, []);
 
+  /**
+   * Give the key back once the send has actually gone, not when the window
+   * closes. The gap between the two is a request in flight, and a button
+   * re-armed inside it is the same duplicate a moment later.
+   */
+  const finish = useCallback(
+    (run: (() => void | Promise<void>) | null) => {
+      void Promise.resolve(run?.()).finally(() => {
+        if (key && held.current) {
+          held.current = false;
+          release(key);
+        }
+      });
+    },
+    [key],
+  );
+
   const schedule = useCallback(
     (commit: () => void | Promise<void>, label: string) => {
       clear();
+      if (key) {
+        hold(key);
+        held.current = true;
+      }
       commitRef.current = commit;
       setPending({ label, secondsLeft: UNDO_WINDOW_SECONDS });
 
@@ -62,16 +146,20 @@ export function useDeferredSend() {
         const run = commitRef.current;
         clear();
         setPending(null);
-        void run?.();
+        finish(run);
       }, UNDO_WINDOW_MS);
     },
-    [clear],
+    [clear, finish, key],
   );
 
   const undo = useCallback(() => {
     clear();
     setPending(null);
-  }, [clear]);
+    if (key && held.current) {
+      held.current = false;
+      release(key);
+    }
+  }, [clear, key]);
 
   // `clear` nulls the ref, so the action is read out before it runs. Nothing is
   // left to flush once the timer has fired or `undo` has run — both clear it.
@@ -79,9 +167,9 @@ export function useDeferredSend() {
     () => () => {
       const run = commitRef.current;
       clear();
-      void run?.();
+      finish(run);
     },
-    [clear],
+    [clear, finish],
   );
 
   return { pending, schedule, undo };
