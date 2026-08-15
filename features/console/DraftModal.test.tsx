@@ -10,6 +10,7 @@ vi.mock("./actions", () => ({
 }));
 
 const { DraftModal } = await import("./DraftModal");
+const { LINK_PLACEHOLDER, REFERENCE_PLACEHOLDER } = await import("./draft-kinds");
 
 /**
  * The draft dialog exists so an admin can change a message before it goes out.
@@ -96,10 +97,13 @@ describe("DraftModal", () => {
 });
 
 /**
- * The WhatsApp half is copy only — there is no provider behind it. So the tab
- * exists to get the text out of the dialog, and these hold the two ways that
- * fails silently: a tab offered for a send the document never wrote copy for,
- * and a Copy button that reports success when the clipboard refused.
+ * The tab itself, and the clipboard route out of it.
+ *
+ * Copy is still here now that the tab can open WhatsApp directly: a recipient
+ * with no number on file, and a message whose link is not allocated yet, both
+ * leave the dialog this way. These hold the two ways the tab fails silently — a
+ * tab offered for a send the document never wrote copy for, and a Copy button
+ * that reports success when the clipboard refused.
  */
 describe("DraftModal — WhatsApp tab", () => {
   const WITH_WHATSAPP = { ...READY, whatsapp: "Hi Vikram, this is iqcommune.\n\n— iqcommune team" };
@@ -231,5 +235,33 @@ describe("the send follows the tab", () => {
 
     await user.click(screen.getByRole("link", { name: /open in whatsapp/i }));
     expect(recordWhatsAppOpened).toHaveBeenCalledWith("rating-request", "assignment-1");
+  });
+
+  /**
+   * The agreement send and the console invite are composed before the row they
+   * point at exists, so their link is stand-in prose that the *email send*
+   * replaces once it has allocated one. WhatsApp never goes through that send.
+   */
+  it("withholds the button while the link is still a placeholder", async () => {
+    composeDraft.mockResolvedValue({
+      ...WITH_WHATSAPP,
+      whatsapp: `Your agreement is ready — sign here:\n\n${LINK_PLACEHOLDER}`,
+    });
+    await openWhatsAppTab();
+
+    // Offering it would send a practitioner the placeholder prose itself, which
+    // reads as working and is not.
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/only exists once the email is sent/i)).toBeInTheDocument();
+  });
+
+  it("withholds it for an unallocated reference too", async () => {
+    composeDraft.mockResolvedValue({
+      ...WITH_WHATSAPP,
+      whatsapp: `Your agreement (Ref. ${REFERENCE_PLACEHOLDER}) is ready.`,
+    });
+    await openWhatsAppTab();
+
+    expect(screen.queryByRole("link", { name: /open in whatsapp/i })).not.toBeInTheDocument();
   });
 });

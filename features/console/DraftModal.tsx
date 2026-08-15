@@ -6,7 +6,14 @@ import { Modal } from "@/components/ui/Modal";
 import { waLink } from "@/lib/whatsapp/link";
 
 import { composeDraft, recordWhatsAppOpened } from "./actions";
-import { DRAFT_CHROME, type Draft, type DraftKind, type DraftOverride } from "./draft-kinds";
+import {
+  DRAFT_CHROME,
+  LINK_PLACEHOLDER,
+  REFERENCE_PLACEHOLDER,
+  type Draft,
+  type DraftKind,
+  type DraftOverride,
+} from "./draft-kinds";
 
 /**
  * V7's `.draft-modal`, in its "automated send" mode: the admin sees the real
@@ -98,14 +105,30 @@ export function DraftModal({
   const ready = Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0;
 
   /**
-   * Null when there is no usable number, which is what hides the button.
+   * A body still holding a placeholder cannot be sent over WhatsApp at all.
+   *
+   * The agreement send and the console invite are composed before the row they
+   * point at exists, so their link — and, on a first issue, their reference —
+   * are stand-in prose that the *email send* swaps for the real thing once it
+   * has allocated one. WhatsApp never goes through that send, so handing this
+   * body to `wa.me` would deliver "[a secure one-time link is inserted here when
+   * you send]" to a practitioner. Worse than no button: it looks like it worked.
+   */
+  const unallocated = Boolean(
+    draft?.whatsapp &&
+      (draft.whatsapp.includes(LINK_PLACEHOLDER) || draft.whatsapp.includes(REFERENCE_PLACEHOLDER)),
+  );
+
+  /**
+   * Null when the message cannot be sent this way, which is what hides the
+   * button.
    *
    * Built from the draft's own WhatsApp copy rather than the edited body: this
    * half is not editable, and the email body is a different message — sending it
    * over WhatsApp would deliver the subject line's worth of formality into a
    * chat window.
    */
-  const waHref = draft?.whatsapp ? waLink(draft.phone, draft.whatsapp) : null;
+  const waHref = draft?.whatsapp && !unallocated ? waLink(draft.phone, draft.whatsapp) : null;
 
   /**
    * Logged, but not counted as sent.
@@ -148,7 +171,9 @@ export function DraftModal({
             <p className="flex-1 text-xs leading-[1.5] text-ink-faint">
               {waHref
                 ? "Opens WhatsApp with this message ready — you still press send there."
-                : "No number on file for this recipient, so WhatsApp cannot be opened. Copy the message instead."}
+                : unallocated
+                  ? "This message carries a one-time link that only exists once the email is sent, so it cannot go by WhatsApp first. Send the email, then message them if you need to."
+                  : "No number on file for this recipient, so WhatsApp cannot be opened. Copy the message instead."}
             </p>
             {waHref ? (
               <a

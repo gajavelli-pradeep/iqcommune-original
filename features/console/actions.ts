@@ -1937,20 +1937,28 @@ async function draftMessage(
 
   if (kind === "onboarding-link") {
     const { table, id: rowRef } = pipelineId(id);
-    let contact: { email: string; firstName: string } | null = null;
+    let contact: { email: string; phone: string | null; firstName: string } | null = null;
 
     if (table === "practitioner") {
       contact = await practitionerContact(supabase, rowRef);
     } else {
       // Not promoted yet — the practitioner record is created by the send, so
-      // the applicant's own row is what the draft is addressed from.
+      // the applicant's own row is what the draft is addressed from. The number
+      // comes from there too: this is the one send whose recipient has no
+      // practitioner record yet to carry one.
       const { data } = await supabase
         .from("practitioner_applications")
-        .select("email, first_name")
+        .select("email, phone, first_name")
         .eq("id", rowRef)
         .is("deleted_at", null)
         .maybeSingle();
-      if (data) contact = { email: data.email as string, firstName: data.first_name as string };
+      if (data) {
+        contact = {
+          email: data.email as string,
+          phone: (data.phone as string | null) ?? null,
+          firstName: data.first_name as string,
+        };
+      }
     }
     if (!contact) return null;
 
@@ -1972,6 +1980,7 @@ async function draftMessage(
     const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, agreementReference);
     const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, agreementReference);
     return {
+      phone: contact.phone,
       message: { ...message, body: maskLink(message.body) },
       whatsapp: maskLink(wa.body),
     };
