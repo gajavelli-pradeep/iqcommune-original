@@ -52,6 +52,8 @@ const row = (overrides: Partial<ConsentRow>): ConsentRow => ({
   requestSentAt: null,
   requestSentLabel: null,
   guideSentAt: null,
+  module: "Equity Investing Simplified",
+  venue: "Kotak Securities, BKC",
   ...overrides,
 });
 
@@ -114,9 +116,11 @@ describe("Next step — one action per stage", () => {
     expect(screen.queryByRole("button", { name: /consent request|resend/i })).not.toBeInTheDocument();
   });
 
-  it("offers the guide once the session is confirmed", () => {
+  it("names the guide once the session is confirmed, without offering it", () => {
+    // V7 keeps both photo-guide controls in Part 3. The column still has to say
+    // what the row needs, or a confirmed session reads as finished.
     show({ status: "Received", sessionStatus: "Confirmed" });
-    expect(screen.getByRole("button", { name: "Send photo guide email" })).toBeInTheDocument();
+    expect(screen.getByText(/send the photo guide in part 3/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /confirm the session/i })).not.toBeInTheDocument();
   });
 
@@ -219,7 +223,7 @@ describe("Session status says what the session is", () => {
       rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
 
       expect(statusSelect().value).toBe("Confirmed");
-      expect(screen.getByRole("button", { name: "Send photo guide email" })).toBeInTheDocument();
+      expect(screen.getByText(/send the photo guide in part 3/i)).toBeInTheDocument();
     });
 
     it("leaves the local value alone while the server keeps saying the same thing", async () => {
@@ -345,7 +349,7 @@ describe("the fields the admin fills in open empty", () => {
   const openForm = async () => {
     const user = userEvent.setup();
     render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable, other]} />);
-    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a1");
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
     return user;
   };
 
@@ -383,7 +387,7 @@ describe("the fields the admin fills in open empty", () => {
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
     await user.type(screen.getByLabelText(/session date/i), "2026-09-01");
 
-    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a2");
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a2");
     expect(screen.getByLabelText<HTMLSelectElement>("Hour").value).toBe("");
     expect(screen.getByLabelText<HTMLSelectElement>("AM or PM").value).toBe("");
     expect(screen.getByLabelText<HTMLInputElement>(/session date/i).value).toBe("");
@@ -450,7 +454,7 @@ describe("one email, two buttons", () => {
       <ConsentPanel rows={[row({ id: "a1" })]} role="global_admin" confirmable={[confirmable]} />,
     );
 
-    await user.selectOptions(screen.getByLabelText(/select confirmed session/i), "a1");
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Minute"), "30");
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
@@ -466,5 +470,85 @@ describe("one email, two buttons", () => {
 
     // The clicked one is held by its own window, the other by the shared key.
     for (const button of sends()) expect(button).toBeDisabled();
+  });
+});
+
+/**
+ * Part 3 — Send Photo Guide, restored to match V7.
+ *
+ * It offers the sessions Part 2 shows as Confirmed, and it is the only place
+ * either photo-guide control lives. The two facts are related: while the send
+ * also sat on every confirmed row, the same email had two buttons — the shape
+ * that produced the duplicate-send work above.
+ */
+describe("Part 3 — Send Photo Guide", () => {
+  const picker = () => screen.getByLabelText<HTMLSelectElement>(/select confirmed session to send/i);
+
+  const withRows = (...only: Partial<ConsentRow>[]) =>
+    render(
+      <ConsentPanel rows={only.map(row)} role="global_admin" confirmable={[]} />,
+    );
+
+  it("lists only the sessions Part 2 shows as Confirmed", () => {
+    withRows(
+      { id: "a1", session: "IQC-S0001", sessionStatus: "Confirmed", status: "Received" },
+      { id: "a2", session: "IQC-S0002", sessionStatus: "Pending" },
+      { id: "a3", session: "IQC-S0003", sessionStatus: "Cancelled" },
+    );
+
+    const offered = within(picker())
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+    expect(offered).toHaveLength(2); // the placeholder, and the one confirmed session
+    expect(offered[1]).toContain("IQC-S0001");
+  });
+
+  it("says so rather than showing an empty picker when nothing is confirmed", () => {
+    withRows({ sessionStatus: "Pending" });
+    expect(screen.getByText(/a session appears here once its status reads Confirmed/i)).toBeInTheDocument();
+  });
+
+  it("shows V7's four fields for the session picked", async () => {
+    const user = userEvent.setup();
+    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received" });
+
+    await user.selectOptions(picker(), "a1");
+    // Scoped to Part 3: the practitioner and the date are in the Part 2 table
+    // above as well, so an unscoped query would pass on the wrong element.
+    const part3 = within(screen.getByRole("heading", { name: /Part 3/i }).closest("section")!);
+    for (const label of ["Practitioner", "Module", "Session date", "Venue"]) {
+      expect(part3.getByText(label), label).toBeInTheDocument();
+    }
+    for (const value of [
+      "Priya Sharma",
+      "Equity Investing Simplified",
+      "20 Aug 2026",
+      "Kotak Securities, BKC",
+    ]) {
+      expect(part3.getByText(value), value).toBeInTheDocument();
+    }
+  });
+
+  it("keeps both controls here and nowhere else", async () => {
+    // The whole point of restoring the part. Two buttons for one email is what
+    // sent a practitioner the same message twice.
+    const user = userEvent.setup();
+    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received" });
+
+    expect(screen.queryByRole("button", { name: "Send photo guide email" })).not.toBeInTheDocument();
+    await user.selectOptions(picker(), "a1");
+
+    expect(screen.getAllByRole("button", { name: "Send photo guide email" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: /Download photo guide/i })).toHaveLength(1);
+  });
+
+  it("warns before sending a guide that has already gone", async () => {
+    // V7 has no such note, but it has no Resend either — this control does not
+    // change appearance once used, so nothing else says it has been used.
+    const user = userEvent.setup();
+    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received", guideSentAt: SENT });
+
+    await user.selectOptions(picker(), "a1");
+    expect(screen.getByText(/already sent once/i)).toBeInTheDocument();
   });
 });

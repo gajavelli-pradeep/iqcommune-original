@@ -273,12 +273,7 @@ const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
 
-/**
- * The shot list as a PDF, for a practitioner who wants it outside the email.
- *
- * Carried on the row because Part 3 used to own it, and Part 3 is gone: its
- * picker asked an admin to find a session the table was already showing them.
- */
+/** The shot list as a PDF, for a practitioner who wants it outside the email. */
 function GuideDownload({ row }: { row: ConsentRow }) {
   return (
     <DownloadLink
@@ -308,14 +303,10 @@ function NextStep({ row }: { row: ConsentRow }) {
     case "delivered":
       return <span className={SETTLED}>Delivered</span>;
     case "in-flight":
-      // Sent, but the guide stays downloadable: a practitioner who lost the
-      // email asks for it, and that is not a reason to send a second one.
-      return (
-        <div className="flex flex-col items-start gap-1">
-          <span className={SETTLED}>Waiting for the session</span>
-          <GuideDownload row={row} />
-        </div>
-      );
+      // The guide stays downloadable for a practitioner who lost the email —
+      // in Part 3, which is where V7 puts it and where the session is still
+      // listed until it is delivered.
+      return <span className={SETTLED}>Waiting for the session</span>;
 
     case "confirm":
       // Confirming is offered only here, and only once consent is in. That is
@@ -346,21 +337,11 @@ function NextStep({ row }: { row: ConsentRow }) {
       );
 
     case "guide":
-      return (
-        <div className="flex flex-col items-start gap-1">
-          <RowAction
-            action={sendPhotoGuide.bind(null, row.id)}
-            draft={{ kind: "photo-guide", id: row.id }}
-            // V7's own labels, kept word for word. Part 3 is gone, but its two
-            // controls moved rather than being reinvented — a shorter label
-            // would be a second deviation on top of the one already recorded.
-            label="Send photo guide email"
-            pendingMessage={`Sending the photo guide to ${row.practitioner}…`}
-            variant="ghost"
-          />
-          <GuideDownload row={row} />
-        </div>
-      );
+      // Named, not offered. V7 keeps both photo-guide controls in Part 3 and
+      // nowhere else, so the column says what the row needs and leaves the
+      // doing to the one place that does it — a second copy of the send is how
+      // the same email goes out twice.
+      return <span className={SETTLED}>Send the photo guide in Part 3</span>;
 
     case "request":
     case "waiting":
@@ -960,6 +941,113 @@ function GenerateConfirmation({
 }
 
 
+/**
+ * Part 3 — Send Photo Guide.
+ *
+ * V7's third part, restored (client, 2026-08-16). It was dropped when Part 2
+ * gained its Next step column, on the reasoning that a picker asking an admin
+ * to find a session the table above was already showing is a worse control
+ * than a button on the row itself. The client's answer is that the guide is a
+ * different act from chasing consent — it is prepared for one session at a
+ * time, with the venue and date in front of you — and that it belongs in one
+ * place rather than repeated down a column.
+ *
+ * So the two controls live here and only here. Part 2 names the need and stops.
+ * That also removes the last pair of buttons on this panel that could send the
+ * same email twice.
+ *
+ * Reads the rows Part 2 already has rather than fetching again: a session is
+ * offered here exactly when its status reads Confirmed above, which is what V7
+ * means by "only sessions marked Confirmed above show up here".
+ */
+function SendPhotoGuide({ rows }: { rows: readonly ConsentRow[] }) {
+  const [selected, setSelected] = useState("");
+  const confirmed = useMemo(() => rows.filter((row) => row.sessionStatus === "Confirmed"), [rows]);
+  const session = useMemo(() => confirmed.find((row) => row.id === selected), [confirmed, selected]);
+
+  return (
+    <section>
+      <h2 className={PART}>Part 3 — Send Photo Guide</h2>
+      <div className={CARD}>
+        <h3 className="text-sm font-semibold text-ink">Send the photo guide</h3>
+        <p className="mb-3.5 mt-0.5 text-xs text-ink-muted">
+          Only sessions marked Confirmed above show up here — this is the moment to tell the
+          practitioner what shots to capture, before the session happens.
+        </p>
+
+        <div className="mb-3.5">
+          {/* V7 labels this "Select Confirmed session" and Part 1's picker
+              "Select confirmed session" — the same words, told apart by one
+              capital letter. Read aloud they are identical, and two controls on
+              one page answering to the same name is a genuine ambiguity rather
+              than a styling detail. The visible text is V7's; the purpose is
+              appended for anyone who cannot see which part they are in. */}
+          <label className={LABEL} htmlFor="guide-session">
+            Select Confirmed session
+            <span className="sr-only"> to send the photo guide</span>
+          </label>
+          <select
+            id="guide-session"
+            value={selected}
+            onChange={(event) => setSelected(event.target.value)}
+            className={`${PICKER} max-w-[480px]`}
+          >
+            <option value="">— Choose a session —</option>
+            {confirmed.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.session} — {row.practitioner} — {row.module}
+              </option>
+            ))}
+          </select>
+          {confirmed.length === 0 ? (
+            <p className="mt-1.5 text-xs text-ink-faint">
+              Nothing to send yet — a session appears here once its status reads Confirmed.
+            </p>
+          ) : null}
+        </div>
+
+        {session ? (
+          <>
+            {/* V7's four fields, in its order: enough to recognise the session
+                and to know where and when it is, which is what the guide is
+                written against. */}
+            <div className="mb-3.5 grid gap-x-5 gap-y-2 rounded-lg bg-surface-soft px-3.5 py-3 text-xs sm:grid-cols-2">
+              {[
+                ["Practitioner", session.practitioner],
+                ["Module", session.module],
+                ["Session date", session.sessionDate],
+                ["Venue", session.venue],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <div className="text-3xs uppercase tracking-caps text-ink-faint">{label}</div>
+                  <div className="font-medium text-ink">{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2.5">
+              <GuideDownload row={session} />
+              <RowAction
+                action={sendPhotoGuide.bind(null, session.id)}
+                draft={{ kind: "photo-guide", id: session.id }}
+                label="Send photo guide email"
+                pendingMessage={`Sending the photo guide to ${session.practitioner}…`}
+                variant="ghost"
+              />
+            </div>
+            {session.guideSentAt ? (
+              <p className="mt-2 text-3xs text-ink-faint">
+                Already sent once — sending again replaces nothing, the practitioner simply gets it
+                a second time.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export function ConsentPanel({
   rows,
   role,
@@ -1114,6 +1202,7 @@ export function ConsentPanel({
         />
       </section>
 
+      {mayEdit ? <SendPhotoGuide rows={rows} /> : null}
     </>
   );
 }
