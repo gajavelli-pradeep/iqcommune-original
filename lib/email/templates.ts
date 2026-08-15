@@ -113,6 +113,10 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
       `Dear ${firstName},`,
       ...SESSION_REQUEST_ACK.paragraphs(topic).flatMap((paragraph) => ["", paragraph]),
       "",
+      // The confirmations delivery §9 ends this email on the bare name, with no
+      // closing line. "Regards," is ours. Reviewed and left as it stands
+      // (2026-08-15) — see the note on `applicationReceived`, which drifted the
+      // other way from the same appendix.
       "Regards,",
       SIGN_OFF_TEAM,
     ),
@@ -334,10 +338,18 @@ export function applicationReceived(to: string, firstName: string, applicationId
       "Track your application:",
       link,
       "",
-      // "Warm regards," since the client's recommendation was taken (console
-      // doc, Appendix A): one signature across every stream. The session-request
-      // acknowledgment keeps its plain "Regards," because the same appendix
-      // records that copy as client-approved word for word and exempt.
+      // "Warm regards," where the confirmations delivery §7 writes "Regards,".
+      //
+      // Console doc Appendix A recommended one signature across every stream and
+      // said outright that it "needs a decision because the copy was
+      // client-supplied". The recommendation was implemented here before that
+      // decision existed — and not on the session-request acknowledgment, which
+      // ended up with "Regards," where its own §9 has no closing line at all.
+      //
+      // Reviewed against both documents and left as it stands (2026-08-15). So
+      // three sign-offs are in use and that is now deliberate: do not "correct"
+      // either acknowledgment to match its document without asking, and do not
+      // reconcile them to each other either.
       SIGN_OFF,
     ),
     html:
