@@ -538,10 +538,13 @@ export interface ConsentRow {
   requestSentLabel: string | null;
   /** When the photo guide last went out. */
   guideSentAt: string | null;
+  /** Both shown by Part 3, which reads its list from these same rows. */
+  module: string;
+  venue: string;
 }
 
 const CONSENT_SELECT =
-  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status )";
+  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue )";
 
 /**
  * When each assignment was last sent its consent request and its photo guide.
@@ -615,7 +618,13 @@ export async function listConsents(): Promise<ConsentRow[]> {
   return (data ?? []).map((row) => {
     const sent = sends.get(row.id as string);
     const practitioner = one<{ full_name: string }>(row.practitioners);
-    const session = one<{ reference: string; session_date: string | null; status: string }>(row.sessions);
+    const session = one<{
+      reference: string;
+      session_date: string | null;
+      status: string;
+      module: string | null;
+      venue: string | null;
+    }>(row.sessions);
     return {
       id: row.id,
       sessionId: row.session_id,
@@ -634,6 +643,10 @@ export async function listConsents(): Promise<ConsentRow[]> {
       requestSentAt: sent?.requested ?? null,
       requestSentLabel: sent?.requested ? sinceLabel(sent.requested, new Date()) : null,
       guideSentAt: sent?.guided ?? null,
+      module: session?.module ?? "—",
+      // V7 prints the venue in Part 3's summary, where an em dash reads as
+      // "not settled yet" — which is the truth until the SPOC confirms one.
+      venue: session?.venue ?? "—",
     };
   });
 }
