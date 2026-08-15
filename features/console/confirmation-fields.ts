@@ -90,8 +90,10 @@ export function describeMissing(missing: string[]): string {
       ? missing[0]
       : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
   const verb = missing.length === 1 ? "is" : "are";
+  // "fill this in" was written when one field at a time was the common case.
+  // The usual message now names three, and an untouched form names them all.
   return (
     `${list} ${verb} still empty. A confirmation states the terms a practitioner consents to, ` +
-    `so it cannot be generated with gaps — fill this in above, then generate again.`
+    `so it cannot be generated with gaps — fill in what is missing above, then generate again.`
   );
 }
