@@ -145,12 +145,14 @@ describe("Session status says what the session is", () => {
     expect(statusSelect().value).toBe("Confirmed");
   });
 
-  it("shows Confirmed but never lets it be chosen", () => {
-    // Confirming is the Next step button's job, and only once consent is in.
-    // The server refuses an unconsented Confirmed whoever asks, so this is the
-    // affordance rather than the rule.
+  it("lets an admin set any of the three", () => {
+    // An affordance decision, not a loosening of the rule: `setSessionStatus`
+    // still refuses an unconsented Confirmed whoever asks, and the refusal
+    // comes back as a message this cell shows.
     show({ status: "Received", sessionStatus: "Confirmed" });
-    expect(screen.getByRole("option", { name: "Confirmed" })).toBeDisabled();
+    for (const option of ["Pending", "Confirmed", "Cancelled"]) {
+      expect(screen.getByRole("option", { name: option }), option).toBeEnabled();
+    }
   });
 
   it("speaks the same three states whatever the row is at", () => {

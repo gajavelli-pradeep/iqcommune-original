@@ -248,23 +248,25 @@ function AutoField({
  * removing the option is the affordance and the server is the rule.
  */
 /**
- * The three states this control speaks, always all three, with Confirmed shown
- * but never selectable.
+ * The three states this control speaks, all three always shown and all three
+ * selectable.
  *
- * Two separate things were being confused. Confirming is the Next step button's
- * job and only once consent is in, so Confirmed must not be *choosable* here —
- * but a select also cannot *display* a value it has no option for, and leaving
- * it out entirely made the browser resolve a confirmed row to the first option
- * it did have. The cell read "Pending" for a confirmed session: not a blank
- * anyone would question, a definite wrong answer on the control used to see
- * where a session stands.
+ * Confirmed went through two wrong shapes before this one. Left out of the list
+ * entirely, a confirmed row had no option to render and the browser fell back
+ * to the first one it did have — the cell read "Pending" for a confirmed
+ * session, a definite wrong answer on the control used to see where a session
+ * stands. Added only while it was the current value, the list then held two
+ * entries on a pending row and three on a confirmed one, so the vocabulary
+ * changed under the reader.
  *
- * Adding it only while it was the current value fixed that and bought a second
- * confusion: the list then held two entries on a pending row and three on a
- * confirmed one, so the vocabulary changed under the reader and Confirmed
- * looked like a state that did not exist yet. Disabled and always present says
- * the true thing instead — this is a state a session reaches, and not by way of
- * this control.
+ * Now it is simply one of three, and an admin may set it (client, 2026-08-16).
+ * That is an affordance decision, not a loosening of the rule:
+ * `setSessionStatus` still refuses an unconsented Confirmed whoever asks —
+ * "The session is not confirmed until the Practitioner provides digital
+ * consent" — and answers with a message the cell displays. The Next step
+ * button remains the signposted route, appearing exactly when consent lands;
+ * this is the same act available to an admin who is already looking at the
+ * status column.
  */
 const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
@@ -511,7 +513,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
         {SESSION_STATUS_VALUES.map((option) => (
-          <option key={option} value={option} disabled={option === "Confirmed"}>
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
