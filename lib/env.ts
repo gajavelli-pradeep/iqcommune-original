@@ -76,8 +76,22 @@ export const FEATURE_ENV = {
   SUPABASE_PHOTOS_BUCKET: "photo submissions",
   /** "live" enables real Brevo sends; anything else is a logged dry run. */
   EMAIL_DELIVERY: "outbound email delivery mode",
-  /** Where new-session-request notifications go. */
+  /**
+   * The shared inbox both admin notifications fall back to — `hello@`.
+   *
+   * The two below take precedence, one per stream, so each team gets only its
+   * own queue instead of both landing here. Unset them and everything keeps
+   * arriving at this address, which is the behaviour before 2026-08-15.
+   *
+   * Receiving addresses, deliberately separate from `BREVO_SENDER_*`: those are
+   * sender identities Brevo must have verified, and repointing one at an inbox
+   * would stop that stream sending at all. See `adminInboxFor` in email/send.
+   */
   ADMIN_NOTIFY_EMAIL: "admin new-request notification",
+  /** Where a new session request is announced — the session team's inbox. */
+  ADMIN_NOTIFY_SESSION: "session admin notification",
+  /** Where a new practitioner application is announced — that team's inbox. */
+  ADMIN_NOTIFY_PRACTITIONER: "practitioner admin notification",
   /**
    * The address the request form offers a visitor when their submission cannot
    * be saved — the mailto fallback's recipient.

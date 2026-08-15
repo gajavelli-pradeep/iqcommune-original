@@ -1,5 +1,6 @@
 import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { adminInboxFor } from "@/lib/email/send";
 import { applicationReceived, newApplicationForAdmin } from "@/lib/email/templates";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
@@ -51,7 +52,8 @@ export async function POST(request: Request) {
       traceId,
       applicationReceived(parsed.data.email, parsed.data.firstName, created.id),
     );
-    const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    // The practitioner team's own inbox, not the shared one — see `adminInboxFor`.
+    const adminInbox = adminInboxFor("practitioner");
     if (adminInbox) {
       dispatchEmail(
         traceId,

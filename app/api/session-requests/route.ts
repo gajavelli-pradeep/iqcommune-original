@@ -3,6 +3,7 @@ import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { AUDIENCE_LABELS, sessionRequestSubmission } from "@/lib/schemas/session-request";
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { adminInboxFor } from "@/lib/email/send";
 import { newSessionRequestForAdmin, sessionRequestReceived } from "@/lib/email/templates";
 import { createSessionRequest } from "@/services/session-requests";
 
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
       traceId,
       sessionRequestReceived(parsed.data.email, parsed.data.firstName, parsed.data.topic),
     );
-    const adminInbox = process.env.ADMIN_NOTIFY_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    // The session team's own inbox, not the shared one — see `adminInboxFor`.
+    const adminInbox = adminInboxFor("session");
     if (adminInbox) {
       dispatchEmail(
         traceId,
