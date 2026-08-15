@@ -18,7 +18,6 @@
 
 /** The embedded session row, as the assignment query returns it. */
 export interface ConfirmationSession {
-  session_date: string | null;
   module: string | null;
   city: string | null;
   state: string | null;
@@ -33,27 +32,36 @@ export interface ConfirmationAssignment {
   session: ConfirmationSession | null;
 }
 
+/** The three the admin fills in on the generate form. */
+export interface ConfirmationEntry {
+  sessionDate: string | null | undefined;
+  startTime: string | null | undefined;
+  durationHours: number | null | undefined;
+}
+
 const blank = (value: string | null | undefined) => !value || value.trim().length === 0;
 
 /**
  * The fields still empty, under the labels Part 1 puts on them — a message
  * naming `spoc_name` would send an admin looking for a control that says
- * "SPOC name".
+ * "SPOC name". Screen order, so an admin reads the message once and works down
+ * the form: the auto-populated block first, then the three boxes they fill in.
  *
- * `enteredDate` is the date box on the generate form. The date is the one value
- * an admin supplies on this screen as well as inheriting, so it counts as
- * present if either source has it.
+ * The stored `session_date` deliberately plays no part. The date box opens
+ * blank, so letting a stored date satisfy the check would mean a date nobody
+ * looked at reaching a signed document — the same failure as the invented
+ * 10:00 AM, just with a value that happens to have come from the database.
+ * Every field labelled "(admin enters)" is now actually entered by the admin.
  */
 export function missingConfirmationFields(
   assignment: ConfirmationAssignment,
-  enteredDate: string | null | undefined,
+  entered: ConfirmationEntry,
 ): string[] {
   const session = assignment.session;
   if (!session) return ["Session"];
 
   const missing: string[] = [];
 
-  if (blank(enteredDate) && blank(session.session_date)) missing.push("Session date");
   if (blank(session.module)) missing.push("Module confirmed for");
   if (blank(session.venue)) missing.push("Venue");
   if (blank(session.city)) missing.push("City");
@@ -66,6 +74,11 @@ export function missingConfirmationFields(
   if (!assignment.gross_payout || assignment.gross_payout <= 0) {
     missing.push("Agreed gross payout");
   }
+
+  if (blank(entered.sessionDate)) missing.push("Session date");
+  if (blank(entered.startTime)) missing.push("Start time");
+  // Zero is what `Number("")` gives for an untouched picker, not a real length.
+  if (!entered.durationHours) missing.push("Duration");
 
   return missing;
 }

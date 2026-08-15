@@ -2039,22 +2039,15 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
  */
 export async function generateConfirmation(
   assignmentId: string,
-  input: { startTime: string; durationHours: number; sessionDate?: string | null },
+  input: { startTime: string; durationHours: number; sessionDate: string | null },
 ): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
 
-  if (!/^\d{2}:\d{2}$/.test(input.startTime)) {
-    return { ok: false, message: "Enter a start time for the session." };
-  }
-  if (![3, 6].includes(input.durationHours)) {
-    return { ok: false, message: "Choose a duration — 3 hours for a single module, 6 for a bundle." };
-  }
-
   const { data: assignment, error: readError } = await supabase
     .from("session_practitioners")
     .select(
-      "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, sessions ( session_date, module, city, state, venue, participants, spoc_name, audience )",
+      "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, sessions ( module, city, state, venue, participants, spoc_name, audience )",
     )
     .eq("id", assignmentId)
     .is("deleted_at", null)
@@ -2066,22 +2059,30 @@ export async function generateConfirmation(
   // that lives only in a component is one a second caller silently loses.
   const missing = missingConfirmationFields(
     { gross_payout: assignment.gross_payout, session: one(assignment.sessions) },
-    input.sessionDate,
+    input,
   );
   if (missing.length > 0) return { ok: false, message: describeMissing(missing) };
 
-  const sessionPatch: Record<string, unknown> = {
-    start_time: input.startTime,
-    duration_minutes: input.durationHours * 60,
-    status: "Confirmed",
-  };
-  // The date is agreed on the same call; a session cannot be confirmed without
-  // one, so it is captured here rather than left for a later screen.
-  if (input.sessionDate) sessionPatch.session_date = input.sessionDate;
+  // Shape, once the check above has established there is something to shape.
+  // The panel cannot produce either of these — its pickers only offer valid
+  // values — so these answer a second caller, not the form.
+  if (!/^\d{2}:\d{2}$/.test(input.startTime)) {
+    return { ok: false, message: "Enter a start time for the session." };
+  }
+  if (![3, 6].includes(input.durationHours)) {
+    return { ok: false, message: "Choose a duration — 3 hours for a single module, 6 for a bundle." };
+  }
 
   const { error: sessionError } = await supabase
     .from("sessions")
-    .update(sessionPatch)
+    .update({
+      // Every one of these is the admin's, checked above — the date included,
+      // which is why it is no longer patched in conditionally.
+      session_date: input.sessionDate,
+      start_time: input.startTime,
+      duration_minutes: input.durationHours * 60,
+      status: "Confirmed",
+    })
     .eq("id", assignment.session_id)
     .is("deleted_at", null);
   if (sessionError) throw new Error(`session update failed: ${sessionError.message}`);
