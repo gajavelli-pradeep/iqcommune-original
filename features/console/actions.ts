@@ -25,7 +25,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // counterparts' names, being the same message in the other channel.
 import * as whatsapp from "@/lib/whatsapp/templates";
 import { GALLERY_LIMIT } from "@/constants/gallery";
-import { recordActivity } from "@/services/console";
+import { one, recordActivity } from "@/services/console";
+import {
+  describeMissing,
+  missingConfirmationFields,
+} from "./confirmation-fields";
 import { nextReference } from "@/services/references";
 
 import {
@@ -2049,12 +2053,22 @@ export async function generateConfirmation(
 
   const { data: assignment, error: readError } = await supabase
     .from("session_practitioners")
-    .select("id, session_id, confirmation_reference, confirmation_generated_at")
+    .select(
+      "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, sessions ( session_date, module, city, state, venue, participants, spoc_name, audience )",
+    )
     .eq("id", assignmentId)
     .is("deleted_at", null)
     .maybeSingle();
   if (readError) throw new Error(`assignment read failed: ${readError.message}`);
   if (!assignment) return { ok: false, message: "That session is no longer available to confirm." };
+
+  // Refused here rather than in the panel: the panel is one caller, and a guard
+  // that lives only in a component is one a second caller silently loses.
+  const missing = missingConfirmationFields(
+    { gross_payout: assignment.gross_payout, session: one(assignment.sessions) },
+    input.sessionDate,
+  );
+  if (missing.length > 0) return { ok: false, message: describeMissing(missing) };
 
   const sessionPatch: Record<string, unknown> = {
     start_time: input.startTime,
