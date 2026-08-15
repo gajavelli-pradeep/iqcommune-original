@@ -131,5 +131,10 @@ export const DRAFT_WRITES: Partial<Record<DraftKind, string>> = {
   "session-cancellation": "Sending this also sets the session to Cancelled.",
   "onboarding-link": "Sending this also generates the agreement and moves the application to Agreement Sent.",
   "admin-invite": "Sending this also creates the invite, valid for 72 hours.",
-  "practitioner-welcome": "Sending this from the profile also marks the practitioner Empanelled.",
+  // The one kind two actions open. "Mark Empanelled manually" writes the status;
+  // "Send welcome message" only sends — it is offered on a profile that is
+  // already Empanelled, whether by that button or by the practitioner's
+  // signature. Naming the path keeps the warning from claiming a write that the
+  // welcome on its own never performs.
+  "practitioner-welcome": "Sending this to mark a practitioner Empanelled manually also sets that status.",
 };

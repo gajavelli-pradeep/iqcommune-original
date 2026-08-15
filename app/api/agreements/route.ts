@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { dispatchEmail } from "@/lib/email/dispatch";
-import { practitionerWelcome } from "@/lib/email/templates";
 import { fail, ok, readJsonBody } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
@@ -76,12 +74,11 @@ export async function POST(request: Request) {
     log.info(traceId, "agreement recorded", { id: token.payload.id });
 
     // Automatic transition (audit G3, step 5): a signature empanels the
-    // practitioner and sends the welcome. Off the response path — the signature
-    // is already recorded and must not fail on a downstream step.
-    const welcome = await empanelBySignature(token.payload.id);
-    if (welcome) {
-      dispatchEmail(traceId, practitionerWelcome(welcome.email, welcome.firstName, welcome.reference));
-    }
+    // practitioner. The welcome email is deliberately not sent here (client,
+    // 2026-08-15) — every message to a practitioner is read by an admin in the
+    // draft dialog before it leaves, and this was the one send that bypassed
+    // that. It is now "Send welcome message" on the empanelled profile.
+    await empanelBySignature(token.payload.id);
 
     return ok(receipt, 201);
   } catch (cause) {
