@@ -21,8 +21,10 @@ const ID = "a4a7e0eb-dc63-4ca3-b779-2bd1a57f318e";
  * confirmation) and only the first of those reaches an inbox now.
  */
 const MODULE = "Equity Investing Simplified";
-// No IQC-AGR fixture: the agreement record still has its own reference, but no
-// email quotes it any more — the agreement message names the practitioner's.
+// Both, because the two agreement-stage messages quote different ones: the
+// agreement email names the document (IQC-AGR), the welcome names the person
+// (IQC-EMP). Swapping them is the mistake these fixtures exist to catch.
+const AGREEMENT_REF = "IQC-AGR-0007";
 const PRACTITIONER_REF = "IQC-EMP-0042";
 const CONSENT_DETAILS = {
   module: MODULE,
@@ -122,7 +124,7 @@ describe("emailed links", () => {
       templates.ratingRequest("a@b.com", "Vikram", ID, RATED_SESSION),
       templates.consentRequest("a@b.com", "Vikram", ID, CONSENT_DETAILS),
       templates.photoReminder("a@b.com", "Vikram", ID, MODULE),
-      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
+      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
       templates.adminInvite("a@b.com", ID, "Admin"),
       templates.applicationReceived("a@b.com", "Vikram", ID),
     ];
@@ -199,7 +201,7 @@ describe("email sender routing", () => {
   // read NEXT_PUBLIC_BASE_URL, which `beforeEach` has not stubbed yet when the
   // describe body runs.
   const practitionerMail = () => [
-    templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
+    templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
     templates.applicationReceived("a@b.com", "Vikram", ID),
     templates.newApplicationForAdmin("a@b.com", APPLICATION_SUMMARY),
     templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF),
@@ -439,17 +441,25 @@ describe("email sender routing", () => {
     expect(session.body).toContain("IQC-S0007");
   });
 
-  it("quotes the practitioner's reference on the agreement email", () => {
-    // The delivered document asks for IQC-EMP here, not the agreement's own
-    // IQC-AGR. The agreement record keeps its reference; this email stopped
-    // naming it, so the number a recipient quotes back identifies the person.
-    const agreement = templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF);
-    expect(agreement.subject).toContain(PRACTITIONER_REF);
-    expect(agreement.body).toContain(`Reference number for this agreement: ${PRACTITIONER_REF}`);
-    expect(agreement.body).not.toContain("IQC-AGR");
+  it("quotes the agreement's own reference, never the practitioner's", () => {
+    // The client's agreement JSON is explicit: IQC-AGR is assigned when the
+    // agreement is issued, IQC-EMP only once the practitioner submits. So at
+    // the moment this email is composed the practitioner's number does not
+    // exist, and quoting it would name something that has not happened.
+    const agreement = templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF);
+    expect(agreement.subject).toContain(AGREEMENT_REF);
+    expect(agreement.body).toContain(`Reference number for this agreement: ${AGREEMENT_REF}`);
+    // The negative is the assertion that matters. An earlier revision of the
+    // console-messages document asked for IQC-EMP here and it was built that
+    // way; without this, reverting to it passes every other test in this file.
+    expect(agreement.body).not.toContain("IQC-EMP");
+    expect(agreement.subject).not.toContain("IQC-EMP");
 
+    // The welcome is the other way round, and by then the number exists — the
+    // signature that triggers this email is what allocated it.
     const welcome = templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF);
     expect(welcome.body).toContain(`Your empanelment reference: ${PRACTITIONER_REF}`);
+    expect(welcome.body).not.toContain("IQC-AGR");
   });
 
   it("reads as a progress update, echoing only the request fields it holds", () => {
@@ -519,7 +529,7 @@ describe("email sender routing", () => {
     // about a console control is not an instruction to remove it.
     const rating = templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION);
     const consoleMail = [
-      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF),
+      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
       templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF),
       templates.applicationRejected("a@b.com", "Vikram"),
       templates.practitionerDeactivated("a@b.com", "Vikram"),
@@ -547,7 +557,7 @@ describe("email sender routing", () => {
     const bodies = [
       templates.sessionRequestCancelled("a@b.com", "Asha", MODULE).body,
       templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF).body,
-      templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF).body,
+      templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF).body,
       templates.applicationReceived("a@b.com", "Vikram", ID).body,
     ];
 
@@ -561,7 +571,7 @@ describe("email sender routing", () => {
   it("keeps the organisation's name out of the signature", () => {
     // "iqcommune" elsewhere in the copy names the company, not the sender, and
     // is left alone — the signature is the only line that changed.
-    const welcome = templates.onboardingLink("a@b.com", "Vikram", ID, PRACTITIONER_REF);
+    const welcome = templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF);
     expect(welcome.subject).toContain("iqcommune");
     expect(templates.applicationReceived("a@b.com", "Vikram", ID).body).toContain(
       "iqcommune practitioner network",

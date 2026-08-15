@@ -63,6 +63,13 @@ export function OnboardingForm({
   const [fullName, setFullName] = useState(practitioner.name);
   const [signature, setSignature] = useState<Signature | null>(null);
   const [signedAt, setSignedAt] = useState<string | null>(null);
+  /**
+   * Allocated by the submission itself, so it cannot come from the loader: this
+   * page is rendered before the practitioner is empanelled, and the IQC-EMP
+   * number does not exist until they press the button (migration 0019). It
+   * travels back on the receipt.
+   */
+  const [empanelmentReference, setEmpanelmentReference] = useState<string | null>(null);
   // Client-side validation, keyed by the control at fault so the message can sit
   // beside it. `form` is the one problem that belongs to no single control.
   // `submitError` is the network/route path, now shared (audit H8).
@@ -133,21 +140,25 @@ export function OnboardingForm({
             actually on: a session matching this practitioner's profile and city.
             The 2-3 day window still holds for reviewing an *application* — see
             features/practitioners — but not for a session. */}
-        {/* V7 .success-sub: 15px/1.65, centred and capped at 480px. */}
+        {/* V7 .success-sub: 15px/1.65, centred and capped at 480px.
+
+            One unbroken sentence, with "your inbox" set like the words around it.
+            V7 emphasises that phrase — `font-weight:500; color:var(--ink)` — but
+            there it is a placeholder its own script overwrites with the
+            practitioner's address (iqcommune-onboarding.html:562), so the weight
+            was marking a VALUE. The client's 2026-08-14 delivery prints the
+            literal words instead, and their document writes the sentence as plain
+            prose; keeping the emphasis left two ordinary words looking like a
+            variable that never arrived.
+
+            Restoring V7's behaviour means rendering {practitioner.email} here —
+            noted because no gate covers it: the whole success view sits behind a
+            signature and is declared state-gated, so this comment is the only
+            record that printing the literal words is deliberate. */}
         <p className="mx-auto mb-8 max-w-[480px] text-lg leading-[1.65] text-ink-muted">
           Your empanelment is confirmed. We&apos;ll reach out the moment a session comes up that
           matches your profile and city — there&apos;s no fixed timeline, since it depends on
-          demand in your area. Keep an eye on{" "}
-          {/* The literal words, at the client's instruction (2026-08-14) — the
-              confirmations delivery prints this sentence ending in "your inbox",
-              and that is what they want shown. V7 does something else: its span
-              is a placeholder its own script overwrites with the practitioner's
-              address (iqcommune-onboarding.html:564). No gate catches the
-              difference, because the whole success view is behind a signature and
-              is declared state-gated either way — so this note is the only record
-              that the departure is deliberate rather than a missed substitution.
-              Restoring V7's behaviour means rendering {practitioner.email} here. */}
-          <span className="font-medium text-ink">your inbox</span>.
+          demand in your area. Keep an eye on your inbox.
         </p>
         <dl className="rounded-lg border border-border bg-surface-soft px-4 py-3 text-left">
           {(
@@ -157,7 +168,7 @@ export function OnboardingForm({
               // Number, and the receipt is the first surface that can show the
               // Empanelment one, because that is what submitting produces.
               ["Signed by", fullName],
-              ["Empanelment Reference Number", practitioner.empanelmentReference],
+              ["Empanelment Reference Number", empanelmentReference ?? "—"],
               ["Execution Date", signedAt],
               ["Signature Method", signature?.mode === "drawn" ? "Drawn" : "Typed"],
               ["Status", "✓ Digitally signed"],
@@ -420,14 +431,23 @@ export function OnboardingForm({
           if (!fullName.trim()) return fail({ fullName: "Your full name is required." });
           if (!signature) return fail({ signature: "Please draw or type your signature." });
           setErrors({});
-          const receipt = await submit("/api/agreements", {
-            fullName,
-            signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
-            signatureMode: signature.mode,
-          });
+          // Typed at the call site rather than widening the shared hook: this is
+          // the one route that answers with more than a timestamp, because it
+          // allocates the empanelment number while handling the request.
+          const receipt = await submit<{ at: string; empanelmentReference: string | null }>(
+            "/api/agreements",
+            {
+              fullName,
+              signature: signature.mode === "drawn" ? signature.dataUrl : signature.text,
+              signatureMode: signature.mode,
+            },
+          );
           // The same instant the PDF prints, rendered by the same function, so
           // the receipt on screen and the archived agreement cannot disagree.
-          if (receipt) setSignedAt(formatRecordedAt(receipt.at));
+          if (receipt) {
+            setEmpanelmentReference(receipt.empanelmentReference ?? null);
+            setSignedAt(formatRecordedAt(receipt.at));
+          }
         }}
       >
         {/* V7 .declaration-box — gold box, gold-dark title + list-marker points. */}

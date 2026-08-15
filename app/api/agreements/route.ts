@@ -76,20 +76,28 @@ export async function POST(request: Request) {
     );
     log.info(traceId, "agreement recorded", { id: token.payload.id });
 
+    // Automatic transition (audit G3, step 5): a signature empanels the
+    // practitioner. The welcome email is deliberately not sent here (client,
+    // 2026-08-15) — every message to a practitioner is read by an admin in the
+    // draft dialog before it leaves, and this was the one send that bypassed
+    // that. It is now "Send welcome message" on the empanelled profile.
+    //
+    // Before the archive, and that order is load-bearing: this is what
+    // allocates the IQC-EMP number, and the archived document's header prints
+    // it. Archiving first would freeze a contract reading "Empanelment
+    // Reference Number —" for ever, which is precisely the kind of thing an
+    // immutable copy makes permanent.
+    const empanelmentReference = await empanelBySignature(traceId, token.payload.id);
+
     // Kept, not re-made later. On the response path on purpose: the archive is
     // the document, so it should exist before the practitioner is told they are
     // done. It never throws — a storage failure logs and leaves the row to
     // re-render, rather than voiding a signature that is already recorded.
     await archiveSignedAgreement(traceId, token.payload.id);
 
-    // Automatic transition (audit G3, step 5): a signature empanels the
-    // practitioner. The welcome email is deliberately not sent here (client,
-    // 2026-08-15) — every message to a practitioner is read by an admin in the
-    // draft dialog before it leaves, and this was the one send that bypassed
-    // that. It is now "Send welcome message" on the empanelled profile.
-    await empanelBySignature(traceId, token.payload.id);
-
-    return ok(receipt, 201);
+    // The empanelment number travels back with the receipt because the page has
+    // no way to know it: it is allocated by the request it is answering.
+    return ok({ ...receipt, empanelmentReference }, 201);
   } catch (cause) {
     if (cause instanceof LinkNoLongerValidError) {
       return fail("FORBIDDEN", cause.message, traceId);

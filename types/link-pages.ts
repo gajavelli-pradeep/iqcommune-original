@@ -70,11 +70,16 @@ export interface OnboardingPractitioner {
   email: string;
   agreementReference: string;
   /**
-   * The practitioner's own IQC-EMP number, which the client's agreement JSON
-   * lists as a header field. Distinct from `agreementReference` (IQC-AGR): one
-   * identifies the person's empanelment, the other this document.
+   * The practitioner's own IQC-EMP number. Distinct from `agreementReference`
+   * (IQC-AGR): one identifies the person's empanelment, the other this document.
+   *
+   * Null on this page by definition — it is allocated when the signature
+   * empanels them (migration 0019), and this page is what they sign. The
+   * receipt shown afterwards reads the number off the submission's response
+   * instead. Kept on the type because a re-opened link belonging to someone
+   * already empanelled does carry one.
    */
-  empanelmentReference: string;
+  empanelmentReference: string | null;
 }
 
 export interface AdminInvite {
