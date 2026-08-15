@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -145,18 +145,29 @@ describe("Session status says what the session is", () => {
     expect(statusSelect().value).toBe("Confirmed");
   });
 
-  it("offers Confirmed as a display, never as a choice", () => {
+  it("shows Confirmed but never lets it be chosen", () => {
+    // Confirming is the Next step button's job, and only once consent is in.
     // The server refuses an unconsented Confirmed whoever asks, so this is the
-    // affordance rather than the rule — but an option that usually refuses is
-    // not one to offer.
+    // affordance rather than the rule.
     show({ status: "Received", sessionStatus: "Confirmed" });
     expect(screen.getByRole("option", { name: "Confirmed" })).toBeDisabled();
   });
 
-  it("does not offer it at all until it is the answer", () => {
-    show({ sessionStatus: "Pending" });
-    expect(statusSelect().value).toBe("Pending");
-    expect(screen.queryByRole("option", { name: "Confirmed" })).not.toBeInTheDocument();
+  it("speaks the same three states whatever the row is at", () => {
+    // A list that grows from two entries to three when the row happens to be
+    // confirmed makes Confirmed look like a state that does not exist yet, and
+    // leaves an admin counting options to work out where a session stands.
+    for (const sessionStatus of ["Pending", "Confirmed", "Cancelled"]) {
+      cleanup();
+      show({ status: "Received", sessionStatus });
+      // Scoped to the select: the "Issued in" filter above it is also options.
+      expect(
+        within(statusSelect())
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+        sessionStatus,
+      ).toEqual(["Pending", "Confirmed", "Cancelled"]);
+    }
   });
 
   it("reads Confirmed for a delivered session, with Delivered beneath", () => {

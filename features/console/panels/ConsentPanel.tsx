@@ -247,26 +247,26 @@ function AutoField({
  * `setSessionStatus` refuses an unconsented Confirmed regardless of who asks, so
  * removing the option is the affordance and the server is the rule.
  */
-const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
-const SESSION_STATUS_CHOICES = ["Pending", "Cancelled"];
-
 /**
- * What the select may show, which is not the same as what it may be set to.
+ * The three states this control speaks, always all three, with Confirmed shown
+ * but never selectable.
  *
- * A select cannot display a value it has no option for. Confirmed was withheld
- * from the option list — correctly, since confirming is the Next step button's
- * job and only once consent is in — but that left the browser resolving a
- * confirmed row to the first option it did have. The cell read "Pending" for a
- * session that was confirmed: not a blank to puzzle over but a definite, wrong
- * answer, on the one control an admin uses to see where a session stands.
+ * Two separate things were being confused. Confirming is the Next step button's
+ * job and only once consent is in, so Confirmed must not be *choosable* here —
+ * but a select also cannot *display* a value it has no option for, and leaving
+ * it out entirely made the browser resolve a confirmed row to the first option
+ * it did have. The cell read "Pending" for a confirmed session: not a blank
+ * anyone would question, a definite wrong answer on the control used to see
+ * where a session stands.
  *
- * Offered only when it is already the answer, and disabled, so it stays a thing
- * being displayed rather than becoming a thing to pick. Moving the row to
- * Pending drops it again, which is right — Confirmed is an outcome, and the way
- * back to it is consent, not this control.
+ * Adding it only while it was the current value fixed that and bought a second
+ * confusion: the list then held two entries on a pending row and three on a
+ * confirmed one, so the vocabulary changed under the reader and Confirmed
+ * looked like a state that did not exist yet. Disabled and always present says
+ * the true thing instead — this is a state a session reaches, and not by way of
+ * this control.
  */
-const statusOptions = (status: string) =>
-  status === "Confirmed" ? SESSION_STATUS_VALUES : SESSION_STATUS_CHOICES;
+const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
 /** Quiet text for a row with nothing to do — a stage, not an absence of one. */
 const SETTLED = "text-3xs text-ink-faint";
@@ -510,7 +510,7 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {statusOptions(status).map((option) => (
+        {SESSION_STATUS_VALUES.map((option) => (
           <option key={option} value={option} disabled={option === "Confirmed"}>
             {option}
           </option>
