@@ -91,6 +91,46 @@ function to24Hour(hour: string, minute: string, meridiem: string): string {
 }
 
 /**
+ * What the pickers should show before the admin touches them.
+ *
+ * The session's own values when it has them, falling back to 10:00 AM and a
+ * single module. `startTime` and `durationMinutes` were fetched onto this
+ * payload and then read by nothing, so the form always opened at the fallback —
+ * harmless while Part 1 only ever lists sessions that have never been
+ * confirmed, and silently destructive the moment it lists one that has: the
+ * admin would reconfirm a 2pm session at 10am without being shown that it moved.
+ *
+ * Derived at render from the selected session rather than held in state, which
+ * is how the date box beside them already works. State seeded once would keep
+ * the first session's time after the admin picks a different one.
+ */
+export function seedFrom(session: ConfirmableSession | undefined): {
+  hour: string;
+  minute: string;
+  meridiem: string;
+  duration: string;
+} {
+  const fallback = { hour: "10", minute: "00", meridiem: "AM", duration: "3" };
+
+  // Only the two the picker offers. A stored 240 would seed "4", which matches
+  // no option — the select renders blank and submits Number("") as the duration.
+  const stored = session?.durationMinutes ? String(session.durationMinutes / 60) : "";
+  const duration = stored === "3" || stored === "6" ? stored : fallback.duration;
+
+  // Postgres hands back "14:30:00"; anything else is not a time we can seed from.
+  const match = session?.startTime?.match(/^(\d{2}):(\d{2})/);
+  if (!match) return { ...fallback, duration };
+
+  const hour24 = Number(match[1]);
+  return {
+    hour: String(hour24 % 12 === 0 ? 12 : hour24 % 12).padStart(2, "0"),
+    minute: match[2],
+    meridiem: hour24 >= 12 ? "PM" : "AM",
+    duration,
+  };
+}
+
+/**
  * One auto-populated field, with V7's Global-Admin correction pencil.
  *
  * `field` omitted means nothing may correct this by hand — the same convention
@@ -540,10 +580,12 @@ function GenerateConfirmation({
   role: ConsoleRole;
 }) {
   const [selected, setSelected] = useState("");
-  const [hour, setHour] = useState("10");
-  const [minute, setMinute] = useState("00");
-  const [meridiem, setMeridiem] = useState("AM");
-  const [duration, setDuration] = useState("3");
+  // Empty until touched, so the session's own values show through — the same
+  // shape `date` already uses below.
+  const [hour, setHour] = useState("");
+  const [minute, setMinute] = useState("");
+  const [meridiem, setMeridiem] = useState("");
+  const [duration, setDuration] = useState("");
   const [date, setDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -561,6 +603,7 @@ function GenerateConfirmation({
   const [done, setDone] = useState<ConfirmableSession | null>(null);
 
   const session = useMemo(() => sessions.find((entry) => entry.id === selected), [sessions, selected]);
+  const seeded = useMemo(() => seedFrom(session), [session]);
 
   // Shared by every field in the grid; only the label, value and column differ.
   const auto = { assignmentId: session?.id ?? "", canOverride: can(role, "override") };
@@ -658,7 +701,7 @@ function GenerateConfirmation({
                   <label className="sr-only" htmlFor="confirm-hour">
                     Hour
                   </label>
-                  <select id="confirm-hour" value={hour} onChange={(e) => setHour(e.target.value)} className={PICKER}>
+                  <select id="confirm-hour" value={hour || seeded.hour} onChange={(e) => setHour(e.target.value)} className={PICKER}>
                     {HOURS.map((value) => (
                       <option key={value}>{value}</option>
                     ))}
@@ -668,7 +711,7 @@ function GenerateConfirmation({
                   </label>
                   <select
                     id="confirm-minute"
-                    value={minute}
+                    value={minute || seeded.minute}
                     onChange={(e) => setMinute(e.target.value)}
                     className={PICKER}
                   >
@@ -681,7 +724,7 @@ function GenerateConfirmation({
                   </label>
                   <select
                     id="confirm-meridiem"
-                    value={meridiem}
+                    value={meridiem || seeded.meridiem}
                     onChange={(e) => setMeridiem(e.target.value)}
                     className={PICKER}
                   >
@@ -696,7 +739,7 @@ function GenerateConfirmation({
                 </label>
                 <select
                   id="confirm-duration"
-                  value={duration}
+                  value={duration || seeded.duration}
                   onChange={(event) => setDuration(event.target.value)}
                   className={PICKER}
                 >
@@ -736,9 +779,17 @@ function GenerateConfirmation({
               onClick={() =>
                 start(async () => {
                   setError(null);
+                  // The effective values, not the raw state: each box holds ""
+                  // until the admin touches it and shows `seeded` through in the
+                  // meantime, so sending the state would send nothing at all for
+                  // every field they were happy to leave alone.
                   const result = await generateConfirmation(session.id, {
-                    startTime: to24Hour(hour, minute, meridiem),
-                    durationHours: Number(duration),
+                    startTime: to24Hour(
+                      hour || seeded.hour,
+                      minute || seeded.minute,
+                      meridiem || seeded.meridiem,
+                    ),
+                    durationHours: Number(duration || seeded.duration),
                     sessionDate: date || session.sessionDate,
                   });
                   if (result.ok) {
