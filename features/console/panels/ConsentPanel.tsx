@@ -367,12 +367,18 @@ function NextStep({ row }: { row: ConsentRow }) {
           {/* The offline fallback, in the one place it is ever the answer: the
               email cannot reach them, so the admin sends the confirmation by
               hand. Unsigned by definition — which is why it is here and not
-              under a column headed "Download Signed Consent". */}
+              under a column headed "Download Signed Consent".
+
+              The qualifier is on hover rather than in the pill. This is a table
+              cell, and it was carrying more words than the action it labels —
+              "Download PDF" is already the whole of what the control does, and
+              when it is the right one to reach for is context, not label. Part
+              1 keeps it visible: that card has the room, and there the download
+              is being offered rather than found. */}
           <DownloadLink
             href={`/api/consents/${row.id}/pdf`}
             label="Download PDF"
-            sublabel="(fallback, for sending offline)"
-            title={`Download ${row.reference} to send offline`}
+            title={`Download ${row.reference} — the fallback, for sending offline`}
           />
         </div>
       );

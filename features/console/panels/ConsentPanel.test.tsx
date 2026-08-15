@@ -159,7 +159,17 @@ describe("Download Signed Consent means what it says", () => {
    */
   it("keeps the offline fallback while consent is outstanding", () => {
     show({});
-    expect(screen.getByRole("link", { name: /fallback, for sending offline/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Download PDF/i })).toBeInTheDocument();
+  });
+
+  it("explains the fallback on hover rather than in the pill", () => {
+    // The cell is narrow and the qualifier was longer than the action it
+    // labelled. Dropping it outright would lose why this download exists, so it
+    // has to still be reachable — asserting the title is what keeps it from
+    // being quietly deleted as dead words later.
+    show({});
+    const title = screen.getByRole("link", { name: /Download PDF/i }).getAttribute("title");
+    expect(title).toContain("fallback, for sending offline");
   });
 });
 
