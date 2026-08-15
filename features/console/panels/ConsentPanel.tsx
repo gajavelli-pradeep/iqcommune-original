@@ -233,21 +233,6 @@ function AutoField({
 }
 
 /**
- * What the select may show, and what it may offer.
- *
- * They differ on purpose. Confirmed is an outcome of consent coming back, not
- * something an admin asserts — the agreement says a session is not confirmed
- * until the practitioner consents, and offering it as a dropdown choice invited
- * exactly that contradiction. It reaches the row through the Next step button,
- * which appears only once consent is in.
- *
- * Cancelled stays, because cancelling is a decision rather than an outcome and
- * this is where V7 puts it. Pending stays as the way back from a cancellation.
- *
- * `setSessionStatus` refuses an unconsented Confirmed regardless of who asks, so
- * removing the option is the affordance and the server is the rule.
- */
-/**
  * The three states this control speaks, all three always shown and all three
  * selectable.
  *
@@ -259,14 +244,15 @@ function AutoField({
  * entries on a pending row and three on a confirmed one, so the vocabulary
  * changed under the reader.
  *
- * Now it is simply one of three, and an admin may set it (client, 2026-08-16).
- * That is an affordance decision, not a loosening of the rule:
- * `setSessionStatus` still refuses an unconsented Confirmed whoever asks —
- * "The session is not confirmed until the Practitioner provides digital
- * consent" — and answers with a message the cell displays. The Next step
- * button remains the signposted route, appearing exactly when consent lands;
- * this is the same act available to an admin who is already looking at the
- * status column.
+ * It is simply one of three now, and setting it is not gated on consent (client,
+ * 2026-08-16). Confirmed was previously an outcome of consent coming back, and
+ * `setSessionStatus` refused it otherwise — which left a session whose consent
+ * arrived on paper unconfirmable, and with it the photo guide and the delivery
+ * dashboard. The two are independent: this column says where the session stands,
+ * the consent column says whether consent is in, and an admin reads both.
+ *
+ * Cancelled stays, because cancelling is a decision rather than an outcome and
+ * this is where V7 puts it. Pending stays as the way back from a cancellation.
  */
 const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
@@ -315,10 +301,10 @@ function NextStep({ row }: { row: ConsentRow }) {
       return <span className={SETTLED}>Waiting for the session</span>;
 
     case "confirm":
-      // Confirming is offered only here, and only once consent is in. That is
-      // the agreement's own precondition — "not confirmed until the
-      // Practitioner provides digital consent" — expressed as an action that
-      // does not exist yet rather than as a warning after the fact.
+      // Offered at the point consent lands, because that is when confirming is
+      // the obvious next thing — not because it is the only way. The status
+      // column beside it will confirm a session whose consent came in on paper.
+      // This is the signpost; that is the override.
       return (
         <>
           <button
