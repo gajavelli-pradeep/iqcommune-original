@@ -71,6 +71,17 @@ describe("Welcome Message", () => {
     expect(welcomeCell().getByRole("button", { name: "Send welcome message" })).toBeInTheDocument();
   });
 
+  it("draws it filled red, as V7 does", () => {
+    // V7 styles this one inline — `background:var(--red);color:#fff` — and it
+    // is the only control on the console drawn that way. Asserted because a
+    // colour has no behaviour to fail: nothing else would notice it drifting
+    // back to the default pill.
+    show({});
+    const send = welcomeCell().getByRole("button", { name: "Send welcome message" });
+    expect(send.className).toContain("bg-red");
+    expect(send.className).toContain("text-surface");
+  });
+
   it("reads Sent once it has, and stops offering it", () => {
     // The half an admin needs on the list itself — otherwise the only way to
     // know is to remember, and a forgotten welcome and a duplicate one look
@@ -81,9 +92,9 @@ describe("Welcome Message", () => {
     expect(cell.queryByRole("button", { name: "Send welcome message" })).not.toBeInTheDocument();
   });
 
-  it("withholds it until the agreement is signed", () => {
-    // The message says the practitioner is officially empanelled. Pending means
-    // they have not signed, so there is nothing to welcome them to yet.
+  it("withholds it until the agreement is signed, as V7 does", () => {
+    // V7 renders an em dash while unsigned. The message says the practitioner
+    // is officially empanelled, and Pending means they have not signed.
     show({ status: "Pending", signedOn: null, signedAt: null, method: null });
     const cell = welcomeCell();
     expect(cell.queryByRole("button", { name: "Send welcome message" })).not.toBeInTheDocument();

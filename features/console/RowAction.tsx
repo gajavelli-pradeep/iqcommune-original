@@ -49,7 +49,7 @@ export function RowAction({
   /** Shown in the toast while the Undo window is open, e.g. "Matching request…". */
   pendingMessage: string;
   tone?: "neutral" | "danger";
-  variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary" | "gold-pill";
+  variant?: "link" | "ghost" | "ghost-block" | "dark" | "primary" | "gold-pill" | "red-pill";
   icon?: ReactNode;
   /**
    * Show the message first (client, 2026-08-13). With this set, clicking opens
@@ -102,6 +102,14 @@ export function RowAction({
     // an action becomes available rather than appearing — the consent panel's
     // two follow-ons after a confirmation is generated.
     "gold-pill": `inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-1 text-xs font-medium text-ink shadow-gold transition-[filter] hover:brightness-[1.08] ${focus}`,
+    // The same pill again, filled red with a white label — V7 styles the
+    // Agreements welcome send inline that way (`background:var(--red);
+    // color:#fff;border:none`) rather than through a class, and it is the only
+    // control it draws so. Distinct from `ghost` + `tone="danger"`, which is red
+    // *text* on a surface pill and reads as a destructive action; this one is
+    // neither destructive nor quiet. White on `--color-red` is 5.4:1, so unlike
+    // gold it keeps V7's white label.
+    "red-pill": `inline-flex items-center gap-1.5 rounded-full bg-red px-2.5 py-1 text-xs font-medium text-surface transition-[filter] hover:brightness-[1.08] ${focus}`,
   };
 
   return (
