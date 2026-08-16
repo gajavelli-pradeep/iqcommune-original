@@ -278,7 +278,8 @@ export async function matchSessionRequest(id: string): Promise<ActionResult> {
 }
 
 /**
- * "Send update to client" — tells the requester a practitioner is being aligned.
+ * "Send status update to client" — tells the requester a practitioner is being
+ * aligned.
  *
  * It chased them until the delivered console-messages document rewrote it into a
  * progress report, so the email no longer names what is outstanding. That is
