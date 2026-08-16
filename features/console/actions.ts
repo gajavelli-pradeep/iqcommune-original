@@ -684,6 +684,25 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
     entityRef: id,
     detail: "Marked manually — signed copy received outside the online flow.",
   });
+
+  // Recorded separately, because this send is the welcome and the Agreements
+  // column reads that entry to decide whether to offer one. `empanelled` cannot
+  // stand in for it: the signature path writes the same action and deliberately
+  // sends nothing, so an admin who marked someone Empanelled by hand would
+  // still be offered a welcome that had already gone.
+  //
+  // Only when a message was actually composed — a draft that came back empty
+  // sent nothing, and logging a welcome nobody received is the failure this is
+  // here to prevent, pointed the other way.
+  if (composed) {
+    await recordActivity({
+      actorEmail: actor,
+      action: "practitioner.welcomed",
+      entityType: "practitioner",
+      entityRef: id,
+      detail: "Sent with the manual empanelment.",
+    });
+  }
   revalidateConsole();
 }
 

@@ -91,6 +91,9 @@ describe("Welcome Message", () => {
   });
 
   it("is withheld entirely from a role that may not send", () => {
+    // V7 keeps the header and gates only the button. Every action column in
+    // this console gates at the column instead, and one panel breaking that
+    // pattern is worse than the deviation.
     cleanup();
     render(<AgreementsPanel rows={[row({})]} role="user" />);
     const headers = screen.getAllByRole("columnheader").map((cell) => cell.textContent);
