@@ -21,6 +21,27 @@ export async function sniffImageType(file: File): Promise<"image/png" | "image/j
   return null;
 }
 
+/**
+ * A failure this route can describe, rather than one it can only apologise for.
+ *
+ * Everything past validation used to collapse into "Something went wrong
+ * sending your photos" — a file that was not really a JPEG, a storage upload
+ * that was refused and a row that would not insert all read identically, and
+ * the only thing separating them was a server log the person uploading cannot
+ * see. `reason` is what lets the route say which happened, and decide whether
+ * it is the sender's to fix.
+ */
+export class PhotoSubmissionError extends Error {
+  constructor(
+    readonly reason: "content" | "storage" | "record",
+    message: string,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "PhotoSubmissionError";
+  }
+}
+
 export interface CreatedPhotoSubmission {
   id: string;
   photoCount: number;
@@ -53,14 +74,22 @@ export async function createPhotoSubmission(
     for (const [index, photo] of photos.entries()) {
       const sniffed = await sniffImageType(photo);
       if (!sniffed) {
-        throw new Error("photo content is not a valid JPEG or PNG");
+        // The browser's `type` said image; the bytes disagree. Named, because
+        // this is the one failure here the sender can act on — most often a
+        // HEIC or WebP carrying a .jpg name.
+        throw new PhotoSubmissionError(
+          "content",
+          `"${photo.name}" is not a JPEG or PNG inside, whatever its name says. Re-save or re-export it and try again.`,
+        );
       }
       const extension = sniffed === "image/png" ? "png" : "jpg";
       const key = `${submissionId}/${index + 1}.${extension}`;
       const { error } = await supabase.storage
         .from(BUCKET)
         .upload(key, photo, { contentType: sniffed, upsert: false });
-      if (error) throw new Error(`photo upload failed: ${error.message}`);
+      if (error) {
+        throw new PhotoSubmissionError("storage", "The photos could not be stored.", error);
+      }
       storageKeys.push(key);
     }
 
@@ -82,7 +111,13 @@ export async function createPhotoSubmission(
       .select("id, created_at, expiry_date")
       .single();
 
-    if (error) throw new Error(`photo_submissions insert failed: ${error.message}`);
+    if (error) {
+      throw new PhotoSubmissionError(
+        "record",
+        "The photos uploaded, but the submission could not be recorded.",
+        error,
+      );
+    }
 
     return {
       id: data.id,

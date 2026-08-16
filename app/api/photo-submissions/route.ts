@@ -8,7 +8,7 @@ import {
 } from "@/lib/schemas/photo-submission";
 import { verifyToken } from "@/lib/tokens";
 import { getPhotoSubmissionOwner } from "@/services/link-pages";
-import { createPhotoSubmission } from "@/services/photo-submissions";
+import { createPhotoSubmission, PhotoSubmissionError } from "@/services/photo-submissions";
 
 /** Public multipart write: photos plus the consent that permits publishing them. */
 export async function POST(request: Request) {
@@ -100,7 +100,36 @@ export async function POST(request: Request) {
     log.info(traceId, "photo submission created", { id: created.id, photoCount: created.photoCount });
     return ok(created, 201);
   } catch (cause) {
-    log.error(traceId, "photo submission failed", { cause: String(cause) });
-    return fail("INTERNAL", "Something went wrong sending your photos. Please try again.", traceId);
+    // A named failure knows what went wrong and whose problem it is. A file
+    // that is not really an image is the sender's to fix and gets a 400;
+    // storage and the insert are ours, and say so rather than implying they
+    // should try the same thing again and hope.
+    if (cause instanceof PhotoSubmissionError) {
+      log.error(traceId, "photo submission refused", {
+        reason: cause.reason,
+        cause: String(cause.cause ?? cause.message),
+      });
+      return fail(
+        cause.reason === "content" ? "VALIDATION_FAILED" : "INTERNAL",
+        cause.reason === "content"
+          ? cause.message
+          : `${cause.message} Nothing was lost — please try again, and quote ${traceId} if it keeps happening.`,
+        traceId,
+      );
+    }
+
+    // Anything unnamed. The message carries the trace id so the log line can be
+    // found from a screenshot, and the real reason in development, where the
+    // person reading it is the person who can fix it (same call as the
+    // confirmation PDF route).
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    log.error(traceId, "photo submission failed", { cause: detail });
+    return fail(
+      "INTERNAL",
+      process.env.NODE_ENV === "development"
+        ? `Sending those photos failed: ${detail} (${traceId})`
+        : `Something went wrong sending your photos. Please try again, and quote ${traceId} if it keeps happening.`,
+      traceId,
+    );
   }
 }
