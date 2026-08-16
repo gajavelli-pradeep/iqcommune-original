@@ -503,7 +503,7 @@ tr.profile-row td{padding:0}
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Practitioner</th><th>Agreement ref.</th><th>Signed on</th><th>Method</th><th>Status</th><th>Download Signed Agreement</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Practitioner</th><th>Agreement ref.</th><th>Signed on</th><th>Method</th><th>Status</th><th>Download Signed Agreement</th><th>Welcome Message</th><th>Actions</th></tr></thead>
       <tbody id="agr-tbody"></tbody>
     </table>
   </div>
@@ -600,7 +600,7 @@ tr.profile-row td{padding:0}
     </div>
   </div>
 
-  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:6px;">Part 1 — Generate & Send Consent</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:6px;">Part 1 — Generate Consent</div>
   <div style="background:var(--surface);border:1px solid var(--border-s);border-radius:10px;padding:1.25rem;margin-bottom:1.75rem;">
     <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px;">Generate a new confirmation</div>
     <div style="font-size:12px;color:var(--ink-m);margin-bottom:14px;">All fields below flow from the original Session Request and Practitioner onboarding record. Global Admin can correct any field here — the fix is saved on the underlying record, not just this document.</div>
@@ -656,19 +656,17 @@ tr.profile-row td{padding:0}
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download PDF <span style="opacity:.75;font-weight:400;">(fallback, for sending offline)</span>
       </button>
-      <button class="btn btn-ghost btn-sm role-edit" id="conf-draft-email-btn" onclick="draftLastGeneratedConsentEmail()" disabled style="opacity:.45">        Send consent request
-      </button>
       <div id="conf-generated-note" style="font-size:11px;color:var(--ink-f);"></div>
     </div>
   </div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dark);">Part 2 — Track Status</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dark);">Part 2 — Send Consent & Track Status</div>
     <button class="btn btn-ghost btn-xs role-edit" onclick="checkForConsentUpdates(true)">Check for updates now</button>
   </div>
   <div class="table-wrap" style="margin-bottom:1.75rem;">
     <table>
-      <thead><tr><th>Confirmation ref.</th><th>Session</th><th>Practitioner</th><th>Gross payout</th><th>Consent status</th><th>Download Signed Consent</th><th>Session status</th></tr></thead>
+      <thead><tr><th>Confirmation ref.</th><th>Session</th><th>Practitioner</th><th>Gross payout</th><th>Send Consent Request</th><th>Consent status</th><th>Download Signed Consent</th><th>Session status</th></tr></thead>
       <tbody id="confirmations-tbody"></tbody>
     </table>
   </div>
@@ -1017,8 +1015,8 @@ const sessions = [
 ];
 
 const agreements = [
-  { id:1, name:'Priya Sharma',    ini:'PS', ref:'IQC-EMP-0041', module:'Foundations of Personal Finance', signed:'12 Jun 2025', ts:'12 Jun 2025  09:42:17', method:'Drawn', status:'Signed' },
-  { id:2, name:'Vikram Kulkarni', ini:'VK', ref:'IQC-EMP-0042', module:'Equity Investing Simplified',        signed:'—',           ts:'—',                     method:'—',                status:'Pending' },
+  { id:1, name:'Priya Sharma',    ini:'PS', ref:'IQC-EMP-0041', module:'Foundations of Personal Finance', signed:'12 Jun 2025', ts:'12 Jun 2025  09:42:17', method:'Drawn', status:'Signed', welcomeSent:true },
+  { id:2, name:'Vikram Kulkarni', ini:'VK', ref:'IQC-EMP-0042', module:'Equity Investing Simplified',        signed:'14 Jun 2025', ts:'14 Jun 2025  11:05:52', method:'Typed', status:'Signed', welcomeSent:false },
 ];
 
 const payouts = [
@@ -1174,7 +1172,6 @@ function prProfileHTML(p) {
             </details>
           ` : ''}
           ${p.status==='Empanelled' ? `
-            <button class="btn btn-ghost btn-sm role-edit" onclick="sendWelcomeMessage(${p.id})">Send welcome message</button>
             <button class="btn btn-ghost btn-sm role-edit" style="color:var(--red)" onclick="sendDeactivationMessage(${p.id})">Send deactivation message</button>
           ` : ''}
           ${p.status==='Deactivated' ? `<button class="btn btn-gold btn-sm role-edit" onclick="updatePrStatus(${p.id},'Empanelled')">Reactivate</button>` : ''}
@@ -1213,7 +1210,7 @@ function ensureAgreementEntry(p) {
   if (agreements.some(a => a.ref === 'IQC-EMP-' + p.ref)) return;
   agreements.push({
     id: Date.now(), name: p.name, ini: p.ini, ref: 'IQC-EMP-' + p.ref, module: p.module,
-    signed: '—', ts: '—', method: '—', status: 'Pending',
+    signed: '—', ts: '—', method: '—', status: 'Pending', welcomeSent: false,
   });
 }
 
@@ -1252,14 +1249,6 @@ function sendRejectionMessage(id) {
     renderPractitioners();
     logActivity('Sent rejection message to ' + p.name);
     showToast('Rejection message sent to ' + p.name);
-  });
-}
-function sendWelcomeMessage(id) {
-  const p = practitioners.find(x => x.id === id);
-  if (!p) return;
-  openAutomatedSend('welcome-practitioner', p, () => {
-    logActivity('Sent welcome message to ' + p.name);
-    showToast('Welcome message sent to ' + p.name);
   });
 }
 function sendDeactivationMessage(id) {
@@ -1612,11 +1601,28 @@ function renderAgreements() {
         </button>
       </td>
       <td>
+        ${!isSigned ? '<span style="color:var(--ink-f);font-size:12px;">—</span>' :
+          a.welcomeSent ? '<span class="pill s-empanelled"><span class="pd"></span>Sent</span>' :
+          `<button class="btn btn-xs role-edit" style="background:var(--red);color:#fff;border:none;" onclick="sendWelcomeFromAgreement(${idx})">Send welcome message</button>`}
+      </td>
+      <td>
         <button class="btn btn-ghost btn-xs role-edit" style="color:var(--red)" onclick="deleteAgreementUpload(${idx})">Delete</button>
       </td>
     </tr>`;
   }).join('');
   document.getElementById('agr-pending-total').textContent = agreements.filter(a => pfMatches(a.signed, month, year) && a.status !== 'Signed').length;
+}
+function sendWelcomeFromAgreement(idx) {
+  const a = agreements[idx];
+  if (!a) return;
+  const p = practitioners.find(x => 'IQC-EMP-' + x.ref === a.ref);
+  if (!p) { showToast('Could not find matching practitioner record'); return; }
+  openAutomatedSend('welcome-practitioner', p, () => {
+    a.welcomeSent = true;
+    renderAgreements();
+    logActivity('Sent welcome message to ' + p.name);
+    showToast('Welcome message sent to ' + p.name);
+  });
 }
 function deleteAgreementUpload(idx) {
   const a = agreements[idx];
@@ -1824,7 +1830,7 @@ function reqExpandHTML(r) {
         <div class="form-hint" style="font-size:10.5px;color:var(--ink-f);margin-top:4px;margin-bottom:12px;">Set to Matched once you've filled in the practitioner and payout on the left. Set to Cancelled if the session falls through.</div>
         <button class="btn btn-dark btn-sm role-edit" onclick="sendFollowupToClient('${r.id}')">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Send follow-up to client
+          Send status update to client
         </button>
         <button class="btn btn-ghost btn-sm role-edit" style="margin-top:6px" onclick="sendCancellationMessage('${r.id}')">Send cancellation message</button>
         ${r.status==='New' ? `<div class="danger-zone role-edit" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border-s);">
@@ -1926,33 +1932,30 @@ function openDraft(type, practitioner, context) {
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> Photos for your upcoming session (${r.ref})`;
     subject = 'iqcommune — a quick ask ahead of your session';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
-Ahead of your session on ${r.module}, one small ask: if you get a chance, we'd love a few photos from the room to feature on our website.
+Ahead of your session on ${r.module}, we would appreciate a few photographs from the room for our website, if convenient. Phone photographs are entirely sufficient.
 
-A handful of shot ideas — worth keeping in mind during the session or right after it wraps up. A mix of any of these is plenty, no professional camera needed, phone photos are completely fine:
+A few suggestions:
+1. A wide shot of the room
+2. Yourself in focus, from the back, with the audience visible
+3. The audience engaged, from your point of view
+4. A candid Q&A moment
+5. A group photo at the end of the session
 
-1. Wide room shot — full room, wide angle
-2. Speaker in focus — from the back, trainer in focus with audience visible
-3. Audience in focus — your view of the engaged room
-4. Candid Q&A moment — a participant mid-question
-5. Group photo — everyone together, end of session
-6. Candid mid-session — a natural moment from the discussion
-
-Once you have them — during the session or right after — use this link to send them over:
+Once available, please share them using this link:
 
 ${uploadLink}
 
-Good luck with it — thanks in advance!
+Thank you in advance.
 
 Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune.
 
-Quick heads-up ahead of your session on ${r.module} — if you get a chance, we'd love a few photos from the room for our website. Once you have them (during or right after the session), use this link to send them over:
+Quick heads-up ahead of your session on ${r.module} — if you get a chance, we'd love a few photos from the room for our website. Once you have them, use this link to send them over:
 
 ${uploadLink}
 
@@ -1969,19 +1972,18 @@ Good luck with it!
     meta    = `<strong>To:</strong> ${r.email}<br/><strong>Role:</strong> ${r.role}`;
     subject = 'iqcommune — you\u2019ve been invited to the admin console';
     emailBody =
-`Hi there,
+`Dear Team Member,
 
-You've been invited to join the iqcommune admin console as a ${r.role}.
+You have been invited to join the iqcommune admin console as a ${r.role}.
 
-Set up your account and choose a password using the link below:
+Please set up your account and choose a password using the link below:
 
 ${link}
 
-It only takes a minute — confirm your details and you're in.
+This will take only a minute to complete.
 
 Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi, this is iqcommune.
@@ -2002,19 +2004,17 @@ ${link}
     meta    = `<strong>To:</strong> ${req.name} &nbsp;·&nbsp; ${req.email}<br/><strong>Re:</strong> How was ${s.practitioner.split(' ')[0]}'s session? (${s.ref})`;
     subject = 'iqcommune — quick feedback on your recent session?';
     emailBody =
-`Hi ${req.name.split(' ')[0]},
+`Dear ${req.name.split(' ')[0]},
 
-Hope the session on ${s.module} with ${s.practitioner} went well for your group!
+We hope the session on ${s.module} with ${s.practitioner} was valuable for your group.
 
-We'd love a quick rating for the practitioner, purely to help us maintain quality across our practitioner network. It takes less than a minute — just click the link below:
+We would appreciate a brief rating for the practitioner, to help us maintain quality across our practitioner network. This takes less than a minute:
 
 ${link}
 
-Thanks so much for your time, and for having us.
+Thank you for your time.
 
-Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi ${req.name.split(' ')[0]}, this is iqcommune.
@@ -2073,19 +2073,16 @@ Are you available to take this? If yes, please share a preferred date/time withi
     sub     = 'Send to requester · ' + r.email;
     currentDraftEmail2 = r.email;
     meta    = `<strong>To:</strong> ${r.name} &nbsp;·&nbsp; ${r.email}<br/><strong>Re:</strong> Your session (${r.sessionRef||'—'}) has been cancelled`;
-    subject = 'iqcommune — Your session has been cancelled';
+    subject = 'iqcommune — your session has been cancelled';
     emailBody =
-`Hi ${r.name.split(' ')[0]},
+`Dear ${r.name.split(' ')[0]},
 
-We're writing to let you know that your session on ${r.topic} (ref. ${r.sessionRef||'—'}) has been cancelled.
+We are writing to inform you that your session on ${r.topic} (ref. ${r.sessionRef||'—'}) has been cancelled.
 
-If this was unexpected, or if you'd like to reschedule or submit a fresh request, just reply to this email and we'll help sort it out.
-
-We're sorry for any inconvenience this may cause.
+If this was unexpected, or you would like to reschedule, please reply to this email and we will assist. We apologise for any inconvenience caused.
 
 Warm regards,
-iqcommune team
-hello@iqcommune.com`;
+Team iqcommune`;
 
     waBody =
 `Hi ${r.name.split(' ')[0]}, this is iqcommune.
@@ -2096,17 +2093,17 @@ Just letting you know your session on ${r.topic} (ref. ${r.sessionRef||'—'}) h
   }
 
   else if (type === 'followup-client') {
-    title   = 'Follow-up to client — ' + r.name;
+    title   = 'Status update to client — ' + r.name;
     sub     = 'Send to requester · ' + r.email;
     currentDraftEmail2 = r.email;
     meta    = `<strong>To:</strong> ${r.name} &nbsp;·&nbsp; ${r.email}<br/><strong>Re:</strong> ${r.topic} request · received ${r.received}`;
     subject = 'iqcommune — Update on your training session request';
     emailBody =
-`Hi ${r.name.split(' ')[0]},
+`Dear ${r.name.split(' ')[0]},
 
-Thank you for your interest in iqcommune. We've reviewed your request for a session on ${r.topic}.
+This is a quick update on your request for a session on ${r.topic}.
 
-We're currently aligning a practitioner for your group and will confirm the session details — including date, time, and venue — within 2–3 working days.
+We're currently aligning a practitioner for your group and will confirm the session details — including date and time — within 2–3 working days.
 
 For reference, your request details:
   Topic: ${r.topic}
@@ -2116,15 +2113,14 @@ For reference, your request details:
 If anything has changed or you have a more specific date in mind, feel free to reply to this email.
 
 Warm regards,
-iqcommune team
-hello@iqcommune.com`;
+Team iqcommune`;
 
     waBody =
 `Hi ${r.name.split(' ')[0]}, this is iqcommune!
 
-Thanks for your training request on *${r.topic}*. We've reviewed it and are aligning a practitioner for your group.
+Just a quick update on your training request for *${r.topic}* — we're still aligning the right practitioner for your group.
 
-We'll confirm session details (date, time, venue) within 2–3 working days.
+We'll confirm session details (date, time) within 2–3 working days.
 
 Your group: ${r.size} participants · ${r.type}
 Preferred: ${r.dates}
@@ -2141,17 +2137,16 @@ Feel free to reply here if anything changes!
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> Your iqcommune practitioner status`;
     subject = 'iqcommune — a quick update on your practitioner status';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
-Quick note to let you know we've paused matching you to new sessions for the time being.
+This is to inform you that we have paused matching you to new sessions for the time being.
 
-This doesn't affect anything already agreed — any signed agreement and past session history stays exactly as it is. If circumstances change and you'd like to be considered for new sessions again, just let us know and we'll happily reactivate your profile.
+This does not affect any existing arrangement — your signed agreement and session history remain unchanged. Should your circumstances change and you wish to be considered again, please let us know and we will reactivate your profile.
 
-Thanks for everything so far.
+Thank you for your contribution so far.
 
 Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune.
@@ -2170,19 +2165,18 @@ Quick note — we've paused matching you to new sessions for now. This doesn't a
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> Session consent for ${module} (Ref. ${confRef})`;
     subject = 'iqcommune — please confirm your session details (Ref. ' + confRef + ')';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
-Here's the revenue confirmation for your upcoming session (${module}, session ref. ${sessRef}) — please review the session details and payout figures, then confirm your consent using the link below.
+Please find below the revenue confirmation for your upcoming session (${module}, session ref. ${sessRef}). Kindly review the session details and payout figures, then confirm your consent using the link below.
 
 ${link}
 
-This locks the session in on our side, so please review carefully before confirming.
+This confirms the session on our end, so please review carefully before proceeding.
 
-Reference number for this confirmation: ${confRef}
+Reference number: ${confRef}
 
 Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune.
@@ -2202,21 +2196,20 @@ ${link}
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> Your iqcommune empanelment agreement (Ref. IQC-EMP-${p.ref})`;
     subject = 'iqcommune — your empanelment agreement (Ref. IQC-EMP-' + p.ref + ')';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
 Your empanelment agreement is ready, prefilled with the details you shared with us. Please review it and sign online using the link below:
 
 ${link}
 
-It only takes a couple of minutes — review the terms, then sign directly on the page.
+It takes only a couple of minutes — review the terms, then sign directly on the page.
 
 Reference number for this agreement: IQC-EMP-${p.ref}
 
-Let us know if anything looks off before you sign.
+Please let us know if anything requires clarification before signing.
 
 Warm regards,
-[Your Name]
-iqcommune`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune.
@@ -2235,28 +2228,25 @@ ${link}
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> You're empanelled with iqcommune`;
     subject = 'Welcome to iqcommune — you\'re officially empanelled!';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
-Great news — your agreement is in, and you're now officially empanelled as an iqcommune practitioner for ${p.module}.
+We are pleased to confirm that your agreement is in, and you are now officially empanelled as an iqcommune practitioner.
 
-Here's what happens next: as session requests come in that match your module and city, we'll reach out to check your availability before confirming anything. You're never obligated to accept a session, and there's no minimum commitment on your end.
+As session requests come in that match your profile and city, we will reach out to check your availability before confirming anything. You are never obligated to accept a session, and there is no minimum commitment on your end.
 
-A few things worth keeping handy:
-  Your empanelment ref: IQC-EMP-${p.ref}
-  Your registered module: ${p.module}
+Your empanelment reference: IQC-EMP-${p.ref}
 
-If any of your details ever change — city, payment method, or anything else — just let us know and we'll update it on our end.
+If any of your details change, please let us know and we will update them on our end.
 
-Looking forward to working with you. Welcome aboard!
+We look forward to working with you.
 
 Warm regards,
-iqcommune team
-hello@iqcommune.com`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune! 🎉
 
-Great news — you're officially empanelled with us for ${p.module}.
+Great news — you're officially empanelled with us.
 
 As matching session requests come in, we'll reach out to check your availability before confirming anything. No pressure, no minimum commitment.
 
@@ -2270,21 +2260,18 @@ Welcome aboard — glad to have you with us!
     sub     = 'Send to practitioner · ' + p.email;
     currentDraftEmail2 = p.email;
     meta    = `<strong>To:</strong> ${p.name} &nbsp;·&nbsp; ${p.email}<br/><strong>Re:</strong> iqcommune practitioner application`;
-    subject = 'iqcommune — Update on your practitioner application';
+    subject = 'iqcommune — update on your practitioner application';
     emailBody =
-`Hi ${p.name.split(' ')[0]},
+`Dear ${p.name.split(' ')[0]},
 
-Thank you for your interest in joining iqcommune as a practitioner, and for the time you took through the application and screening process.
+Thank you for your interest in joining iqcommune, and for the time you invested through the application and screening process.
 
-After review, we won't be moving forward with your application at this time. This isn't a reflection of your expertise — we're often working within a specific mix of modules, cities, and experience bands at any given time, and fit can change as our needs evolve.
+After careful review, we will not be moving forward with your application at this time. This is not a reflection of your expertise — we are often working within a specific mix of modules, cities, and experience bands at any given time, and this can change as our requirements evolve.
 
-We'd genuinely welcome you applying again in the future if circumstances change on our end.
-
-Thank you again for your interest in iqcommune.
+We would welcome a future application should circumstances change.
 
 Warm regards,
-iqcommune team
-hello@iqcommune.com`;
+Team iqcommune`;
 
     waBody =
 `Hi ${p.name.split(' ')[0]}, this is iqcommune.
@@ -3397,7 +3384,7 @@ function generateConfirmation() {
   confirmations.push({
     id: 'CONF' + confSeq, ref,
     sessionId: rec.session.id, sessionRef: rec.session.ref, practitioner: rec.session.practitioner,
-    gross: rec.gross, status: 'Pending', issuedOn,
+    gross: rec.gross, status: 'Pending', issuedOn, consentSent: false,
     rec,
   });
 
@@ -3410,12 +3397,7 @@ function generateConfirmation() {
   downloadBtn.style.opacity = '1';
   downloadBtn.classList.remove('btn-ghost');
   downloadBtn.classList.add('btn-gold');
-  const draftBtn = document.getElementById('conf-draft-email-btn');
-  draftBtn.disabled = false;
-  draftBtn.style.opacity = '1';
-  draftBtn.classList.remove('btn-ghost');
-  draftBtn.classList.add('btn-gold');
-  document.getElementById('conf-generated-note').textContent = 'Confirmation ' + ref + ' created for ' + rec.session.practitioner + ' — download the PDF if needed, or send the consent request directly.';
+  document.getElementById('conf-generated-note').textContent = 'Confirmation ' + ref + ' created for ' + rec.session.practitioner + ' — download the PDF if needed. Send the consent request from the table below.';
   renderConfirmationPicker();
   renderConfirmations();
   logActivity('Generated consent confirmation ' + ref + ' for ' + rec.session.practitioner);
@@ -3440,12 +3422,13 @@ function buildSessionConsentLink(c) {
   });
   return 'iqcommune-session-consent.html?' + params.toString();
 }
-function draftLastGeneratedConsentEmail() {
-  if (lastGeneratedConfIdx === null) return;
-  const c = confirmations[lastGeneratedConfIdx];
+function sendConsentFromRow(idx) {
+  const c = confirmations[idx];
   if (!c) return;
   const pr = practitioners.find(p => p.name === c.practitioner);
   openAutomatedSend('send-consent', pr, () => {
+    c.consentSent = true;
+    renderConfirmations();
     logActivity('Sent consent request to ' + c.practitioner + ' (' + c.ref + ')');
     showToast('Consent request sent to ' + c.practitioner);
   }, c);
@@ -3718,6 +3701,10 @@ function renderConfirmations() {
       <td style="font-size:12px;color:var(--ink-m)">${c.sessionRef}</td>
       <td class="p-name">${c.practitioner}</td>
       <td style="font-size:12px;color:var(--ink-m)">₹${Math.round(c.gross).toLocaleString('en-IN')}</td>
+      <td>
+        ${c.consentSent ? '<span class="pill s-empanelled"><span class="pd"></span>Sent</span>' :
+          `<button class="btn btn-xs role-edit" style="background:var(--red);color:#fff;border:none;" onclick="sendConsentFromRow(${idx})">Send consent request</button>`}
+      </td>
       <td><span class="pill ${c.status==='Received'?'s-empanelled':'s-pay-pending'}"><span class="pd"></span>${c.status}</span></td>
       <td>
         <button class="btn btn-ghost btn-xs" title="Download signed consent" onclick="downloadConfirmationPDF(confirmations[${idx}].rec,'${c.ref}','${c.issuedOn}')">

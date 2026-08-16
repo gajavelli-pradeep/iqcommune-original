@@ -14,7 +14,17 @@ import { describe, expect, it } from "vitest";
  *
  * Two locations are checked because deliveries have arrived in both: beside the
  * checkout (the original `client_requirements/…`), and inside it as
- * `client requirements/` (the 2026-08-12 drop). Whichever exists is compared.
+ * `client requirements/` (the 2026-08-12 drop). Whichever exists is compared,
+ * and a `latest/` subfolder inside it wins over the folder root — a re-delivery
+ * lands there rather than replacing the whole folder, so the root can still be
+ * holding the copy that was superseded.
+ *
+ * A spec the delivery no longer carries is not drift. The folder holds what has
+ * been delivered, not a mirror of this directory, so a page nobody has re-sent
+ * since it was vendored cannot be compared against anything. Counting that as
+ * failure left the check permanently red, which is how a gate stops being read.
+ * Losing a spec outright is still caught — by the count above, which is the
+ * assertion that owns that failure.
  *
  * The delivery folder is absent in CI and in git worktrees, which is the entire
  * reason the specs are vendored in the first place. So this check runs only
@@ -30,6 +40,16 @@ const DELIVERY_LOCATIONS = [
   resolve(process.cwd(), "..", "client_requirements", "thefinalfinalfiles (V7)"),
 ];
 const DELIVERED = DELIVERY_LOCATIONS.find((path) => existsSync(path));
+
+/** The newest delivered copy of one spec, or null if it was never re-sent. */
+function deliveredCopy(name: string): string | null {
+  if (!DELIVERED) return null;
+  return (
+    [resolve(DELIVERED, "latest", name), resolve(DELIVERED, name)].find((path) =>
+      existsSync(path),
+    ) ?? null
+  );
+}
 
 describe("V7 spec freshness", () => {
   it("tracks every spec the parity gates read", () => {
@@ -49,8 +69,8 @@ describe("V7 spec freshness", () => {
     const drifted = readdirSync(TRACKED)
       .filter((name) => name.endsWith(".html"))
       .filter((name) => {
-        const delivered = resolve(DELIVERED, name);
-        if (!existsSync(delivered)) return true;
+        const delivered = deliveredCopy(name);
+        if (!delivered) return false;
         return readFileSync(resolve(TRACKED, name)).compare(readFileSync(delivered)) !== 0;
       });
 
