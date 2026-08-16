@@ -18,9 +18,16 @@ import type { PhotoRow } from "@/services/console";
  * appears here", with photos either landed or still pending. Listing
  * submissions would hide precisely the rows worth chasing.
  *
+ * It also lists any submission that arrived outside that flow, which the
+ * completed-only rule used to swallow whole: photos sent the evening of a
+ * session still sitting at Confirmed, or sent through the public form with no
+ * session named. Those rows say which, since an unexplained extra row is its
+ * own confusion.
+ *
  * Retention is the other half: photos expire 30 days after upload, so the tab
  * shows how long is left and warns before it runs out. That countdown is the
- * only warning anyone gets.
+ * only warning anyone gets — which is exactly why a submission must never be
+ * missing from this table.
  */
 
 /** V7 `.btn-ghost.btn-xs` — the shared look of both cell triggers. */
@@ -139,7 +146,26 @@ function columns(role: ConsoleRole): ReadonlyArray<ColumnDef<PhotoRow>> {
     {
       key: "sessionReference",
       header: "Session ref.",
-      render: (row) => <span className="font-mono text-xs text-ink-muted">{row.sessionReference}</span>,
+      render: (row) => (
+        <div>
+          <span className="font-mono text-xs text-ink-muted">{row.sessionReference}</span>
+          {/* Why a row is here at all, when it is not a completed session.
+              Without it these photos read as an unexplained extra row, and the
+              admin has no hint that the session still needs marking. */}
+          {row.submissionId && row.sessionStatus !== "Completed" ? (
+            <span
+              className="mt-0.5 block text-3xs text-gold-dark"
+              title={
+                row.sessionStatus
+                  ? `These photos arrived before the session was marked Completed. It is currently ${row.sessionStatus}.`
+                  : "These photos were sent through the public form on the website, so they name no session."
+              }
+            >
+              {row.sessionStatus ? `Session ${row.sessionStatus}` : "No session linked"}
+            </span>
+          ) : null}
+        </div>
+      ),
     },
     { key: "module", header: "Module", render: (row) => <span className="text-xs text-ink-muted">{row.module}</span> },
     { key: "city", header: "City", render: (row) => <span className="text-xs text-ink-muted">{row.city}</span> },
