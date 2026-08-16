@@ -467,19 +467,26 @@ describe("email sender routing", () => {
     // email now reports that a practitioner is being aligned. What is missing
     // survives on the activity record (`outstandingFor` in console/actions.ts).
     const full = templates.sessionRequestFollowUp("a@b.com", "Asha", REQUEST_ECHO);
-    expect(full.body).toContain("aligning a suitable practitioner");
-    expect(full.body).toContain("Group: 16-25 participants, Organisations & Institutions");
-    expect(full.body).toContain("Preferred window: Early March");
-    expect(full.body).toContain("Please reply to this email if anything has changed.");
+    expect(full.body).toContain("This is a quick update on your request");
+    expect(full.body).toContain("aligning a practitioner for your group");
+    // Indented and introduced, so the three read as the record being echoed
+    // rather than three more paragraphs of the message.
+    expect(full.body).toContain("For reference, your request details:");
+    expect(full.body).toContain("  Group: 16-25 participants · Organisations & Institutions");
+    expect(full.body).toContain("  Preferred window: Early March");
+    expect(full.body).toContain("If anything has changed or you have a more specific date in mind");
     // The document reinstates the turnaround the waitlist phase withdrew from
     // the site — asserted so the disagreement is deliberate, not a drift.
     expect(full.body).toContain("within 2–3 working days");
+    // Venue is no longer promised here: it is settled with the SPOC after the
+    // match, and naming it made this message commit to something it cannot.
+    expect(full.body).not.toContain("venue");
 
     const sparse = templates.sessionRequestFollowUp("a@b.com", "Asha", {
       topic: MODULE,
       audience: "Organisations & Institutions",
     });
-    expect(sparse.body).toContain("Group: Organisations & Institutions");
+    expect(sparse.body).toContain("  Group: Organisations & Institutions");
     expect(sparse.body).not.toContain("Preferred window:");
     expect(sparse.body).not.toContain("undefined");
   });

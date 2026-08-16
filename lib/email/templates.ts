@@ -124,8 +124,8 @@ export function sessionRequestReceived(to: string, firstName: string, topic: str
 }
 
 /**
- * The console's "Send update to client" — an update while a practitioner is
- * being aligned to the request.
+ * The console's "Send status update to client" — an update while a practitioner
+ * is being aligned to the request.
  *
  * It no longer lists what the request is waiting on. The delivered document
  * writes this as a progress update rather than a chase, so the outstanding
@@ -145,13 +145,14 @@ export function sessionRequestFollowUp(to: string, firstName: string, request: R
     body: lines(
       `Dear ${firstName},`,
       "",
-      `Thank you for your interest in iqcommune. We have reviewed your request for a session on ${request.topic}.`,
+      `This is a quick update on your request for a session on ${request.topic}.`,
       "",
-      "We are currently aligning a suitable practitioner for your group and will confirm the session details — date, time, and venue — within 2–3 working days.",
+      "We're currently aligning a practitioner for your group and will confirm the session details — including date and time — within 2–3 working days.",
       "",
+      "For reference, your request details:",
       ...requestEchoRows(request),
       "",
-      "Please reply to this email if anything has changed.",
+      "If anything has changed or you have a more specific date in mind, feel free to reply to this email.",
       "",
       SIGN_OFF,
     ),
@@ -174,12 +175,18 @@ export interface RequestEcho {
 }
 
 function requestEchoRows(request: RequestEcho): string[] {
+  // Indented two spaces and sitting under "For reference, your request
+  // details:" — plain text has no list, and without the indent these three read
+  // as three more paragraphs of the message rather than the record being echoed.
+  const row = (text: string) => `  ${text}`;
   return [
-    `Topic: ${request.topic}`,
+    row(`Topic: ${request.topic}`),
+    // A middle dot, not a comma: the size and the audience are two facts about
+    // the group, and a comma reads as one sentence continuing.
     request.groupSize
-      ? `Group: ${request.groupSize} participants, ${request.audience}`
-      : `Group: ${request.audience}`,
-    ...(request.preferredWindow ? [`Preferred window: ${request.preferredWindow}`] : []),
+      ? row(`Group: ${request.groupSize} participants · ${request.audience}`)
+      : row(`Group: ${request.audience}`),
+    ...(request.preferredWindow ? [row(`Preferred window: ${request.preferredWindow}`)] : []),
   ];
 }
 
