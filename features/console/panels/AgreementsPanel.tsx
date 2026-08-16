@@ -75,11 +75,9 @@ const COLUMNS: ReadonlyArray<ColumnDef<AgreementRow>> = [
    * and nothing on this table said whether it had gone. Here the answer is the
    * control: a pill once sent, the send itself until then.
    *
-   * Offered only against a signed agreement, which V7 does not check. That
-   * message tells someone they are officially empanelled, and an agreement
-   * still Pending means they have not signed — the same reason the Actions
-   * column beside it withholds its Delete rather than offering one that does
-   * nothing.
+   * Offered only against a signed agreement, as V7 has it: an em dash while
+   * unsigned, then the send. The message tells someone they are officially
+   * empanelled, and Pending means they have not signed.
    */
   {
     key: "welcome",
@@ -94,7 +92,7 @@ const COLUMNS: ReadonlyArray<ColumnDef<AgreementRow>> = [
           draft={{ kind: "practitioner-welcome", id: `prac:${row.practitionerId}` }}
           label="Send welcome message"
           pendingMessage={`Sending a welcome to ${row.practitioner}…`}
-          variant="ghost"
+          variant="red-pill"
         />
       ) : (
         <span className="text-xs text-ink-faint">—</span>
