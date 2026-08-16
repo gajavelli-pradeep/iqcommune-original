@@ -94,3 +94,8 @@ package-lock.json
 
 # meeting notes — kept locally for traceability, never committed
 docs/MOM-*.md
+
+# client deliveries — the local drop folder. `spec/v7/` is the tracked copy the
+# parity gates read, vendored precisely because this folder is not in the repo.
+client requirements/
+client_requirements/

@@ -1,1 +1,0 @@
-This is only for logo & tagline placements. So just look at the headers in all of these files. No text or architecture changes.
