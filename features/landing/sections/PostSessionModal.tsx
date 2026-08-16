@@ -5,9 +5,12 @@ import { useId, useRef, useState } from "react";
 import { CheckboxField, SelectField, TextField } from "@/components/ui/Field";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { Modal } from "@/components/ui/Modal";
+import { networkFailure, readFailure } from "@/lib/api/failure";
 import {
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTOS,
+  MAX_TOTAL_PHOTO_BYTES,
+  megabytes,
   photoSubmissionSchema,
   validatePhotos,
   type PhotoSubmissionInput,
@@ -104,18 +107,31 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
       for (const photo of photos) body.append("photos", photo);
 
       const response = await fetch("/api/photo-submissions", { method: "POST", body });
-      const result = await response.json();
 
       if (!response.ok) {
-        if (result?.error?.fields) setErrors(result.error.fields);
-        setSubmitError(result?.error?.message ?? "Something went wrong. Please try again.");
+        // Read before assuming: a request refused upstream answers with HTML,
+        // and parsing that used to land in the catch below as a connection
+        // problem.
+        const failure = await readFailure(
+          response,
+          `Those photos were too large to send in one go — one upload can carry ${megabytes(MAX_TOTAL_PHOTO_BYTES)}. Try fewer at a time.`,
+        );
+        if (failure.fields) setErrors(failure.fields);
+        setSubmitError(failure.message);
         setStatus("editing");
         return;
       }
 
+      await response.json();
       setStatus("sent");
     } catch {
-      setSubmitError("We couldn't reach the server. Check your connection and try again.");
+      // Only a request that never got an answer reaches here now.
+      setSubmitError(
+        networkFailure(
+          photos.reduce((total, photo) => total + photo.size, 0),
+          MAX_TOTAL_PHOTO_BYTES,
+        ),
+      );
       setStatus("editing");
     }
   }
@@ -255,6 +271,9 @@ export function PostSessionModal({ open, onClose }: { open: boolean; onClose: ()
             />
             <p className="mt-1 text-sm text-ink-faint">
               JPEG or PNG · Up to {MAX_PHOTOS} photos · Max 25MB per photo
+              <span className="mt-0.5 block">
+                Up to {megabytes(MAX_TOTAL_PHOTO_BYTES)} in one upload — send a second batch if you have more.
+              </span>
             </p>
             {errors.photos ? (
               <p id={photosErrorId} role="alert" className="mt-1 text-sm text-red">
