@@ -1,7 +1,11 @@
 import { fail, ok } from "@/lib/api/response";
 import { log, newTraceId } from "@/lib/logger";
 import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
-import { photoSubmissionSchema, validatePhotos } from "@/lib/schemas/photo-submission";
+import {
+  photoSubmissionSchema,
+  tokenedPhotoSubmissionSchema,
+  validatePhotos,
+} from "@/lib/schemas/photo-submission";
 import { verifyToken } from "@/lib/tokens";
 import { getPhotoSubmissionOwner } from "@/services/link-pages";
 import { createPhotoSubmission } from "@/services/photo-submissions";
@@ -44,7 +48,9 @@ export async function POST(request: Request) {
     if (owner === null) {
       return fail("FORBIDDEN", "This link is no longer valid.", traceId);
     }
-    const parsed = photoSubmissionSchema.safeParse(
+    // The tokened branch validates the record, not the sender: only the
+    // organisation name and the photos came from them.
+    const parsed = (owner ? tokenedPhotoSubmissionSchema : photoSubmissionSchema).safeParse(
       owner
         ? {
             submitterName: owner.practitionerName,
@@ -66,7 +72,16 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       const fields: Record<string, string> = {};
       for (const issue of parsed.error.issues) fields[issue.path.join(".")] = issue.message;
-      return fail("VALIDATION_FAILED", "Please check the highlighted fields.", traceId, fields);
+
+      // "Please check the highlighted fields" only means something where there
+      // are fields to highlight. The tokened page renders none of these — they
+      // come off the record, not the form — and shows the top-level message
+      // alone, so a failure there read as an instruction to fix nothing
+      // visible. Say what is actually wrong instead, and where the fix lives.
+      const message = owner
+        ? `We could not send these photos: ${Object.values(fields).join(". ")}. This is a problem with the session record rather than anything you entered — please reply to the email that brought you here.`
+        : "Please check the highlighted fields.";
+      return fail("VALIDATION_FAILED", message, traceId, fields);
     }
 
     // Type and size are re-checked here: the browser's check is a courtesy, not
