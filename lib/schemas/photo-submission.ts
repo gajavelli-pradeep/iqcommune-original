@@ -7,11 +7,28 @@ export const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
 /**
  * Aggregate ceiling across all photos in one submission (audit M4). Without it
  * the anonymous (untokenised) path accepts 10 × 25 MB = 250 MB per request into
- * paid storage, rate-limited only per-IP. 60 MB comfortably fits ten typical
- * phone photos while bounding the abuse vector on a self-hosted deploy (Vercel's
- * ~4.5 MB body cap already limits it there).
+ * paid storage, rate-limited only per-IP.
+ *
+ * It used to be 60 MB, with a note that "Vercel's ~4.5 MB body cap already
+ * limits it there". It does — by cutting the request off before the route runs,
+ * which the browser reports as a failed connection. So the form advertised
+ * 25 MB a photo, accepted them, uploaded for a while and then said "check your
+ * connection", for photos that were never going to fit.
+ *
+ * A limit the deployment cannot honour is not a limit, it is a trap. This is
+ * the request cap, and it is what both halves now check — the sender is told
+ * before they wait rather than after. `NEXT_PUBLIC_MAX_UPLOAD_BYTES` raises it
+ * for a self-hosted deploy with no such ceiling; the default is what a
+ * serverless platform will actually carry.
  */
-export const MAX_TOTAL_PHOTO_BYTES = 60 * 1024 * 1024;
+const VERCEL_SAFE_UPLOAD_BYTES = 4 * 1024 * 1024;
+export const MAX_TOTAL_PHOTO_BYTES =
+  Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_BYTES) || VERCEL_SAFE_UPLOAD_BYTES;
+
+/** For copy: "4 MB", "60 MB" — never "4.00 MB" or a byte count. */
+export function megabytes(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
 export const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png"] as const;
 
 const sessionDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose the date of the session");
@@ -60,9 +77,13 @@ export function validatePhotos(files: File[]): string | undefined {
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type as (typeof ACCEPTED_PHOTO_TYPES)[number])) {
       return "Photos must be JPEG or PNG";
     }
-    if (file.size > MAX_PHOTO_BYTES) return "Each photo must be under 25MB";
+    if (file.size > MAX_PHOTO_BYTES) return `Each photo must be under ${megabytes(MAX_PHOTO_BYTES)}`;
     total += file.size;
   }
-  if (total > MAX_TOTAL_PHOTO_BYTES) return "Those photos are too large together — keep the total under 60MB";
+  if (total > MAX_TOTAL_PHOTO_BYTES) {
+    // Named in the message, because the number moves with the deployment and a
+    // hardcoded one drifted from it before.
+    return `Those photos come to ${megabytes(total)} together, and one upload can carry ${megabytes(MAX_TOTAL_PHOTO_BYTES)}. Send them in smaller batches.`;
+  }
   return undefined;
 }
