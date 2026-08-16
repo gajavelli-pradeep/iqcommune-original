@@ -890,14 +890,29 @@ export async function listPayouts(): Promise<PayoutRow[]> {
  * landed or still pending. Listing submissions instead would hide exactly the
  * rows an admin needs to chase, since a session with no photos has no
  * submission to list.
+ *
+ * But "completed sessions" alone cannot be the whole list, because photos do
+ * not wait for an admin to mark anything. A practitioner who uses their link
+ * the evening of the session submits against a record still sitting at
+ * Confirmed, and the public form on the landing page carries no session at
+ * all. Both were accepted, thanked, stored, counted against the 30-day
+ * retention, and deleted unseen at expiry — there was no row to attach them
+ * to. So the list is completed sessions PLUS every live submission, whatever
+ * its session's status and whether or not it has one.
  */
 export interface PhotoRow {
-  /** The session — stable whether or not photos exist yet. */
+  /** The session — or the submission itself, when it arrived without one. */
   id: string;
   submissionId: string | null;
   practitioner: string;
   practitionerReference: string | null;
   sessionReference: string;
+  /**
+   * The session's own status, for photos that arrived outside the completed
+   * flow. `null` when the submission is linked to no session. `"Completed"`
+   * — the ordinary case — needs no explaining and is not shown.
+   */
+  sessionStatus: string | null;
   module: string;
   city: string;
   sessionDate: string;
@@ -918,53 +933,175 @@ function daysUntil(value: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
-export async function listPhotoSubmissions(): Promise<PhotoRow[]> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("sessions")
-    .select(
-      "id, reference, module, city, session_date, session_practitioners ( deleted_at, practitioners ( full_name, reference ) ), photo_submissions ( id, storage_keys, created_at, expiry_date, deleted_at )",
-    )
-    .eq("status", "Completed")
-    .is("deleted_at", null)
-    .order("session_date", { ascending: false, nullsFirst: false })
-    .order("id")
-    .limit(500);
+/**
+ * Every live submission, each with whatever session it names.
+ *
+ * Read from the submissions side, so a session with two submitters yields two
+ * rows. Going the other way — a session and `.find()` on its photos — renders
+ * the first and silently drops the rest.
+ */
+const SUBMISSION_SELECT =
+  "id, submitter_name, session_date, module_taught, storage_keys, created_at, expiry_date, " +
+  "practitioners ( full_name, reference ), " +
+  "sessions ( id, reference, module, city, session_date, status, deleted_at )";
 
-  if (error) throw new Error(`sessions read failed: ${error.message}`);
+/** Completed sessions, to find the ones still owing photos. */
+const PENDING_SELECT =
+  "id, reference, module, city, session_date, status, " +
+  "session_practitioners ( deleted_at, practitioners ( full_name, reference ) ), " +
+  "photo_submissions ( id, deleted_at )";
 
-  return (data ?? []).map((row) => {
-    const assignment = ((row.session_practitioners ?? []) as Array<{
-      deleted_at: string | null;
-      practitioners: unknown;
-    }>).find((entry) => !entry.deleted_at);
-    const practitioner = assignment
-      ? one<{ full_name: string; reference: string }>(assignment.practitioners)
-      : null;
+export interface SubmissionRow {
+  id: string;
+  submitter_name: string;
+  session_date: string | null;
+  module_taught: string | null;
+  storage_keys: string[];
+  created_at: string;
+  expiry_date: string;
+  practitioners: unknown;
+  sessions: unknown;
+}
 
-    const submission = ((row.photo_submissions ?? []) as Array<{
-      id: string;
-      storage_keys: string[];
-      created_at: string;
-      expiry_date: string;
-      deleted_at: string | null;
-    }>).find((entry) => !entry.deleted_at);
+export interface PendingSessionRow {
+  id: string;
+  reference: string;
+  module: string;
+  city: string;
+  session_date: string | null;
+  status: string;
+  session_practitioners: Array<{ deleted_at: string | null; practitioners: unknown }> | null;
+  photo_submissions: Array<{ id: string; deleted_at: string | null }> | null;
+}
 
-    return {
+interface LinkedSession {
+  id: string;
+  reference: string;
+  module: string;
+  city: string;
+  session_date: string | null;
+  status: string;
+  deleted_at: string | null;
+}
+
+/** A row carrying photos. Session details fill in only if it names one. */
+function rowFromSubmission(row: SubmissionRow): { on: string | null; row: PhotoRow } {
+  const session = one<LinkedSession>(row.sessions);
+  const practitioner = one<{ full_name: string; reference: string }>(row.practitioners);
+  const on = session?.session_date ?? row.session_date;
+
+  return {
+    on,
+    row: {
+      // The submission, not the session: two submitters on one session are two
+      // rows and need two keys.
       id: row.id,
-      submissionId: submission?.id ?? null,
+      submissionId: row.id,
+      // Whoever the link was issued to; the public form has only a typed name.
+      practitioner: practitioner?.full_name ?? row.submitter_name,
+      practitionerReference: practitioner?.reference ?? null,
+      sessionReference: session?.reference ?? "—",
+      sessionStatus: session?.status ?? null,
+      module: session?.module ?? row.module_taught ?? "—",
+      city: session?.city ?? "—",
+      sessionDate: date(on),
+      photoCount: row.storage_keys.length,
+      uploadedOn: date(row.created_at),
+      expiresOn: date(row.expiry_date),
+      daysLeft: daysUntil(row.expiry_date),
+    },
+  };
+}
+
+/** A completed session with nothing uploaded — the queue worth chasing. */
+function rowAwaitingPhotos(row: PendingSessionRow): { on: string | null; row: PhotoRow } {
+  const assignment = (row.session_practitioners ?? []).find((entry) => !entry.deleted_at);
+  const practitioner = assignment
+    ? one<{ full_name: string; reference: string }>(assignment.practitioners)
+    : null;
+
+  return {
+    on: row.session_date,
+    row: {
+      id: row.id,
+      submissionId: null,
       practitioner: practitioner?.full_name ?? "—",
       practitionerReference: practitioner?.reference ?? null,
       sessionReference: row.reference,
+      sessionStatus: row.status,
       module: row.module,
       city: row.city,
       sessionDate: date(row.session_date),
-      photoCount: (submission?.storage_keys ?? []).length,
-      uploadedOn: submission ? date(submission.created_at) : null,
-      expiresOn: submission ? date(submission.expiry_date) : null,
-      daysLeft: submission ? daysUntil(submission.expiry_date) : null,
-    };
+      photoCount: 0,
+      uploadedOn: null,
+      expiresOn: null,
+      daysLeft: null,
+    },
+  };
+}
+
+export async function listPhotoSubmissions(): Promise<PhotoRow[]> {
+  const supabase = createAdminClient();
+
+  // Two reads, because the tab answers two questions that no single query
+  // covers: which photos have arrived, and which completed sessions still owe
+  // some. PostgREST cannot express "status is Completed OR a child row exists"
+  // in one `or()`, and widening to every session would let the 500 cap start
+  // dropping real rows.
+  const [submissions, completed] = await Promise.all([
+    supabase.from("photo_submissions").select(SUBMISSION_SELECT).is("deleted_at", null).limit(500),
+    supabase
+      .from("sessions")
+      .select(PENDING_SELECT)
+      .eq("status", "Completed")
+      .is("deleted_at", null)
+      .limit(500),
+  ]);
+
+  for (const { error } of [submissions, completed]) {
+    if (error) throw new Error(`photo rows read failed: ${error.message}`);
+  }
+
+  return photoRows(
+    (submissions.data ?? []) as unknown as SubmissionRow[],
+    (completed.data ?? []) as unknown as PendingSessionRow[],
+  );
+}
+
+/**
+ * The visibility rule, kept separate from the reads so it can be checked.
+ *
+ * Every live submission gets a row. A completed session gets one only when
+ * nothing has been uploaded against it, so the two never double up.
+ */
+export function photoRows(
+  submissions: readonly SubmissionRow[],
+  completed: readonly PendingSessionRow[],
+): PhotoRow[] {
+  const listed = submissions
+    // A submission whose session was soft-deleted keeps its row, minus the
+    // session — the photos are still real and still expiring.
+    .map((row) => (one<LinkedSession>(row.sessions)?.deleted_at ? { ...row, sessions: null } : row))
+    .map(rowFromSubmission);
+
+  for (const row of completed) {
+    const uploaded = (row.photo_submissions ?? []).some((entry) => !entry.deleted_at);
+    if (!uploaded) listed.push(rowAwaitingPhotos(row));
+  }
+
+  // Sorted on the raw ISO date, not the rendered one — comparing "03 Jun"
+  // against "15 Jun" as strings orders them by day. Undated rows last, matching
+  // the `nullsFirst: false` this replaced.
+  listed.sort((a, b) => {
+    if (a.on !== b.on) {
+      if (!a.on) return 1;
+      if (!b.on) return -1;
+      return b.on.localeCompare(a.on);
+    }
+    return a.row.id.localeCompare(b.row.id);
   });
+
+  return listed.map((entry) => entry.row);
 }
 
 // ── Gallery ─────────────────────────────────────────────────────────────────
