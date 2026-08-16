@@ -29,17 +29,15 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
  * Session Consent — "the critical junction of the whole loop", and the only
  * console tab that is a workflow rather than a table.
  *
- * Two parts now, where V7 has three. Part 1 creates a confirmation, which is
- * real data entry and keeps its form. Everything after that — ask for consent,
- * chase it, confirm the session, send the photo guide — is one sequence a
- * confirmation moves through, and the table is where it lives.
+ * Three parts, as V7 has: Part 1 generates the confirmation, Part 2 sends the
+ * consent request and tracks what comes back, Part 3 sends the photo guide.
+ * Each act happens in exactly one of them.
  *
- * V7's Part 3 was a second picker asking an admin to find a session the table
- * on the same screen was already showing them, and it could only be reached by
- * knowing it was there. Its two actions moved onto the row: the send appears at
- * the stage where it is the next thing to do, the download wherever the guide
- * exists. Gating is unchanged and now structural — the guide cannot be offered
- * before consent because that is a later stage than the one the row is at.
+ * It spent a while as two. The consent send sat in Part 1's post-generate
+ * render — lost the moment the tab closed — and then in an eighth column
+ * headed "Next step" that carried the send, the confirm and a pointer to the
+ * guide together. Both are gone: a row's send is its own column, confirming is
+ * a choice on the status control, and the guide belongs to Part 3.
  */
 
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
@@ -53,13 +51,12 @@ const MONTHS_ISSUED = [
 ];
 
 /**
- * The two follow-on actions before a confirmation exists — V7's `.btn-ghost`
- * at `opacity:.45`.
+ * The download before a confirmation exists — V7's `.btn-ghost` at
+ * `opacity:.45`.
  *
- * Rendered as spans rather than disabled buttons, and `aria-hidden`: they are
- * placeholders showing what will become available, and a disabled control that
- * can never be reached by keyboard is noise to a screen reader. The line beside
- * them says what to do instead, which is the part worth announcing.
+ * Rendered as a span rather than a disabled button, and `aria-hidden`: it is a
+ * placeholder showing what will become available, and a disabled control that
+ * can never be reached by keyboard is noise to a screen reader.
  */
 const DIMMED_PILL =
   "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted";
@@ -295,10 +292,10 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
    * The control holds its own value in order to move the moment it is used —
    * before the round trip, and back again if the server refuses. Held alone
    * though, it was set once at mount and never again, and the table keeps a row
-   * mounted across a revalidate. Confirming from the Next step column beside it
-   * therefore left this cell reading "Pending" for the rest of the visit: the
-   * two halves of one row disagreeing about the same session, with the wrong
-   * half being the one that looks authoritative.
+   * mounted across a revalidate. A confirm arriving from anywhere else
+   * therefore left this cell reading "Pending" for the rest of the visit — the
+   * row and the record disagreeing about the same session, with the wrong one
+   * being what an admin reads.
    *
    * Compared during render rather than in an effect so the select never paints
    * the stale value first (React's own "adjusting state when props change").
@@ -499,9 +496,9 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
    * promising a signed one. The file was honest; the column was not.
    *
    * The unsigned version has a real use — an admin who cannot reach the
-   * practitioner by email sends it by hand — but that is a step in getting
-   * consent, not a record of having it, so it lives in `Next step` beside the
-   * send it belongs to.
+   * practitioner by email sends it by hand — and Part 1 hands it over at the
+   * moment of generating, which is when that is wanted. It is not offered here,
+   * because this column is a record of consent rather than a step towards it.
    */
   {
     key: "download",
@@ -837,9 +834,9 @@ function GenerateConfirmation({
  * Part 3 — Send Photo Guide.
  *
  * V7's third part, restored (client, 2026-08-16). It was dropped when Part 2
- * gained its Next step column, on the reasoning that a picker asking an admin
- * to find a session the table above was already showing is a worse control
- * than a button on the row itself. The client's answer is that the guide is a
+ * briefly carried a "Next step" column, on the reasoning that a picker asking
+ * an admin to find a session the table above was already showing is a worse
+ * control than a button on the row itself. The client's answer is that the guide is a
  * different act from chasing consent — it is prepared for one session at a
  * time, with the venue and date in front of you — and that it belongs in one
  * place rather than repeated down a column.

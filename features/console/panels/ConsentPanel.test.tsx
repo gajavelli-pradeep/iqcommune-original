@@ -7,13 +7,11 @@ import { generateConfirmation } from "../actions";
 import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
 /**
- * The Next step column is the whole point of the tab: one row, one next action.
- * `consent-stage.test.ts` proves the rule picks the right stage; these prove the
- * cell renders the control that stage calls for, and — more importantly — that
- * it renders no others.
+ * Part 2's row is where the consent request is sent and where what came back
+ * is read. These prove each cell offers the one control it should and, more
+ * importantly, that it offers none it should not.
  *
- * The negative assertions are the ones that matter. A cell offering two actions
- * is the state the column exists to prevent, and a cancelled session still
+ * The negative assertions are the ones that matter: a cancelled session still
  * offering to chase consent is the one that reaches a practitioner.
  */
 
@@ -163,8 +161,8 @@ describe("Session status says what the session is", () => {
     // route in, and the note underneath is what carries the real state.
     show({ status: "Received", sessionStatus: "Completed" });
     expect(statusSelect().value).toBe("Confirmed");
-    // "Delivered" also renders in the Next step cell, so this counts rather
-    // than expecting one — the point is the select does not swallow the state.
+    // "Delivered" also renders as the note under the select, so this counts
+    // rather than expecting one — the point is the select does not swallow it.
     expect(screen.getAllByText(/^Delivered$/).length).toBeGreaterThan(0);
   });
 
@@ -176,12 +174,10 @@ describe("Session status says what the session is", () => {
   /**
    * The live path, and the one the fresh-render tests above cannot reach.
    *
-   * Confirming happens in the Next step column beside this one. The action
-   * revalidates, so the row arrives again as new props — but the table keeps
-   * the row mounted, so a value read once at mount is never read again. The
-   * cell went on saying "Pending" for the rest of the visit while the column
-   * next to it had already moved on to the photo guide: two halves of one row
-   * disagreeing, the wrong half looking authoritative.
+   * A confirm revalidates, so the row arrives again as new props — but the
+   * table keeps the row mounted, so a value read once at mount is never read
+   * again. The cell went on saying "Pending" for the rest of the visit while
+   * the record said otherwise, and the cell is what an admin reads.
    */
   describe("when the answer arrives as new props", () => {
     const panel = (only: Partial<ConsentRow>) => (
@@ -242,7 +238,7 @@ describe("Download Signed Consent means what it says", () => {
 });
 
 describe("a view-only role", () => {
-  it("gets no next step, but can still read the table", () => {
+  it("gets no controls, but can still read the table", () => {
     render(<ConsentPanel rows={[row({ status: "Received" })]} role="user" confirmable={[]} />);
     expect(screen.queryByRole("button", { name: /send|confirm/i })).not.toBeInTheDocument();
     expect(screen.getByText("IQC-CONF-0001")).toBeInTheDocument();
@@ -431,5 +427,25 @@ describe("Part 3 — Send Photo Guide", () => {
 
     await user.selectOptions(picker(), "a1");
     expect(screen.getByText(/already sent once/i)).toBeInTheDocument();
+  });
+});
+
+describe("Part 2's columns", () => {
+  it("are V7's eight, in V7's order", () => {
+    // The delivery moved the send into its own column and dropped the "Next
+    // step" one this console had added. Asserting the whole header row catches
+    // a column going missing and one drifting out of position — neither of
+    // which any behavioural test would notice.
+    show({});
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+      "Confirmation ref.",
+      "Session",
+      "Practitioner",
+      "Gross payout",
+      "Send Consent Request",
+      "Consent status",
+      "Download Signed Consent",
+      "Session status",
+    ]);
   });
 });
