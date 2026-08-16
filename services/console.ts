@@ -812,14 +812,39 @@ export interface PayoutRow {
   status: "Paid" | "Pending";
 }
 
+/**
+ * Sessions that have actually happened, in the two spellings the column holds.
+ *
+ * `Completed` is what the console writes. `Delivered` is the original enum
+ * value from migration 0002, still legal and still on rows the app did not
+ * create — reading only the new one would quietly drop a payout that is owed.
+ */
+const DELIVERED_STATUSES = ["Completed", "Delivered"];
+
+/**
+ * Payouts, for sessions that have been delivered.
+ *
+ * A payout used to appear the moment a confirmation existed, so the tab listed
+ * money against sessions that had not happened yet — it read as a bill due for
+ * work nobody had done, and the pending total at the top of the panel added it
+ * up. Nothing is owed until the session is delivered, so nothing is listed
+ * until an admin marks it Completed on the Session Details tab.
+ *
+ * Filtered in the query rather than after it, through an inner join: the read
+ * is capped at 500 rows, and filtering afterwards would spend that cap on
+ * sessions this tab is not going to show.
+ */
 export async function listPayouts(): Promise<PayoutRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_practitioners")
     .select(
-      "id, confirmation_reference, gross_payout, currency, invoice_reference, paid_on, sessions ( reference, session_date, status, deleted_at ), practitioners ( full_name )",
+      "id, confirmation_reference, gross_payout, currency, invoice_reference, paid_on, sessions!inner ( reference, session_date, status, deleted_at ), practitioners ( full_name )",
     )
     .is("deleted_at", null)
+    // A withdrawn session owes nobody anything, delivered or not.
+    .is("sessions.deleted_at", null)
+    .in("sessions.status", DELIVERED_STATUSES)
     .order("confirmation_issued_on", { ascending: false })
     .order("id")
     .limit(500);
@@ -836,8 +861,8 @@ export async function listPayouts(): Promise<PayoutRow[]> {
         deleted_at: string | null;
       }>(row.sessions);
 
-      // A withdrawn session owes nobody anything.
-      if (!session || session.deleted_at) return null;
+      // The join guarantees one, but the embed is typed as possibly absent.
+      if (!session) return null;
 
       return {
         id: row.id,
