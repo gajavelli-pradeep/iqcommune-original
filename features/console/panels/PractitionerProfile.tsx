@@ -13,7 +13,6 @@ import {
   reactivatePractitioner,
   rejectApplication,
   savePractitionerNotes,
-  sendWelcomeMessage,
   setApplicationStage,
   type OverridableField,
 } from "../actions";
@@ -457,13 +456,11 @@ export function PractitionerProfile({ row, role }: { row: PractitionerRow; role:
 
                 {row.status === "Empanelled" ? (
                   <>
-                    <RowAction
-                      action={sendWelcomeMessage.bind(null, row.id)}
-                      draft={{ kind: "practitioner-welcome", id: row.id }}
-                      label="Send welcome message"
-                      pendingMessage={`Sending a welcome to ${row.name}…`}
-                      variant="ghost-block"
-                    />
+                    {/* "Send welcome message" is on the Agreements tab now, in
+                        its own column beside the signature it follows — where
+                        the row also shows whether it has already gone. Kept in
+                        one place: two buttons for one email is how the same
+                        message reaches someone twice. */}
                     <RowAction
                       action={deactivatePractitioner.bind(null, row.id)}
                       draft={{ kind: "practitioner-deactivated", id: row.id }}

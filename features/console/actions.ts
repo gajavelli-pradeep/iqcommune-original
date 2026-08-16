@@ -701,6 +701,9 @@ export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): 
     entityType: "practitioner",
     entityRef: id,
   });
+  // The Agreements column reads that entry to decide between the button and the
+  // Sent pill, so without this the send lands and the row goes on offering it.
+  revalidateConsole();
 }
 
 export async function deactivatePractitioner(rowId: string, draft?: DraftOverride): Promise<void> {

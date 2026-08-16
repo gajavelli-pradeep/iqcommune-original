@@ -381,6 +381,44 @@ export interface AgreementRow {
   /** How they signed — "Drawn" or "Typed". `null` until signed. */
   method: string | null;
   status: "Signed" | "Pending";
+  /**
+   * When the welcome last went out, or null if it never has.
+   *
+   * Read from the activity log rather than a column on the agreement: sending
+   * the welcome is an act against the practitioner, and the log already records
+   * it. A second copy on this row would be a second thing to keep true.
+   */
+  welcomeSentAt: string | null;
+}
+
+/**
+ * When each practitioner was last welcomed, keyed by practitioner id.
+ *
+ * Same shape as `lastSendsByAssignment` and for the same reason — the send is
+ * recorded once, in the log, and every surface that needs to know reads it
+ * there. Practitioners never welcomed are simply absent.
+ */
+async function welcomesByPractitioner(
+  practitionerIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (practitionerIds.length === 0) return new Map();
+
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("activity_log")
+    .select("entity_ref, created_at")
+    .eq("entity_type", "practitioner")
+    .eq("action", "practitioner.welcomed")
+    .in("entity_ref", practitionerIds)
+    .order("created_at", { ascending: false });
+
+  const welcomed = new Map<string, string>();
+  for (const row of data ?? []) {
+    const ref = row.entity_ref as string | null;
+    // Newest first, so the first one seen for a practitioner is the last sent.
+    if (ref && !welcomed.has(ref)) welcomed.set(ref, row.created_at as string);
+  }
+  return welcomed;
 }
 
 const SIGNATURE_METHOD: Record<string, string> = { drawn: "Drawn", typed: "Typed" };
@@ -399,10 +437,15 @@ export async function listAgreements(): Promise<AgreementRow[]> {
 
   if (error) throw new Error(`practitioner_agreements read failed: ${error.message}`);
 
+  const welcomed = await welcomesByPractitioner(
+    (data ?? []).map((row) => row.practitioner_id as string),
+  );
+
   return (data ?? []).map((row) => {
     const practitioner = one<{ full_name: string }>(row.practitioners);
     return {
       id: row.id,
+      welcomeSentAt: welcomed.get(row.practitioner_id as string) ?? null,
       practitionerId: row.practitioner_id,
       reference: row.reference,
       practitioner: practitioner?.full_name ?? "—",

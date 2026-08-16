@@ -1,6 +1,6 @@
 "use client";
 
-import { clearSignedAgreement } from "../actions";
+import { clearSignedAgreement, sendWelcomeMessage } from "../actions";
 import { PersonCell, type ColumnDef } from "../ConsoleTable";
 import { DownloadLink } from "../DownloadLink";
 import { FilterablePanel } from "../FilterablePanel";
@@ -66,6 +66,39 @@ const COLUMNS: ReadonlyArray<ColumnDef<AgreementRow>> = [
         }
       />
     ),
+  },
+  /**
+   * V7's seventh column, between the download and the actions.
+   *
+   * The welcome used to be offered only from the practitioner profile, under
+   * Automated actions — two clicks from the list of people who had just signed,
+   * and nothing on this table said whether it had gone. Here the answer is the
+   * control: a pill once sent, the send itself until then.
+   *
+   * Offered only against a signed agreement, which V7 does not check. That
+   * message tells someone they are officially empanelled, and an agreement
+   * still Pending means they have not signed — the same reason the Actions
+   * column beside it withholds its Delete rather than offering one that does
+   * nothing.
+   */
+  {
+    key: "welcome",
+    header: "Welcome Message",
+    requires: "mutate",
+    render: (row) =>
+      row.welcomeSentAt ? (
+        <StatusPill label="Sent" tone="success" />
+      ) : row.status === "Signed" ? (
+        <RowAction
+          action={sendWelcomeMessage.bind(null, `prac:${row.practitionerId}`)}
+          draft={{ kind: "practitioner-welcome", id: `prac:${row.practitionerId}` }}
+          label="Send welcome message"
+          pendingMessage={`Sending a welcome to ${row.practitioner}…`}
+          variant="ghost"
+        />
+      ) : (
+        <span className="text-xs text-ink-faint">—</span>
+      ),
   },
   {
     key: "actions",
