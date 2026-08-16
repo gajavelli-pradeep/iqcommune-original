@@ -58,17 +58,11 @@ const row = (overrides: Partial<ConsentRow>): ConsentRow => ({
 });
 
 /**
- * Every action the Next step column can offer. Asserting their absence by name
- * is unambiguous where asserting on text is not — "Delivered" also appears in
- * the Session status cell, and a terminal row is defined by what it does not
- * offer rather than by what it says.
+ * Nothing that reaches a practitioner, on a row that should not be reaching
+ * one. Asserting absence by name is unambiguous where asserting on text is not
+ * — "Delivered" also appears in the Session status cell.
  */
-const NO_ACTIONS = [
-  "Send consent request",
-  "Resend",
-  "Confirm the session",
-  "Send photo guide email",
-] as const;
+const NO_ACTIONS = ["Send consent request", "Send photo guide email"] as const;
 
 const expectNothingOffered = () => {
   for (const name of NO_ACTIONS) {
@@ -76,57 +70,44 @@ const expectNothingOffered = () => {
   }
 };
 
+
 const show = (only: Partial<ConsentRow>) =>
   render(<ConsentPanel rows={[row(only)]} role="global_admin" confirmable={[]} />);
 
-describe("Next step — one action per stage", () => {
-  it("asks for consent when nothing has been sent", () => {
+/**
+ * Part 2's "Send Consent Request" column — V7's fifth, ahead of the status it
+ * produces.
+ *
+ * It replaces a "Next step" column that carried this send, the confirm and the
+ * photo guide in one cell. What it must keep from that column is the one
+ * guarantee that reached a person: a session nobody will run does not ask a
+ * practitioner to agree to it.
+ */
+describe("Send Consent Request", () => {
+  it("offers the send while nothing has gone out", () => {
     show({});
     expect(screen.getByRole("button", { name: "Send consent request" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /confirm the session/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /photo guide/i })).not.toBeInTheDocument();
   });
 
-  it("shows how long it has been waiting, and offers a resend", () => {
+  it("draws it filled red, as V7 does", () => {
+    show({});
+    const send = screen.getByRole("button", { name: "Send consent request" });
+    expect(send.className).toContain("bg-red");
+  });
+
+  it("reads Sent once it has gone, with how long ago", () => {
     show({ requestSentAt: SENT, requestSentLabel: "3 days ago" });
-    expect(screen.getByText(/Sent 3 days ago/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Resend" })).toBeInTheDocument();
+    expect(screen.getByText("Sent")).toBeInTheDocument();
+    expect(screen.getByText("3 days ago")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send consent request" })).not.toBeInTheDocument();
   });
 
-  it("draws Resend as the same pill as every other action in the column", () => {
-    // It was the underlined `link` variant while its neighbours were pills, so
-    // the one control that emails a practitioner a second time read as the
-    // least consequential thing in the cell. Asserting the two match, rather
-    // than asserting a class list, keeps this about the column being coherent.
-    show({ requestSentAt: SENT, requestSentLabel: "3 days ago" });
-    const resend = screen.getByRole("button", { name: "Resend" }).className;
-
-    cleanup();
-    show({});
-    const send = screen.getByRole("button", { name: "Send consent request" }).className;
-
-    expect(resend).toBe(send);
-    expect(resend).not.toMatch(/underline/);
-  });
-
-  it("offers the confirm only once consent is in", () => {
-    show({ status: "Received", requestSentAt: SENT });
-    expect(screen.getByRole("button", { name: /confirm the session/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /consent request|resend/i })).not.toBeInTheDocument();
-  });
-
-  it("names the guide once the session is confirmed, without offering it", () => {
-    // V7 keeps both photo-guide controls in Part 3. The column still has to say
-    // what the row needs, or a confirmed session reads as finished.
-    show({ status: "Received", sessionStatus: "Confirmed" });
-    expect(screen.getByText(/send the photo guide in part 3/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /confirm the session/i })).not.toBeInTheDocument();
-  });
-
-  it("has nothing to ask once the guide has gone", () => {
-    show({ status: "Received", sessionStatus: "Confirmed", guideSentAt: SENT });
-    expect(screen.getByText(/waiting for the session/i)).toBeInTheDocument();
+  it("will not ask a cancelled session for consent", () => {
+    // The one that reaches a person. V7 renders the button regardless; asking a
+    // practitioner to agree to a session that has been cancelled is worse than
+    // the inconsistency.
+    show({ sessionStatus: "Cancelled" });
+    expect(screen.getByText(/no longer in progress/i)).toBeInTheDocument();
     expectNothingOffered();
   });
 });
@@ -215,15 +196,13 @@ describe("Session status says what the session is", () => {
       expect(statusSelect().value).toBe("Confirmed");
     });
 
-    it("agrees with the Next step column after the same change", () => {
-      // The two cells read the same row. Confirming moves Next step on to the
-      // photo guide, and the status cell claiming Pending underneath it is the
-      // contradiction an admin actually sees.
+    it("does not snap back when an unrelated re-render reports the same status", () => {
+      // The control moves before the round trip so it feels immediate, and a
+      // re-render carrying no new answer must leave that alone.
       const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
       rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
 
       expect(statusSelect().value).toBe("Confirmed");
-      expect(screen.getByText(/send the photo guide in part 3/i)).toBeInTheDocument();
     });
 
     it("leaves the local value alone while the server keeps saying the same thing", async () => {
@@ -242,25 +221,6 @@ describe("Session status says what the session is", () => {
   });
 });
 
-describe("Next step — the rows that must stop asking", () => {
-  /**
-   * The one that reaches a person. A cancelled session offering "Send consent
-   * request" asks a practitioner to agree to something nobody will run.
-   */
-  it("offers nothing on a cancelled session, even with consent outstanding", () => {
-    show({ sessionStatus: "Cancelled" });
-    expect(screen.getByText(/no longer in progress/i)).toBeInTheDocument();
-    expectNothingOffered();
-  });
-
-  it("offers nothing on a delivered session", () => {
-    show({ status: "Received", sessionStatus: "Completed" });
-    // "Delivered" also renders under the Session status select, so the row is
-    // identified by offering nothing rather than by the word.
-    expect(screen.getAllByText(/^Delivered$/).length).toBeGreaterThan(0);
-    expectNothingOffered();
-  });
-});
 
 describe("Download Signed Consent means what it says", () => {
   it("withholds the download until it has actually been signed", () => {
@@ -275,24 +235,10 @@ describe("Download Signed Consent means what it says", () => {
     expect(screen.queryByText(/not signed yet/i)).not.toBeInTheDocument();
   });
 
-  /**
-   * The unsigned confirmation still has a use — an admin who cannot reach the
-   * practitioner sends it by hand — so gating the column must not remove it.
-   */
-  it("keeps the offline fallback while consent is outstanding", () => {
-    show({});
-    expect(screen.getByRole("link", { name: /Download PDF/i })).toBeInTheDocument();
-  });
-
-  it("explains the fallback on hover rather than in the pill", () => {
-    // The cell is narrow and the qualifier was longer than the action it
-    // labelled. Dropping it outright would lose why this download exists, so it
-    // has to still be reachable — asserting the title is what keeps it from
-    // being quietly deleted as dead words later.
-    show({});
-    const title = screen.getByRole("link", { name: /Download PDF/i }).getAttribute("title");
-    expect(title).toContain("fallback, for sending offline");
-  });
+  // The unsigned copy is no longer offered here. It lived in the "Next step"
+  // column, and V7's Part 2 has no such control — Part 1 still hands it over at
+  // the moment of generating, which is when an admin who cannot reach the
+  // practitioner by email needs it.
 });
 
 describe("a view-only role", () => {
@@ -405,71 +351,6 @@ describe("the fields the admin fills in open empty", () => {
       startTime: "",
       durationHours: 0,
     });
-  });
-});
-
-/**
- * The same email offered from both halves of the panel.
- *
- * Once a confirmation is generated, Part 1 keeps its "Send consent request" in
- * local state while the revalidation moves that assignment into Part 2's table
- * — so for the rest of the admin's visit both halves offer the identical send
- * for the identical practitioner, one above the other.
- *
- * `useDeferredSend.test.ts` proves the shared key holds and releases. This
- * proves the two buttons an admin actually sees carry the same key, which is
- * the half that would silently not be true if either side ever keyed off the
- * session rather than the assignment.
- */
-describe("one email, two buttons", () => {
-  const confirmable: ConfirmableSession = {
-    id: "a1",
-    sessionReference: "IQC-S0001",
-    confirmationReference: "IQC-CONF-0001",
-    practitioner: "Priya Sharma",
-    agreementReference: "IQC-AGR-0001",
-    module: "Equity Investing Simplified",
-    sessionDate: "2026-09-01",
-    city: "Mumbai",
-    state: "Maharashtra",
-    venue: "Kotak Securities, BKC",
-    participants: "16-25",
-    spoc: "Rahul Mehta",
-    audience: "corporate",
-    grossPayout: 12000,
-    currency: "INR",
-    startTime: null,
-    durationMinutes: null,
-    consentGiven: false,
-    confirmationGenerated: false,
-  };
-
-  const sends = () => screen.getAllByRole("button", { name: "Send consent request" });
-
-  it("disables the twin while one send is counting down", async () => {
-    const user = userEvent.setup();
-    // The same assignment in both halves: Part 1 from local state after
-    // generating, Part 2 from the row the revalidation brought in.
-    render(
-      <ConsentPanel rows={[row({ id: "a1" })]} role="global_admin" confirmable={[confirmable]} />,
-    );
-
-    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
-    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Hour"), "02");
-    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("Minute"), "30");
-    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>("AM or PM"), "PM");
-    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>(/duration/i), "3");
-    await user.click(screen.getByRole("button", { name: /generate confirmation/i }));
-
-    // Both halves offer it now, and both are live.
-    expect(sends()).toHaveLength(2);
-    for (const button of sends()) expect(button).toBeEnabled();
-
-    await user.click(sends()[0]);
-    await user.click(await screen.findByRole("button", { name: /click to send/i }));
-
-    // The clicked one is held by its own window, the other by the shared key.
-    for (const button of sends()) expect(button).toBeDisabled();
   });
 });
 

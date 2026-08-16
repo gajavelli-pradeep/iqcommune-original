@@ -41,3 +41,26 @@ export function formatRecordedAt(value: string | Date): string {
 export function formatLiveClock(now: Date): string {
   return now.toLocaleString("en-IN", RECORD_FORMAT);
 }
+
+/**
+ * How long ago, in the roughest unit that is still true.
+ *
+ * "Sent 3 days ago" answers the only question being asked of it — has this been
+ * sitting too long? — which an exact timestamp answers worse. `now` is a
+ * parameter rather than read inside, so the label is deterministic in a test and
+ * cannot drift between the server render and the client's clock.
+ *
+ * Moved here from `consent-stage.ts`, which went with the "Next step" column it
+ * existed for. Nothing about this was ever consent-specific.
+ */
+export function sinceLabel(iso: string, now: Date): string {
+  const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
