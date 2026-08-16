@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sinceLabel } from "@/lib/consent-stage";
+import { sinceLabel } from "@/lib/timestamp";
 
 import { toConsoleRole, type ConsoleRole } from "@/constants/roles";
 import { AUDIENCE_LABELS, type Audience } from "@/lib/schemas/session-request";

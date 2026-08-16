@@ -22,7 +22,6 @@ import type { DraftOverride } from "../draft-kinds";
 import { PendingSendToast } from "../PendingSendToast";
 import { RowAction } from "../RowAction";
 import { CONSENT_STATUS, StatusPill } from "../StatusPill";
-import { consentStage } from "@/lib/consent-stage";
 import { can, type ConsoleRole } from "../roles";
 import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
@@ -30,17 +29,15 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
  * Session Consent — "the critical junction of the whole loop", and the only
  * console tab that is a workflow rather than a table.
  *
- * Two parts now, where V7 has three. Part 1 creates a confirmation, which is
- * real data entry and keeps its form. Everything after that — ask for consent,
- * chase it, confirm the session, send the photo guide — is one sequence a
- * confirmation moves through, and the table is where it lives.
+ * Three parts, as V7 has: Part 1 generates the confirmation, Part 2 sends the
+ * consent request and tracks what comes back, Part 3 sends the photo guide.
+ * Each act happens in exactly one of them.
  *
- * V7's Part 3 was a second picker asking an admin to find a session the table
- * on the same screen was already showing them, and it could only be reached by
- * knowing it was there. Its two actions moved onto the row: the send appears at
- * the stage where it is the next thing to do, the download wherever the guide
- * exists. Gating is unchanged and now structural — the guide cannot be offered
- * before consent because that is a later stage than the one the row is at.
+ * It spent a while as two. The consent send sat in Part 1's post-generate
+ * render — lost the moment the tab closed — and then in an eighth column
+ * headed "Next step" that carried the send, the confirm and a pointer to the
+ * guide together. Both are gone: a row's send is its own column, confirming is
+ * a choice on the status control, and the guide belongs to Part 3.
  */
 
 const CARD = "rounded-[10px] border border-border-strong bg-surface p-5";
@@ -54,13 +51,12 @@ const MONTHS_ISSUED = [
 ];
 
 /**
- * The two follow-on actions before a confirmation exists — V7's `.btn-ghost`
- * at `opacity:.45`.
+ * The download before a confirmation exists — V7's `.btn-ghost` at
+ * `opacity:.45`.
  *
- * Rendered as spans rather than disabled buttons, and `aria-hidden`: they are
- * placeholders showing what will become available, and a disabled control that
- * can never be reached by keyboard is noise to a screen reader. The line beside
- * them says what to do instead, which is the part worth announcing.
+ * Rendered as a span rather than a disabled button, and `aria-hidden`: it is a
+ * placeholder showing what will become available, and a disabled control that
+ * can never be reached by keyboard is noise to a screen reader.
  */
 const DIMMED_PILL =
   "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-ink-muted";
@@ -256,9 +252,6 @@ function AutoField({
  */
 const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
-/** Quiet text for a row with nothing to do — a stage, not an absence of one. */
-const SETTLED = "text-3xs text-ink-faint";
-
 /**
  * The shot list as a PDF, for a practitioner who wants it outside the email.
  *
@@ -274,108 +267,6 @@ function GuideDownload({ row }: { row: ConsentRow }) {
       title={`Download the photo guide for ${row.session}`}
     />
   );
-}
-
-/**
- * The single action for wherever this confirmation has reached.
- *
- * Every branch is one stage of `ConsentStage`, and the switch is exhaustive on
- * purpose: a new stage should fail to compile here rather than render an empty
- * cell that reads as "nothing to do" when it means "nobody taught this row what
- * to do".
- */
-function NextStep({ row }: { row: ConsentRow }) {
-  const stage = consentStage(row);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  switch (stage) {
-    case "cancelled":
-      return <span className={SETTLED}>No longer in progress</span>;
-    case "delivered":
-      return <span className={SETTLED}>Delivered</span>;
-    case "in-flight":
-      // The guide stays downloadable for a practitioner who lost the email —
-      // in Part 3, which is where V7 puts it and where the session is still
-      // listed until it is delivered.
-      return <span className={SETTLED}>Waiting for the session</span>;
-
-    case "confirm":
-      // Offered at the point consent lands, because that is when confirming is
-      // the obvious next thing — not because it is the only way. The status
-      // column beside it will confirm a session whose consent came in on paper.
-      // This is the signpost; that is the override.
-      return (
-        <>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                const result = await setSessionStatus(row.sessionId, "Confirmed");
-                setError(result.ok ? null : result.message);
-              })
-            }
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {pending ? "Confirming…" : "Confirm the session"}
-          </button>
-          {error ? (
-            <p role="alert" className="mt-1 max-w-[170px] text-3xs text-red">
-              {error}
-            </p>
-          ) : null}
-        </>
-      );
-
-    case "guide":
-      // Named, not offered. V7 keeps both photo-guide controls in Part 3 and
-      // nowhere else, so the column says what the row needs and leaves the
-      // doing to the one place that does it — a second copy of the send is how
-      // the same email goes out twice.
-      return <span className={SETTLED}>Send the photo guide in Part 3</span>;
-
-    case "request":
-    case "waiting":
-      return (
-        // Stacked with a gap, as the "guide" case above already does: two
-        // hairline pills are siblings now, and inline they would touch.
-        <div className="flex flex-col items-start gap-1">
-          {/* How long it has been waiting, which is the only question anyone
-              asks of a request that has not come back yet. */}
-          {row.requestSentLabel ? (
-            <span className="text-3xs text-ink-faint">Sent {row.requestSentLabel}</span>
-          ) : null}
-          <RowAction
-            action={sendConsentRequest.bind(null, row.id)}
-            draft={{ kind: "consent-request", id: row.id }}
-            label={stage === "waiting" ? "Resend" : "Send consent request"}
-            pendingMessage={`Sending the consent request to ${row.practitioner}…`}
-            // Both look like the button they are. Resend was the underlined
-            // `link` variant, which reads as a footnote next to the pill above
-            // it — and it sends a real email to a practitioner, which is not
-            // something to make look incidental.
-            variant="ghost"
-          />
-          {/* The offline fallback, in the one place it is ever the answer: the
-              email cannot reach them, so the admin sends the confirmation by
-              hand. Unsigned by definition — which is why it is here and not
-              under a column headed "Download Signed Consent".
-
-              The qualifier is on hover rather than in the pill. This is a table
-              cell, and it was carrying more words than the action it labels —
-              "Download PDF" is already the whole of what the control does, and
-              when it is the right one to reach for is context, not label. Part
-              1 keeps it visible: that card has the room, and there the download
-              is being offered rather than found. */}
-          <DownloadLink
-            href={`/api/consents/${row.id}/pdf`}
-            label="Download PDF"
-            title={`Download ${row.reference} — the fallback, for sending offline`}
-          />
-        </div>
-      );
-  }
 }
 
 /**
@@ -401,10 +292,10 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
    * The control holds its own value in order to move the moment it is used —
    * before the round trip, and back again if the server refuses. Held alone
    * though, it was set once at mount and never again, and the table keeps a row
-   * mounted across a revalidate. Confirming from the Next step column beside it
-   * therefore left this cell reading "Pending" for the rest of the visit: the
-   * two halves of one row disagreeing about the same session, with the wrong
-   * half being the one that looks authoritative.
+   * mounted across a revalidate. A confirm arriving from anywhere else
+   * therefore left this cell reading "Pending" for the rest of the visit — the
+   * row and the record disagreeing about the same session, with the wrong one
+   * being what an admin reads.
    *
    * Compared during render rather than in an effect so the select never paints
    * the stale value first (React's own "adjusting state when props change").
@@ -546,6 +437,45 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
     align: "right",
     render: (row) => <span className="font-semibold text-ink">{row.grossPayout}</span>,
   },
+  /**
+   * V7's fifth column, ahead of the status it produces.
+   *
+   * The send used to sit in Part 1, in the render that followed a successful
+   * generate — so closing the tab lost it with no way back — and later in a
+   * "Next step" column that also carried the confirm and the photo guide. On
+   * the row it belongs to, the answer is the control: the send until it has
+   * gone, a pill once it has, and nothing to remember either way.
+   *
+   * Withheld on a session no longer going ahead, which V7 does not check. That
+   * one reaches a person: asking a practitioner to agree to a session that has
+   * been cancelled is worse than any tidiness gained by rendering the button
+   * unconditionally. The guarantee came from the column this replaces and is
+   * kept rather than dropped with it.
+   */
+  {
+    key: "sendConsent",
+    header: "Send Consent Request",
+    requires: "mutate",
+    render: (row) =>
+      row.requestSentAt ? (
+        <div>
+          <StatusPill label="Sent" tone="success" />
+          {row.requestSentLabel ? (
+            <div className="mt-0.5 text-3xs text-ink-faint">{row.requestSentLabel}</div>
+          ) : null}
+        </div>
+      ) : row.sessionStatus === "Cancelled" ? (
+        <span className="text-3xs text-ink-faint">No longer in progress</span>
+      ) : (
+        <RowAction
+          action={sendConsentRequest.bind(null, row.id)}
+          draft={{ kind: "consent-request", id: row.id }}
+          label="Send consent request"
+          pendingMessage={`Sending the consent request to ${row.practitioner}…`}
+          variant="red-pill"
+        />
+      ),
+  },
   {
     key: "consentStatus",
     header: "Consent status",
@@ -566,9 +496,9 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
    * promising a signed one. The file was honest; the column was not.
    *
    * The unsigned version has a real use — an admin who cannot reach the
-   * practitioner by email sends it by hand — but that is a step in getting
-   * consent, not a record of having it, so it lives in `Next step` beside the
-   * send it belongs to.
+   * practitioner by email sends it by hand — and Part 1 hands it over at the
+   * moment of generating, which is when that is wanted. It is not offered here,
+   * because this column is a record of consent rather than a step towards it.
    */
   {
     key: "download",
@@ -579,26 +509,6 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
       ) : (
         <span className="text-3xs text-ink-faint">Not signed yet</span>
       ),
-  },
-  /**
-   * An eighth column V7 does not have: the one thing this row needs next.
-   *
-   * V7 spreads the work across three boxes — generate here, chase there, send
-   * the guide somewhere else — and leaves the table to be read rather than
-   * acted on. An admin had to know which box a session belonged in, and Part 1
-   * only offered its actions in the render following a successful generate, so
-   * closing the tab lost them with no way back.
-   *
-   * A confirmation is only ever at one point in that sequence and each point
-   * has one sensible next action, so the row says what it needs and nothing
-   * else. Derived from stored facts by `consentStage`, never from what the page
-   * remembers, which is what makes it survive a reload.
-   */
-  {
-    key: "next",
-    header: "Next step",
-    requires: "mutate",
-    render: (row) => <NextStep key={row.id} row={row} />,
   },
   {
     key: "sessionStatus",
@@ -673,7 +583,7 @@ function GenerateConfirmation({
 
   return (
     <section>
-      <h2 className={PART}>Part 1 — Generate &amp; Send Consent</h2>
+      <h2 className={PART}>Part 1 — Generate Consent</h2>
       <div className={`${CARD} mb-7`}>
         <h3 className="text-base font-semibold text-ink">Generate a new confirmation</h3>
         <p className="mb-3.5 mt-0.5 text-xs text-ink-muted">
@@ -883,11 +793,13 @@ function GenerateConfirmation({
           </>
         ) : null}
 
-        {/* V7 keeps both actions on screen from the start, dimmed to 45% and
-            disabled, then turns them gold once a confirmation exists — the
-            state change is how it tells you the generate worked. They were
-            absent-until-ready here, which loses that signal and moves the
-            layout under the cursor.
+        {/* One follow-on now, not two. V7 leaves the download on screen from
+            the start, dimmed to 45% and disabled, and turns it gold once a
+            confirmation exists — the state change is how it tells you the
+            generate worked, so it is drawn rather than appearing.
+
+            The send moved to Part 2's own column, where the row also records
+            that it has gone. This part generates; the next one sends.
 
             Gold takes an ink label, not V7's white: white on --color-gold is
             2.1:1 and fails AA. Recorded here so it is not "corrected" back. */}
@@ -901,30 +813,15 @@ function GenerateConfirmation({
                 title="Download the confirmation, for sending offline"
                 tone="gold"
               />
-              <RowAction
-                action={sendConsentRequest.bind(null, done.id)}
-                draft={{ kind: "consent-request", id: done.id }}
-                label="Send consent request"
-                pendingMessage={`Sending the consent request to ${done.practitioner}…`}
-                variant="gold-pill"
-              />
               <span aria-live="polite" className="text-xs text-ink-faint">
-                Generated {done.confirmationReference} for {done.practitioner} — download the PDF if
-                needed, or send the consent request directly.
+                Generated {done.confirmationReference} for {done.practitioner} — send the consent
+                request from Part 2 below.
               </span>
             </>
           ) : (
-            <>
-              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
-                Download PDF <span className="font-normal opacity-75">(fallback, for sending offline)</span>
-              </span>
-              <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
-                Send consent request
-              </span>
-              <span className="text-xs text-ink-faint">
-                Generate a confirmation to download it or request consent.
-              </span>
-            </>
+            <span className={`${DIMMED_PILL} opacity-45`} aria-hidden>
+              Download PDF <span className="font-normal opacity-75">(fallback, for sending offline)</span>
+            </span>
           )}
         </div>
       </div>
@@ -937,9 +834,9 @@ function GenerateConfirmation({
  * Part 3 — Send Photo Guide.
  *
  * V7's third part, restored (client, 2026-08-16). It was dropped when Part 2
- * gained its Next step column, on the reasoning that a picker asking an admin
- * to find a session the table above was already showing is a worse control
- * than a button on the row itself. The client's answer is that the guide is a
+ * briefly carried a "Next step" column, on the reasoning that a picker asking
+ * an admin to find a session the table above was already showing is a worse
+ * control than a button on the row itself. The client's answer is that the guide is a
  * different act from chasing consent — it is prepared for one session at a
  * time, with the venue and date in front of you — and that it belongs in one
  * place rather than repeated down a column.
@@ -1155,7 +1052,7 @@ export function ConsentPanel({
       <section>
         {/* V7 puts the refresh on the section header line, right-aligned. */}
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <h2 className={`${PART} mb-0`}>Part 2 — Track Status</h2>
+          <h2 className={`${PART} mb-0`}>Part 2 — Send Consent &amp; Track Status</h2>
           {mayEdit ? (
             <div className="flex items-center gap-2">
               {checked ? (

@@ -2167,10 +2167,16 @@ export async function generateConfirmation(
     .update({
       // Every one of these is the admin's, checked above — the date included,
       // which is why it is no longer patched in conditionally.
+      //
+      // The status is not among them any more (client, 2026-08-16). Generating
+      // used to set it Confirmed, so a session was confirmed by the act of
+      // producing the document that asks the practitioner to agree to it — and
+      // by the time consent came back the column had read Confirmed for days,
+      // which is what made it look automatic. Confirming is the admin's call
+      // now, on the Session status control in Part 2.
       session_date: input.sessionDate,
       start_time: input.startTime,
       duration_minutes: input.durationHours * 60,
-      status: "Confirmed",
     })
     .eq("id", assignment.session_id)
     .is("deleted_at", null);
