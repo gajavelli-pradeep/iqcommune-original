@@ -236,7 +236,7 @@ export function PayoutsPanel({ rows, role }: { rows: readonly PayoutRow[]; role:
         rows={shown}
         role={role}
         rowKey={(row) => row.id}
-        empty="No payouts yet. A payout appears once a session has been matched."
+        empty="No payouts yet. A payout appears once a session is marked Completed on Session Details."
       />
     </>
   );
