@@ -41,6 +41,18 @@ describe("maskLink", () => {
     const body = "Hi Vikram,\n\nWelcome aboard.\n\n- Team iqcommune";
     expect(maskLink(body)).toBe(body);
   });
+
+  it("takes out every token, not just the first", () => {
+    // No template writes two links today, so this pins a guard rather than a
+    // fix. What it guards is a live token surviving into a preview, and that
+    // should not depend on a fact about the current templates.
+    const body = `Sign: ${LIVE}\n\nOr from your phone: ${PREVIOUS}`;
+
+    const masked = maskLink(body);
+
+    expect(masked).not.toContain("?t=");
+    expect(countOf(masked, LINK_PLACEHOLDER)).toBe(2);
+  });
 });
 
 describe("withLink", () => {

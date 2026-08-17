@@ -200,7 +200,10 @@ export function DraftModal({
             <button
               type="button"
               disabled={!ready}
-              onClick={() => onSend({ subject: subject.trim(), body })}
+              // `linkId` is handed straight back rather than being anything the
+              // admin can touch: it is the row the link they just read points
+              // at, and the send creates it under that id so the two agree.
+              onClick={() => onSend({ subject: subject.trim(), body, linkId: draft?.linkId })}
               className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>

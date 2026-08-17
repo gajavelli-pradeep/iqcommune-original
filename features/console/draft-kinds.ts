@@ -64,7 +64,14 @@ export const PREVIEW_ID = "00000000-0000-4000-8000-000000000000";
  */
 const TOKENISED_LINK = /https?:\/\/\S+\?t=\S+/g;
 
-/** Any tokenised URL the template produced, swapped for the placeholder. */
+/**
+ * Any tokenised URL the template produced, swapped for the placeholder.
+ *
+ * Every one of them, not merely the first. No template writes two links today,
+ * so this is a guard rather than a fix — but the failure it guards against is a
+ * live token surviving into a preview, and "the templates only have one" is a
+ * fact about today that this function should not be relying on.
+ */
 export function maskLink(body: string): string {
   return body.replace(TOKENISED_LINK, LINK_PLACEHOLDER);
 }
@@ -112,6 +119,20 @@ export function withReference(body: string, reference: string): string {
 export interface DraftOverride {
   subject: string;
   body: string;
+  /**
+   * The row the previewed link points at, when the dialog had to choose it.
+   *
+   * Only the agreement needs this, and only on a first issue. Every other send
+   * previews a row that already exists, so its link is real without anyone
+   * deciding anything. The agreement is created *by* its send — so for the link
+   * to be visible beforehand, the id has to be settled in the dialog and handed
+   * back with the edit, and the send creates the row under it.
+   *
+   * Choosing an id is not the same as allocating one: nothing is written when a
+   * preview is opened or abandoned, which is the promise that matters. What
+   * changes is only that the send stops picking the id itself.
+   */
+  linkId?: string;
 }
 
 /** A composed message, ready to show. */
