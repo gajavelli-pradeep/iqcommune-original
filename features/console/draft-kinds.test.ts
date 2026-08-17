@@ -14,6 +14,15 @@ import { LINK_PLACEHOLDER, maskLink, withLink } from "./draft-kinds";
 
 const LIVE = "https://iqcommune.com/onboarding?t=eyJhbGciOiJIUzI1NiJ9.abc-123_XY";
 
+/**
+ * A different token for the same agreement — what the dialog rendered a moment
+ * before the send minted `LIVE`. Tokens are HMACs over `{kind, id, exp}`, so two
+ * mints for one agreement differ in the string and match in what they open.
+ */
+const PREVIOUS = "https://iqcommune.com/onboarding?t=eyJhbGciOiJIUzI1NiJ9.zzz-999_QQ";
+
+const countOf = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
 describe("maskLink", () => {
   it("takes the token out of a composed body", () => {
     const body = `Hi Vikram,\n\nSign here:\n\n${LIVE}\n\n- Team iqcommune`;
@@ -31,6 +40,18 @@ describe("maskLink", () => {
   it("leaves a body with no link alone", () => {
     const body = "Hi Vikram,\n\nWelcome aboard.\n\n- Team iqcommune";
     expect(maskLink(body)).toBe(body);
+  });
+
+  it("takes out every token, not just the first", () => {
+    // No template writes two links today, so this pins a guard rather than a
+    // fix. What it guards is a live token surviving into a preview, and that
+    // should not depend on a fact about the current templates.
+    const body = `Sign: ${LIVE}\n\nOr from your phone: ${PREVIOUS}`;
+
+    const masked = maskLink(body);
+
+    expect(masked).not.toContain("?t=");
+    expect(countOf(masked, LINK_PLACEHOLDER)).toBe(2);
   });
 });
 
@@ -68,5 +89,37 @@ describe("withLink", () => {
     const original = `Hi Vikram,\n\nSign here:\n\n${LIVE}\n\n- Team iqcommune`;
 
     expect(withLink(maskLink(original), LIVE)).toBe(original);
+  });
+
+  it("replaces a link the draft already showed, rather than adding a second", () => {
+    // The case the agreement resend introduced: its draft shows a real link,
+    // because the agreement it points at already exists. That body matches no
+    // placeholder, so without this it would fall through to the append and the
+    // practitioner would get the same link twice — under a sentence written for
+    // one.
+    const shown = `Hi Vikram,\n\nSign here:\n\n${PREVIOUS}\n\n- Team iqcommune`;
+
+    const sent = withLink(shown, LIVE);
+
+    expect(sent).toBe(`Hi Vikram,\n\nSign here:\n\n${LIVE}\n\n- Team iqcommune`);
+    expect(sent).not.toContain(PREVIOUS);
+    expect(countOf(sent, LIVE)).toBe(1);
+  });
+
+  it("sends the token this send minted, not the one the dialog rendered", () => {
+    // Both tokens are valid — they are HMACs over the same agreement id — so
+    // this is not about access. It is about the sent email and the send's own
+    // record agreeing on which link went out.
+    expect(withLink(`Sign here: ${PREVIOUS}`, LIVE)).toBe(`Sign here: ${LIVE}`);
+  });
+
+  it("does not lose the tail of a body when it replaces a shown link", () => {
+    // A global regex keeps `lastIndex` between calls, so a `test()` before a
+    // `replace()` can start the search mid-string and quietly skip the match.
+    // Two runs in a row is what catches that.
+    const shown = `Sign here: ${PREVIOUS}\n\n- Team iqcommune`;
+
+    expect(withLink(shown, LIVE)).toBe(`Sign here: ${LIVE}\n\n- Team iqcommune`);
+    expect(withLink(shown, LIVE)).toBe(`Sign here: ${LIVE}\n\n- Team iqcommune`);
   });
 });

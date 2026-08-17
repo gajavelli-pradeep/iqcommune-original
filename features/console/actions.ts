@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 
 import { dispatchEmail } from "@/lib/email/dispatch";
@@ -90,6 +92,19 @@ function revalidateConsole() {
 }
 
 /** A practitioner's contact details, by whichever id references them. */
+/**
+ * A uuid and nothing else.
+ *
+ * Guards the one value in this file that reaches a primary key from the client:
+ * the agreement id the draft dialog settled on. A malicious admin gains nothing
+ * by choosing it — they may already create agreements — but an unchecked string
+ * would reach Postgres as a type error rather than a refusal, and the send would
+ * fail on something unreadable instead of quietly picking its own id.
+ */
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 async function practitionerContact(
   supabase: ReturnType<typeof createAdminClient>,
   practitionerId: string,
@@ -554,6 +569,12 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     const { data: created, error: agreementError } = await supabase
       .from("practitioner_agreements")
       .insert({
+        // Created under the id the dialog showed a link to, so the link the
+        // admin read is the link that works. Shape-checked rather than trusted:
+        // it arrives from the client, and the only thing it may be is a uuid.
+        // Anything else falls back to the database's own default, which costs
+        // the preview's link and nothing else.
+        ...(isUuid(draft?.linkId) ? { id: draft!.linkId } : {}),
         practitioner_id: practitionerId,
         reference,
         modules: application?.modules ?? [],
@@ -2007,7 +2028,14 @@ function outstandingFor(request: Record<string, unknown>): string[] {
 async function draftMessage(
   kind: DraftKind,
   id: string,
-): Promise<{ message: EmailMessage; whatsapp?: string; phone?: string | null; detail?: string } | null> {
+): Promise<{
+  message: EmailMessage;
+  whatsapp?: string;
+  phone?: string | null;
+  detail?: string;
+  /** Set only where the dialog had to choose the row its link points at. */
+  linkId?: string;
+} | null> {
   const supabase = createAdminClient();
 
   if (kind === "request-follow-up") {
@@ -2137,14 +2165,15 @@ async function draftMessage(
     }
     if (!contact) return null;
 
-    // The agreement's own IQC-AGR number, which is what this message quotes. A
-    // resend has one already; a first issue has no agreement row yet, so it
-    // stands in exactly as the link does and the send substitutes both.
+    // The agreement's own IQC-AGR number, which is what this message quotes, and
+    // its id, which is what the link points at. A resend has both already; a
+    // first issue has no agreement row yet, so both stand in and the send
+    // substitutes them.
     const { data: openAgreement } =
       table === "practitioner"
         ? await supabase
             .from("practitioner_agreements")
-            .select("reference")
+            .select("id, reference")
             .eq("practitioner_id", rowRef)
             .is("signed_at", null)
             .is("deleted_at", null)
@@ -2152,12 +2181,37 @@ async function draftMessage(
         : { data: null };
     const agreementReference = (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER;
 
-    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, agreementReference);
-    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, agreementReference);
+    /**
+     * The link, real in both cases (client, 2026-08-17).
+     *
+     * On a resend the agreement exists and this points at it: `sendAgreement`
+     * reuses that same open row, so the preview shows the document the send will
+     * use, not a lookalike.
+     *
+     * On a first issue there is no row yet — so the dialog settles the id the
+     * send will create it under, and shows a link to that. This is what lets the
+     * agreement behave like every other send in the console, all of which
+     * preview a row that already exists. Nothing is written here: a uuid is
+     * chosen, not allocated, and an admin who opens this dialog and closes it
+     * again still leaves no trace. `linkId` travels back with the edit and
+     * `generateAndSendAgreement` inserts under it.
+     *
+     * Minting the token writes nothing either — it is an HMAC over the id and an
+     * expiry — so neither half of this reaches the database.
+     */
+    const agreementId = (openAgreement?.id as string | undefined) ?? randomUUID();
+    const message = onboardingLink(contact.email, contact.firstName, agreementId, agreementReference);
+    const wa = whatsapp.onboardingLink(contact.firstName, agreementId, agreementReference);
     return {
       phone: contact.phone,
-      message: { ...message, body: maskLink(message.body) },
-      whatsapp: maskLink(wa.body),
+      message,
+      // The WhatsApp copy leaves by the clipboard and nothing substitutes into
+      // it afterwards, so a stand-in here would reach the practitioner as the
+      // words themselves.
+      whatsapp: wa.body,
+      // Only meaningful for a first issue; on a resend the send finds the same
+      // row anyway and ignores it.
+      linkId: openAgreement ? undefined : agreementId,
     };
   }
 
@@ -2263,7 +2317,14 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
-  return { to, subject, body, whatsapp: draft.whatsapp, phone: draft.phone ?? null };
+  return {
+    to,
+    subject,
+    body,
+    whatsapp: draft.whatsapp,
+    phone: draft.phone ?? null,
+    linkId: draft.linkId,
+  };
 }
 
 /**

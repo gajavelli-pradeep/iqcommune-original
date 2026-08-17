@@ -56,23 +56,52 @@ export const REFERENCE_PLACEHOLDER = "[reference assigned when you send]";
 export const PREVIEW_ID = "00000000-0000-4000-8000-000000000000";
 
 /**
- * Any tokenised URL the template produced, swapped for the placeholder.
+ * The shape of a tokenised link, wherever one appears in a body.
  *
  * Matched by shape rather than by equality: `buildLink` mints a fresh token on
- * every call, so the URL sitting in the composed body is not the one a second
+ * every call, so the URL sitting in a composed body is never the one a second
  * call would hand back to compare against.
  */
+const TOKENISED_LINK = /https?:\/\/\S+\?t=\S+/g;
+
+/**
+ * Any tokenised URL the template produced, swapped for the placeholder.
+ *
+ * Every one of them, not merely the first. No template writes two links today,
+ * so this is a guard rather than a fix — but the failure it guards against is a
+ * live token surviving into a preview, and "the templates only have one" is a
+ * fact about today that this function should not be relying on.
+ */
 export function maskLink(body: string): string {
-  return body.replace(/https?:\/\/\S+\?t=\S+/, LINK_PLACEHOLDER);
+  return body.replace(TOKENISED_LINK, LINK_PLACEHOLDER);
 }
 
-/** The real link, put back where the placeholder sat. */
+/**
+ * The real link, put where the body is expecting one.
+ *
+ * Three cases, in order, because a body can arrive in three states:
+ *
+ *   · the placeholder is there — the ordinary path, substitute it;
+ *   · a link is already there — the draft was shown a real one, because the
+ *     agreement it points at already existed. Replaced rather than left alone,
+ *     so what goes out is the token this send minted rather than the one the
+ *     dialog happened to render;
+ *   · neither — the admin deleted it. These emails exist to carry the link, so
+ *     it goes back on its own line rather than the message going out useless.
+ *
+ * The middle case is the one that bites if it is missing: a body holding a real
+ * URL matches no placeholder, falls to the append, and the practitioner gets the
+ * same link twice.
+ */
 export function withLink(body: string, link: string): string {
-  return body.includes(LINK_PLACEHOLDER)
-    ? body.replaceAll(LINK_PLACEHOLDER, link)
-    : // Deleted by the admin. These emails exist to carry the link, so it goes
-      // back on its own line rather than the message going out useless.
-      `${body}\n\n${link}`;
+  if (body.includes(LINK_PLACEHOLDER)) return body.replaceAll(LINK_PLACEHOLDER, link);
+  if (TOKENISED_LINK.test(body)) {
+    // `lastIndex` survives a `test()` on a global regex and would make the
+    // replace start mid-string.
+    TOKENISED_LINK.lastIndex = 0;
+    return body.replace(TOKENISED_LINK, link);
+  }
+  return `${body}\n\n${link}`;
 }
 
 /**
@@ -90,6 +119,20 @@ export function withReference(body: string, reference: string): string {
 export interface DraftOverride {
   subject: string;
   body: string;
+  /**
+   * The row the previewed link points at, when the dialog had to choose it.
+   *
+   * Only the agreement needs this, and only on a first issue. Every other send
+   * previews a row that already exists, so its link is real without anyone
+   * deciding anything. The agreement is created *by* its send — so for the link
+   * to be visible beforehand, the id has to be settled in the dialog and handed
+   * back with the edit, and the send creates the row under it.
+   *
+   * Choosing an id is not the same as allocating one: nothing is written when a
+   * preview is opened or abandoned, which is the promise that matters. What
+   * changes is only that the send stops picking the id itself.
+   */
+  linkId?: string;
 }
 
 /** A composed message, ready to show. */
