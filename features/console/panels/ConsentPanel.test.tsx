@@ -18,6 +18,7 @@ import type { ConfirmableSession, ConsentRow } from "@/services/console";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 vi.mock("../actions", () => ({
+  deleteConfirmationRecord: vi.fn(async () => ({ ok: true })),
   generateConfirmation: vi.fn(async () => ({ ok: true })),
   overrideConfirmationField: vi.fn(async () => ({ ok: true })),
   sendConsentRequest: vi.fn(async () => ({ ok: true })),
@@ -240,17 +241,22 @@ describe("the two cancel reasons open the right dialog", () => {
 });
 
 /**
- * "Delete this record" — present and positioned as the spec has it, disabled
- * because what it should do (remove the confirmation and session outright,
- * reset the request to New) is the open question the phase-2 plan asks about,
- * not something to guess at silently.
+ * "Delete this record" — the entry-error escape hatch, Global Admin only
+ * (client requirements/latest, 2026-08-17). Present and enabled for the role
+ * that can reach it; absent — not merely disabled — for one that cannot,
+ * since a hidden-but-wired button is still a control a lesser role could
+ * inspect and reason about (`roles.ts`'s own stated rule).
  */
 describe("Delete this record", () => {
-  it("is on screen, disabled, with the reason said out loud", () => {
+  it("is offered to a Global Admin, ready to use", () => {
     show({});
-    const button = screen.getByRole("button", { name: /Delete this record/i });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", expect.stringContaining("Not available yet"));
+    const button = screen.getByRole("button", { name: "Delete this record" });
+    expect(button).not.toBeDisabled();
+  });
+
+  it("is never rendered for an Admin, who lacks purge", () => {
+    render(<ConsentPanel rows={[row({})]} role="admin" confirmable={[]} />);
+    expect(screen.queryByRole("button", { name: "Delete this record" })).not.toBeInTheDocument();
   });
 });
 

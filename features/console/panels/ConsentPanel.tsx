@@ -7,6 +7,7 @@ import { controlClass, selectClass } from "@/components/ui/control";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import {
+  deleteConfirmationRecord,
   generateConfirmation,
   overrideConfirmationField,
   sendConsentRequest,
@@ -307,7 +308,7 @@ function GuideDownload({ row }: { row: ConsentRow }) {
  * because repointing only the write would leave three rows still showing one
  * value until the next refresh, and then flipping.
  */
-function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
+function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: ConsoleRole }) {
   // Completed has no option of its own — V7 shows a delivered session as
   // Confirmed rather than a value the select cannot represent, and the note
   // under the control carries the real state.
@@ -466,39 +467,35 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
         />
       ) : null}
 
-      <DeleteConfirmationRecord row={row} />
+      {can(role, "purge") ? <DeleteConfirmationRecord row={row} /> : null}
     </>
   );
 }
 
 /**
  * "Delete this record" — the third path for a plain admin entry error, not a
- * real cancellation (client delivery, latest folder, 2026-08-17): wrong
- * amount, wrong date, generated for the wrong session. Distinct from both
- * cancel reasons above, which represent something that actually happened and
- * always reach a real person; this one is silent and reversible only by
- * regenerating, never by Undo.
+ * real cancellation (client requirements/latest, 2026-08-17): wrong amount,
+ * wrong date, generated for the wrong session. Distinct from both cancel
+ * reasons above, which represent something that actually happened and always
+ * reach a real person; this one is silent — no draft, no Undo toast to speak
+ * of it, matching the source's own "No one will be notified."
  *
- * Not wired yet. What it does once pressed — remove the confirmation and
- * session outright and reset the originating request to New for rematching —
- * is exactly the piece the phase-2 plan asks about, so committing to it here
- * would be the same guess in a smaller box. Shown, positioned, and worded as
- * the spec has it, disabled with an honest reason, rather than left out of the
- * screen an admin is previewing or wired to something that quietly does the
- * wrong thing.
+ * Global Admin only (`purge`), same as `deleteApplication` and
+ * `deleteSessionRequest` — a plain Admin never receives the button, and
+ * `RowAction`'s own Undo window (10s) stands in for the source's native
+ * confirm() prompt: the click is reversible until it elapses, same safety net
+ * every other destructive action in this console already gets.
  */
 function DeleteConfirmationRecord({ row }: { row: ConsentRow }) {
   return (
     <div className="mt-[5px] text-center">
-      <button
-        type="button"
-        disabled
-        title="Fixes a data-entry mistake — deletes silently, notifies no one. Not available yet — see the phase-2 plan."
-        aria-label={`Delete this record — ${row.reference}, not available yet`}
-        className="rounded-full border border-attention-edge px-2.5 py-1 text-3xs font-medium text-attention opacity-50 disabled:cursor-not-allowed"
-      >
-        Delete this record
-      </button>
+      <RowAction
+        action={() => deleteConfirmationRecord(row.id)}
+        label="Delete this record"
+        pendingMessage={`Deleting ${row.reference}…`}
+        variant="ghost"
+        tone="danger"
+      />
     </div>
   );
 }
@@ -612,13 +609,24 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
    * follows the column it is now bound to — the confirmation reference — and is
    * recorded here so it is not "corrected" back.
    */
-  {
+];
+
+/**
+ * Built per render rather than folded into `COLUMNS`: the Delete button inside
+ * `ConfirmationStatusSelect` is gated on `purge`, one step past the `mutate`
+ * this whole column already requires, and `ConsoleTable`'s `render` callback
+ * carries only a row — this is the one column that needs the signed-in role
+ * too, so it takes it as an argument instead of widening every panel's column
+ * signature for a single cell.
+ */
+function confirmationStatusColumn(role: ConsoleRole): ColumnDef<ConsentRow> {
+  return {
     key: "confirmationStatus",
     header: "Confirmation status",
     requires: "mutate",
-    render: (row) => <ConfirmationStatusSelect key={row.id} row={row} />,
-  },
-];
+    render: (row) => <ConfirmationStatusSelect key={row.id} row={row} role={role} />,
+  };
+}
 
 /**
  * A signature actually still owed: consent has not come back, and this
@@ -1198,7 +1206,7 @@ export function ConsentPanel({
         </div>
         <ConsoleTable
           caption="Generated confirmations"
-          columns={COLUMNS}
+          columns={useMemo(() => [...COLUMNS, confirmationStatusColumn(role)], [role])}
           rows={visible}
           role={role}
           rowKey={(row) => row.id}

@@ -1152,6 +1152,60 @@ export async function setSessionStatus(
 const CONFIRMATION_STAGES = new Set(["Pending", "Confirmed", "Cancelled"]);
 
 /**
+ * Sends a session's originating request back to New and takes the session
+ * itself off every list that filters `deleted_at` — a soft delete, so the
+ * session and its (already-cancelled) confirmations stay on record rather
+ * than the literal delete-and-recreate V7's own prototype performs (`
+ * resetSessionForRematch`, client requirements/latest, 2026-08-17). Every
+ * other reader already excludes a deleted session by that same filter
+ * (Session Details, Payouts, `matchSessionRequest`'s existing-session lookup),
+ * so a later match against the same request opens a fresh session rather than
+ * reusing this one — Part 2's own list is the one deliberate exception,
+ * reading `session_practitioners.deleted_at` alone, which this never touches.
+ *
+ * Shared by every path that fully vacates a session — both cancel reasons and
+ * the plain entry-error delete — so they cannot quietly drift apart from each
+ * other, the same reason V7 keeps its own version in one place.
+ *
+ * A session seeded with no linked request has nothing to reopen; the session
+ * still gets vacated, and this returns its reference either way.
+ */
+async function resetSessionForRematch(
+  supabase: ReturnType<typeof createAdminClient>,
+  sessionId: string,
+  actor: string,
+  requestDetail: (sessionReference: string | null) => string,
+): Promise<{ reference: string | null }> {
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .update({ status: "Cancelled", deleted_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .select("reference, session_request_id")
+    .maybeSingle();
+  if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
+
+  const reference = (session?.reference as string | null) ?? null;
+  const requestId = session?.session_request_id as string | null | undefined;
+  if (requestId) {
+    const { error: requestError } = await supabase
+      .from("session_requests")
+      .update({ status: "New" })
+      .eq("id", requestId)
+      .is("deleted_at", null);
+    if (requestError) throw new Error(`request reset failed: ${requestError.message}`);
+    await recordActivity({
+      actorEmail: actor,
+      action: "request.reopened",
+      entityType: "request",
+      entityRef: requestId,
+      detail: requestDetail(reference),
+    });
+  }
+  return { reference };
+}
+
+/**
  * Part 2's status control — one confirmation, not the session it sits on.
  *
  * Three practitioners on one session share a `sessions.status`, so while this
@@ -1281,14 +1335,12 @@ export async function setConfirmationStatus(
     };
   }
 
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .update({ status: "Cancelled" })
-    .eq("id", sessionId)
-    .is("deleted_at", null)
-    .select("reference")
-    .maybeSingle();
-  if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
+  const { reference: sessionReference } = await resetSessionForRematch(
+    supabase,
+    sessionId,
+    actor,
+    (ref) => (ref ? `Reset to New — session ${ref} was cancelled.` : "Reset to New — its session was cancelled."),
+  );
 
   if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
 
@@ -1323,8 +1375,8 @@ export async function setConfirmationStatus(
     action: SESSION_STAGE_ACTIONS.Cancelled,
     entityType: "session",
     entityRef: sessionId,
-    detail: session?.reference
-      ? `${session.reference} → Cancelled — its last confirmation was cancelled.`
+    detail: sessionReference
+      ? `${sessionReference} → Cancelled — its last confirmation was cancelled.`
       : undefined,
   });
   revalidateConsole();
@@ -1335,6 +1387,75 @@ export async function setConfirmationStatus(
       warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
     };
   }
+  return { ok: true };
+}
+
+/**
+ * "Delete this record" — the escape hatch for a confirmation that was
+ * generated wrong (wrong amount, wrong date, wrong practitioner), not one
+ * that was genuinely cancelled. Silent: unlike either cancel reason, no one
+ * is emailed (client requirements/latest, 2026-08-17).
+ *
+ * Global Admin only, matching every other permanent correction in this file
+ * (`deleteApplication`, `deleteSessionRequest`) — soft delete, so the row
+ * stays for audit even though nothing on screen offers it again. Only when
+ * this was the session's last live confirmation does the session and its
+ * originating request get the same reset the cancel flows give them: other
+ * confirmed practitioners mean the session is still real, and fixing one
+ * wrong entry must not vacate a session someone else is still delivering.
+ */
+export async function deleteConfirmationRecord(assignmentId: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("purge");
+  const supabase = createAdminClient();
+
+  const { data: assignment, error: readError } = await supabase
+    .from("session_practitioners")
+    .select("id, session_id, deleted_at, confirmation_reference")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  if (readError) throw new Error(`assignment read failed: ${readError.message}`);
+  if (!assignment) return { ok: false, message: "That confirmation no longer exists." };
+
+  const reference = assignment.confirmation_reference as string;
+  const sessionId = assignment.session_id as string;
+
+  if (!assignment.deleted_at) {
+    const { error } = await supabase
+      .from("session_practitioners")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", assignmentId);
+    if (error) throw new Error(`delete failed: ${error.message}`);
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "confirmation.deleted",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `${reference} deleted — entry error, no one notified.`,
+  });
+
+  const { count, error: countError } = await supabase
+    .from("session_practitioners")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .neq("id", assignmentId)
+    .is("deleted_at", null);
+  if (countError) throw new Error(`assignment count failed: ${countError.message}`);
+
+  if ((count ?? 0) === 0) {
+    await resetSessionForRematch(
+      supabase,
+      sessionId,
+      actor,
+      (ref) =>
+        ref
+          ? `Reset to New — its confirmation for session ${ref} was deleted.`
+          : "Reset to New — its confirmation was deleted.",
+    );
+  }
+
+  revalidateConsole();
   return { ok: true };
 }
 
