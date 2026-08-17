@@ -38,9 +38,14 @@ function FitList({
     <div
       className={`rounded-[12px] border px-6 py-5 ${isGood ? "border-fit-good-edge bg-fit-good-surface" : "border-tool-edge bg-tool-card"}`}
     >
+      {/* `-muted`, not `-faint`: faint is 35% white and measures 3.2:1 on this
+          card, under AA for text. Its own token note reserves it for decorative
+          notes rather than copy, and this heading and the list under it are the
+          section's actual content — the half that tells someone this is not for
+          them. `-muted` is the token documented for exactly that, at 5.31:1. */}
       <h3
         className={`mb-3 text-sm font-semibold uppercase tracking-eyebrow ${
-          isGood ? "text-fit-good" : "text-on-dark-faint"
+          isGood ? "text-fit-good" : "text-on-dark-muted"
         }`}
       >
         {title}
@@ -50,7 +55,7 @@ function FitList({
           <li
             key={item}
             className={`mb-[0.55rem] flex items-start gap-2.5 text-base leading-[1.55] last:mb-0 ${
-              isGood ? "text-on-dark-bright" : "text-on-dark-faint"
+              isGood ? "text-on-dark-bright" : "text-on-dark-muted"
             }`}
           >
             <svg

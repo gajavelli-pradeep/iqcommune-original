@@ -137,7 +137,12 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
 
           {apply}
 
-          <p className="mt-4 flex items-center gap-1.5 text-base text-on-dark-faint">
+          {/* `-muted`, not `-faint`. This is the reassurance directly under the
+              apply button — no fees, no selling, when we reply — which is copy
+              someone reads before deciding, not decoration. At 35% white it
+              measured 3.2:1, under AA; `-muted` is the token documented for
+              body text on ink, at 5.31:1. */}
+          <p className="mt-4 flex items-center gap-1.5 text-base text-on-dark-muted">
             <svg
               width="13"
               height="13"
@@ -157,7 +162,11 @@ export function Hero({ apply }: { apply: React.ReactNode }) {
         </div>
 
         <div className="rounded-xl border border-tool-edge bg-tool-card p-8">
-          <p className="mb-[1.1rem] text-xs font-semibold uppercase tracking-caps text-on-dark-faint">
+          {/* An eyebrow, which the faint token does list as one of its uses —
+              but WCAG has no eyebrow exemption, and at 11px this was the
+              lowest-contrast heading on the page. It labels the panel beneath
+              it, so it is read rather than glanced past. */}
+          <p className="mb-[1.1rem] text-xs font-semibold uppercase tracking-caps text-on-dark-muted">
             What this means for you
           </p>
           <ul>
