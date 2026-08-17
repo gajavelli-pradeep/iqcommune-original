@@ -77,7 +77,13 @@ export interface ControlOptions {
 const BASE =
   "w-full border bg-clip-padding font-normal text-ink transition-[border-color,background-color] duration-150 " +
   "placeholder:text-ink-faint " +
-  "focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold " +
+  // Focus does not repaint a rejected field's edge. The gold border and the red
+  // one are the same weight, so on an invalid field the winner was emission
+  // order — and focusing the field an error message points at is precisely when
+  // that edge has to keep saying "this one". The outline below is the focus
+  // signal and is untouched, so nothing is lost by leaving the border to the
+  // error.
+  "[&:focus:not([aria-invalid='true'])]:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold " +
   "disabled:cursor-not-allowed disabled:opacity-60 " +
   "[&[readonly]]:border-border [&[readonly]]:bg-surface-soft [&[readonly]]:text-ink-muted";
 
@@ -94,8 +100,37 @@ const SIZE: Record<ControlSize, string> = {
   md: "text-md",
 };
 
-/** V7 has no error style of its own, so this follows the house error semantics. */
-const INVALID = "border-red bg-red-light text-ink";
+/**
+ * V7 has no error style of its own, so this follows the house error semantics.
+ *
+ * Three single-class rules, which makes this the weakest thing in the file — and
+ * every picker state below outranks it, because each needs a pseudo-class or an
+ * attribute to beat `TONE`. Left alone, that inverts exactly when it matters: a
+ * field holding a rejected answer paints gold, the colour this form uses to mean
+ * *this is your answer*, while the message underneath says it is not. A single
+ * typed space reaches it — the value is truthy so the field reads as filled, and
+ * `.trim().min(1)` rejects it.
+ *
+ * So the picker states are guarded on `:not([aria-invalid='true'])` rather than
+ * this being made heavier by luck: raising the error's specificity alone would
+ * win the pixel and leave a control that is simultaneously "answered" and
+ * "wrong" in its own selectors. Matched on `="true"` and not merely on the
+ * attribute's presence, so a future `aria-invalid="false"` cannot silently
+ * suppress the gold.
+ *
+ * The error itself is keyed on the attribute too, and that half is a fix rather
+ * than a guard: written as three bare classes it tied with `TONE` on every
+ * property, and ties are settled by whichever utility Tailwind happens to emit
+ * later. `border-red` won that coin toss and `bg-red-light` lost it, so every
+ * rejected field on the site has been drawing a red edge around an unchanged
+ * white fill — half the error treatment, silently, since the recipe was written.
+ * Every control that takes `invalid` also sets `aria-invalid`, so keying on it
+ * costs nothing and settles the tie by rule instead of by emission order.
+ */
+const INVALID =
+  "[&[aria-invalid='true']]:border-red " +
+  "[&[aria-invalid='true']]:bg-red-light " +
+  "[&[aria-invalid='true']]:text-ink";
 
 /** Each family's natural type size, so a call site only names the exception. */
 const DEFAULT_SIZE: Record<ControlTone, ControlSize> = { field: "md", inline: "xs", compact: "sm" };
@@ -114,14 +149,122 @@ export function controlClass({ tone = "field", size, invalid, className }: Contr
 }
 
 /**
+ * A form dropdown, speaking the same two states as the pick-one buttons it sits
+ * under (client, 2026-08-17).
+ *
+ * The waitlist form asks "Who is this for?" with three pill buttons directly
+ * above these dropdowns, and they already define the vocabulary:
+ *
+ *   unchosen, hovered → `hover:border-gold-border hover:text-ink`  — edge only
+ *   chosen            → `border-gold-border bg-gold-light text-gold-dark`
+ *
+ * So on this form `bg-gold-light` already means *this is your answer*. Filling a
+ * dropdown with it on hover — the first thing tried here — put the answered
+ * colour on the pointer, which made an unanswered field look answered and made
+ * the two dropdowns disagree with the three buttons an inch above them. Hover is
+ * the lighter of the two signals, so it gets the lighter treatment.
+ *
+ * Hovering therefore moves the edge, and answering fills. A dropdown now reads
+ * the way the buttons do, and the form has one language instead of two.
+ *
+ * `enabled:` keeps a disabled control from responding to a pointer that cannot
+ * use it. Tailwind v4 already scopes `hover:` to `@media (hover: hover)`, so a
+ * tap leaves nothing stuck on a touch device, and the fade is free — BASE
+ * transitions both border and background colour.
+ *
+ * Focus is deliberately untouched and still outranks both: BASE gives it a solid
+ * gold border plus a 2px offset outline, which is the stronger signal it should
+ * be.
+ */
+const PICKER_HOVER = "[&:enabled:hover:not([aria-invalid='true'])]:border-gold-border";
+
+/**
+ * The answered treatment, matched to the audience buttons' chosen state.
+ *
+ * Keyed to the checked option having a real value, so it arrives with the answer
+ * and leaves if the placeholder is chosen again — no state to keep in step, and
+ * it does not depend on a placeholder existing.
+ *
+ * Written out three times rather than built from a shared selector because
+ * Tailwind scans source text: a class assembled by concatenation compiles to
+ * nothing and fails silently at runtime, which is the rule this file's header
+ * already records. `:has()` also carries the specificity over `TONE.field`'s
+ * single-class border and background.
+ *
+ * `text-gold-dark` on `bg-gold-light` is 5.15:1 — the pairing the palette was
+ * darkened for, and the reason it is never `text-gold`.
+ */
+const SELECT_ANSWERED =
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:border-gold-border " +
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:bg-gold-light " +
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:text-gold-dark";
+
+/**
+ * The same answered treatment for a control that is typed into rather than
+ * picked from — the city and state pickers.
+ *
+ * Keyed to `data-filled`, which the field sets from its own value, rather than
+ * to `:not(:placeholder-shown)`. The placeholder trick reads as the tidier CSS
+ * and carries a trap: a caller that omits the placeholder never matches
+ * `:placeholder-shown`, so the negation is true from the first paint and an
+ * empty field renders as answered. Keying on the value cannot be wrong that way.
+ *
+ * The attribute selector also carries the specificity over `TONE.field`'s
+ * single-class border and background, the same job `:has()` does above.
+ */
+const COMBO_ANSWERED =
+  "[&[data-filled]:not([aria-invalid='true'])]:border-gold-border " +
+  "[&[data-filled]:not([aria-invalid='true'])]:bg-gold-light " +
+  "[&[data-filled]:not([aria-invalid='true'])]:text-gold-dark";
+
+/**
+ * A control that suggests from a list but accepts anything — an `<input list>`
+ * over a `<datalist>`, which is what the city and state pickers are.
+ *
+ * It wears the dropdown's states because it is one to the person using it: the
+ * edge goes gold under the pointer, and a filled field carries the answered
+ * treatment, so City and State read the same as Topic and Group size beside
+ * them.
+ *
+ * The suggestion panel is the part that cannot follow. A datalist's popup is
+ * drawn by the browser and has no pseudo-element to reach — unlike a `<select>`,
+ * which `appearance: base-select` hands over as real DOM. So this styles the
+ * field completely and the panel not at all. The alternative is a hand-built
+ * combobox, which buys the panel and owes keyboard navigation, filtering, the
+ * mobile case and the ARIA a datalist gives for free.
+ */
+export function comboClass(options: ControlOptions = {}): string {
+  return controlClass({
+    ...options,
+    className: `${PICKER_HOVER} ${COMBO_ANSWERED} ${options.className ?? ""}`.trim(),
+  });
+}
+
+/**
  * A `<select>`. Identical to `controlClass` plus the pointer affordance.
  *
  * The chevron is left to the browser deliberately. V7 does the same, and a
  * hand-drawn one means re-implementing the open state, the disabled state and
  * the right-to-left case for no gain.
+ *
+ * Both treatments are `field`-only — the public and flow-page form family, which
+ * is where the pick-one buttons they borrow from live. The console's `inline`
+ * and `compact` selects are in-table editors, where an answered fill down a
+ * column would read as a status and a hover edge would compete with the row
+ * hover those tables already draw.
  */
 export function selectClass(options: ControlOptions = {}): string {
-  return controlClass({ ...options, className: `cursor-pointer ${options.className ?? ""}`.trim() });
+  // `form-select` is a hook, not a style: the open list lives in a pseudo-element
+  // (`::picker(select)`) that no utility class can reach, so globals.css styles
+  // it and needs a selector to aim at. It carries no properties of its own.
+  const states =
+    (options.tone ?? "field") === "field"
+      ? ` form-select ${PICKER_HOVER} ${SELECT_ANSWERED}`
+      : "";
+  return controlClass({
+    ...options,
+    className: `cursor-pointer${states} ${options.className ?? ""}`.trim(),
+  });
 }
 
 /**

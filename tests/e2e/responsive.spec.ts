@@ -114,9 +114,16 @@ for (const tier of TIERS) {
     expect(columns, `expected ${tier.w >= 720 ? 2 : 1} column(s)`).toBe(tier.w >= 720 ? 2 : 1);
 
     // Every role card stays inside the viewport.
+    //
+    // Counted, not pinned to a number. This asserted `toBe(4)` and the pool has
+    // held six roles since it was written, so the check every tier depends on
+    // never ran — seven tiers reported the same stale count instead of the
+    // layout they exist to measure. Which roles are listed is content, and
+    // `Hero.test.tsx` already names all six; what belongs here is that whatever
+    // is rendered fits on screen.
     const cards = hero.locator(".rounded-md");
     const cardCount = await cards.count();
-    expect(cardCount).toBe(4);
+    expect(cardCount, "the hero should render its role cards").toBeGreaterThan(0);
     for (let i = 0; i < cardCount; i++) {
       const box = await cards.nth(i).boundingBox();
       if (!box) continue;
