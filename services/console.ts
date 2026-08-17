@@ -555,7 +555,15 @@ export async function listSessions(): Promise<SessionRow[]> {
 /** A generated confirmation, as V7's "Part 2 — Track Status" table shows it. */
 export interface ConsentRow {
   id: string;
-  /** The session itself — Part 2's status control writes to it, not to the row. */
+  /**
+   * The session this confirmation belongs to.
+   *
+   * Part 2's status control used to write here, which is why three practitioners
+   * on one session could not be cancelled apart: three rows, one `sessions.status`,
+   * so cancelling any of them cancelled all three. The control writes to `id` now
+   * and this is left for the things that are genuinely about the session — the
+   * cancellation email's draft, and the Session column's own display.
+   */
   sessionId: string;
   reference: string;
   session: string;
@@ -564,7 +572,26 @@ export interface ConsentRow {
   grossPayout: string;
   status: "Received" | "Pending";
   recordedOn: string;
-  sessionStatus: string;
+  /**
+   * Where *this confirmation* stands: Cancelled once the assignment is, and
+   * otherwise the session's own status, since a live confirmation on a Confirmed
+   * session is confirmed.
+   *
+   * Not `sessionStatus` any more, and renamed rather than redefined in place: a
+   * row here can now read Cancelled while its session reads Confirmed, so the old
+   * name would be a lie at exactly the moment the distinction matters.
+   */
+  confirmationStatus: string;
+  /**
+   * Whether cancelling this one would leave the session with nobody on it.
+   *
+   * Decides whether the control opens the client-cancellation dialog: telling a
+   * client their session is off is right when the last practitioner goes and
+   * wrong when two others are still delivering it. The action re-checks this
+   * server-side before it emails anyone — this is what the control needs in
+   * order to ask the right question, not the authority on the answer.
+   */
+  onlyLiveOnSession: boolean;
   issuedOn: string;
   /** `YYYY-MM` of issue, for Part 2's "Issued in" filter. */
   issuedMonth: string;
@@ -587,7 +614,7 @@ export interface ConsentRow {
 }
 
 const CONSENT_SELECT =
-  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue )";
+  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, deleted_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue )";
 
 /**
  * When each assignment was last sent its consent request and its photo guide.
@@ -640,12 +667,50 @@ async function lastSendsByAssignment(
   return sends;
 }
 
+/**
+ * How many practitioners are still on each of these sessions.
+ *
+ * Its own read rather than a count over the rows already fetched, because those
+ * are only the *generated* confirmations. A session can hold an assignment whose
+ * confirmation nobody has produced yet — that practitioner is still on it, and
+ * counting from the page would miss them and report the one visible row as the
+ * last one. Cancelling it would then tell the client their session is off while
+ * a practitioner is still assigned to deliver it.
+ *
+ * Bounded by the sessions on the page for the same reason `lastSendsByAssignment`
+ * is bounded by its assignments.
+ */
+async function liveCountBySession(sessionIds: readonly string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (sessionIds.length === 0) return counts;
+
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("session_practitioners")
+    .select("session_id")
+    .in("session_id", sessionIds)
+    .is("deleted_at", null);
+
+  for (const row of data ?? []) {
+    const id = row.session_id as string;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function listConsents(): Promise<ConsentRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("session_practitioners")
     .select(CONSENT_SELECT)
-    .is("deleted_at", null)
+    // `deleted_at` is deliberately NOT filtered here, and this is the one read
+    // that does not filter it. It is what cancelling a confirmation sets, and a
+    // cancelled one has to stay on this table — reading as Cancelled, and able
+    // to be put back — or an admin who cancels the wrong practitioner watches
+    // the row vanish with no way to undo it. Every other reader (payouts, the
+    // photo queue, ratings, `recordConsent`) still excludes them, which is what
+    // makes a cancelled practitioner drop out of the rest of the console.
+    //
     // Only generated confirmations appear here — an assignment carries a
     // reference from the moment it is matched, but the document does not exist
     // until someone produces it.
@@ -656,10 +721,14 @@ export async function listConsents(): Promise<ConsentRow[]> {
 
   if (error) throw new Error(`session_practitioners read failed: ${error.message}`);
 
-  const sends = await lastSendsByAssignment((data ?? []).map((row) => row.id as string));
+  const [sends, live] = await Promise.all([
+    lastSendsByAssignment((data ?? []).map((row) => row.id as string)),
+    liveCountBySession([...new Set((data ?? []).map((row) => row.session_id as string))]),
+  ]);
 
   return (data ?? []).map((row) => {
     const sent = sends.get(row.id as string);
+    const cancelled = Boolean(row.deleted_at);
     const practitioner = one<{ full_name: string }>(row.practitioners);
     const session = one<{
       reference: string;
@@ -678,7 +747,10 @@ export async function listConsents(): Promise<ConsentRow[]> {
       grossPayout: money(row.gross_payout, row.currency),
       status: row.consent_given_at ? "Received" : "Pending",
       recordedOn: date(row.consent_given_at),
-      sessionStatus: session?.status ?? "—",
+      confirmationStatus: cancelled ? "Cancelled" : (session?.status ?? "—"),
+      // A cancelled row is not one of the live ones, so it can never be the last
+      // of them — which keeps the control from offering to re-cancel it.
+      onlyLiveOnSession: !cancelled && live.get(row.session_id as string) === 1,
       issuedOn: date(row.confirmation_generated_at),
       // `issuedOn` is already formatted for display, so the period filter gets
       // its own sortable value rather than parsing a rendered date back.

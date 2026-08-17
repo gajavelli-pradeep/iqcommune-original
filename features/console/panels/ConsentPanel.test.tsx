@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ConsentPanel } from "./ConsentPanel";
-import { generateConfirmation } from "../actions";
+import { generateConfirmation, setConfirmationStatus } from "../actions";
 import type { ConfirmableSession, ConsentRow } from "@/services/console";
 
 /**
@@ -22,7 +22,7 @@ vi.mock("../actions", () => ({
   overrideConfirmationField: vi.fn(async () => ({ ok: true })),
   sendConsentRequest: vi.fn(async () => ({ ok: true })),
   sendPhotoGuide: vi.fn(async () => ({ ok: true })),
-  setSessionStatus: vi.fn(async () => ({ ok: true })),
+  setConfirmationStatus: vi.fn(async () => ({ ok: true })),
   // The draft dialog stands between every send button and its Undo window, so
   // the duplicate-send test below cannot reach one without it.
   composeDraft: vi.fn(async () => ({
@@ -44,7 +44,10 @@ const row = (overrides: Partial<ConsentRow>): ConsentRow => ({
   grossPayout: "₹12,000",
   status: "Pending",
   recordedOn: "—",
-  sessionStatus: "Pending",
+  confirmationStatus: "Pending",
+  // One practitioner on the session unless a test says otherwise, so cancelling
+  // this row is cancelling the session and the client dialog is the right one.
+  onlyLiveOnSession: true,
   issuedOn: "14 Aug 2026",
   issuedMonth: "2026-08",
   requestSentAt: null,
@@ -58,7 +61,7 @@ const row = (overrides: Partial<ConsentRow>): ConsentRow => ({
 /**
  * Nothing that reaches a practitioner, on a row that should not be reaching
  * one. Asserting absence by name is unambiguous where asserting on text is not
- * — "Delivered" also appears in the Session status cell.
+ * — "Delivered" also appears in the status cell.
  */
 const NO_ACTIONS = ["Send consent request", "Send photo guide email"] as const;
 
@@ -100,18 +103,110 @@ describe("Send Consent Request", () => {
     expect(screen.queryByRole("button", { name: "Send consent request" })).not.toBeInTheDocument();
   });
 
-  it("will not ask a cancelled session for consent", () => {
+  it("will not ask a cancelled confirmation for consent", () => {
     // The one that reaches a person. V7 renders the button regardless; asking a
     // practitioner to agree to a session that has been cancelled is worse than
     // the inconsistency.
-    show({ sessionStatus: "Cancelled" });
+    show({ confirmationStatus: "Cancelled" });
     expect(screen.getByText(/no longer in progress/i)).toBeInTheDocument();
     expectNothingOffered();
   });
 });
 
 /**
- * What the Session status cell says a session is.
+ * Three practitioners on one session, controlled apart.
+ *
+ * The whole reason the status control moved off the session. Bound there it
+ * held one answer for every row that shared a session, so cancelling the
+ * practitioner who backed out cancelled the two still delivering it — and all
+ * three controls answered to the same name, "Session status for IQC-S0007".
+ *
+ * These are the assertions that fail if either end of the binding slips back:
+ * the value each row reads, and the id each row writes.
+ */
+describe("confirmations on one session act independently", () => {
+  /** Vikram and Tarun, both on IQC-S0007, as the console reported them. */
+  const twoOnOneSession = (
+    first: Partial<ConsentRow> = {},
+    second: Partial<ConsentRow> = {},
+  ) =>
+    render(
+      <ConsentPanel
+        rows={[
+          row({ id: "a1", reference: "IQC-CONF-0010", sessionId: "s7", session: "IQC-S0007", practitioner: "Tarun Rao", onlyLiveOnSession: false, ...first }),
+          row({ id: "a2", reference: "IQC-CONF-0011", sessionId: "s7", session: "IQC-S0007", practitioner: "Vikram Varma", onlyLiveOnSession: false, ...second }),
+        ]}
+        role="global_admin"
+        confirmable={[]}
+      />,
+    );
+
+  const statusFor = (reference: string) =>
+    screen.getByLabelText<HTMLSelectElement>(`Status for ${reference}`);
+
+  it("gives each row its own control, named for its own confirmation", () => {
+    twoOnOneSession();
+    // Two controls with one name is the a11y half of the same defect: a screen
+    // reader could not tell an admin which of three they had landed on.
+    expect(statusFor("IQC-CONF-0010")).toBeInTheDocument();
+    expect(statusFor("IQC-CONF-0011")).toBeInTheDocument();
+  });
+
+  it("reads one as Cancelled while the other still reads Confirmed", () => {
+    twoOnOneSession({ confirmationStatus: "Cancelled" }, { confirmationStatus: "Confirmed" });
+    expect(statusFor("IQC-CONF-0010").value).toBe("Cancelled");
+    expect(statusFor("IQC-CONF-0011").value).toBe("Confirmed");
+  });
+
+  it("writes the confirmation's id, not the session's", async () => {
+    // The write end. Confirmed rather than Cancelled because it commits at once
+    // — cancelling waits out the 15-second Undo window first.
+    const user = userEvent.setup();
+    twoOnOneSession();
+    await user.selectOptions(statusFor("IQC-CONF-0011"), "Confirmed");
+    expect(vi.mocked(setConfirmationStatus)).toHaveBeenCalledWith("a2", "Confirmed");
+  });
+
+  it("keeps the send on the rows still going ahead", () => {
+    twoOnOneSession({ confirmationStatus: "Cancelled" }, { confirmationStatus: "Confirmed" });
+    expect(screen.getAllByText(/no longer in progress/i)).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Send consent request" })).toHaveLength(1);
+  });
+
+  it("does not tell the client the session is off while others are on it", async () => {
+    // The dialog is the client's cancellation email. Opening it here would put
+    // an admin one click from telling a client their session is cancelled while
+    // another practitioner is still delivering it.
+    const user = userEvent.setup();
+    twoOnOneSession();
+
+    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Still held for the same Undo window, and named for the confirmation.
+    expect(screen.getByText("Cancelling IQC-CONF-0010…")).toBeInTheDocument();
+    expect(statusFor("IQC-CONF-0010").value).toBe("Cancelled");
+  });
+
+  it("does tell them when the last one goes", async () => {
+    const user = userEvent.setup();
+    twoOnOneSession({ onlyLiveOnSession: true });
+
+    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("stops counting a cancelled practitioner as a signature still owed", () => {
+    // The red count drives the sidebar badge, so a cancelled row left in it
+    // reports work from every other tab that nobody is waiting on — and the
+    // only way to clear the number would be to chase a signature from someone
+    // who is no longer on the session.
+    twoOnOneSession({ confirmationStatus: "Cancelled" }, { confirmationStatus: "Confirmed" });
+    expect(screen.getByText("Signed copy not yet received").previousSibling).toHaveTextContent("1");
+  });
+});
+
+/**
+ * What the status cell says this confirmation is.
  *
  * Confirmed is withheld from the options on purpose — confirming is the Next
  * step button's job, and only once consent is in. But a select cannot display
@@ -120,11 +215,11 @@ describe("Send Consent Request", () => {
  * would question: a definite, wrong answer on the control they use to see
  * where a session stands.
  */
-describe("Session status says what the session is", () => {
-  const statusSelect = () => screen.getByLabelText<HTMLSelectElement>(/session status for/i);
+describe("the status cell says what this confirmation is", () => {
+  const statusSelect = () => screen.getByLabelText<HTMLSelectElement>(/^Status for/i);
 
   it("reads Confirmed once the session is confirmed", () => {
-    show({ status: "Received", sessionStatus: "Confirmed" });
+    show({ status: "Received", confirmationStatus: "Confirmed" });
     expect(statusSelect().value).toBe("Confirmed");
   });
 
@@ -132,7 +227,7 @@ describe("Session status says what the session is", () => {
     // Including Confirmed, and on a row whose consent has not come back —
     // consent sometimes arrives on paper, and a session with a real agreement
     // behind it must not be stuck Pending because of how the agreement arrived.
-    show({ status: "Received", sessionStatus: "Confirmed" });
+    show({ status: "Received", confirmationStatus: "Confirmed" });
     for (const option of ["Pending", "Confirmed", "Cancelled"]) {
       expect(screen.getByRole("option", { name: option }), option).toBeEnabled();
     }
@@ -142,15 +237,15 @@ describe("Session status says what the session is", () => {
     // A list that grows from two entries to three when the row happens to be
     // confirmed makes Confirmed look like a state that does not exist yet, and
     // leaves an admin counting options to work out where a session stands.
-    for (const sessionStatus of ["Pending", "Confirmed", "Cancelled"]) {
+    for (const confirmationStatus of ["Pending", "Confirmed", "Cancelled"]) {
       cleanup();
-      show({ status: "Received", sessionStatus });
+      show({ status: "Received", confirmationStatus });
       // Scoped to the select: the "Issued in" filter above it is also options.
       expect(
         within(statusSelect())
           .getAllByRole("option")
           .map((option) => option.textContent),
-        sessionStatus,
+        confirmationStatus,
       ).toEqual(["Pending", "Confirmed", "Cancelled"]);
     }
   });
@@ -159,7 +254,7 @@ describe("Session status says what the session is", () => {
     // Completed has no option of its own — V7 shows it as Confirmed rather than
     // a value the select cannot represent — so this is the same bug's other
     // route in, and the note underneath is what carries the real state.
-    show({ status: "Received", sessionStatus: "Completed" });
+    show({ status: "Received", confirmationStatus: "Completed" });
     expect(statusSelect().value).toBe("Confirmed");
     // "Delivered" also renders as the note under the select, so this counts
     // rather than expecting one — the point is the select does not swallow it.
@@ -167,7 +262,7 @@ describe("Session status says what the session is", () => {
   });
 
   it("still reads Cancelled on a cancelled session", () => {
-    show({ sessionStatus: "Cancelled" });
+    show({ confirmationStatus: "Cancelled" });
     expect(statusSelect().value).toBe("Cancelled");
   });
 
@@ -188,7 +283,7 @@ describe("Session status says what the session is", () => {
       const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
       expect(statusSelect().value).toBe("Pending");
 
-      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+      rerender(panel({ status: "Received", requestSentAt: SENT, confirmationStatus: "Confirmed" }));
       expect(statusSelect().value).toBe("Confirmed");
     });
 
@@ -196,7 +291,7 @@ describe("Session status says what the session is", () => {
       // The control moves before the round trip so it feels immediate, and a
       // re-render carrying no new answer must leave that alone.
       const { rerender } = render(panel({ status: "Received", requestSentAt: SENT }));
-      rerender(panel({ status: "Received", requestSentAt: SENT, sessionStatus: "Confirmed" }));
+      rerender(panel({ status: "Received", requestSentAt: SENT, confirmationStatus: "Confirmed" }));
 
       expect(statusSelect().value).toBe("Confirmed");
     });
@@ -206,12 +301,12 @@ describe("Session status says what the session is", () => {
       // re-render that reports nothing new must not undo that — otherwise any
       // unrelated revalidation would snap the select back mid-Undo-window.
       const user = userEvent.setup();
-      const { rerender } = render(panel({ sessionStatus: "Cancelled" }));
+      const { rerender } = render(panel({ confirmationStatus: "Cancelled" }));
 
       await user.selectOptions(statusSelect(), "Pending");
       expect(statusSelect().value).toBe("Pending");
 
-      rerender(panel({ sessionStatus: "Cancelled" }));
+      rerender(panel({ confirmationStatus: "Cancelled" }));
       expect(statusSelect().value).toBe("Pending");
     });
   });
@@ -368,9 +463,9 @@ describe("Part 3 — Send Photo Guide", () => {
 
   it("lists only the sessions Part 2 shows as Confirmed", () => {
     withRows(
-      { id: "a1", session: "IQC-S0001", sessionStatus: "Confirmed", status: "Received" },
-      { id: "a2", session: "IQC-S0002", sessionStatus: "Pending" },
-      { id: "a3", session: "IQC-S0003", sessionStatus: "Cancelled" },
+      { id: "a1", session: "IQC-S0001", confirmationStatus: "Confirmed", status: "Received" },
+      { id: "a2", session: "IQC-S0002", confirmationStatus: "Pending" },
+      { id: "a3", session: "IQC-S0003", confirmationStatus: "Cancelled" },
     );
 
     const offered = within(picker())
@@ -381,13 +476,13 @@ describe("Part 3 — Send Photo Guide", () => {
   });
 
   it("says so rather than showing an empty picker when nothing is confirmed", () => {
-    withRows({ sessionStatus: "Pending" });
+    withRows({ confirmationStatus: "Pending" });
     expect(screen.getByText(/a session appears here once its status reads Confirmed/i)).toBeInTheDocument();
   });
 
   it("shows V7's four fields for the session picked", async () => {
     const user = userEvent.setup();
-    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received" });
+    withRows({ id: "a1", confirmationStatus: "Confirmed", status: "Received" });
 
     await user.selectOptions(picker(), "a1");
     // Scoped to Part 3: the practitioner and the date are in the Part 2 table
@@ -410,7 +505,7 @@ describe("Part 3 — Send Photo Guide", () => {
     // The whole point of restoring the part. Two buttons for one email is what
     // sent a practitioner the same message twice.
     const user = userEvent.setup();
-    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received" });
+    withRows({ id: "a1", confirmationStatus: "Confirmed", status: "Received" });
 
     expect(screen.queryByRole("button", { name: "Send photo guide email" })).not.toBeInTheDocument();
     await user.selectOptions(picker(), "a1");
@@ -423,7 +518,7 @@ describe("Part 3 — Send Photo Guide", () => {
     // V7 has no such note, but it has no Resend either — this control does not
     // change appearance once used, so nothing else says it has been used.
     const user = userEvent.setup();
-    withRows({ id: "a1", sessionStatus: "Confirmed", status: "Received", guideSentAt: SENT });
+    withRows({ id: "a1", confirmationStatus: "Confirmed", status: "Received", guideSentAt: SENT });
 
     await user.selectOptions(picker(), "a1");
     expect(screen.getByText(/already sent once/i)).toBeInTheDocument();
@@ -445,7 +540,10 @@ describe("Part 2's columns", () => {
       "Send Consent Request",
       "Consent status",
       "Download Signed Consent",
-      "Session status",
+      // V7 heads this "Session status". It is bound to the confirmation now, so
+      // a row can read Cancelled while its session runs on — see the column's
+      // own note for why the heading moved with the binding.
+      "Confirmation status",
     ]);
   });
 });

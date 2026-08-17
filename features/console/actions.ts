@@ -1124,6 +1124,157 @@ export async function setSessionStatus(
   return { ok: true };
 }
 
+/** What Part 2's control offers, per confirmation. Completed is not one of them. */
+const CONFIRMATION_STAGES = new Set(["Pending", "Confirmed", "Cancelled"]);
+
+/**
+ * Part 2's status control — one confirmation, not the session it sits on.
+ *
+ * Three practitioners on one session share a `sessions.status`, so while this
+ * control wrote there, cancelling any of their three rows cancelled all three.
+ * A practitioner who backs out, or one the requestor is not happy with, could
+ * not be taken off a session the other two were still delivering.
+ *
+ * Cancelled is therefore per assignment: it sets `deleted_at`, which is already
+ * what the rest of the system reads as "cancelled/removed" — payouts stop
+ * counting it, the photo queue stops expecting shots, and `recordConsent`
+ * refuses a consent link that has already gone out. No new column and nothing
+ * else to keep in step.
+ *
+ * Pending and Confirmed stay session-scoped, because there is no per-assignment
+ * version of them: whether a session is going ahead is one fact about the
+ * session, and this row's own document already has `confirmation_generated_at`
+ * and `consent_given_at` for the two things that are about it alone. Choosing
+ * either on a cancelled row puts it back first.
+ *
+ * Cancelling the LAST live one cancels the session too, which is what keeps a
+ * single control covering both "this practitioner is off" and "the session is
+ * off" — a session nobody is delivering has not quietly become a session, and
+ * that is the point at which the client is told.
+ */
+export async function setConfirmationStatus(
+  assignmentId: string,
+  status: string,
+  draft?: DraftOverride,
+): Promise<SessionStatusResult> {
+  const { email: actor } = await requireCapability("mutate");
+  if (!CONFIRMATION_STAGES.has(status)) throw new Error(`unknown confirmation status: ${status}`);
+
+  const supabase = createAdminClient();
+  const { data: assignment, error: readError } = await supabase
+    .from("session_practitioners")
+    .select("id, session_id, deleted_at, confirmation_reference")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  if (readError) throw new Error(`assignment read failed: ${readError.message}`);
+  if (!assignment) return { ok: false, message: "That confirmation no longer exists." };
+
+  const reference = assignment.confirmation_reference as string;
+  const sessionId = assignment.session_id as string;
+
+  if (status !== "Cancelled") {
+    if (assignment.deleted_at) {
+      const { error } = await supabase
+        .from("session_practitioners")
+        .update({ deleted_at: null })
+        .eq("id", assignmentId);
+      if (error) throw new Error(`confirmation restore failed: ${error.message}`);
+      await recordActivity({
+        actorEmail: actor,
+        action: "confirmation.restored",
+        entityType: "assignment",
+        entityRef: assignmentId,
+        detail: `${reference} put back on the session.`,
+      });
+    }
+    // The session's own status, on the session's own path — including the case
+    // where restoring the only practitioner reopens a session that had been
+    // cancelled with them.
+    return setSessionStatus(sessionId, status);
+  }
+
+  // Cancelling twice is a no-op rather than a second cancellation: the row is
+  // already off the session, and re-stamping `deleted_at` would move the moment
+  // it happened.
+  if (assignment.deleted_at) return { ok: true };
+
+  // Whether anyone is left. Counted over every live assignment, not the ones
+  // with a confirmation generated — a practitioner assigned but not yet issued
+  // one is still on the session, and cancelling around them must not tell the
+  // client the session is off.
+  const { count, error: countError } = await supabase
+    .from("session_practitioners")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .neq("id", assignmentId)
+    .is("deleted_at", null);
+  if (countError) throw new Error(`assignment count failed: ${countError.message}`);
+  const last = (count ?? 0) === 0;
+
+  // Composed before anything moves, for the reason `setSessionStatus` gives: an
+  // email that could not be resolved must be known about before the admin is
+  // told the cancellation went through.
+  const cancellation = last ? await draftMessage("session-cancellation", sessionId) : null;
+
+  const { error } = await supabase
+    .from("session_practitioners")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", assignmentId)
+    .is("deleted_at", null);
+  if (error) throw new Error(`confirmation cancel failed: ${error.message}`);
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "confirmation.cancelled",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `${reference} cancelled.`,
+  });
+
+  // ponytail: the practitioner is not emailed when the session carries on
+  // without them — the admin is the one who just spoke to them, and a
+  // practitioner-facing cancellation would mean a new template, its WhatsApp
+  // counterpart, a draft kind and a regenerated copy doc. Add those if a
+  // practitioner ever finds out from the console instead of from a person.
+  if (!last) {
+    revalidateConsole();
+    return {
+      ok: true,
+      warning: `${reference} cancelled. Other practitioners are still on this session, so it stays open and the client was not emailed.`,
+    };
+  }
+
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .update({ status: "Cancelled" })
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .select("reference")
+    .maybeSingle();
+  if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
+
+  if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
+
+  await recordActivity({
+    actorEmail: actor,
+    action: SESSION_STAGE_ACTIONS.Cancelled,
+    entityType: "session",
+    entityRef: sessionId,
+    detail: session?.reference
+      ? `${session.reference} → Cancelled — its last confirmation was cancelled.`
+      : undefined,
+  });
+  revalidateConsole();
+
+  if (!cancellation) {
+    return {
+      ok: true,
+      warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
+    };
+  }
+  return { ok: true };
+}
+
 /**
  * "Got it verbally? — Record manually." A Global Admin keying in a rating the
  * requestor gave on the phone.
