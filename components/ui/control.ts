@@ -114,14 +114,53 @@ export function controlClass({ tone = "field", size, invalid, className }: Contr
 }
 
 /**
+ * What a form dropdown does under the pointer: `--color-gold-light`, the tint
+ * the hero's "Taught by Active Professionals" pill is filled with (client,
+ * 2026-08-17).
+ *
+ * The same token rather than the same value, so the two stay one colour instead
+ * of two that happen to match today. At rest the control is untouched — the
+ * tint is the affordance, and a dropdown already wearing it has nothing left to
+ * say when you point at one.
+ *
+ * `enabled:` earns its place twice. It keeps a disabled dropdown from lighting
+ * up under a pointer that cannot use it, and it carries the specificity:
+ * `TONE.field` sets `bg-surface`, and two background rules of equal weight would
+ * leave the winner to stylesheet order — where the class list reads correctly
+ * either way and only the rendered pixel is wrong.
+ *
+ * Tailwind v4 already scopes `hover:` to `@media (hover: hover)`, so a tap does
+ * not leave a dropdown stuck tinted on a touch device. The fade comes free:
+ * BASE already transitions `background-color`.
+ *
+ * Deliberately not paired with `focus-visible:`, which is the usual rule for a
+ * hover affordance. The keyboard path is already served more strongly than a
+ * tint would serve it — BASE gives focus a gold border and a 2px offset outline
+ * — and putting the fill there too would change the resting appearance of
+ * whichever control a keyboard user happens to be sitting on.
+ *
+ * Ink on this tint measures 14.9:1, so hovering costs nothing in legibility.
+ */
+const DROPDOWN_HOVER_FILL = "enabled:hover:bg-gold-light";
+
+/**
  * A `<select>`. Identical to `controlClass` plus the pointer affordance.
  *
  * The chevron is left to the browser deliberately. V7 does the same, and a
  * hand-drawn one means re-implementing the open state, the disabled state and
  * the right-to-left case for no gain.
+ *
+ * The hover tint is `field`-only — the public and flow-page form family, which
+ * is the surface it was asked for. The console's `inline` and `compact` selects
+ * are in-table editors, where a brand tint under the pointer would compete with
+ * the row hover the tables already draw.
  */
 export function selectClass(options: ControlOptions = {}): string {
-  return controlClass({ ...options, className: `cursor-pointer ${options.className ?? ""}`.trim() });
+  const hover = (options.tone ?? "field") === "field" ? ` ${DROPDOWN_HOVER_FILL}` : "";
+  return controlClass({
+    ...options,
+    className: `cursor-pointer${hover} ${options.className ?? ""}`.trim(),
+  });
 }
 
 /**
