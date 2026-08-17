@@ -77,7 +77,13 @@ export interface ControlOptions {
 const BASE =
   "w-full border bg-clip-padding font-normal text-ink transition-[border-color,background-color] duration-150 " +
   "placeholder:text-ink-faint " +
-  "focus:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold " +
+  // Focus does not repaint a rejected field's edge. The gold border and the red
+  // one are the same weight, so on an invalid field the winner was emission
+  // order — and focusing the field an error message points at is precisely when
+  // that edge has to keep saying "this one". The outline below is the focus
+  // signal and is untouched, so nothing is lost by leaving the border to the
+  // error.
+  "[&:focus:not([aria-invalid='true'])]:border-gold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold " +
   "disabled:cursor-not-allowed disabled:opacity-60 " +
   "[&[readonly]]:border-border [&[readonly]]:bg-surface-soft [&[readonly]]:text-ink-muted";
 
@@ -94,8 +100,37 @@ const SIZE: Record<ControlSize, string> = {
   md: "text-md",
 };
 
-/** V7 has no error style of its own, so this follows the house error semantics. */
-const INVALID = "border-red bg-red-light text-ink";
+/**
+ * V7 has no error style of its own, so this follows the house error semantics.
+ *
+ * Three single-class rules, which makes this the weakest thing in the file — and
+ * every picker state below outranks it, because each needs a pseudo-class or an
+ * attribute to beat `TONE`. Left alone, that inverts exactly when it matters: a
+ * field holding a rejected answer paints gold, the colour this form uses to mean
+ * *this is your answer*, while the message underneath says it is not. A single
+ * typed space reaches it — the value is truthy so the field reads as filled, and
+ * `.trim().min(1)` rejects it.
+ *
+ * So the picker states are guarded on `:not([aria-invalid='true'])` rather than
+ * this being made heavier by luck: raising the error's specificity alone would
+ * win the pixel and leave a control that is simultaneously "answered" and
+ * "wrong" in its own selectors. Matched on `="true"` and not merely on the
+ * attribute's presence, so a future `aria-invalid="false"` cannot silently
+ * suppress the gold.
+ *
+ * The error itself is keyed on the attribute too, and that half is a fix rather
+ * than a guard: written as three bare classes it tied with `TONE` on every
+ * property, and ties are settled by whichever utility Tailwind happens to emit
+ * later. `border-red` won that coin toss and `bg-red-light` lost it, so every
+ * rejected field on the site has been drawing a red edge around an unchanged
+ * white fill — half the error treatment, silently, since the recipe was written.
+ * Every control that takes `invalid` also sets `aria-invalid`, so keying on it
+ * costs nothing and settles the tie by rule instead of by emission order.
+ */
+const INVALID =
+  "[&[aria-invalid='true']]:border-red " +
+  "[&[aria-invalid='true']]:bg-red-light " +
+  "[&[aria-invalid='true']]:text-ink";
 
 /** Each family's natural type size, so a call site only names the exception. */
 const DEFAULT_SIZE: Record<ControlTone, ControlSize> = { field: "md", inline: "xs", compact: "sm" };
@@ -141,7 +176,7 @@ export function controlClass({ tone = "field", size, invalid, className }: Contr
  * gold border plus a 2px offset outline, which is the stronger signal it should
  * be.
  */
-const PICKER_HOVER = "enabled:hover:border-gold-border";
+const PICKER_HOVER = "[&:enabled:hover:not([aria-invalid='true'])]:border-gold-border";
 
 /**
  * The answered treatment, matched to the audience buttons' chosen state.
@@ -160,9 +195,9 @@ const PICKER_HOVER = "enabled:hover:border-gold-border";
  * darkened for, and the reason it is never `text-gold`.
  */
 const SELECT_ANSWERED =
-  "[&:has(option:checked:not([value='']))]:border-gold-border " +
-  "[&:has(option:checked:not([value='']))]:bg-gold-light " +
-  "[&:has(option:checked:not([value='']))]:text-gold-dark";
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:border-gold-border " +
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:bg-gold-light " +
+  "[&:has(option:checked:not([value=''])):not([aria-invalid='true'])]:text-gold-dark";
 
 /**
  * The same answered treatment for a control that is typed into rather than
@@ -178,9 +213,9 @@ const SELECT_ANSWERED =
  * single-class border and background, the same job `:has()` does above.
  */
 const COMBO_ANSWERED =
-  "[&[data-filled]]:border-gold-border " +
-  "[&[data-filled]]:bg-gold-light " +
-  "[&[data-filled]]:text-gold-dark";
+  "[&[data-filled]:not([aria-invalid='true'])]:border-gold-border " +
+  "[&[data-filled]:not([aria-invalid='true'])]:bg-gold-light " +
+  "[&[data-filled]:not([aria-invalid='true'])]:text-gold-dark";
 
 /**
  * A control that suggests from a list but accepts anything — an `<input list>`

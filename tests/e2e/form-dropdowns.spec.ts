@@ -216,6 +216,67 @@ for (const form of FORMS) {
 }
 
 /**
+ * A rejected city or state looks rejected, and keeps looking rejected.
+ *
+ * Every other state in this file paints the control gold, and the error rules
+ * are the weakest selectors in the recipe — so the error is the one treatment
+ * that can be quietly outranked. Two ways it was:
+ *
+ *   · a field holding a single space reads as filled and fails `.trim()`, so it
+ *     wore "this is your answer" while the message underneath said it was not;
+ *   · `bg-red-light` tied with the tone's own fill and lost, so every rejected
+ *     field on the site drew a red edge around an unchanged white box.
+ *
+ * Both were invisible to any assertion on class lists, and to anyone reading
+ * the recipe, since the classes are all present and correct.
+ */
+for (const form of FORMS) {
+  test(`${form.name}: a rejected city or state looks rejected`, async ({ page }) => {
+    const dialog = await openForm(page, form);
+    const pause = () => page.waitForTimeout(300);
+
+    const { red, redLight } = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const resolve = (name: string) => {
+        const probe = document.createElement("span");
+        probe.style.color = root.getPropertyValue(name).trim();
+        document.body.append(probe);
+        const value = getComputedStyle(probe).color;
+        probe.remove();
+        return value;
+      };
+      return { red: resolve("--color-red"), redLight: resolve("--color-red-light") };
+    });
+
+    const city = dialog.getByLabel(/^City/).first();
+    // A single space: truthy, so the field reads as filled, and `.trim().min(1)`
+    // rejects it. Exactly where "answered" and "wrong" collide.
+    await city.fill(" ");
+    await dialog.locator('button[type="submit"]').last().click();
+    await expect(dialog.getByText(/City is required/)).toBeVisible();
+
+    await city.scrollIntoViewIfNeeded();
+    const rejected = await style(city);
+    expect(rejected.border, "a rejected field takes the error edge").toBe(red);
+    expect(rejected.background, "…and the error fill, not the plain one").toBe(redLight);
+
+    // The two states that used to erase it.
+    await city.hover();
+    await pause();
+    expect((await style(city)).border, "hovering a rejected field does not gild it").toBe(red);
+
+    await city.focus();
+    await pause();
+    expect((await style(city)).border, "focusing it keeps the error edge").toBe(red);
+
+    // The message is tied to the control, not just sitting near it.
+    const describedBy = await city.getAttribute("aria-describedby");
+    expect(describedBy, "the error is announced, not only coloured").toBeTruthy();
+    await expect(page.locator(`#${describedBy}`)).toHaveText(/City is required/);
+  });
+}
+
+/**
  * Where the treatment above comes from, asserted rather than described.
  *
  * The waitlist's "Who is this for?" buttons already answered "what does hover
