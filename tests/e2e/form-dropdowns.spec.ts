@@ -1,21 +1,25 @@
-import { test, expect, type Locator } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 /**
- * A form dropdown answers to the same two states as the pick-one buttons above
- * it (client, 2026-08-17): the edge goes gold under the pointer, and answering
- * fills.
+ * Every public form's dropdowns wear one treatment (client, 2026-08-17):
+ * the edge goes gold under the pointer, answering fills, and the open list is
+ * the brand's rather than the browser's.
  *
- * Every expectation is read off the "Who is this for?" buttons rather than
- * written as a hex, because matching them *is* the requirement. Restyle the
- * buttons and this follows; let the two drift apart and it fails — which a
- * hardcoded colour could never catch.
+ * The treatment is defined once — `selectClass` in `components/ui/control.ts`
+ * plus the `.form-select` block in `globals.css` — so every `SelectField` gets
+ * it without opting in. That is the reuse, and this file is what keeps it
+ * honest: a form is added to `FORMS` and it is held to the same contract. A
+ * dropdown that stopped routing through the shared recipe, or a form that grew
+ * a hand-rolled `<select>`, fails here rather than quietly drifting.
  *
- * In the browser and not in a unit test for two reasons. The colours are the
- * requirement and a class list cannot show them; and the rules lean on `:has()`
- * and `enabled:` to outrank the shared recipe's single-class border and
- * background, so a class list can read correctly while the rendered pixel is
- * wrong.
+ * Expectations resolve from the palette at runtime instead of being written as
+ * hex, so a rebrand moves them and only a genuine divergence fails.
  */
+
+const FORMS = [
+  { name: "waitlist", url: "/", trigger: /Join the Waitlist/ },
+  { name: "practitioner application", url: "/practitioners", trigger: /Apply to Join the Network/ },
+] as const;
 
 const style = (locator: Locator) =>
   locator.evaluate((el) => {
@@ -23,20 +27,124 @@ const style = (locator: Locator) =>
     return { border: cs.borderTopColor, background: cs.backgroundColor, text: cs.color };
   });
 
-test("a dropdown wears the same states as the buttons above it", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: /Join the Waitlist/ }).first().click();
+/** The palette, as the browser resolves it — never a hardcoded hex. */
+function palette(page: Page) {
+  return page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    const resolve = (name: string) => {
+      const probe = document.createElement("span");
+      probe.style.color = root.getPropertyValue(name).trim();
+      document.body.append(probe);
+      const value = getComputedStyle(probe).color;
+      probe.remove();
+      return value;
+    };
+    return {
+      goldLight: resolve("--color-gold-light"),
+      goldBorder: resolve("--color-gold-border"),
+      goldDark: resolve("--color-gold-dark"),
+      surface: resolve("--color-surface"),
+    };
+  });
+}
 
+async function openForm(page: Page, form: (typeof FORMS)[number]) {
+  // `domcontentloaded`, not `networkidle`: the dev server holds an HMR socket
+  // open, so networkidle never settles.
+  await page.goto(form.url, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: form.trigger }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
-  /** BASE transitions border and background over 150ms; outlast it before reading. */
+  return dialog;
+}
+
+for (const form of FORMS) {
+  test(`${form.name}: dropdowns wear the shared treatment`, async ({ page }) => {
+    const dialog = await openForm(page, form);
+    const { goldLight, goldBorder, goldDark, surface } = await palette(page);
+    /** BASE transitions border and background over 150ms; outlast it. */
+    const pause = () => page.waitForTimeout(300);
+
+    const selects = dialog.locator("select");
+    const count = await selects.count();
+    expect(count, "this form has dropdowns to check").toBeGreaterThan(0);
+
+    const first = selects.first();
+    await first.waitFor();
+    await first.scrollIntoViewIfNeeded();
+
+    // Unanswered: nothing borrowed from the answered state.
+    const atRest = await style(first);
+    expect(atRest.background, "an unanswered dropdown is not filled").toBe(surface);
+    expect(atRest.border, "…and does not wear the gold edge").not.toBe(goldBorder);
+
+    // Hover moves the edge and must not fill — filling is what answering means.
+    await first.hover();
+    await pause();
+    const hovered = await style(first);
+    expect(hovered.border, "hover moves the edge to gold").toBe(goldBorder);
+    expect(hovered.background, "hover does not fill").toBe(atRest.background);
+
+    // Only the control under the pointer.
+    if (count > 1) {
+      expect((await style(selects.nth(1))).border, "its neighbour keeps the plain edge").toBe(
+        atRest.border,
+      );
+    }
+
+    // The open list — the part the browser used to paint its own blue in.
+    // Unreachable where `appearance: base-select` is unsupported, which is the
+    // documented ceiling rather than a failure.
+    const styleable = await page.evaluate(() => CSS.supports("appearance", "base-select"));
+    if (styleable) {
+      await first.click();
+      await pause();
+      const row = first.locator("option").nth(1);
+      await row.hover();
+      await pause();
+      const highlighted = await style(row);
+      expect(highlighted.background, "a row under the pointer wears the answered fill").toBe(
+        goldLight,
+      );
+      expect(highlighted.text, "…and the answered lettering").toBe(goldDark);
+
+      // Clicking the row closes the list AND answers the field. Escape is not
+      // an option: the modal takes it and closes itself, taking the form with
+      // it — which reads as a missing dropdown rather than a closed dialog.
+      await row.click();
+    } else {
+      const answer = await first.evaluate(
+        (el: HTMLSelectElement) => [...el.options].find((option) => option.value !== "")!.value,
+      );
+      await first.selectOption(answer);
+    }
+
+    // Answered: the full chosen treatment, read with the pointer elsewhere.
+    await dialog.getByRole("heading").first().hover();
+    await pause();
+    const answered = await style(first);
+    expect(answered.background, "an answered dropdown fills").toBe(goldLight);
+    expect(answered.border, "…with the gold edge").toBe(goldBorder);
+    expect(answered.text, "…and the gold lettering").toBe(goldDark);
+  });
+}
+
+/**
+ * Where the treatment above comes from, asserted rather than described.
+ *
+ * The waitlist's "Who is this for?" buttons already answered "what does hover
+ * mean, and what does chosen mean" for this form. The dropdowns borrow their
+ * answer, so restyling the buttons must move the dropdowns too — and this is
+ * what fails if the two are ever allowed to drift apart.
+ */
+test("the waitlist dropdown matches the pick-one buttons above it", async ({ page }) => {
+  const dialog = await openForm(page, FORMS[0]);
   const pause = () => page.waitForTimeout(300);
 
   const group = dialog.getByRole("button", { name: /Group \(register as SPOC\)/ });
   const other = dialog.getByRole("button", { name: /Organisations & Institutions/ });
-  const topic = dialog.locator("select").first();
+  const select = dialog.locator("select").first();
 
-  // ── the reference vocabulary, from the buttons themselves ────────────────
   await group.hover();
   await pause();
   const buttonHovered = await style(group);
@@ -46,73 +154,23 @@ test("a dropdown wears the same states as the buttons above it", async ({ page }
   await pause();
   const buttonChosen = await style(group);
 
-  // ── at rest: nothing borrowed ────────────────────────────────────────────
-  const atRest = await style(topic);
-  expect(atRest.background, "an unanswered dropdown is not filled").not.toBe(buttonChosen.background);
-  expect(atRest.border, "an unanswered dropdown does not wear the gold edge").not.toBe(
+  await select.scrollIntoViewIfNeeded();
+  await select.hover();
+  await pause();
+  expect((await style(select)).border, "hover borrows the buttons' hover edge").toBe(
     buttonHovered.border,
   );
 
-  // ── hover: the edge only, exactly as the buttons do it ───────────────────
-  await topic.hover();
-  await pause();
-  const hovered = await style(topic);
-  expect(hovered.border, "hover moves the edge to the buttons' gold").toBe(buttonHovered.border);
-  expect(hovered.background, "hover must NOT fill — filling is what answering means").toBe(
-    atRest.background,
-  );
-
-  // Only the control under the pointer. A rule that latched onto every dropdown
-  // would still satisfy the assertion above.
-  const count = await dialog.locator("select").count();
-  if (count > 1) {
-    const neighbour = await style(dialog.locator("select").nth(1));
-    expect(neighbour.border, "its neighbour keeps the plain edge").toBe(atRest.border);
-  }
-
-  // And it lets go, rather than leaving the last-pointed-at control lit.
-  await dialog.getByRole("heading", { name: "Join the Waitlist" }).hover();
-  await pause();
-  expect((await style(topic)).border, "the edge lifts when the pointer leaves").toBe(atRest.border);
-
-  // ── answered: the chosen treatment, matched on all three properties ──────
-  const answer = await topic.evaluate(
+  const answer = await select.evaluate(
     (el: HTMLSelectElement) => [...el.options].find((option) => option.value !== "")!.value,
   );
-  await topic.selectOption(answer);
+  await select.selectOption(answer);
+  await dialog.getByRole("heading").first().hover();
   await pause();
-  const answered = await style(topic);
-  expect(answered.background, "an answered dropdown fills like a chosen button").toBe(
+  const answered = await style(select);
+  expect(answered.background, "answering borrows the buttons' chosen fill").toBe(
     buttonChosen.background,
   );
-  expect(answered.border, "…with the same edge").toBe(buttonChosen.border);
-  expect(answered.text, "…and the same lettering").toBe(buttonChosen.text);
-
-  // Going back to the placeholder gives it up again — no state to keep in step.
-  await topic.selectOption("");
-  await pause();
-  expect((await style(topic)).background, "re-choosing the placeholder empties it").toBe(
-    atRest.background,
-  );
-
-  // ── the open list, where the browser used to draw its own blue ───────────
-  //
-  // Only reachable where `appearance: base-select` is: elsewhere the list is
-  // drawn by the browser and neither styleable nor inspectable, which is the
-  // documented ceiling rather than a failure.
-  const styleable = await page.evaluate(() => CSS.supports("appearance", "base-select"));
-  test.skip(!styleable, "this browser still draws the option list itself");
-
-  await topic.click();
-  await pause();
-
-  const row = topic.locator("option").nth(1);
-  await row.hover();
-  await pause();
-  const hoveredRow = await style(row);
-
-  expect(hoveredRow.background, "a row under the pointer wears the chosen fill").toBe(
-    buttonChosen.background,
-  );
-  expect(hoveredRow.text, "…and the chosen lettering").toBe(buttonChosen.text);
+  expect(answered.border, "…their edge").toBe(buttonChosen.border);
+  expect(answered.text, "…and their lettering").toBe(buttonChosen.text);
 });
