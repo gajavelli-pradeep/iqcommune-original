@@ -11,7 +11,7 @@ import {
   overrideConfirmationField,
   sendConsentRequest,
   sendPhotoGuide,
-  setSessionStatus,
+  setConfirmationStatus,
   type ConfirmationField,
   type SessionStatusResult,
 } from "../actions";
@@ -250,7 +250,7 @@ function AutoField({
  * Cancelled stays, because cancelling is a decision rather than an outcome and
  * this is where V7 puts it. Pending stays as the way back from a cancellation.
  */
-const SESSION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
+const CONFIRMATION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
 /**
  * The shot list as a PDF, for a practitioner who wants it outside the email.
@@ -270,20 +270,27 @@ function GuideDownload({ row }: { row: ConsentRow }) {
 }
 
 /**
- * Part 2's Session status cell — a control, not a label (V7 `.status-sel
- * .role-edit`).
+ * Part 2's status cell — a control, not a label (V7 `.status-sel .role-edit`).
  *
  * The options are Pending / Confirmed / Cancelled, which is not the same set
  * the Session Details tab offers: this is the issuing view, and cancelling is
  * what happens here when a session falls through. Completed is deliberately
  * absent, so a session already delivered displays as Confirmed — V7 does the
  * same rather than showing a value the select cannot represent.
+ *
+ * It belongs to the row's confirmation, not to its session. Bound to the session
+ * it could only ever hold one answer for all of them, so a session running with
+ * three practitioners had one status between them: cancelling any row cancelled
+ * the other two, and all three controls announced themselves as "Session status
+ * for IQC-S0007". Both ends moved — the value it reads and the id it writes —
+ * because repointing only the write would leave three rows still showing one
+ * value until the next refresh, and then flipping.
  */
-function SessionStatusSelect({ row }: { row: ConsentRow }) {
+function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
   // Completed has no option of its own — V7 shows a delivered session as
   // Confirmed rather than a value the select cannot represent, and the note
   // under the control carries the real state.
-  const reported = row.sessionStatus === "Completed" ? "Confirmed" : row.sessionStatus;
+  const reported = row.confirmationStatus === "Completed" ? "Confirmed" : row.confirmationStatus;
 
   const [status, setStatus] = useState(reported);
   /**
@@ -331,58 +338,64 @@ function SessionStatusSelect({ row }: { row: ConsentRow }) {
   };
 
   /**
-   * Cancelling emails the client, so it goes through the draft dialog like
-   * every other admin-initiated send rather than firing off a `select`.
+   * Taking this practitioner off the session, held for the same Undo window
+   * whether or not an email goes with it.
    *
-   * The select keeps showing the old value until the send is actually
+   * The select keeps showing the old value until the change is actually
    * scheduled. Moving it to "Cancelled" the moment the dialog opens would have
    * the row claim a status it does not have yet, and closing the dialog would
    * leave that claim behind.
    */
-  const cancel = (edited: DraftOverride) => {
+  const cancel = (edited?: DraftOverride) => {
     setDrafting(false);
     const previous = status;
     setStatus("Cancelled");
     setNotice(null);
     schedule(async () => {
-      report(await setSessionStatus(row.sessionId, "Cancelled", edited), previous);
-    }, `Cancelling ${row.session}…`);
+      report(await setConfirmationStatus(row.id, "Cancelled", edited), previous);
+    }, `Cancelling ${row.reference}…`);
   };
 
   return (
     <>
-      <label className="sr-only" htmlFor={`${row.id}-session-status`}>
-        Session status for {row.session}
+      <label className="sr-only" htmlFor={`${row.id}-confirmation-status`}>
+        Status for {row.reference}
       </label>
       <select
-        id={`${row.id}-session-status`}
+        id={`${row.id}-confirmation-status`}
         // Confirmed still DISPLAYS — a confirmed session must read as one — but
         // it is not offered as a choice, so the value list and the option list
         // are deliberately different.
-        value={SESSION_STATUS_VALUES.includes(status) ? status : "Pending"}
+        value={CONFIRMATION_STATUS_VALUES.includes(status) ? status : "Pending"}
         disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
           if (next === "Cancelled") {
-            setDrafting(true);
+            // The dialog is the client's cancellation email, so it opens only
+            // when this is the last practitioner on the session — that is the
+            // point at which the session itself is off. Cancelling one of
+            // several leaves the session running for the others, and telling
+            // the client it is cancelled would be false.
+            if (row.onlyLiveOnSession) setDrafting(true);
+            else cancel();
             return;
           }
           const previous = status;
           setStatus(next);
           setNotice(null);
           start(async () => {
-            report(await setSessionStatus(row.sessionId, next), previous);
+            report(await setConfirmationStatus(row.id, next), previous);
           });
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {SESSION_STATUS_VALUES.map((option) => (
+        {CONFIRMATION_STATUS_VALUES.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
         ))}
       </select>
-      {row.sessionStatus === "Completed" ? (
+      {row.confirmationStatus === "Completed" ? (
         <span className="mt-0.5 block text-3xs text-ink-faint">Delivered</span>
       ) : null}
 
@@ -446,11 +459,15 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
    * the row it belongs to, the answer is the control: the send until it has
    * gone, a pill once it has, and nothing to remember either way.
    *
-   * Withheld on a session no longer going ahead, which V7 does not check. That
-   * one reaches a person: asking a practitioner to agree to a session that has
-   * been cancelled is worse than any tidiness gained by rendering the button
+   * Withheld on a confirmation no longer going ahead, which V7 does not check.
+   * That one reaches a person: asking a practitioner to agree to a session that
+   * has been cancelled is worse than any tidiness gained by rendering the button
    * unconditionally. The guarantee came from the column this replaces and is
    * kept rather than dropped with it.
+   *
+   * Reading the row's own status rather than its session's is what makes that
+   * guarantee survive the split: a cancelled practitioner loses the send, and
+   * the two still delivering the session keep theirs.
    */
   {
     key: "sendConsent",
@@ -464,7 +481,7 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
             <div className="mt-0.5 text-3xs text-ink-faint">{row.requestSentLabel}</div>
           ) : null}
         </div>
-      ) : row.sessionStatus === "Cancelled" ? (
+      ) : row.confirmationStatus === "Cancelled" ? (
         <span className="text-3xs text-ink-faint">No longer in progress</span>
       ) : (
         <RowAction
@@ -510,13 +527,34 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
         <span className="text-3xs text-ink-faint">Not signed yet</span>
       ),
   },
+  /**
+   * V7 heads this column "Session status". It is headed differently here because
+   * it no longer says what V7's said: bound to the confirmation rather than to
+   * the session, a row can read Cancelled while its session is still Confirmed
+   * and running with two other practitioners. "Session status" over that value
+   * would be a wrong answer rather than a stylistic difference, so the heading
+   * follows the column it is now bound to — the confirmation reference — and is
+   * recorded here so it is not "corrected" back.
+   */
   {
-    key: "sessionStatus",
-    header: "Session status",
+    key: "confirmationStatus",
+    header: "Confirmation status",
     requires: "mutate",
-    render: (row) => <SessionStatusSelect key={row.id} row={row} />,
+    render: (row) => <ConfirmationStatusSelect key={row.id} row={row} />,
   },
 ];
+
+/**
+ * A signature actually still owed: consent has not come back, and this
+ * practitioner is still on the session.
+ *
+ * The cancelled half is what stops the red count — and the sidebar badge it
+ * feeds — from chasing a practitioner who has been taken off. Nobody is waiting
+ * on their signature, so counting them would report work that no longer exists,
+ * which is the same defect the count already avoids on the filter side.
+ */
+const awaitingSignature = (row: ConsentRow) =>
+  row.status !== "Received" && row.confirmationStatus !== "Cancelled";
 
 /** Part 1 — generate a confirmation for a matched session. */
 function GenerateConfirmation({
@@ -851,7 +889,9 @@ function GenerateConfirmation({
  */
 function SendPhotoGuide({ rows }: { rows: readonly ConsentRow[] }) {
   const [selected, setSelected] = useState("");
-  const confirmed = useMemo(() => rows.filter((row) => row.sessionStatus === "Confirmed"), [rows]);
+  // The row's own status, so a practitioner cancelled off a session that is
+  // still running does not get offered the photo guide for it.
+  const confirmed = useMemo(() => rows.filter((row) => row.confirmationStatus === "Confirmed"), [rows]);
   const session = useMemo(() => confirmed.find((row) => row.id === selected), [confirmed, selected]);
 
   return (
@@ -973,7 +1013,7 @@ export function ConsentPanel({
       rows.filter((row) => {
         if (month !== "all" && row.issuedMonth.slice(5, 7) !== month) return false;
         if (year !== "all" && row.issuedMonth.slice(0, 4) !== year) return false;
-        return !pendingOnly || row.status !== "Received";
+        return !pendingOnly || awaitingSignature(row);
       }),
     [rows, month, year, pendingOnly],
   );
@@ -986,7 +1026,7 @@ export function ConsentPanel({
    * indicator visible from every other tab reads zero while the work still
    * exists. Fidelity is not worth that.
    */
-  const awaitingConsent = rows.filter((row) => row.status !== "Received").length;
+  const awaitingConsent = rows.filter(awaitingSignature).length;
 
   return (
     <>

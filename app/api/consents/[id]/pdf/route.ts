@@ -40,7 +40,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       "confirmation_reference, gross_payout, currency, consent_given_at, practitioners ( full_name ), sessions ( reference, module, session_date, start_time, duration_minutes, city, state, venue, participants, spoc_name, audience )",
     )
     .eq("id", id)
-    .is("deleted_at", null)
+    // Cancelled assignments included, unlike every other read of this table.
+    // `deleted_at` is what cancelling a confirmation sets, and Part 2 keeps that
+    // row on screen — so filtering here would leave its Download link 404ing on
+    // a row an admin can still see. What it hands over is a record of what was
+    // issued and, where consent came back, of a signature that was really given;
+    // withholding that is not something cancelling should do. The guard that
+    // matters is `recordConsent`'s, which still refuses to WRITE consent to a
+    // cancelled assignment, and this route is behind a console session either
+    // way.
     .maybeSingle();
 
   if (error) {
