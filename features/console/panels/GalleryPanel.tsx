@@ -12,7 +12,7 @@ import {
   updateGalleryPhoto,
 } from "../actions";
 import { can, type ConsoleRole } from "../roles";
-import { GALLERY_LIMIT } from "@/constants/gallery";
+import { GALLERY_FIELD_MAX, GALLERY_LIMIT } from "@/constants/gallery";
 import type { GalleryRow } from "@/services/console";
 
 /**
@@ -146,6 +146,11 @@ function DraftPhoto({ photo }: { photo: GalleryRow }) {
           value={city}
           disabled={pending}
           placeholder="City"
+          // A short label on a landing-page tile, not a place for prose — see
+          // GALLERY_FIELD_MAX. `maxLength` is a native stop, not merely a hint:
+          // the browser refuses the keystroke, so nothing past the limit is
+          // ever in state to save.
+          maxLength={GALLERY_FIELD_MAX}
           onChange={(event) => setCity(event.target.value)}
           onBlur={() => city.trim() !== (photo.city ?? "") && save({ city })}
           className={FIELD}
@@ -158,10 +163,23 @@ function DraftPhoto({ photo }: { photo: GalleryRow }) {
           value={caption}
           disabled={pending}
           placeholder="Caption (e.g. 'Group discussion, Q&A round')"
+          maxLength={GALLERY_FIELD_MAX}
           onChange={(event) => setCaption(event.target.value)}
           onBlur={() => caption.trim() !== (photo.caption ?? "") && save({ caption })}
           className={FIELD}
         />
+        {/* Only once there is a real reason to look — an admin typing a normal
+            city or caption never sees this, and a bare "0/50" on every tile
+            would be noise on a grid of them. */}
+        {caption.length >= GALLERY_FIELD_MAX - 10 ? (
+          <span
+            className={`text-right text-3xs ${
+              caption.length >= GALLERY_FIELD_MAX ? "text-red" : "text-ink-faint"
+            }`}
+          >
+            {caption.length}/{GALLERY_FIELD_MAX}
+          </span>
+        ) : null}
       </div>
     </div>
   );

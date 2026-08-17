@@ -12,3 +12,16 @@
  * decision and not a rendering detail.
  */
 export const GALLERY_LIMIT = 20;
+
+/**
+ * How long a draft photo's city or caption may run, in characters (client,
+ * 2026-08-17).
+ *
+ * Both fields are short labels on a landing-page tile, not a place for prose —
+ * the caption placeholder itself is an example of the length this is meant to
+ * hold ("Group discussion, Q&A round", 29 characters). Shared by the console
+ * panel (as `maxLength`, so it cannot be typed past) and `updateGalleryPhoto`
+ * (as a clamp, so a request that bypassed the input still cannot persist past
+ * it) — one number rather than the same limit stated twice.
+ */
+export const GALLERY_FIELD_MAX = 50;
