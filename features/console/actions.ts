@@ -26,7 +26,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Namespaced: the WhatsApp templates deliberately share their email
 // counterparts' names, being the same message in the other channel.
 import * as whatsapp from "@/lib/whatsapp/templates";
-import { GALLERY_LIMIT } from "@/constants/gallery";
+import { GALLERY_FIELD_MAX, GALLERY_LIMIT } from "@/constants/gallery";
 import { one, recordActivity } from "@/services/console";
 import {
   describeMissing,
@@ -1548,9 +1548,15 @@ export async function updateGalleryPhoto(
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
 
+  // Clamped, not merely trimmed: `maxLength` stops the panel's own inputs at
+  // GALLERY_FIELD_MAX, but this action is the actual trust boundary — a
+  // request built by hand skips the input entirely, and the DB has no length
+  // check of its own to fall back on.
+  const clamp = (value: string) => value.trim().slice(0, GALLERY_FIELD_MAX) || null;
+
   const patch: Record<string, string | null> = {};
-  if ("city" in fields) patch.city = fields.city?.trim() || null;
-  if ("caption" in fields) patch.caption = fields.caption?.trim() || null;
+  if ("city" in fields) patch.city = clamp(fields.city ?? "");
+  if ("caption" in fields) patch.caption = clamp(fields.caption ?? "");
   if (Object.keys(patch).length === 0) return;
 
   const { error } = await supabase
