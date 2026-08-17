@@ -114,34 +114,55 @@ export function controlClass({ tone = "field", size, invalid, className }: Contr
 }
 
 /**
- * What a form dropdown does under the pointer: `--color-gold-light`, the tint
- * the hero's "Taught by Active Professionals" pill is filled with (client,
- * 2026-08-17).
+ * A form dropdown, speaking the same two states as the pick-one buttons it sits
+ * under (client, 2026-08-17).
  *
- * The same token rather than the same value, so the two stay one colour instead
- * of two that happen to match today. At rest the control is untouched — the
- * tint is the affordance, and a dropdown already wearing it has nothing left to
- * say when you point at one.
+ * The waitlist form asks "Who is this for?" with three pill buttons directly
+ * above these dropdowns, and they already define the vocabulary:
  *
- * `enabled:` earns its place twice. It keeps a disabled dropdown from lighting
- * up under a pointer that cannot use it, and it carries the specificity:
- * `TONE.field` sets `bg-surface`, and two background rules of equal weight would
- * leave the winner to stylesheet order — where the class list reads correctly
- * either way and only the rendered pixel is wrong.
+ *   unchosen, hovered → `hover:border-gold-border hover:text-ink`  — edge only
+ *   chosen            → `border-gold-border bg-gold-light text-gold-dark`
  *
- * Tailwind v4 already scopes `hover:` to `@media (hover: hover)`, so a tap does
- * not leave a dropdown stuck tinted on a touch device. The fade comes free:
- * BASE already transitions `background-color`.
+ * So on this form `bg-gold-light` already means *this is your answer*. Filling a
+ * dropdown with it on hover — the first thing tried here — put the answered
+ * colour on the pointer, which made an unanswered field look answered and made
+ * the two dropdowns disagree with the three buttons an inch above them. Hover is
+ * the lighter of the two signals, so it gets the lighter treatment.
  *
- * Deliberately not paired with `focus-visible:`, which is the usual rule for a
- * hover affordance. The keyboard path is already served more strongly than a
- * tint would serve it — BASE gives focus a gold border and a 2px offset outline
- * — and putting the fill there too would change the resting appearance of
- * whichever control a keyboard user happens to be sitting on.
+ * Hovering therefore moves the edge, and answering fills. A dropdown now reads
+ * the way the buttons do, and the form has one language instead of two.
  *
- * Ink on this tint measures 14.9:1, so hovering costs nothing in legibility.
+ * `enabled:` keeps a disabled control from responding to a pointer that cannot
+ * use it. Tailwind v4 already scopes `hover:` to `@media (hover: hover)`, so a
+ * tap leaves nothing stuck on a touch device, and the fade is free — BASE
+ * transitions both border and background colour.
+ *
+ * Focus is deliberately untouched and still outranks both: BASE gives it a solid
+ * gold border plus a 2px offset outline, which is the stronger signal it should
+ * be.
  */
-const DROPDOWN_HOVER_FILL = "enabled:hover:bg-gold-light";
+const DROPDOWN_HOVER = "enabled:hover:border-gold-border";
+
+/**
+ * The answered treatment, matched to the audience buttons' chosen state.
+ *
+ * Keyed to the checked option having a real value, so it arrives with the answer
+ * and leaves if the placeholder is chosen again — no state to keep in step, and
+ * it does not depend on a placeholder existing.
+ *
+ * Written out three times rather than built from a shared selector because
+ * Tailwind scans source text: a class assembled by concatenation compiles to
+ * nothing and fails silently at runtime, which is the rule this file's header
+ * already records. `:has()` also carries the specificity over `TONE.field`'s
+ * single-class border and background.
+ *
+ * `text-gold-dark` on `bg-gold-light` is 5.15:1 — the pairing the palette was
+ * darkened for, and the reason it is never `text-gold`.
+ */
+const DROPDOWN_ANSWERED =
+  "[&:has(option:checked:not([value='']))]:border-gold-border " +
+  "[&:has(option:checked:not([value='']))]:bg-gold-light " +
+  "[&:has(option:checked:not([value='']))]:text-gold-dark";
 
 /**
  * A `<select>`. Identical to `controlClass` plus the pointer affordance.
@@ -150,16 +171,18 @@ const DROPDOWN_HOVER_FILL = "enabled:hover:bg-gold-light";
  * hand-drawn one means re-implementing the open state, the disabled state and
  * the right-to-left case for no gain.
  *
- * The hover tint is `field`-only — the public and flow-page form family, which
- * is the surface it was asked for. The console's `inline` and `compact` selects
- * are in-table editors, where a brand tint under the pointer would compete with
- * the row hover the tables already draw.
+ * Both treatments are `field`-only — the public and flow-page form family, which
+ * is where the pick-one buttons they borrow from live. The console's `inline`
+ * and `compact` selects are in-table editors, where an answered fill down a
+ * column would read as a status and a hover edge would compete with the row
+ * hover those tables already draw.
  */
 export function selectClass(options: ControlOptions = {}): string {
-  const hover = (options.tone ?? "field") === "field" ? ` ${DROPDOWN_HOVER_FILL}` : "";
+  const states =
+    (options.tone ?? "field") === "field" ? ` ${DROPDOWN_HOVER} ${DROPDOWN_ANSWERED}` : "";
   return controlClass({
     ...options,
-    className: `cursor-pointer${hover} ${options.className ?? ""}`.trim(),
+    className: `cursor-pointer${states} ${options.className ?? ""}`.trim(),
   });
 }
 
