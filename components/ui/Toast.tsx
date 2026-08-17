@@ -7,6 +7,10 @@ import type { ReactNode } from "react";
  * Used by the console's deferred-send window (procedure §114): "clicking Send
  * doesn't fire it instantly — you get a 15-second window with an Undo option."
  *
+ * The quotation is left as the procedure wrote it. The window shipped is ten
+ * seconds (client, 2026-08-17) — see `UNDO_WINDOW_SECONDS`, which is the only
+ * place the figure lives.
+ *
  * `action` is the optional Undo control. `tone` follows the reserved semantics.
  */
 export function Toast({
