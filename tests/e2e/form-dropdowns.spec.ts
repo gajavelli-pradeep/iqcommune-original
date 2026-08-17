@@ -199,7 +199,19 @@ for (const form of FORMS) {
       // The tail: somewhere no tier list carries, typed by hand and kept.
       await field.fill("Kodaikanal");
       expect(await field.inputValue(), `${label} keeps an off-list answer`).toBe("Kodaikanal");
+
+      // …and it is treated as a real answer, not tolerated as a stray one.
+      const offList = await field.evaluate((el: HTMLInputElement) => ({
+        inList: [...(el.list?.options ?? [])].some((option) => option.value === el.value),
+        filled: el.hasAttribute("data-filled"),
+      }));
+      expect(offList.inList, "the check is only meaningful off-list").toBe(false);
+      expect(offList.filled, `${label} treats an off-list answer as answered`).toBe(true);
     }
+
+    // Being able to type it is no use if nothing says so — the chevron reads as
+    // "pick one from here".
+    await expect(dialog.getByText(/Not listed\? Just type it in\./)).toBeVisible();
   });
 }
 

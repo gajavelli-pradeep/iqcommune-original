@@ -508,6 +508,11 @@ export function RequestModal({
             <ComboField
               label="City"
               placeholder="e.g. Mumbai"
+              // The chevron says "pick one", so the one thing this field can do
+              // that a dropdown cannot has to be said out loud. Only on City:
+              // the state list is all 36 and complete, while the city list is
+              // 104 of thousands and always will be.
+              hint="Not listed? Just type it in."
               options={CITIES}
               value={form.city}
               onChange={(value) => set("city", value)}

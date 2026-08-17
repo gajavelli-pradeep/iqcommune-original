@@ -361,7 +361,10 @@ export function ApplyModal({
             <ComboField
               label="City you're based in"
               placeholder="Mumbai"
-              hint="Sessions are in-person — city and state help us match you to local requests."
+              // The second sentence carries the same weight as the first here:
+              // a practitioner outside the tier lists is exactly who this form
+              // is trying to reach, and the chevron alone reads as "pick one".
+              hint="Sessions are in-person — city and state help us match you to local requests. Not listed? Just type it in."
               options={CITIES}
               value={form.city}
               onChange={(value) => set("city", value)}
