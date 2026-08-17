@@ -17,6 +17,8 @@ import {
   practitionerWelcome,
   ratingRequest,
   sessionCancelled,
+  sessionCancelledNotifyPractitioner,
+  sessionRematchNotice,
   sessionRequestCancelled,
   sessionRequestFollowUp,
 } from "@/lib/email/templates";
@@ -1150,6 +1152,60 @@ export async function setSessionStatus(
 const CONFIRMATION_STAGES = new Set(["Pending", "Confirmed", "Cancelled"]);
 
 /**
+ * Sends a session's originating request back to New and takes the session
+ * itself off every list that filters `deleted_at` — a soft delete, so the
+ * session and its (already-cancelled) confirmations stay on record rather
+ * than the literal delete-and-recreate V7's own prototype performs (`
+ * resetSessionForRematch`, client requirements/latest, 2026-08-17). Every
+ * other reader already excludes a deleted session by that same filter
+ * (Session Details, Payouts, `matchSessionRequest`'s existing-session lookup),
+ * so a later match against the same request opens a fresh session rather than
+ * reusing this one — Part 2's own list is the one deliberate exception,
+ * reading `session_practitioners.deleted_at` alone, which this never touches.
+ *
+ * Shared by every path that fully vacates a session — both cancel reasons and
+ * the plain entry-error delete — so they cannot quietly drift apart from each
+ * other, the same reason V7 keeps its own version in one place.
+ *
+ * A session seeded with no linked request has nothing to reopen; the session
+ * still gets vacated, and this returns its reference either way.
+ */
+async function resetSessionForRematch(
+  supabase: ReturnType<typeof createAdminClient>,
+  sessionId: string,
+  actor: string,
+  requestDetail: (sessionReference: string | null) => string,
+): Promise<{ reference: string | null }> {
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .update({ status: "Cancelled", deleted_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .select("reference, session_request_id")
+    .maybeSingle();
+  if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
+
+  const reference = (session?.reference as string | null) ?? null;
+  const requestId = session?.session_request_id as string | null | undefined;
+  if (requestId) {
+    const { error: requestError } = await supabase
+      .from("session_requests")
+      .update({ status: "New" })
+      .eq("id", requestId)
+      .is("deleted_at", null);
+    if (requestError) throw new Error(`request reset failed: ${requestError.message}`);
+    await recordActivity({
+      actorEmail: actor,
+      action: "request.reopened",
+      entityType: "request",
+      entityRef: requestId,
+      detail: requestDetail(reference),
+    });
+  }
+  return { reference };
+}
+
+/**
  * Part 2's status control — one confirmation, not the session it sits on.
  *
  * Three practitioners on one session share a `sessions.status`, so while this
@@ -1178,6 +1234,15 @@ export async function setConfirmationStatus(
   assignmentId: string,
   status: string,
   draft?: DraftOverride,
+  /**
+   * Which of the two dropdown reasons this cancellation is (client delivery,
+   * latest folder, 2026-08-17) — decides which client-facing template
+   * composes, and whether a practitioner is also notified. Only meaningful
+   * when `status === "Cancelled"` and this is the last live confirmation on
+   * the session; ignored otherwise, the same way it always was before the
+   * reasons split in two.
+   */
+  reason: "client" | "practitioner" = "client",
 ): Promise<SessionStatusResult> {
   const { email: actor } = await requireCapability("mutate");
   if (!CONFIRMATION_STAGES.has(status)) throw new Error(`unknown confirmation status: ${status}`);
@@ -1235,8 +1300,12 @@ export async function setConfirmationStatus(
 
   // Composed before anything moves, for the reason `setSessionStatus` gives: an
   // email that could not be resolved must be known about before the admin is
-  // told the cancellation went through.
-  const cancellation = last ? await draftMessage("session-cancellation", sessionId) : null;
+  // told the cancellation went through. Kept by assignment id, not session id
+  // — `session-cancellation` names a specific practitioner to notify, and this
+  // is the row that's actually being cancelled.
+  const cancellation = last
+    ? await draftMessage(reason === "practitioner" ? "session-rematch" : "session-cancellation", assignmentId)
+    : null;
 
   const { error } = await supabase
     .from("session_practitioners")
@@ -1266,24 +1335,48 @@ export async function setConfirmationStatus(
     };
   }
 
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .update({ status: "Cancelled" })
-    .eq("id", sessionId)
-    .is("deleted_at", null)
-    .select("reference")
-    .maybeSingle();
-  if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
+  const { reference: sessionReference } = await resetSessionForRematch(
+    supabase,
+    sessionId,
+    actor,
+    (ref) => (ref ? `Reset to New — session ${ref} was cancelled.` : "Reset to New — its session was cancelled."),
+  );
 
   if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
+
+  // The second, real recipient — "one Send button dispatches both" (client
+  // delivery, latest folder, 2026-08-17). Only on the client-cancelled path:
+  // `session-rematch` never sets `notify`, since the practitioner is the one
+  // who told the admin and needs no message here. Only when there is someone
+  // on file: a session nobody was assigned to has an explanatory tab in the
+  // dialog, not a second address to write to.
+  const notifyTo = cancellation?.notify?.to;
+  if (cancellation?.notify && notifyTo) {
+    const notify = cancellation.notify;
+    dispatchEmail(
+      newTraceId(),
+      applyDraft(
+        {
+          to: notifyTo,
+          subject: notify.subject,
+          body: notify.body,
+          stream: "session",
+          template: "session-cancelled-notify-practitioner",
+        },
+        draft?.notifySubject !== undefined && draft?.notifyBody !== undefined
+          ? { subject: draft.notifySubject, body: draft.notifyBody }
+          : undefined,
+      ),
+    );
+  }
 
   await recordActivity({
     actorEmail: actor,
     action: SESSION_STAGE_ACTIONS.Cancelled,
     entityType: "session",
     entityRef: sessionId,
-    detail: session?.reference
-      ? `${session.reference} → Cancelled — its last confirmation was cancelled.`
+    detail: sessionReference
+      ? `${sessionReference} → Cancelled — its last confirmation was cancelled.`
       : undefined,
   });
   revalidateConsole();
@@ -1294,6 +1387,75 @@ export async function setConfirmationStatus(
       warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
     };
   }
+  return { ok: true };
+}
+
+/**
+ * "Delete this record" — the escape hatch for a confirmation that was
+ * generated wrong (wrong amount, wrong date, wrong practitioner), not one
+ * that was genuinely cancelled. Silent: unlike either cancel reason, no one
+ * is emailed (client requirements/latest, 2026-08-17).
+ *
+ * Global Admin only, matching every other permanent correction in this file
+ * (`deleteApplication`, `deleteSessionRequest`) — soft delete, so the row
+ * stays for audit even though nothing on screen offers it again. Only when
+ * this was the session's last live confirmation does the session and its
+ * originating request get the same reset the cancel flows give them: other
+ * confirmed practitioners mean the session is still real, and fixing one
+ * wrong entry must not vacate a session someone else is still delivering.
+ */
+export async function deleteConfirmationRecord(assignmentId: string): Promise<ActionResult> {
+  const { email: actor } = await requireCapability("purge");
+  const supabase = createAdminClient();
+
+  const { data: assignment, error: readError } = await supabase
+    .from("session_practitioners")
+    .select("id, session_id, deleted_at, confirmation_reference")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  if (readError) throw new Error(`assignment read failed: ${readError.message}`);
+  if (!assignment) return { ok: false, message: "That confirmation no longer exists." };
+
+  const reference = assignment.confirmation_reference as string;
+  const sessionId = assignment.session_id as string;
+
+  if (!assignment.deleted_at) {
+    const { error } = await supabase
+      .from("session_practitioners")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", assignmentId);
+    if (error) throw new Error(`delete failed: ${error.message}`);
+  }
+
+  await recordActivity({
+    actorEmail: actor,
+    action: "confirmation.deleted",
+    entityType: "assignment",
+    entityRef: assignmentId,
+    detail: `${reference} deleted — entry error, no one notified.`,
+  });
+
+  const { count, error: countError } = await supabase
+    .from("session_practitioners")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .neq("id", assignmentId)
+    .is("deleted_at", null);
+  if (countError) throw new Error(`assignment count failed: ${countError.message}`);
+
+  if ((count ?? 0) === 0) {
+    await resetSessionForRematch(
+      supabase,
+      sessionId,
+      actor,
+      (ref) =>
+        ref
+          ? `Reset to New — its confirmation for session ${ref} was deleted.`
+          : "Reset to New — its confirmation was deleted.",
+    );
+  }
+
+  revalidateConsole();
   return { ok: true };
 }
 
@@ -2041,6 +2203,8 @@ async function draftMessage(
   detail?: string;
   /** Set only where the dialog had to choose the row its link points at. */
   linkId?: string;
+  /** A second, genuinely dispatched recipient — see `Draft.notify`. */
+  notify?: { label: string; to: string | null; subject: string; body: string };
 } | null> {
   const supabase = createAdminClient();
 
@@ -2222,23 +2386,55 @@ async function draftMessage(
   }
 
   if (kind === "session-cancellation") {
-    // The session names the request; the request names the person to write to.
-    const { data: session } = await supabase
-      .from("sessions")
-      .select("reference, module")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!session) return null;
+    // Keyed by the assignment, not the session, since this is the one draft
+    // that names two recipients: the client whose session it is, and the
+    // specific practitioner whose row is being cancelled — client delivery,
+    // latest folder, 2026-08-17.
+    const details = await assignmentDetails(id);
+    if (!details) return null;
 
-    const requestor = await requestorForSession(id);
+    const requestor = await requestorForSession(details.sessionId);
     if (!requestor) return null;
-    const sessionModule = session.module as string;
-    const reference = session.reference as string;
+
     return {
       phone: requestor.phone,
-      message: sessionCancelled(requestor.email, requestor.firstName, sessionModule, reference),
-      whatsapp: whatsapp.sessionCancelled(requestor.firstName, sessionModule, reference).body,
+      message: sessionCancelled(
+        requestor.email,
+        requestor.firstName,
+        details.module,
+        details.sessionReference,
+      ),
+      // No WhatsApp copy for this one: the second tab is the practitioner
+      // notice below, not a client-facing WhatsApp message — the delivered
+      // spec repurposes the slot rather than adding a third one.
+      notify: {
+        label: "Notify Practitioner",
+        to: details.practitioner.email,
+        subject: "iqcommune — an update on your upcoming session",
+        body: sessionCancelledNotifyPractitioner(
+          details.practitioner.email,
+          details.practitioner.firstName,
+          details.module,
+          details.sessionReference,
+        ).body,
+      },
+    };
+  }
+
+  if (kind === "session-rematch") {
+    // The client is told the practitioner is no longer available; the
+    // practitioner is not messaged here at all — they are the one who told
+    // the admin, per the delivered spec.
+    const details = await assignmentDetails(id);
+    if (!details) return null;
+
+    const requestor = await requestorForSession(details.sessionId);
+    if (!requestor) return null;
+
+    return {
+      phone: requestor.phone,
+      message: sessionRematchNotice(requestor.email, requestor.firstName, details.module),
+      whatsapp: whatsapp.sessionRematchNotice(requestor.firstName, details.module).body,
     };
   }
 
@@ -2330,6 +2526,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
     whatsapp: draft.whatsapp,
     phone: draft.phone ?? null,
     linkId: draft.linkId,
+    notify: draft.notify,
   };
 }
 

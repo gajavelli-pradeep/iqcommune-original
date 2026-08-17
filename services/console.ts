@@ -1425,6 +1425,7 @@ const ACTION_PHRASE: Record<string, string> = {
   "confirmation.generated": "Generated a session confirmation",
   "confirmation.regenerated": "Regenerated a session confirmation",
   "confirmation.downloaded": "Downloaded a confirmation",
+  "confirmation.deleted": "Deleted a confirmation",
   "consent.requested": "Sent a consent request",
   "photo_guide.sent": "Sent the photo guide",
   "photo_guide.downloaded": "Downloaded the photo guide",

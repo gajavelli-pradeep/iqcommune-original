@@ -7,6 +7,7 @@ import { controlClass, selectClass } from "@/components/ui/control";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
 import {
+  deleteConfirmationRecord,
   generateConfirmation,
   overrideConfirmationField,
   sendConsentRequest,
@@ -253,6 +254,27 @@ function AutoField({
 const CONFIRMATION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
 /**
+ * The five things the select can show — three resting states and two actions
+ * (client delivery, latest folder, 2026-08-17).
+ *
+ * "Cancelled by client" and "Cancelled by practitioner" are not themselves
+ * values a row rests on; picking either opens the matching dialog and, once
+ * sent, the row settles back onto the plain "Cancelled" it already had — the
+ * same relationship "Completed" already has to "Confirmed" below, one step
+ * over. Two action-only entries rather than one "Cancelled" that then asks
+ * which reason, because the delivered spec puts both directly on the select.
+ */
+const CONFIRMATION_OPTIONS = [
+  "Pending",
+  "Confirmed",
+  "Cancelled",
+  "Cancelled by client",
+  "Cancelled by practitioner",
+] as const;
+
+type CancelReason = "client" | "practitioner";
+
+/**
  * The shot list as a PDF, for a practitioner who wants it outside the email.
  *
  * V7 draws this one `.btn-dark` where every other download on the console is a
@@ -286,7 +308,7 @@ function GuideDownload({ row }: { row: ConsentRow }) {
  * because repointing only the write would leave three rows still showing one
  * value until the next refresh, and then flipping.
  */
-function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
+function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: ConsoleRole }) {
   // Completed has no option of its own — V7 shows a delivered session as
   // Confirmed rather than a value the select cannot represent, and the note
   // under the control carries the real state.
@@ -319,6 +341,8 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
   const [pending, start] = useTransition();
   const { pending: held, schedule, undo } = useDeferredSend();
   const [drafting, setDrafting] = useState(false);
+  /** Which of the two cancel options is behind the open dialog, or was last used. */
+  const [reason, setReason] = useState<CancelReason>("client");
 
   /**
    * Reads back what the server actually did.
@@ -345,15 +369,32 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
    * scheduled. Moving it to "Cancelled" the moment the dialog opens would have
    * the row claim a status it does not have yet, and closing the dialog would
    * leave that claim behind.
+   *
+   * `reason` is closed over rather than read from state at call time — it is
+   * whichever of the two options opened this exact dialog, and must stay that
+   * one even if something elsewhere nudges `reason` before Send is pressed.
    */
-  const cancel = (edited?: DraftOverride) => {
+  const cancel = (activeReason: CancelReason) => (edited?: DraftOverride) => {
     setDrafting(false);
     const previous = status;
     setStatus("Cancelled");
     setNotice(null);
     schedule(async () => {
-      report(await setConfirmationStatus(row.id, "Cancelled", edited), previous);
+      report(await setConfirmationStatus(row.id, "Cancelled", edited, activeReason), previous);
     }, `Cancelling ${row.reference}…`);
+  };
+
+  /**
+   * The two cancel options both land here, and both obey the gate that already
+   * existed before the spec split "Cancelled" in two: the dialog — and with it,
+   * telling the client anything — only fires when this is the last live
+   * confirmation on the session. Cancelling one of several leaves the session
+   * running for the others, and a client-facing email would be false.
+   */
+  const chooseCancel = (activeReason: CancelReason) => {
+    setReason(activeReason);
+    if (row.onlyLiveOnSession) setDrafting(true);
+    else cancel(activeReason)();
   };
 
   return (
@@ -365,21 +406,18 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
         id={`${row.id}-confirmation-status`}
         // Confirmed still DISPLAYS — a confirmed session must read as one — but
         // it is not offered as a choice, so the value list and the option list
-        // are deliberately different.
+        // are deliberately different. Cancelled is the same idea one step
+        // further: it displays on its own AND sits in the option list, since
+        // unlike Confirmed it has nowhere else to collapse into — but the two
+        // reason-specific entries beneath it are actions, not places the select
+        // itself ever rests.
         value={CONFIRMATION_STATUS_VALUES.includes(status) ? status : "Pending"}
         disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
-          if (next === "Cancelled") {
-            // The dialog is the client's cancellation email, so it opens only
-            // when this is the last practitioner on the session — that is the
-            // point at which the session itself is off. Cancelling one of
-            // several leaves the session running for the others, and telling
-            // the client it is cancelled would be false.
-            if (row.onlyLiveOnSession) setDrafting(true);
-            else cancel();
-            return;
-          }
+          if (next === "Cancelled by client") return chooseCancel("client");
+          if (next === "Cancelled by practitioner") return chooseCancel("practitioner");
+          if (next === "Cancelled") return; // Resting-only; see the option list below.
           const previous = status;
           setStatus(next);
           setNotice(null);
@@ -389,8 +427,13 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {CONFIRMATION_STATUS_VALUES.map((option) => (
-          <option key={option} value={option}>
+        {CONFIRMATION_OPTIONS.map((option) => (
+          // Disabled rather than left reachable: the select can only ever come
+          // to rest on "Cancelled" (via one of the two actions below it or
+          // Pending/Confirmed), so offering it as a third thing to pick FROM
+          // would be a choice with no effect — keyboard and mouse both skip a
+          // disabled option, which a hidden one would not guarantee.
+          <option key={option} value={option} disabled={option === "Cancelled"}>
             {option}
           </option>
         ))}
@@ -407,10 +450,10 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
 
       {drafting ? (
         <DraftModal
-          kind="session-cancellation"
-          id={row.sessionId}
+          kind={reason === "practitioner" ? "session-rematch" : "session-cancellation"}
+          id={row.id}
           onClose={() => setDrafting(false)}
-          onSend={cancel}
+          onSend={cancel(reason)}
         />
       ) : null}
 
@@ -423,7 +466,37 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
           }}
         />
       ) : null}
+
+      {can(role, "purge") ? <DeleteConfirmationRecord row={row} /> : null}
     </>
+  );
+}
+
+/**
+ * "Delete this record" — the third path for a plain admin entry error, not a
+ * real cancellation (client requirements/latest, 2026-08-17): wrong amount,
+ * wrong date, generated for the wrong session. Distinct from both cancel
+ * reasons above, which represent something that actually happened and always
+ * reach a real person; this one is silent — no draft, no Undo toast to speak
+ * of it, matching the source's own "No one will be notified."
+ *
+ * Global Admin only (`purge`), same as `deleteApplication` and
+ * `deleteSessionRequest` — a plain Admin never receives the button, and
+ * `RowAction`'s own Undo window (10s) stands in for the source's native
+ * confirm() prompt: the click is reversible until it elapses, same safety net
+ * every other destructive action in this console already gets.
+ */
+function DeleteConfirmationRecord({ row }: { row: ConsentRow }) {
+  return (
+    <div className="mt-[5px] text-center">
+      <RowAction
+        action={() => deleteConfirmationRecord(row.id)}
+        label="Delete this record"
+        pendingMessage={`Deleting ${row.reference}…`}
+        variant="ghost"
+        tone="danger"
+      />
+    </div>
   );
 }
 
@@ -536,13 +609,24 @@ const COLUMNS: ReadonlyArray<ColumnDef<ConsentRow>> = [
    * follows the column it is now bound to — the confirmation reference — and is
    * recorded here so it is not "corrected" back.
    */
-  {
+];
+
+/**
+ * Built per render rather than folded into `COLUMNS`: the Delete button inside
+ * `ConfirmationStatusSelect` is gated on `purge`, one step past the `mutate`
+ * this whole column already requires, and `ConsoleTable`'s `render` callback
+ * carries only a row — this is the one column that needs the signed-in role
+ * too, so it takes it as an argument instead of widening every panel's column
+ * signature for a single cell.
+ */
+function confirmationStatusColumn(role: ConsoleRole): ColumnDef<ConsentRow> {
+  return {
     key: "confirmationStatus",
     header: "Confirmation status",
     requires: "mutate",
-    render: (row) => <ConfirmationStatusSelect key={row.id} row={row} />,
-  },
-];
+    render: (row) => <ConfirmationStatusSelect key={row.id} row={row} role={role} />,
+  };
+}
 
 /**
  * A signature actually still owed: consent has not come back, and this
@@ -1122,7 +1206,7 @@ export function ConsentPanel({
         </div>
         <ConsoleTable
           caption="Generated confirmations"
-          columns={COLUMNS}
+          columns={useMemo(() => [...COLUMNS, confirmationStatusColumn(role)], [role])}
           rows={visible}
           role={role}
           rowKey={(row) => row.id}

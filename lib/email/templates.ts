@@ -249,6 +249,66 @@ export function sessionCancelled(
   };
 }
 
+/**
+ * Tells the practitioner a session they were on has been called off from the
+ * client's side — V7's "Notify Practitioner" tab (client delivery, latest
+ * folder, 2026-08-17). No WhatsApp counterpart: V7 does not offer one for this
+ * half, since it is the tab that used to BE the WhatsApp slot.
+ *
+ * Text is exact — this is client-supplied copy, not house style.
+ */
+export function sessionCancelledNotifyPractitioner(
+  to: string,
+  firstName: string,
+  module: string,
+  sessionReference: string,
+): EmailMessage {
+  return {
+    template: "session-cancelled-notify-practitioner",
+    stream: "session",
+    to,
+    subject: "iqcommune — an update on your upcoming session",
+    body: lines(
+      `Dear ${firstName},`,
+      "",
+      `We wanted to let you know that the requestor has cancelled the session on ${module} (ref. ${sessionReference}).`,
+      "",
+      "There is nothing further needed from your end for this session. We are sorry for any inconvenience, and appreciate your flexibility.",
+      "",
+      SIGN_OFF,
+    ),
+  };
+}
+
+/**
+ * Tells the client their practitioner is no longer available, and that a
+ * replacement is being found — V7's `rematch-notice` (client delivery, latest
+ * folder, 2026-08-17). Deliberately not `sessionCancelled` above: the session
+ * itself is not off, only the person delivering it, and telling the client
+ * "cancelled" here would be false.
+ *
+ * No practitioner-facing counterpart: they are the one who told the admin.
+ */
+export function sessionRematchNotice(to: string, firstName: string, topic: string): EmailMessage {
+  return {
+    template: "session-rematch-notice",
+    stream: "session",
+    to,
+    subject: "iqcommune — an update on your upcoming session",
+    body: lines(
+      `Dear ${firstName},`,
+      "",
+      `We wanted to let you know that the practitioner originally aligned for your session on ${topic} is no longer able to take it.`,
+      "",
+      "We are already working on finding a suitable replacement, and will confirm the new arrangement with you shortly.",
+      "",
+      "We apologise for any inconvenience this may cause, and appreciate your patience while we sort this out.",
+      "",
+      SIGN_OFF,
+    ),
+  };
+}
+
 export interface SessionRequestSummary {
   firstName: string;
   lastName: string;

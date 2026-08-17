@@ -33,16 +33,18 @@ const every = () => [
     preferredWindow: "Early March",
   }),
   whatsapp.sessionCancelled("Asha", MODULE, "IQC-S0007"),
+  whatsapp.sessionRematchNotice("Asha", MODULE),
   whatsapp.ratingRequest("Asha", ID, { module: MODULE, practitionerName: "Vikram Rao" }),
   whatsapp.adminInvite(ID, "Global Admin"),
 ];
 
 describe("WhatsApp copy", () => {
-  it("covers the ten sends the document writes, and no more", () => {
-    // The eleventh, `sessionRequestCancelled`, has no WhatsApp body in the
-    // document — the dialog hides the tab rather than inventing one.
-    expect(every()).toHaveLength(10);
-    expect(Object.keys(whatsapp).filter((name) => name !== "default")).toHaveLength(10);
+  it("covers the eleven sends the document writes, and no more", () => {
+    // `session-cancellation`'s "Notify Practitioner" half has no WhatsApp body
+    // in the document — the dialog shows a `notify` tab instead of a WhatsApp
+    // one for that kind (see `draft-kinds.ts`), so no template exists for it.
+    expect(every()).toHaveLength(11);
+    expect(Object.keys(whatsapp).filter((name) => name !== "default")).toHaveLength(11);
   });
 
   it("opens as iqcommune and signs off the informal way, every time", () => {

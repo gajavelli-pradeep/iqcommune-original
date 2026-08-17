@@ -173,6 +173,25 @@ export function sessionCancelled(
   };
 }
 
+/**
+ * The WhatsApp half of `sessionRematchNotice` — client delivery, latest
+ * folder, 2026-08-17. Text is exact, matching the email in substance but the
+ * channel's own register, same as every other pair in this file.
+ *
+ * `sessionCancelledNotifyPractitioner` has no entry here: the document gives it
+ * no WhatsApp body, since that tab is what used to BE the WhatsApp slot.
+ */
+export function sessionRematchNotice(firstName: string, topic: string): WhatsAppMessage {
+  return {
+    template: "session-rematch-notice",
+    body: message(
+      greeting(firstName),
+      `Quick update — the practitioner originally lined up for your session on ${topic} is no longer able to make it. We're already working on finding a suitable replacement and will confirm shortly.`,
+      "Thanks for your patience!",
+    ),
+  };
+}
+
 export function ratingRequest(
   firstName: string,
   assignmentId: string,

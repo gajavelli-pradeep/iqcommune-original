@@ -25,6 +25,7 @@ export type DraftKind =
   | "application-rejected"
   | "practitioner-deactivated"
   | "session-cancellation"
+  | "session-rematch"
   | "onboarding-link"
   | "admin-invite";
 
@@ -133,6 +134,13 @@ export interface DraftOverride {
    * changes is only that the send stops picking the id itself.
    */
   linkId?: string;
+  /**
+   * The second message's edited text, when the dialog is carrying a real second
+   * recipient rather than a WhatsApp copy — see `Draft.notify`. Absent when
+   * there is no second recipient to notify.
+   */
+  notifySubject?: string;
+  notifyBody?: string;
 }
 
 /** A composed message, ready to show. */
@@ -154,6 +162,22 @@ export interface Draft extends DraftOverride {
    * WhatsApp button rather than opening the app on nobody.
    */
   phone?: string | null;
+  /**
+   * A second recipient the same send tells, in place of the WhatsApp tab —
+   * `session-cancellation`'s "Notify Practitioner" half only (client delivery,
+   * latest folder, 2026-08-17).
+   *
+   * Not a third tab: it stands in for the WhatsApp slot on the one kind that
+   * uses it, the way the spec relabels rather than adds one. Real and editable,
+   * unlike the WhatsApp tab, because it is a second message this dialog's own
+   * Send button actually dispatches rather than a copy an admin sends by hand
+   * — the spec is explicit that one Send fires both.
+   *
+   * `to: null` covers a session with nobody assigned to notify: the tab still
+   * shows, matching the spec, but carries only an explanatory line and nothing
+   * to send.
+   */
+  notify?: { label: string; to: string | null; subject: string; body: string };
 }
 
 /**
@@ -177,7 +201,8 @@ export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
   "practitioner-welcome": { title: "Send welcome message" },
   "application-rejected": { title: "Send rejection" },
   "practitioner-deactivated": { title: "Send deactivation" },
-  "session-cancellation": { title: "Cancel session" },
+  "session-cancellation": { title: "Cancel session — client's side" },
+  "session-rematch": { title: "Notify client — practitioner change" },
   "onboarding-link": { title: "Send agreement" },
   "admin-invite": { title: "Send invite" },
 };
@@ -189,7 +214,14 @@ export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
 export const DRAFT_WRITES: Partial<Record<DraftKind, string>> = {
   "application-rejected": "Sending this also sets the application to Rejected.",
   "practitioner-deactivated": "Sending this also deactivates the practitioner.",
-  "session-cancellation": "Sending this also sets the session to Cancelled.",
+  // Both cancellation reasons currently cancel this one confirmation — the same
+  // effect `setConfirmationStatus` already had before the reasons split in two.
+  // The fuller redesign the client's copy implies (deleting the session and
+  // resetting the request to New) is the open question in the phase-2 plan,
+  // not yet wired; the warning says what actually happens today rather than
+  // what the label now promises.
+  "session-cancellation": "Sending this also cancels this practitioner's confirmation.",
+  "session-rematch": "Sending this also cancels this practitioner's confirmation.",
   "onboarding-link": "Sending this also generates the agreement and moves the application to Agreement Sent.",
   "admin-invite": "Sending this also creates the invite, valid for 72 hours.",
   // The one kind two actions open. "Mark Empanelled manually" writes the status;
