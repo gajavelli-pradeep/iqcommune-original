@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { contrastFailures, horizontalOverflow } from "./audit";
+import { clippedContent, contrastFailures, horizontalOverflow } from "./audit";
 
 /**
  * P2 browser pass — the checks jsdom cannot make.
@@ -50,14 +50,10 @@ test.describe("/practitioners", () => {
       expect(overflow.over, `overflow: ${overflow.scrollWidth} > ${overflow.clientWidth}`).toBe(false);
 
       // Nothing may be clipped out of reach by a height-constrained container.
-      const clipped = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>("section,div,ul")]
-          .filter(
-            (el) =>
-              getComputedStyle(el).overflowY === "hidden" && el.scrollHeight > el.clientHeight + 2,
-          )
-          .map((el) => el.className.toString().slice(0, 60)),
-      );
+      // Shared with `auditPage` rather than restated here — this was a second
+      // copy of the same query, and only one of the two got the fix that tells
+      // clipped decoration apart from clipped content.
+      const clipped = await clippedContent(page);
       expect(clipped, clipped.join("\n")).toEqual([]);
 
       // The last line of the page must be reachable by scrolling.

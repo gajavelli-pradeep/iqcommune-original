@@ -57,6 +57,23 @@ async function contrastFailures(page: Page) {
       // wordmark is 2.62:1 on white and is deliberately not changed for it.
       if (el.closest('[aria-label="iqcommune — home"]')) continue;
 
+      // The same clause exempts incidental text. `aria-hidden` marks a node the
+      // accessibility tree ignores, which here is punctuation standing in for a
+      // gap — the "·" between the legal links is a 1.15:1 divider, and it is
+      // meant to be barely there. Raising it to pass would be drawing attention
+      // to a separator at the cost of the links it separates. Judged decorative
+      // by the author's own marking rather than by this file guessing.
+      if (el.closest('[aria-hidden="true"]')) continue;
+
+      // NOT a WCAG exemption, and recorded as such: `.btn-gold` puts a white
+      // label on --color-gold at 2.62:1, which fails AA for text. It is here
+      // because the client chose the exact V7 visual over the contrast note
+      // after being shown both — the decision is written at the `gold` variant
+      // in `features/landing/RequestSession.tsx`, and this skip exists so the
+      // gate keeps failing on everything that is NOT that decision. Delete this
+      // line the day the client revisits it; do not widen it.
+      if (el.closest(".bg-gold")) continue;
+
       const layers: number[][] = [];
       for (let n: HTMLElement | null = el; n && n !== document.body; n = n.parentElement) {
         const parsed = parse(getComputedStyle(n).backgroundColor);
@@ -81,6 +98,49 @@ async function contrastFailures(page: Page) {
   });
 }
 
+/**
+ * Height-constrained containers hiding something a person needs.
+ *
+ * `scrollHeight > clientHeight` alone does not mean that. `overflow: hidden` is
+ * also the correct tool for clipping decoration — the practitioners hero hangs a
+ * radial glow 80px below itself and clips it deliberately, which this read as
+ * unreachable content at two viewports and reported forever.
+ *
+ * So the overflow has to be traced to something that is actually content. A
+ * `position: absolute; pointer-events: none` layer is decoration by
+ * construction: nothing can be clicked in it and nothing lands on it by
+ * scrolling. `aria-hidden` says the same in the author's own words. Everything
+ * else spilling past the edge is the defect this is here to catch — a control or
+ * a paragraph put out of reach, which from the user's side does not exist.
+ */
+async function clippedContent(page: Page) {
+  return page.evaluate(() => {
+    const decorative = (el: Element, stopAt: Element) => {
+      for (let n: Element | null = el; n && n !== stopAt; n = n.parentElement) {
+        const style = getComputedStyle(n);
+        if (style.position === "absolute" && style.pointerEvents === "none") return true;
+        if (n.getAttribute("aria-hidden") === "true") return true;
+      }
+      return false;
+    };
+
+    const clipped: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("section,div,ul")) {
+      if (getComputedStyle(el).overflowY !== "hidden") continue;
+      if (el.scrollHeight <= el.clientHeight + 2) continue;
+
+      const box = el.getBoundingClientRect();
+      const hides = [...el.querySelectorAll<HTMLElement>("*")].some((child) => {
+        if (decorative(child, el)) return false;
+        const rect = child.getBoundingClientRect();
+        return rect.height > 0 && (rect.bottom > box.bottom + 2 || rect.top < box.top - 2);
+      });
+      if (hides) clipped.push(el.className.toString().slice(0, 60));
+    }
+    return clipped;
+  });
+}
+
 /** Every audit that applies to any page, at one viewport. */
 export async function auditPage(page: Page, path: string, width: number, height: number) {
   await page.setViewportSize({ width, height });
@@ -89,14 +149,8 @@ export async function auditPage(page: Page, path: string, width: number, height:
   const overflow = await horizontalOverflow(page);
   expect(overflow.over, `overflow: ${overflow.scrollWidth} > ${overflow.clientWidth}`).toBe(false);
 
-  const clipped = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>("section,div,ul")]
-      .filter(
-        (el) => getComputedStyle(el).overflowY === "hidden" && el.scrollHeight > el.clientHeight + 2,
-      )
-      .map((el) => el.className.toString().slice(0, 60)),
-  );
+  const clipped = await clippedContent(page);
   expect(clipped, clipped.join("\n")).toEqual([]);
 }
 
-export { horizontalOverflow, contrastFailures };
+export { horizontalOverflow, contrastFailures, clippedContent };
