@@ -26,9 +26,15 @@ export function ConsentForm({ session, token }: { session: ConsentSession; token
 
   if (recordedAt) {
     return (
+      // "confirmed from your side", where V7 writes "fully confirmed" (client,
+      // 2026-08-17). The practitioner has confirmed their half; the session is
+      // not fully confirmed until iqcommune has it, and telling someone it is
+      // finished when a step remains is the kind of copy that produces a
+      // no-show. The spec keeps its wording — see the note in
+      // `tests/parity/pending-consent.ts` about which of the two the gate reads.
       <SuccessPanel
         title="Consent recorded"
-        lede="Thank you — your session is now fully confirmed. iqcommune has been notified."
+        lede="Thank you — your session is now confirmed from your side. iqcommune has been notified."
       >
         <p className="mt-4 text-sm text-ink-faint">Digital consent timestamp: {recordedAt}</p>
       </SuccessPanel>

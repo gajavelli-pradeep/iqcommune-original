@@ -70,4 +70,26 @@ describe("ConsentForm", () => {
     expect(screen.getByRole("heading", { name: "Consent recorded" })).toBeInTheDocument();
     expect(screen.getByText(/Digital consent timestamp:/)).toBeInTheDocument();
   });
+
+  it("says the session is confirmed from their side, not finished", async () => {
+    // The parity gate cannot reach this panel and names this file as what
+    // proves it renders, so the sentence itself is asserted here rather than
+    // only the heading above it.
+    //
+    // The wording is the point: the practitioner has confirmed their half, and
+    // iqcommune has still to act. "Fully confirmed" — which V7 says and this
+    // deliberately does not — tells someone the session is settled when a step
+    // remains.
+    const user = userEvent.setup();
+    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    render(<ConsentForm session={SESSION} token="test-token" />);
+
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Provide consent" }));
+
+    expect(
+      screen.getByText("Thank you — your session is now confirmed from your side. iqcommune has been notified."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/fully confirmed/)).not.toBeInTheDocument();
+  });
 });
