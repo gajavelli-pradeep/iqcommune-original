@@ -9,8 +9,8 @@ import type { ReactNode } from "react";
  * top of a click handler. It also means a middle-click or "save link as" works,
  * which a button silently breaks.
  *
- * No Undo window either — `RowAction`'s 15-second hold exists so a mutation can
- * be taken back, and a download changes nothing.
+ * No Undo window either — `RowAction`'s hold exists so a mutation can be taken
+ * back, and a download changes nothing.
  */
 export function DownloadLink({
   href,

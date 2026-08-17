@@ -10,7 +10,7 @@ import type { DraftKind, DraftOverride } from "./draft-kinds";
 import { PendingSendToast } from "./PendingSendToast";
 
 /**
- * A single console row action with the 15-second Undo window (procedure §114).
+ * A single console row action with the Undo window (procedure §114).
  * Clicking opens the window and shows a toast; the server action fires only if
  * it is not undone. Rendered inside a `ColumnDef` gated by the `mutate`
  * capability, so a view-only role never receives it.

@@ -55,10 +55,11 @@ import { toConsoleRole } from "./roles";
  *   4. appends an audit-trail entry (audit M9); and
  *   5. revalidates the console so the change shows without a manual refresh.
  *
- * The 15-second Undo window (procedure §114) is client-side (`useDeferredSend`):
- * the action is only invoked once that window elapses, so an internal email
- * (welcome/rejection/deactivation) sending "immediately" here is still 15s after
- * the click — the hold the procedure asks for (audit G4c).
+ * The Undo window (procedure §114) is client-side (`useDeferredSend`): the
+ * action is only invoked once that window elapses, so an internal email
+ * (welcome/rejection/deactivation) sending "immediately" here still goes a whole
+ * window after the click — the hold the procedure asks for (audit G4c). The
+ * length is `UNDO_WINDOW_SECONDS` and is deliberately not restated here.
  */
 
 /**

@@ -160,7 +160,7 @@ describe("confirmations on one session act independently", () => {
 
   it("writes the confirmation's id, not the session's", async () => {
     // The write end. Confirmed rather than Cancelled because it commits at once
-    // — cancelling waits out the 15-second Undo window first.
+    // — cancelling waits out the Undo window first.
     const user = userEvent.setup();
     twoOnOneSession();
     await user.selectOptions(statusFor("IQC-CONF-0011"), "Confirmed");

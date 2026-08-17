@@ -51,7 +51,7 @@ export interface PendingAction {
  * thing. The consent panel has exactly that: Part 1 offers "Send consent
  * request" straight after generating, and the Part 2 row for the same
  * practitioner offers it too, one above the other. Clicking the first starts a
- * fifteen-second hold during which nothing has been sent yet — so the row below
+ * hold during which nothing has been sent yet — so the row below
  * still, correctly, reads as unsent. An admin who clicks that one as well gets
  * two windows counting down independently, and the practitioner gets the same
  * email twice.
