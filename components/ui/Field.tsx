@@ -174,6 +174,56 @@ export function SelectField({
   );
 }
 
+/**
+ * A field that suggests, without restricting — an input backed by a `datalist`.
+ *
+ * For the answers that have a usual set and a long tail: city, state. A
+ * `<select>` cannot serve either half of that. It cannot filter as you type,
+ * and it cannot hold a value that is not one of its options, so offering a list
+ * of cities through one would mean either an enormous scroll or turning away
+ * anyone from a town the list forgot. The datalist filters on every keystroke
+ * and accepts whatever is typed, which is why there is no "Other" option here:
+ * free entry is what the control already does, not a branch bolted onto it.
+ *
+ * What that costs, recorded so it is not mistaken for an oversight: the
+ * suggestion panel is drawn by the browser and cannot be styled the way the
+ * `<select>` list can (see the `.form-select` block in globals.css). The field
+ * itself is a normal input on `controlClass`, so it keeps the form's border,
+ * hover, focus and error treatment — only the panel is the browser's. Search
+ * was the requirement; this is its price.
+ *
+ * `autoComplete="off"` because the browser's own saved-value dropdown and the
+ * datalist are two panels competing for one anchor, and the saved values win
+ * and hide the list this field exists to show.
+ */
+export function ComboField({
+  options,
+  ...props
+}: BaseProps & { options: readonly string[] }) {
+  const id = useId();
+  const listId = `${id}-options`;
+  return (
+    <Shell id={id} label={props.label} hint={props.hint} error={props.error} optional={props.optional}>
+      <input
+        id={id}
+        list={listId}
+        value={props.value}
+        placeholder={props.placeholder}
+        autoComplete="off"
+        aria-invalid={props.error ? true : undefined}
+        aria-describedby={props.error ? `${id}-error` : undefined}
+        onChange={(event) => props.onChange(event.target.value)}
+        className={controlClass({ invalid: Boolean(props.error) })}
+      />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+    </Shell>
+  );
+}
+
 /** The label wraps the control, so the whole block is the hit target. */
 export function CheckboxField({
   checked,

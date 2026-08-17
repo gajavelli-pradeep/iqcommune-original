@@ -3,7 +3,8 @@
 import { useId, useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
-import { CheckboxField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { CheckboxField, ComboField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { CITIES, INDIAN_STATES } from "@/constants/india";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
@@ -500,17 +501,22 @@ export function RequestModal({
             error={errors.phone}
           />
 
+          {/* Suggested, not restricted: sessions are meant to reach past the
+              cities a tier list remembers, so both of these accept a place that
+              is not on the list. */}
           <div className="grid gap-x-4 sm:grid-cols-2">
-            <TextField
+            <ComboField
               label="City"
               placeholder="e.g. Mumbai"
+              options={CITIES}
               value={form.city}
               onChange={(value) => set("city", value)}
               error={errors.city}
             />
-            <TextField
+            <ComboField
               label="State"
               placeholder="e.g. Maharashtra"
+              options={INDIAN_STATES}
               value={form.state}
               onChange={(value) => set("state", value)}
               error={errors.state}

@@ -130,6 +130,50 @@ for (const form of FORMS) {
 }
 
 /**
+ * City and State suggest without restricting, on every form that asks.
+ *
+ * The list is the easy half. The half worth guarding is that it stays a
+ * suggestion: a practitioner in a town no tier list remembers must still be
+ * able to type it, and the moment either field becomes a `<select>` — the
+ * obvious "tidy-up" — that stops being true silently, because the form still
+ * submits and only the unusual answer is lost.
+ *
+ * The suggestion panel itself is drawn by the browser and cannot be opened or
+ * read from a test, so what is asserted is the contract behind it: the input is
+ * wired to a datalist, the datalist holds the places, and an off-list answer
+ * survives being typed.
+ */
+for (const form of FORMS) {
+  test(`${form.name}: city and state suggest without restricting`, async ({ page }) => {
+    const dialog = await openForm(page, form);
+
+    for (const [label, expected] of [
+      [/^City/, ["Mumbai", "Bengaluru", "Coimbatore", "Siliguri"]],
+      [/^State$/, ["Maharashtra", "Kerala", "Ladakh", "Puducherry"]],
+    ] as const) {
+      const field = dialog.getByLabel(label).first();
+      await field.scrollIntoViewIfNeeded();
+
+      // A text input, not a select — the whole point is that it takes anything.
+      expect(await field.evaluate((el) => el.tagName), `${label} is an input`).toBe("INPUT");
+
+      const listed = await field.evaluate((el: HTMLInputElement) => {
+        const list = el.list;
+        return list ? [...list.options].map((option) => option.value) : null;
+      });
+      expect(listed, `${label} is wired to a datalist`).not.toBeNull();
+      for (const place of expected) {
+        expect(listed, `${label} offers ${place}`).toContain(place);
+      }
+
+      // The tail: somewhere no tier list carries, typed by hand and kept.
+      await field.fill("Kodaikanal");
+      expect(await field.inputValue(), `${label} keeps an off-list answer`).toBe("Kodaikanal");
+    }
+  });
+}
+
+/**
  * Where the treatment above comes from, asserted rather than described.
  *
  * The waitlist's "Who is this for?" buttons already answered "what does hover
