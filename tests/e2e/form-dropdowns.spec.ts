@@ -126,6 +126,36 @@ for (const form of FORMS) {
     expect(answered.background, "an answered dropdown fills").toBe(goldLight);
     expect(answered.border, "…with the gold edge").toBe(goldBorder);
     expect(answered.text, "…and the gold lettering").toBe(goldDark);
+
+    // The city picker is typed into rather than picked from, and is a different
+    // element with a different "answered" selector — so it gets its own pass
+    // rather than being assumed to follow. Sitting inches from the dropdown
+    // above, a field that missed the treatment would read as a different kind
+    // of control, which is exactly what happened when it first shipped.
+    const city = dialog.getByLabel(/^City/).first();
+    await city.scrollIntoViewIfNeeded();
+
+    const cityRest = await style(city);
+    expect(cityRest.background, "an empty city field is not filled").toBe(surface);
+
+    await city.hover();
+    await pause();
+    expect((await style(city)).border, "hover moves its edge to gold too").toBe(goldBorder);
+
+    await city.fill("Coimbatore");
+    await dialog.getByRole("heading").first().hover();
+    await pause();
+    const cityFilled = await style(city);
+    expect(cityFilled.background, "a filled city fills like an answered dropdown").toBe(goldLight);
+    expect(cityFilled.border, "…with the same edge").toBe(goldBorder);
+    expect(cityFilled.text, "…and the same lettering").toBe(goldDark);
+
+    // Emptying it gives the treatment back — the marker follows the value, not
+    // a one-way flag set on first input.
+    await city.fill("");
+    await dialog.getByRole("heading").first().hover();
+    await pause();
+    expect((await style(city)).background, "clearing it empties the fill").toBe(surface);
   });
 }
 

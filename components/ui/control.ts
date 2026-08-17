@@ -141,7 +141,7 @@ export function controlClass({ tone = "field", size, invalid, className }: Contr
  * gold border plus a 2px offset outline, which is the stronger signal it should
  * be.
  */
-const DROPDOWN_HOVER = "enabled:hover:border-gold-border";
+const PICKER_HOVER = "enabled:hover:border-gold-border";
 
 /**
  * The answered treatment, matched to the audience buttons' chosen state.
@@ -159,10 +159,51 @@ const DROPDOWN_HOVER = "enabled:hover:border-gold-border";
  * `text-gold-dark` on `bg-gold-light` is 5.15:1 — the pairing the palette was
  * darkened for, and the reason it is never `text-gold`.
  */
-const DROPDOWN_ANSWERED =
+const SELECT_ANSWERED =
   "[&:has(option:checked:not([value='']))]:border-gold-border " +
   "[&:has(option:checked:not([value='']))]:bg-gold-light " +
   "[&:has(option:checked:not([value='']))]:text-gold-dark";
+
+/**
+ * The same answered treatment for a control that is typed into rather than
+ * picked from — the city and state pickers.
+ *
+ * Keyed to `data-filled`, which the field sets from its own value, rather than
+ * to `:not(:placeholder-shown)`. The placeholder trick reads as the tidier CSS
+ * and carries a trap: a caller that omits the placeholder never matches
+ * `:placeholder-shown`, so the negation is true from the first paint and an
+ * empty field renders as answered. Keying on the value cannot be wrong that way.
+ *
+ * The attribute selector also carries the specificity over `TONE.field`'s
+ * single-class border and background, the same job `:has()` does above.
+ */
+const COMBO_ANSWERED =
+  "[&[data-filled]]:border-gold-border " +
+  "[&[data-filled]]:bg-gold-light " +
+  "[&[data-filled]]:text-gold-dark";
+
+/**
+ * A control that suggests from a list but accepts anything — an `<input list>`
+ * over a `<datalist>`, which is what the city and state pickers are.
+ *
+ * It wears the dropdown's states because it is one to the person using it: the
+ * edge goes gold under the pointer, and a filled field carries the answered
+ * treatment, so City and State read the same as Topic and Group size beside
+ * them.
+ *
+ * The suggestion panel is the part that cannot follow. A datalist's popup is
+ * drawn by the browser and has no pseudo-element to reach — unlike a `<select>`,
+ * which `appearance: base-select` hands over as real DOM. So this styles the
+ * field completely and the panel not at all. The alternative is a hand-built
+ * combobox, which buys the panel and owes keyboard navigation, filtering, the
+ * mobile case and the ARIA a datalist gives for free.
+ */
+export function comboClass(options: ControlOptions = {}): string {
+  return controlClass({
+    ...options,
+    className: `${PICKER_HOVER} ${COMBO_ANSWERED} ${options.className ?? ""}`.trim(),
+  });
+}
 
 /**
  * A `<select>`. Identical to `controlClass` plus the pointer affordance.
@@ -183,7 +224,7 @@ export function selectClass(options: ControlOptions = {}): string {
   // it and needs a selector to aim at. It carries no properties of its own.
   const states =
     (options.tone ?? "field") === "field"
-      ? ` form-select ${DROPDOWN_HOVER} ${DROPDOWN_ANSWERED}`
+      ? ` form-select ${PICKER_HOVER} ${SELECT_ANSWERED}`
       : "";
   return controlClass({
     ...options,

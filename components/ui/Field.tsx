@@ -2,7 +2,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-import { checkboxClass, checkboxLabelClass, controlClass, selectClass } from "./control";
+import { checkboxClass, checkboxLabelClass, comboClass, controlClass, selectClass } from "./control";
 
 /**
  * Form field primitives, shared by both P1 modals and by P2's application form.
@@ -212,8 +212,12 @@ export function ComboField({
         autoComplete="off"
         aria-invalid={props.error ? true : undefined}
         aria-describedby={props.error ? `${id}-error` : undefined}
+        // What CSS cannot see for itself: an input has no selector for "holds a
+        // value". `:not(:placeholder-shown)` comes close and lies when a caller
+        // omits the placeholder, so the answer comes from the value instead.
+        data-filled={props.value ? "" : undefined}
         onChange={(event) => props.onChange(event.target.value)}
-        className={controlClass({ invalid: Boolean(props.error) })}
+        className={comboClass({ invalid: Boolean(props.error) })}
       />
       <datalist id={listId}>
         {options.map((option) => (
