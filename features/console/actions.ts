@@ -17,6 +17,8 @@ import {
   practitionerWelcome,
   ratingRequest,
   sessionCancelled,
+  sessionCancelledNotifyPractitioner,
+  sessionRematchNotice,
   sessionRequestCancelled,
   sessionRequestFollowUp,
 } from "@/lib/email/templates";
@@ -1178,6 +1180,15 @@ export async function setConfirmationStatus(
   assignmentId: string,
   status: string,
   draft?: DraftOverride,
+  /**
+   * Which of the two dropdown reasons this cancellation is (client delivery,
+   * latest folder, 2026-08-17) — decides which client-facing template
+   * composes, and whether a practitioner is also notified. Only meaningful
+   * when `status === "Cancelled"` and this is the last live confirmation on
+   * the session; ignored otherwise, the same way it always was before the
+   * reasons split in two.
+   */
+  reason: "client" | "practitioner" = "client",
 ): Promise<SessionStatusResult> {
   const { email: actor } = await requireCapability("mutate");
   if (!CONFIRMATION_STAGES.has(status)) throw new Error(`unknown confirmation status: ${status}`);
@@ -1235,8 +1246,12 @@ export async function setConfirmationStatus(
 
   // Composed before anything moves, for the reason `setSessionStatus` gives: an
   // email that could not be resolved must be known about before the admin is
-  // told the cancellation went through.
-  const cancellation = last ? await draftMessage("session-cancellation", sessionId) : null;
+  // told the cancellation went through. Kept by assignment id, not session id
+  // — `session-cancellation` names a specific practitioner to notify, and this
+  // is the row that's actually being cancelled.
+  const cancellation = last
+    ? await draftMessage(reason === "practitioner" ? "session-rematch" : "session-cancellation", assignmentId)
+    : null;
 
   const { error } = await supabase
     .from("session_practitioners")
@@ -1276,6 +1291,32 @@ export async function setConfirmationStatus(
   if (sessionError) throw new Error(`session status update failed: ${sessionError.message}`);
 
   if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
+
+  // The second, real recipient — "one Send button dispatches both" (client
+  // delivery, latest folder, 2026-08-17). Only on the client-cancelled path:
+  // `session-rematch` never sets `notify`, since the practitioner is the one
+  // who told the admin and needs no message here. Only when there is someone
+  // on file: a session nobody was assigned to has an explanatory tab in the
+  // dialog, not a second address to write to.
+  const notifyTo = cancellation?.notify?.to;
+  if (cancellation?.notify && notifyTo) {
+    const notify = cancellation.notify;
+    dispatchEmail(
+      newTraceId(),
+      applyDraft(
+        {
+          to: notifyTo,
+          subject: notify.subject,
+          body: notify.body,
+          stream: "session",
+          template: "session-cancelled-notify-practitioner",
+        },
+        draft?.notifySubject !== undefined && draft?.notifyBody !== undefined
+          ? { subject: draft.notifySubject, body: draft.notifyBody }
+          : undefined,
+      ),
+    );
+  }
 
   await recordActivity({
     actorEmail: actor,
@@ -2035,6 +2076,8 @@ async function draftMessage(
   detail?: string;
   /** Set only where the dialog had to choose the row its link points at. */
   linkId?: string;
+  /** A second, genuinely dispatched recipient — see `Draft.notify`. */
+  notify?: { label: string; to: string | null; subject: string; body: string };
 } | null> {
   const supabase = createAdminClient();
 
@@ -2216,23 +2259,55 @@ async function draftMessage(
   }
 
   if (kind === "session-cancellation") {
-    // The session names the request; the request names the person to write to.
-    const { data: session } = await supabase
-      .from("sessions")
-      .select("reference, module")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!session) return null;
+    // Keyed by the assignment, not the session, since this is the one draft
+    // that names two recipients: the client whose session it is, and the
+    // specific practitioner whose row is being cancelled — client delivery,
+    // latest folder, 2026-08-17.
+    const details = await assignmentDetails(id);
+    if (!details) return null;
 
-    const requestor = await requestorForSession(id);
+    const requestor = await requestorForSession(details.sessionId);
     if (!requestor) return null;
-    const sessionModule = session.module as string;
-    const reference = session.reference as string;
+
     return {
       phone: requestor.phone,
-      message: sessionCancelled(requestor.email, requestor.firstName, sessionModule, reference),
-      whatsapp: whatsapp.sessionCancelled(requestor.firstName, sessionModule, reference).body,
+      message: sessionCancelled(
+        requestor.email,
+        requestor.firstName,
+        details.module,
+        details.sessionReference,
+      ),
+      // No WhatsApp copy for this one: the second tab is the practitioner
+      // notice below, not a client-facing WhatsApp message — the delivered
+      // spec repurposes the slot rather than adding a third one.
+      notify: {
+        label: "Notify Practitioner",
+        to: details.practitioner.email,
+        subject: "iqcommune — an update on your upcoming session",
+        body: sessionCancelledNotifyPractitioner(
+          details.practitioner.email,
+          details.practitioner.firstName,
+          details.module,
+          details.sessionReference,
+        ).body,
+      },
+    };
+  }
+
+  if (kind === "session-rematch") {
+    // The client is told the practitioner is no longer available; the
+    // practitioner is not messaged here at all — they are the one who told
+    // the admin, per the delivered spec.
+    const details = await assignmentDetails(id);
+    if (!details) return null;
+
+    const requestor = await requestorForSession(details.sessionId);
+    if (!requestor) return null;
+
+    return {
+      phone: requestor.phone,
+      message: sessionRematchNotice(requestor.email, requestor.firstName, details.module),
+      whatsapp: whatsapp.sessionRematchNotice(requestor.firstName, details.module).body,
     };
   }
 
@@ -2324,6 +2399,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
     whatsapp: draft.whatsapp,
     phone: draft.phone ?? null,
     linkId: draft.linkId,
+    notify: draft.notify,
   };
 }
 

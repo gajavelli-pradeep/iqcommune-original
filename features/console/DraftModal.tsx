@@ -44,8 +44,18 @@ import {
  *
  * `request-cancellation` has no WhatsApp copy in the document, so that send
  * shows no tab rather than an invented body.
+ *
+ * `session-cancellation` carries a third possibility instead of the WhatsApp
+ * one: `draft.notify`, a second REAL recipient — the "Notify Practitioner" tab
+ * (client delivery, latest folder, 2026-08-17). It stands in for the WhatsApp
+ * slot rather than adding a third tab, the way the spec relabels rather than
+ * adds one, but unlike WhatsApp it is editable and Send actually dispatches it
+ * — the spec is explicit that one Send fires both. So the footer's Send button
+ * stays live on that tab too, where the WhatsApp tab swaps it out for
+ * "Open in WhatsApp": the two look similar but mean different things, and only
+ * one of them is a message this dialog sends itself.
  */
-type Channel = "email" | "whatsapp";
+type Channel = "email" | "whatsapp" | "notify";
 type CopyState = "idle" | "copied" | "failed";
 
 /** The two tabs, at the dialog's own scale — the console has no segmented
@@ -72,6 +82,8 @@ export function DraftModal({
   const [error, setError] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [notifySubject, setNotifySubject] = useState("");
+  const [notifyBody, setNotifyBody] = useState("");
   const [channel, setChannel] = useState<Channel>("email");
   const [copy, setCopy] = useState<CopyState>("idle");
 
@@ -91,6 +103,10 @@ export function DraftModal({
         setDraft(composed);
         setSubject(composed.subject);
         setBody(composed.body);
+        if (composed.notify) {
+          setNotifySubject(composed.notify.subject);
+          setNotifyBody(composed.notify.body);
+        }
       })
       .catch(() => {
         if (!cancelled) setError("The draft could not be prepared. Close this and try again.");
@@ -102,7 +118,13 @@ export function DraftModal({
   }, [kind, id]);
 
   const chrome = DRAFT_CHROME[kind];
-  const ready = Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0;
+  // A real second recipient must be as complete as the first before Send is
+  // live — an empty subject sent silently would be a mail nobody meant to send.
+  // Not required when there is nobody on file to notify: that tab carries only
+  // an explanatory line, which is not something to fill in.
+  const notifyReady = !draft?.notify?.to || (notifySubject.trim().length > 0 && notifyBody.trim().length > 0);
+  const ready =
+    Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0 && notifyReady;
 
   /**
    * A body still holding a placeholder cannot be sent over WhatsApp at all.
@@ -200,10 +222,21 @@ export function DraftModal({
             <button
               type="button"
               disabled={!ready}
-              // `linkId` is handed straight back rather than being anything the
-              // admin can touch: it is the row the link they just read points
-              // at, and the send creates it under that id so the two agree.
-              onClick={() => onSend({ subject: subject.trim(), body, linkId: draft?.linkId })}
+              onClick={() =>
+                onSend({
+                  subject: subject.trim(),
+                  body,
+                  // `linkId` is handed straight back rather than being anything
+                  // the admin can touch: it is the row the link they just read
+                  // points at, and the send creates it under that id so the two
+                  // agree.
+                  linkId: draft?.linkId,
+                  // Only when there is someone to send it to — a session with
+                  // nobody assigned has an explanatory tab, not a second draft.
+                  notifySubject: draft?.notify?.to ? notifySubject.trim() : undefined,
+                  notifyBody: draft?.notify?.to ? notifyBody : undefined,
+                })
+              }
               className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-surface transition-opacity hover:opacity-[0.87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-45"
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
@@ -229,9 +262,11 @@ export function DraftModal({
         </div>
       ) : (
         <>
-          {draft.whatsapp ? (
+          {/* The second tab is one or the other, never both — `notify` stands in
+              for the WhatsApp slot rather than adding a third. */}
+          {draft.notify || draft.whatsapp ? (
             <div role="tablist" aria-label="Message channel" className="mb-4 flex gap-1">
-              {(["email", "whatsapp"] as const).map((option) => (
+              {(["email", draft.notify ? "notify" : "whatsapp"] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -245,7 +280,7 @@ export function DraftModal({
                   }}
                   className={`${TAB_BASE} ${channel === option ? TAB_ON : TAB_OFF}`}
                 >
-                  {option === "email" ? "Email" : "WhatsApp"}
+                  {option === "email" ? "Email" : option === "notify" ? draft.notify!.label : "WhatsApp"}
                 </button>
               ))}
             </div>
@@ -348,6 +383,69 @@ export function DraftModal({
                   {copy === "failed" ? "Could not copy — select the text above instead." : null}
                 </p>
               </div>
+            </div>
+          ) : null}
+
+          {draft.notify ? (
+            <div
+              role="tabpanel"
+              id="draft-panel-notify"
+              aria-labelledby="draft-tab-notify"
+              hidden={channel !== "notify"}
+            >
+              {draft.notify.to ? (
+                <>
+                  <div className="mb-4 rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
+                    <span className="font-medium text-ink">To:</span> {draft.notify.to}
+                  </div>
+
+                  <p className="mb-1.5 flex items-center gap-[5px] text-2xs text-ink-faint">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    Click into the text below to edit before sending — the same Click to send
+                    dispatches this message too
+                  </p>
+
+                  <div className="mb-3 flex items-baseline gap-1.5 border-b border-border pb-2.5">
+                    <label htmlFor="draft-notify-subject" className="shrink-0 text-base font-semibold text-ink">
+                      Subject:
+                    </label>
+                    <input
+                      id="draft-notify-subject"
+                      value={notifySubject}
+                      onChange={(event) => setNotifySubject(event.target.value)}
+                      spellCheck={false}
+                      className="min-w-0 flex-1 border-b border-dashed border-border-strong bg-transparent px-0.5 py-px text-base font-semibold text-ink focus:border-gold focus:outline-none"
+                    />
+                  </div>
+
+                  <label htmlFor="draft-notify-body" className="sr-only">
+                    {draft.notify.label} message
+                  </label>
+                  <textarea
+                    id="draft-notify-body"
+                    value={notifyBody}
+                    onChange={(event) => setNotifyBody(event.target.value)}
+                    spellCheck={false}
+                    rows={14}
+                    className="block w-full resize-y rounded-lg border border-border bg-surface-soft p-4 text-base leading-[1.85] text-ink-muted focus:border-gold focus:bg-surface focus:outline-none"
+                  />
+
+                  {!notifyReady ? (
+                    <p role="alert" className="mt-2 text-xs text-red">
+                      A subject and a message are both needed before this can be sent.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                // Nobody assigned to this session — matches the spec's own
+                // fallback rather than hiding the tab or inventing a recipient.
+                <p className="rounded-lg bg-surface-soft px-4 py-3 text-sm leading-[1.7] text-ink-muted">
+                  {notifyBody}
+                </p>
+              )}
             </div>
           ) : null}
         </>

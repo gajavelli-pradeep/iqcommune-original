@@ -176,11 +176,12 @@ describe("confirmations on one session act independently", () => {
   it("does not tell the client the session is off while others are on it", async () => {
     // The dialog is the client's cancellation email. Opening it here would put
     // an admin one click from telling a client their session is cancelled while
-    // another practitioner is still delivering it.
+    // another practitioner is still delivering it. Same gate for either reason
+    // on the select — "Cancelled by client" is the representative case.
     const user = userEvent.setup();
     twoOnOneSession();
 
-    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled");
+    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled by client");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     // Still held for the same Undo window, and named for the confirmation.
     expect(screen.getByText("Cancelling IQC-CONF-0010…")).toBeInTheDocument();
@@ -191,7 +192,7 @@ describe("confirmations on one session act independently", () => {
     const user = userEvent.setup();
     twoOnOneSession({ onlyLiveOnSession: true });
 
-    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled");
+    await user.selectOptions(statusFor("IQC-CONF-0010"), "Cancelled by client");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
@@ -202,6 +203,54 @@ describe("confirmations on one session act independently", () => {
     // who is no longer on the session.
     twoOnOneSession({ confirmationStatus: "Cancelled" }, { confirmationStatus: "Confirmed" });
     expect(screen.getByText("Signed copy not yet received").previousSibling).toHaveTextContent("1");
+  });
+});
+
+/**
+ * Two reasons, two dialogs, two different mails (client delivery, latest
+ * folder, 2026-08-17). Same gate, same Undo window — see the block above — but
+ * which template composes, and who it reaches, has to follow the reason
+ * actually picked rather than always the client-cancelled one.
+ */
+describe("the two cancel reasons open the right dialog", () => {
+  it("opens the client-cancelled dialog for that reason", async () => {
+    const user = userEvent.setup();
+    show({});
+    await user.selectOptions(screen.getByLabelText<HTMLSelectElement>(/^Status for/i), "Cancelled by client");
+    expect(await screen.findByRole("dialog", { name: /client's side/i })).toBeInTheDocument();
+  });
+
+  it("opens the rematch dialog for the practitioner-cancelled reason", async () => {
+    const user = userEvent.setup();
+    show({});
+    await user.selectOptions(
+      screen.getByLabelText<HTMLSelectElement>(/^Status for/i),
+      "Cancelled by practitioner",
+    );
+    expect(await screen.findByRole("dialog", { name: /practitioner change/i })).toBeInTheDocument();
+  });
+
+  // Not tested here: that `reason` reaches `setConfirmationStatus` unchanged.
+  // Both cases above already exercise the same state the write closes over —
+  // `kind={reason === "practitioner" ? ... }` renders the right dialog only if
+  // `reason` was captured correctly, and `cancel(reason)` reads that identical
+  // value — so a third assertion of the same fact through `useDeferredSend`'s
+  // real `setTimeout` was fighting fake timers against React's own scheduler
+  // for coverage this file already has.
+});
+
+/**
+ * "Delete this record" — present and positioned as the spec has it, disabled
+ * because what it should do (remove the confirmation and session outright,
+ * reset the request to New) is the open question the phase-2 plan asks about,
+ * not something to guess at silently.
+ */
+describe("Delete this record", () => {
+  it("is on screen, disabled, with the reason said out loud", () => {
+    show({});
+    const button = screen.getByRole("button", { name: /Delete this record/i });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("title", expect.stringContaining("Not available yet"));
   });
 });
 
@@ -223,20 +272,23 @@ describe("the status cell says what this confirmation is", () => {
     expect(statusSelect().value).toBe("Confirmed");
   });
 
-  it("lets an admin set any of the three", () => {
+  it("lets an admin set any of the four choices", () => {
     // Including Confirmed, and on a row whose consent has not come back —
     // consent sometimes arrives on paper, and a session with a real agreement
     // behind it must not be stuck Pending because of how the agreement arrived.
+    // Bare "Cancelled" is not among them: it is where the select comes to rest
+    // afterwards, not a place to pick it from.
     show({ status: "Received", confirmationStatus: "Confirmed" });
-    for (const option of ["Pending", "Confirmed", "Cancelled"]) {
+    for (const option of ["Pending", "Confirmed", "Cancelled by client", "Cancelled by practitioner"]) {
       expect(screen.getByRole("option", { name: option }), option).toBeEnabled();
     }
+    expect(screen.getByRole("option", { name: "Cancelled" })).toBeDisabled();
   });
 
-  it("speaks the same three states whatever the row is at", () => {
-    // A list that grows from two entries to three when the row happens to be
-    // confirmed makes Confirmed look like a state that does not exist yet, and
-    // leaves an admin counting options to work out where a session stands.
+  it("speaks the same five entries whatever the row is at", () => {
+    // A list that grows or shrinks by row makes a state look like it does not
+    // exist yet, and leaves an admin counting options to work out where a
+    // confirmation stands.
     for (const confirmationStatus of ["Pending", "Confirmed", "Cancelled"]) {
       cleanup();
       show({ status: "Received", confirmationStatus });
@@ -246,7 +298,7 @@ describe("the status cell says what this confirmation is", () => {
           .getAllByRole("option")
           .map((option) => option.textContent),
         confirmationStatus,
-      ).toEqual(["Pending", "Confirmed", "Cancelled"]);
+      ).toEqual(["Pending", "Confirmed", "Cancelled", "Cancelled by client", "Cancelled by practitioner"]);
     }
   });
 

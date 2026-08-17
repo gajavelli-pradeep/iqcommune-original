@@ -253,6 +253,27 @@ function AutoField({
 const CONFIRMATION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
 /**
+ * The five things the select can show — three resting states and two actions
+ * (client delivery, latest folder, 2026-08-17).
+ *
+ * "Cancelled by client" and "Cancelled by practitioner" are not themselves
+ * values a row rests on; picking either opens the matching dialog and, once
+ * sent, the row settles back onto the plain "Cancelled" it already had — the
+ * same relationship "Completed" already has to "Confirmed" below, one step
+ * over. Two action-only entries rather than one "Cancelled" that then asks
+ * which reason, because the delivered spec puts both directly on the select.
+ */
+const CONFIRMATION_OPTIONS = [
+  "Pending",
+  "Confirmed",
+  "Cancelled",
+  "Cancelled by client",
+  "Cancelled by practitioner",
+] as const;
+
+type CancelReason = "client" | "practitioner";
+
+/**
  * The shot list as a PDF, for a practitioner who wants it outside the email.
  *
  * V7 draws this one `.btn-dark` where every other download on the console is a
@@ -319,6 +340,8 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
   const [pending, start] = useTransition();
   const { pending: held, schedule, undo } = useDeferredSend();
   const [drafting, setDrafting] = useState(false);
+  /** Which of the two cancel options is behind the open dialog, or was last used. */
+  const [reason, setReason] = useState<CancelReason>("client");
 
   /**
    * Reads back what the server actually did.
@@ -345,15 +368,32 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
    * scheduled. Moving it to "Cancelled" the moment the dialog opens would have
    * the row claim a status it does not have yet, and closing the dialog would
    * leave that claim behind.
+   *
+   * `reason` is closed over rather than read from state at call time — it is
+   * whichever of the two options opened this exact dialog, and must stay that
+   * one even if something elsewhere nudges `reason` before Send is pressed.
    */
-  const cancel = (edited?: DraftOverride) => {
+  const cancel = (activeReason: CancelReason) => (edited?: DraftOverride) => {
     setDrafting(false);
     const previous = status;
     setStatus("Cancelled");
     setNotice(null);
     schedule(async () => {
-      report(await setConfirmationStatus(row.id, "Cancelled", edited), previous);
+      report(await setConfirmationStatus(row.id, "Cancelled", edited, activeReason), previous);
     }, `Cancelling ${row.reference}…`);
+  };
+
+  /**
+   * The two cancel options both land here, and both obey the gate that already
+   * existed before the spec split "Cancelled" in two: the dialog — and with it,
+   * telling the client anything — only fires when this is the last live
+   * confirmation on the session. Cancelling one of several leaves the session
+   * running for the others, and a client-facing email would be false.
+   */
+  const chooseCancel = (activeReason: CancelReason) => {
+    setReason(activeReason);
+    if (row.onlyLiveOnSession) setDrafting(true);
+    else cancel(activeReason)();
   };
 
   return (
@@ -365,21 +405,18 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
         id={`${row.id}-confirmation-status`}
         // Confirmed still DISPLAYS — a confirmed session must read as one — but
         // it is not offered as a choice, so the value list and the option list
-        // are deliberately different.
+        // are deliberately different. Cancelled is the same idea one step
+        // further: it displays on its own AND sits in the option list, since
+        // unlike Confirmed it has nowhere else to collapse into — but the two
+        // reason-specific entries beneath it are actions, not places the select
+        // itself ever rests.
         value={CONFIRMATION_STATUS_VALUES.includes(status) ? status : "Pending"}
         disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
-          if (next === "Cancelled") {
-            // The dialog is the client's cancellation email, so it opens only
-            // when this is the last practitioner on the session — that is the
-            // point at which the session itself is off. Cancelling one of
-            // several leaves the session running for the others, and telling
-            // the client it is cancelled would be false.
-            if (row.onlyLiveOnSession) setDrafting(true);
-            else cancel();
-            return;
-          }
+          if (next === "Cancelled by client") return chooseCancel("client");
+          if (next === "Cancelled by practitioner") return chooseCancel("practitioner");
+          if (next === "Cancelled") return; // Resting-only; see the option list below.
           const previous = status;
           setStatus(next);
           setNotice(null);
@@ -389,8 +426,13 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
         }}
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
-        {CONFIRMATION_STATUS_VALUES.map((option) => (
-          <option key={option} value={option}>
+        {CONFIRMATION_OPTIONS.map((option) => (
+          // Disabled rather than left reachable: the select can only ever come
+          // to rest on "Cancelled" (via one of the two actions below it or
+          // Pending/Confirmed), so offering it as a third thing to pick FROM
+          // would be a choice with no effect — keyboard and mouse both skip a
+          // disabled option, which a hidden one would not guarantee.
+          <option key={option} value={option} disabled={option === "Cancelled"}>
             {option}
           </option>
         ))}
@@ -407,10 +449,10 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
 
       {drafting ? (
         <DraftModal
-          kind="session-cancellation"
-          id={row.sessionId}
+          kind={reason === "practitioner" ? "session-rematch" : "session-cancellation"}
+          id={row.id}
           onClose={() => setDrafting(false)}
-          onSend={cancel}
+          onSend={cancel(reason)}
         />
       ) : null}
 
@@ -423,7 +465,41 @@ function ConfirmationStatusSelect({ row }: { row: ConsentRow }) {
           }}
         />
       ) : null}
+
+      <DeleteConfirmationRecord row={row} />
     </>
+  );
+}
+
+/**
+ * "Delete this record" — the third path for a plain admin entry error, not a
+ * real cancellation (client delivery, latest folder, 2026-08-17): wrong
+ * amount, wrong date, generated for the wrong session. Distinct from both
+ * cancel reasons above, which represent something that actually happened and
+ * always reach a real person; this one is silent and reversible only by
+ * regenerating, never by Undo.
+ *
+ * Not wired yet. What it does once pressed — remove the confirmation and
+ * session outright and reset the originating request to New for rematching —
+ * is exactly the piece the phase-2 plan asks about, so committing to it here
+ * would be the same guess in a smaller box. Shown, positioned, and worded as
+ * the spec has it, disabled with an honest reason, rather than left out of the
+ * screen an admin is previewing or wired to something that quietly does the
+ * wrong thing.
+ */
+function DeleteConfirmationRecord({ row }: { row: ConsentRow }) {
+  return (
+    <div className="mt-[5px] text-center">
+      <button
+        type="button"
+        disabled
+        title="Fixes a data-entry mistake — deletes silently, notifies no one. Not available yet — see the phase-2 plan."
+        aria-label={`Delete this record — ${row.reference}, not available yet`}
+        className="rounded-full border border-attention-edge px-2.5 py-1 text-3xs font-medium text-attention opacity-50 disabled:cursor-not-allowed"
+      >
+        Delete this record
+      </button>
+    </div>
   );
 }
 

@@ -530,10 +530,10 @@ describe("email sender routing", () => {
   });
 
   it("opens every console message with Dear, not Hi", () => {
-    // One register across the eleven. The two acknowledgment emails are
-    // client-verbatim copy and are not in this set. The eleventh message,
-    // `sessionRequestCancelled`, is absent from the delivered document — silence
-    // about a console control is not an instruction to remove it.
+    // One register across the thirteen. The two acknowledgment emails are
+    // client-verbatim copy and are not in this set. `sessionRequestCancelled`
+    // is absent from the delivered document — silence about a console control
+    // is not an instruction to remove it.
     const rating = templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION);
     const consoleMail = [
       templates.onboardingLink("a@b.com", "Vikram", ID, AGREEMENT_REF),
@@ -545,10 +545,12 @@ describe("email sender routing", () => {
       templates.sessionRequestFollowUp("a@b.com", "Asha", REQUEST_ECHO),
       templates.sessionRequestCancelled("a@b.com", "Asha", MODULE),
       templates.sessionCancelled("a@b.com", "Asha", MODULE, "IQC-S0007"),
+      templates.sessionCancelledNotifyPractitioner("a@b.com", "Vikram", MODULE, "IQC-S0007"),
+      templates.sessionRematchNotice("a@b.com", "Asha", MODULE),
       rating,
       templates.adminInvite("a@b.com", ID, "Admin"),
     ];
-    expect(consoleMail).toHaveLength(11);
+    expect(consoleMail).toHaveLength(13);
     for (const message of consoleMail) {
       expect(message.body.startsWith("Dear ")).toBe(true);
       expect(message.subject).toContain("iqcommune");
