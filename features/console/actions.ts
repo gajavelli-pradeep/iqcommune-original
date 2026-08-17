@@ -2137,14 +2137,15 @@ async function draftMessage(
     }
     if (!contact) return null;
 
-    // The agreement's own IQC-AGR number, which is what this message quotes. A
-    // resend has one already; a first issue has no agreement row yet, so it
-    // stands in exactly as the link does and the send substitutes both.
+    // The agreement's own IQC-AGR number, which is what this message quotes, and
+    // its id, which is what the link points at. A resend has both already; a
+    // first issue has no agreement row yet, so both stand in and the send
+    // substitutes them.
     const { data: openAgreement } =
       table === "practitioner"
         ? await supabase
             .from("practitioner_agreements")
-            .select("reference")
+            .select("id, reference")
             .eq("practitioner_id", rowRef)
             .is("signed_at", null)
             .is("deleted_at", null)
@@ -2152,12 +2153,32 @@ async function draftMessage(
         : { data: null };
     const agreementReference = (openAgreement?.reference as string | undefined) ?? REFERENCE_PLACEHOLDER;
 
-    const message = onboardingLink(contact.email, contact.firstName, PREVIEW_ID, agreementReference);
-    const wa = whatsapp.onboardingLink(contact.firstName, PREVIEW_ID, agreementReference);
+    /**
+     * The link, real wherever it can be (client, 2026-08-17).
+     *
+     * Shown rather than masked when the agreement already exists, which is every
+     * resend: `sendAgreement` reuses that same open row, so this is the document
+     * the send will point at, not a lookalike. Minting the token writes nothing
+     * — it is an HMAC over the id and an expiry — so a preview still leaves no
+     * trace, which is the promise this function actually makes.
+     *
+     * A first issue keeps the stand-in, and must: there is no agreement row to
+     * link to, and creating one to satisfy a preview is exactly the trace that
+     * is not allowed.
+     */
+    const agreementId = openAgreement?.id as string | undefined;
+    const reveal = (body: string) => (agreementId ? body : maskLink(body));
+
+    const linkTarget = agreementId ?? PREVIEW_ID;
+    const message = onboardingLink(contact.email, contact.firstName, linkTarget, agreementReference);
+    const wa = whatsapp.onboardingLink(contact.firstName, linkTarget, agreementReference);
     return {
       phone: contact.phone,
-      message: { ...message, body: maskLink(message.body) },
-      whatsapp: maskLink(wa.body),
+      message: { ...message, body: reveal(message.body) },
+      // The WhatsApp copy leaves by the clipboard and nothing substitutes into
+      // it afterwards, so a stand-in here reaches the practitioner as the words
+      // themselves. It gets the real link on the same condition as the email.
+      whatsapp: reveal(wa.body),
     };
   }
 
