@@ -94,4 +94,25 @@ test("a dropdown wears the same states as the buttons above it", async ({ page }
   expect((await style(topic)).background, "re-choosing the placeholder empties it").toBe(
     atRest.background,
   );
+
+  // ── the open list, where the browser used to draw its own blue ───────────
+  //
+  // Only reachable where `appearance: base-select` is: elsewhere the list is
+  // drawn by the browser and neither styleable nor inspectable, which is the
+  // documented ceiling rather than a failure.
+  const styleable = await page.evaluate(() => CSS.supports("appearance", "base-select"));
+  test.skip(!styleable, "this browser still draws the option list itself");
+
+  await topic.click();
+  await pause();
+
+  const row = topic.locator("option").nth(1);
+  await row.hover();
+  await pause();
+  const hoveredRow = await style(row);
+
+  expect(hoveredRow.background, "a row under the pointer wears the chosen fill").toBe(
+    buttonChosen.background,
+  );
+  expect(hoveredRow.text, "…and the chosen lettering").toBe(buttonChosen.text);
 });

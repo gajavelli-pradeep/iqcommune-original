@@ -178,8 +178,13 @@ const DROPDOWN_ANSWERED =
  * hover those tables already draw.
  */
 export function selectClass(options: ControlOptions = {}): string {
+  // `form-select` is a hook, not a style: the open list lives in a pseudo-element
+  // (`::picker(select)`) that no utility class can reach, so globals.css styles
+  // it and needs a selector to aim at. It carries no properties of its own.
   const states =
-    (options.tone ?? "field") === "field" ? ` ${DROPDOWN_HOVER} ${DROPDOWN_ANSWERED}` : "";
+    (options.tone ?? "field") === "field"
+      ? ` form-select ${DROPDOWN_HOVER} ${DROPDOWN_ANSWERED}`
+      : "";
   return controlClass({
     ...options,
     className: `cursor-pointer${states} ${options.className ?? ""}`.trim(),

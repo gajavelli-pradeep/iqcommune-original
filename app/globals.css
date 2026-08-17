@@ -324,6 +324,90 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ─── The open dropdown ────────────────────────────────────────────────────
+   An open `<select>` drew its highlighted row in the browser's own blue, which
+   is the one part of a form the design system could not reach: the option list
+   is drawn by the browser, and no class on the element applies to it.
+
+   `appearance: base-select` is the way in. It hands the list over as real DOM —
+   `::picker(select)` for the popup, the options themselves for the rows — while
+   the browser keeps every behaviour worth keeping: keyboard navigation,
+   type-ahead, the mobile sheet, and the ARIA semantics a hand-rolled listbox
+   would have to re-earn. That trade is why this is here rather than a custom
+   component; the note in `control.ts` about leaving the chevron to the browser
+   is the same reasoning, and this does not break it — `::picker-icon` is the
+   same chevron, restyled rather than replaced.
+
+   Gated behind `@supports`, so it is strictly additive. Safari, Firefox and
+   Chrome before 135 never enter this block and keep the native list — the blue
+   included. That is the honest ceiling: the highlight simply cannot be reached
+   in those browsers without rebuilding the control, which costs far more than a
+   blue row is worth.
+
+   The colours are the two the form already speaks (see `control.ts`): pointing
+   at a row is choosing it, so a row under the pointer wears exactly what a
+   chosen answer wears.
+
+   ponytail: no custom listbox. If the blue must go in Safari too, that is the
+   rebuild — accept the cost deliberately, do not drift into it. */
+@supports (appearance: base-select) {
+  select.form-select,
+  select.form-select::picker(select) {
+    appearance: base-select;
+  }
+
+  select.form-select::picker(select) {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card-soft);
+    padding: 4px;
+    /* The popup is its own stacking context, so the page's font does not reach
+       it on its own. */
+    font-family: var(--font-sans);
+    font-size: var(--text-md);
+  }
+
+  select.form-select option {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  /* `:hover` for the pointer, `:focus` for the keyboard — arrow keys move focus
+     through the list without the pointer ever being involved, and a highlight
+     that only answered to hover would leave a keyboard user with no idea where
+     they are. */
+  select.form-select option:hover,
+  select.form-select option:focus,
+  select.form-select option:checked {
+    background: var(--color-gold-light);
+    color: var(--color-gold-dark);
+  }
+
+  /* The tick base-select adds beside the current answer, in the same gold as
+     the row it marks rather than the UA's default. */
+  select.form-select option::checkmark {
+    color: var(--color-gold-dark);
+  }
+
+  select.form-select::picker-icon {
+    color: var(--color-ink-faint);
+    transition: transform 150ms ease;
+  }
+
+  select.form-select:open::picker-icon {
+    transform: rotate(180deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  select.form-select::picker-icon {
+    transition: none;
+  }
+}
+
 /* Entrance motion, opt-in.
 
    The spec writes `animation: fadeUp .5s ease both` with `from { opacity: 0 }`.
