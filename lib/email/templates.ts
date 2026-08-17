@@ -311,6 +311,85 @@ export function newSessionRequestForAdmin(to: string, request: SessionRequestSum
   };
 }
 
+export interface RatingSummary {
+  /** 1–5, as submitted. */
+  rating: number;
+  /** Optional on the form, so optional here. */
+  comments?: string;
+  practitioner: string;
+  module: string;
+  sessionDate: string;
+  city: string;
+  /** IQC-S…, so the mail can be tied to a session without a lookup. */
+  reference: string;
+  /** The SPOC who asked for the session, and who is doing the rating. */
+  requestedBy: string;
+}
+
+/** "★★★★☆" — the score at a glance, before anyone reads the number. */
+const stars = (rating: number) => "★".repeat(rating) + "☆".repeat(Math.max(0, 5 - rating));
+
+/**
+ * A rating, sent to the team who can act on it (client, 2026-08-17).
+ *
+ * The score was recorded and read by nobody: it sat on the assignment until
+ * someone opened the console looking for it, which is not how a complaint gets
+ * noticed. This is the same shape as the two notifications above — a public
+ * form writes, then tells the team — and it carries the session context for the
+ * same reason they do: "4 stars" with no session attached cannot be acted on.
+ *
+ * The comment is quoted whole and never trimmed to a preview. It is the part
+ * somebody sat and typed, and it is the reason this mail exists; a truncated
+ * complaint is worse than none, because it reads as handled.
+ */
+export function newRatingForAdmin(to: string, rating: RatingSummary): EmailMessage {
+  const score = `${stars(rating.rating)} (${rating.rating}/5)`;
+  const consoleUrl = `${siteUrl()}/console?tab=sessions`;
+  // Said plainly rather than left blank: an empty line reads as a mail that
+  // failed to include something, when in fact the form did not require it.
+  const comment = rating.comments?.trim() || "No comment left.";
+
+  return {
+    template: "new-rating-admin",
+    stream: "session",
+    to,
+    subject: `Session rating: ${score} — ${rating.practitioner} (${rating.reference})`,
+    body: lines(
+      "A session rating was submitted.",
+      "",
+      `Rating: ${score}`,
+      `Practitioner: ${rating.practitioner}`,
+      `Session: ${rating.reference} — ${rating.module}`,
+      `Date: ${rating.sessionDate}`,
+      `City: ${rating.city}`,
+      `Rated by: ${rating.requestedBy}`,
+      "",
+      "Comment:",
+      comment,
+      "",
+      `Review in console: ${consoleUrl}`,
+      "",
+      SIGN_OFF,
+    ),
+    html:
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f1117;font-size:15px;line-height:1.7">` +
+      `<p>A session rating was submitted.</p>` +
+      `<table style="border-collapse:collapse;width:100%;margin:1rem 0">` +
+      detailRow("Rating", score) +
+      detailRow("Practitioner", rating.practitioner) +
+      detailRow("Session", `${rating.reference} — ${rating.module}`) +
+      detailRow("Date", rating.sessionDate) +
+      detailRow("City", rating.city) +
+      detailRow("Rated by", rating.requestedBy) +
+      `</table>` +
+      `<p style="margin:0 0 4px;font-weight:600">Comment</p>` +
+      `<p style="margin:0 0 1rem;padding:12px 14px;background:#f8f7f4;border-radius:8px;white-space:pre-wrap">${escapeHtml(comment)}</p>` +
+      goldButton(consoleUrl, "Review in console →") +
+      `<p style="font-size:12px;color:#6f7180">Automated notification — no reply needed.</p>` +
+      `</div>`,
+  };
+}
+
 /**
  * Exact copy from the client's confirmations delivery (2026-08-14), which
  * rewrote this one to the same register as the rest of that review: "Dear"
