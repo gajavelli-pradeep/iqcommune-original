@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 /**
  * The console's deferred-action window (procedure §114, audit C6): an admin
- * action does not fire instantly — a 15-second Undo window opens first, and the
- * action commits only if it is not cancelled.
+ * action does not fire instantly — an Undo window opens first, and the action
+ * commits only if it is not cancelled.
  *
  * `schedule(commit, label)` opens the window; `undo()` cancels it; the window
  * closes and `commit` runs when the timer elapses. `pending` drives the toast.
@@ -16,11 +16,26 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
  * Only `undo()` cancels. The timer lives in the component that owns the button,
  * so closing a profile or switching panel used to take the action with it: the
  * admin saw a delete they never undid quietly undo itself, and the only way to
- * make one stick was to sit on the screen for the full fifteen seconds. Leaving
- * is not cancelling, so it now fires on the way out.
+ * make one stick was to sit on the screen for the whole window. Leaving is not
+ * cancelling, so it now fires on the way out.
  */
 
-const UNDO_WINDOW_SECONDS = 15;
+/**
+ * How long an admin has to change their mind — every deferred action on the
+ * site, since every one of them is scheduled through this hook.
+ *
+ * Ten, where procedure §114 and V7 both say fifteen (client, 2026-08-17). The
+ * deviation is recorded here rather than left to be rediscovered: V7's own
+ * script hard-codes "Sending in 15 seconds" in
+ * `spec/v7/iqcommune-admin-console-automated.html`, so anyone diffing against
+ * the prototype will find that string and should not correct this back to match
+ * it.
+ *
+ * Exported because the toast counts down from it and the tests measure against
+ * it. They each used to carry their own literal 15 — the shape where a window
+ * changes in one place and stays fifteen in the two that describe it.
+ */
+export const UNDO_WINDOW_SECONDS = 10;
 const UNDO_WINDOW_MS = UNDO_WINDOW_SECONDS * 1000;
 
 export interface PendingAction {

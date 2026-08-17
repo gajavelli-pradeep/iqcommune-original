@@ -4,13 +4,17 @@ import { Toast } from "@/components/ui/Toast";
 import type { PendingAction } from "@/hooks/useDeferredSend";
 
 /**
- * The toast covering the 15-second window before an admin send actually fires
- * (procedure §114), with V7's wording: "Sending in 15 seconds — click Undo to
- * stop it", counting down rather than sitting on the number it opened with.
+ * The toast covering the window before an admin send actually fires (procedure
+ * §114), in V7's wording — "Sending in N seconds — click Undo to stop it" —
+ * counting down rather than sitting on the number it opened with.
  *
- * The countdown is the point. A static "15 seconds" tells you the window
- * exists; it does not tell you whether you still have time to stop it, which is
- * the only thing being read in the moment.
+ * The number is `UNDO_WINDOW_SECONDS` and is not restated here. V7 writes the
+ * sentence with a literal 15 in it; the window is ten (client, 2026-08-17), and
+ * a toast carrying its own copy of the figure is how the two drift apart.
+ *
+ * The countdown is the point. A static number tells you the window exists; it
+ * does not tell you whether you still have time to stop it, which is the only
+ * thing being read in the moment.
  *
  * Extracted because three surfaces now show it — row actions, the consent
  * panel's status select, and the team invite — and a hold that reads
