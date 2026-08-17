@@ -334,6 +334,15 @@ export interface AssignablePractitioner {
   id: string;
   name: string;
   averageRating: number | null;
+  /**
+   * Where they are based — sessions are delivered in person, so this is what
+   * decides whether they can take a given request.
+   *
+   * Carried on the row rather than filtered in the query on purpose: this list
+   * is read once and handed to every request in the panel, and each request has
+   * its own city. Narrowing it here would mean one read per request.
+   */
+  city: string;
 }
 
 export async function listAssignablePractitioners(): Promise<AssignablePractitioner[]> {
@@ -341,7 +350,7 @@ export async function listAssignablePractitioners(): Promise<AssignablePractitio
   const [{ data, error }, ratings] = await Promise.all([
     supabase
       .from("practitioners")
-      .select("id, full_name")
+      .select("id, full_name, city")
       .eq("status", "Empanelled")
       .is("deleted_at", null)
       .order("full_name")
@@ -355,6 +364,7 @@ export async function listAssignablePractitioners(): Promise<AssignablePractitio
     id: row.id,
     name: row.full_name,
     averageRating: ratings.get(row.id) ?? null,
+    city: row.city,
   }));
 }
 

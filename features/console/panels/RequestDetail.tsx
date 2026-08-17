@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { controlClass } from "@/components/ui/control";
 
@@ -57,6 +57,25 @@ export function RequestDetail({
 
   const mayEdit = can(role, "mutate");
   const mayPurge = can(role, "purge");
+
+  /**
+   * Only the practitioners who can actually take this request.
+   *
+   * Sessions are delivered in person, so matching is done by city — a request
+   * for Bengaluru is offered practitioners based in Bengaluru and nobody else.
+   * Filtered here rather than in the query because the panel reads one list and
+   * hands the same array to every request, each with its own city.
+   *
+   * Compared with case and padding stripped: practitioner cities were free text
+   * until the picker landed and still hold whatever was typed, so "bengaluru "
+   * and "Bengaluru" are one place. Nothing cleverer than that — no aliases, no
+   * "Bangalore" against "Bengaluru" — because a guess about which two names mean
+   * one city is how someone ends up matched to a session a flight away.
+   */
+  const local = useMemo(() => {
+    const wanted = row.city.trim().toLowerCase();
+    return practitioners.filter((practitioner) => practitioner.city.trim().toLowerCase() === wanted);
+  }, [practitioners, row.city]);
 
   /**
    * Runs one change and surfaces whatever comes back.
@@ -134,6 +153,7 @@ export function RequestDetail({
 
             <label className="mb-[3px] block text-2xs text-ink-muted" htmlFor={`${row.id}-assignee`}>
               Practitioner who agreed
+              <span className="text-ink-faint"> — based in {row.city}</span>
             </label>
             <select
               id={`${row.id}-assignee`}
@@ -147,7 +167,7 @@ export function RequestDetail({
               className={`${FIELD} mb-2.5 cursor-pointer`}
             >
               <option value="">— Not yet assigned —</option>
-              {practitioners.map((practitioner) => (
+              {local.map((practitioner) => (
                 <option key={practitioner.id} value={practitioner.id}>
                   {practitioner.name}
                   {practitioner.averageRating !== null
@@ -156,6 +176,15 @@ export function RequestDetail({
                 </option>
               ))}
             </select>
+            {local.length === 0 ? (
+              // Said rather than left blank: a dropdown holding nothing but its
+              // own placeholder reads as a list that failed to load, and an
+              // admin would go looking for the fault instead of for a
+              // practitioner.
+              <p className="mb-2.5 -mt-1.5 text-3xs text-attention">
+                No empanelled practitioner is based in {row.city}.
+              </p>
+            ) : null}
 
             <label className="mb-[3px] block text-2xs text-ink-muted" htmlFor={`${row.id}-payout`}>
               Agreed gross payout (₹)
