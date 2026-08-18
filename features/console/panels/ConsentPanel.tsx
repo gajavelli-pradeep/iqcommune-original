@@ -146,6 +146,7 @@ function AutoField({
   field,
   assignmentId,
   canOverride,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -153,6 +154,13 @@ function AutoField({
   /** Both omitted where the field is display-only, as in Part 3's summary. */
   assignmentId?: string;
   canOverride?: boolean;
+  /**
+   * The field is showing a stand-in rather than a real answer — Venue's own
+   * "pending from SPOC" (client, 2026-08-18). Painted the same attention
+   * colour as every other "still needs something" line in this panel, rather
+   * than reading like an ordinary filled-in value.
+   */
+  placeholder?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -223,7 +231,7 @@ function AutoField({
           </button>
         </div>
       ) : (
-        <div className="mt-px font-medium text-ink">{value}</div>
+        <div className={`mt-px font-medium ${placeholder ? "text-attention" : "text-ink"}`}>{value}</div>
       )}
     </div>
   );
@@ -769,7 +777,13 @@ function GenerateConfirmation({
                 <AutoField {...auto} label="First name" field="practitioner" value={session.practitioner.split(" ")[0]} />
                 <AutoField {...auto} label="Module confirmed for" field="module" value={session.module} />
                 <AutoField {...auto} label="Date" field="sessionDate" value={session.sessionDate ?? "[to be scheduled]"} />
-                <AutoField {...auto} label="Venue" field="venue" value={session.venue ?? "Pending from SPOC"} />
+                <AutoField
+                  {...auto}
+                  label="Venue"
+                  field="venue"
+                  value={session.venue ?? "Not specified — pending from SPOC"}
+                  placeholder={!session.venue}
+                />
                 <AutoField {...auto} label="City" field="city" value={session.city} />
                 <AutoField {...auto} label="State" field="state" value={session.state ?? "—"} />
                 <AutoField {...auto} label="Audience type" field="audience" value={session.audience} />

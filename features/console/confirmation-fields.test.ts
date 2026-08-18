@@ -46,7 +46,6 @@ describe("what a confirmation needs before it can be generated", () => {
   it("names each empty field under the label the panel shows", () => {
     // Not column names: an admin told "spoc_name is empty" goes looking for a
     // control that does not exist.
-    expect(check({ venue: null })).toEqual(["Venue"]);
     expect(check({ participants: null })).toEqual(["Participant count"]);
     expect(check({ spoc_name: null })).toEqual(["SPOC name"]);
     expect(check({ module: null })).toEqual(["Module confirmed for"]);
@@ -56,7 +55,14 @@ describe("what a confirmation needs before it can be generated", () => {
   it("treats whitespace as empty", () => {
     // A pencil edit saving a space would otherwise satisfy the check and print
     // a blank on the document.
-    expect(check({ venue: "   " })).toEqual(["Venue"]);
+    expect(check({ spoc_name: "   " })).toEqual(["SPOC name"]);
+  });
+
+  it("never requires a venue (client, 2026-08-18: strict instruction)", () => {
+    // A venue is routinely still being arranged with the SPOC after every
+    // other term is agreed, and this document does not block on that.
+    expect(check({ venue: null })).toEqual([]);
+    expect(check({ venue: "   " })).toEqual([]);
   });
 
   it("counts a zero payout as missing, not as free", () => {
@@ -75,8 +81,9 @@ describe("what a confirmation needs before it can be generated", () => {
       assignment({ venue: null, participants: null, state: null }, 0),
       { sessionDate: "", startTime: "", durationHours: 0 },
     );
+    // Venue is absent here too — included in the setup above only to prove it
+    // is silently ignored alongside real gaps, not just in isolation.
     expect(missing).toEqual([
-      "Venue",
       "State",
       "Participant count",
       "Agreed gross payout",
