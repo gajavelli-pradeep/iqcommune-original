@@ -178,6 +178,14 @@ export interface Draft extends DraftOverride {
    * to send.
    */
   notify?: { label: string; to: string | null; subject: string; body: string };
+  /**
+   * The requester's full name — `session-cancellation` and `session-rematch`
+   * only, where the delivered spec's own dialog title names them directly
+   * (client, 2026-08-18: "Notify about cancellation — Suresh Patel",
+   * "Notify client — practitioner change — Suresh Patel"). Every other kind's
+   * title is fixed and has no use for it.
+   */
+  recipientName?: string;
 }
 
 /**
@@ -190,7 +198,18 @@ export interface Draft extends DraftOverride {
  * appendix B10, so the field is gone rather than kept and corrected: a subject
  * nothing reads is a second source of truth waiting to drift again.
  */
-export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
+export const DRAFT_CHROME: Record<
+  DraftKind,
+  {
+    title: string;
+    /**
+     * Builds the real title once the requester's name is known — the delivered
+     * spec's own two titles both end in it (client, 2026-08-18). `title` above
+     * is what shows during the brief window before the draft has loaded.
+     */
+    titleWithName?: (name: string) => string;
+  }
+> = {
   // Follows the button that opens it — a dialog headed "Send follow-up" above a
   // control labelled "Send status update to client" reads as the wrong dialog.
   "request-follow-up": { title: "Send status update" },
@@ -201,8 +220,14 @@ export const DRAFT_CHROME: Record<DraftKind, { title: string }> = {
   "practitioner-welcome": { title: "Send welcome message" },
   "application-rejected": { title: "Send rejection" },
   "practitioner-deactivated": { title: "Send deactivation" },
-  "session-cancellation": { title: "Cancel session — client's side" },
-  "session-rematch": { title: "Notify client — practitioner change" },
+  "session-cancellation": {
+    title: "Cancel session — client's side",
+    titleWithName: (name) => `Notify about cancellation — ${name}`,
+  },
+  "session-rematch": {
+    title: "Notify client — practitioner change",
+    titleWithName: (name) => `Notify client — practitioner change — ${name}`,
+  },
   "onboarding-link": { title: "Send agreement" },
   "admin-invite": { title: "Send invite" },
 };

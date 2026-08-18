@@ -30,6 +30,7 @@ vi.mock("../actions", () => ({
     to: "priya@example.com",
     subject: "Your session confirmation",
     body: "Hi Priya,",
+    recipientName: "Suresh Patel",
   })),
 }));
 
@@ -214,21 +215,29 @@ describe("confirmations on one session act independently", () => {
  * actually picked rather than always the client-cancelled one.
  */
 describe("the two cancel reasons open the right dialog", () => {
-  it("opens the client-cancelled dialog for that reason", async () => {
+  it("opens the client-cancelled dialog for that reason, naming the requester", async () => {
     const user = userEvent.setup();
     show({});
     await user.selectOptions(screen.getByLabelText<HTMLSelectElement>(/^Status for/i), "Cancelled by client");
-    expect(await screen.findByRole("dialog", { name: /client's side/i })).toBeInTheDocument();
+    // Matches the delivered spec's own title exactly (client, 2026-08-18):
+    // "Notify about cancellation — Suresh Patel", not "Cancel session —
+    // client's side" — that string covers only the brief window before the
+    // draft, and the requester's name in it, have loaded.
+    expect(
+      await screen.findByRole("dialog", { name: /Notify about cancellation — Suresh Patel/i }),
+    ).toBeInTheDocument();
   });
 
-  it("opens the rematch dialog for the practitioner-cancelled reason", async () => {
+  it("opens the rematch dialog for the practitioner-cancelled reason, naming the requester", async () => {
     const user = userEvent.setup();
     show({});
     await user.selectOptions(
       screen.getByLabelText<HTMLSelectElement>(/^Status for/i),
       "Cancelled by practitioner",
     );
-    expect(await screen.findByRole("dialog", { name: /practitioner change/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("dialog", { name: /Notify client — practitioner change — Suresh Patel/i }),
+    ).toBeInTheDocument();
   });
 
   // Not tested here: that `reason` reaches `setConfirmationStatus` unchanged.
