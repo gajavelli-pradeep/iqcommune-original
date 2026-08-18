@@ -98,6 +98,19 @@ describe("ConsoleShell — caches every tab, not just the active one", () => {
   });
 });
 
+describe("ConsoleShell — sidebar stacking", () => {
+  it("carries an explicit z-index once it goes sticky, so scrolled table content cannot paint over it", () => {
+    // Client, 2026-08-18: the sidebar had no stacking priority at all, unlike
+    // the header just above it — a horizontally-scrolled table's own
+    // `position: relative` wrapper, being later in the DOM, could otherwise
+    // paint over rather than under it.
+    render(<ConsoleShell role="admin" email="admin@example.com" />);
+    expect(screen.getByRole("navigation", { name: "Console sections" }).className).toContain(
+      "min-[900px]:z-[var(--z-sticky)]",
+    );
+  });
+});
+
 describe("ConsoleShell — panel slot remounts on tab switch", () => {
   it("does not carry the previous tab's component state into the newly active tab", async () => {
     const user = userEvent.setup();

@@ -61,8 +61,15 @@ export function ConsoleTable<Row>({
     return <EmptyState title={empty} />;
   }
 
+  // `max-w-[30ch]` (client, 2026-08-18): a long value — an email, a venue
+  // name — used to stretch its whole column instead of wrapping, which is
+  // what dragged some tables wide enough to need the horizontal scroll in the
+  // first place. `ch` is genuinely "characters", not an approximation of one.
+  // `break-words` only matters for a single unbroken run past 30 characters
+  // (an email, a reference) — ordinary text wraps at its own word boundaries
+  // regardless.
   const cellClass = (column: ColumnDef<Row>) =>
-    `px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
+    `max-w-[30ch] break-words px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
 
   return (
     // Tables are the one place horizontal scroll is correct rather than a bug: a
