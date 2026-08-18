@@ -247,23 +247,22 @@ export function comboClass(options: ControlOptions = {}): string {
  * hand-drawn one means re-implementing the open state, the disabled state and
  * the right-to-left case for no gain.
  *
- * Both treatments are `field`-only — the public and flow-page form family, which
- * is where the pick-one buttons they borrow from live. The console's `inline`
- * and `compact` selects are in-table editors, where an answered fill down a
- * column would read as a status and a hover edge would compete with the row
- * hover those tables already draw.
+ * Both treatments apply to every tone (client, 2026-08-18) — they were
+ * `field`-only at first, on the theory that a gold fill down a console
+ * table's status column would read as a status colour and a hover edge
+ * would compete with the row hover those tables already draw. Trialled on
+ * the console's Month/Year filter first and confirmed live: the console
+ * reads the fill the same way the landing form does — "this is what's
+ * chosen" — so the exclusion was dropped rather than kept as an unused
+ * escape hatch.
  */
 export function selectClass(options: ControlOptions = {}): string {
   // `form-select` is a hook, not a style: the open list lives in a pseudo-element
   // (`::picker(select)`) that no utility class can reach, so globals.css styles
   // it and needs a selector to aim at. It carries no properties of its own.
-  const states =
-    (options.tone ?? "field") === "field"
-      ? ` form-select ${PICKER_HOVER} ${SELECT_ANSWERED}`
-      : "";
   return controlClass({
     ...options,
-    className: `cursor-pointer${states} ${options.className ?? ""}`.trim(),
+    className: `cursor-pointer form-select ${PICKER_HOVER} ${SELECT_ANSWERED} ${options.className ?? ""}`.trim(),
   });
 }
 
