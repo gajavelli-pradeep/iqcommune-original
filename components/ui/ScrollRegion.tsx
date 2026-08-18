@@ -64,7 +64,19 @@ export const ScrollRegion = forwardRef<
       tabIndex={0}
       onScroll={handleScroll}
       className={`${
-        axis === "y" ? "overflow-y-auto overscroll-y-contain" : "overflow-x-auto overscroll-x-contain"
+        axis === "y"
+          ? "overflow-y-auto overscroll-y-contain"
+          : // `overscroll-y-auto` is set explicitly, not left at its default
+            // (client, 2026-08-18): the browser-computed `overflow-y: auto`
+            // this file's own header warns about (declaring `overflow-x`
+            // makes the UA compute `overflow-y` too) leaves this region a
+            // vertical scroll container in its own right, and an implicit
+            // `overscroll-behavior-y` has chained inconsistently across
+            // browsers on exactly that shape — a wheel scroll over the table
+            // staying trapped in its own (empty) vertical scroll room instead
+            // of reaching the page underneath it. Stating `auto` outright is
+            // what actually guarantees the chain.
+            "overflow-x-auto overscroll-x-contain overscroll-y-auto"
       } relative rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
         className ? ` ${className}` : ""
       }`}
