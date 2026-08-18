@@ -533,6 +533,72 @@ describe("the fields the admin fills in open empty", () => {
 });
 
 /**
+ * Venue, the one auto-populated field that is never blank in the fixture
+ * above (client, 2026-08-18): flagged rather than blocking, since it is
+ * routinely still being arranged with the SPOC after everything else is
+ * agreed.
+ */
+describe("Venue, still pending from SPOC", () => {
+  const confirmable: ConfirmableSession = {
+    id: "a1",
+    sessionReference: "IQC-S0001",
+    confirmationReference: "IQC-CONF-0001",
+    practitioner: "Priya Sharma",
+    agreementReference: "IQC-AGR-0001",
+    module: "Equity Investing Simplified",
+    sessionDate: "2026-08-16",
+    city: "Mumbai",
+    state: "Maharashtra",
+    venue: null,
+    participants: "16-25",
+    spoc: "Rahul Mehta",
+    audience: "corporate",
+    grossPayout: 12000,
+    currency: "INR",
+    startTime: null,
+    durationMinutes: null,
+    consentGiven: false,
+    confirmationGenerated: false,
+  };
+
+  it("reads as not specified, in the attention colour, when no venue is on file", async () => {
+    const user = userEvent.setup();
+    render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable]} />);
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
+
+    const value = screen.getByText("Not specified — pending from SPOC");
+    expect(value.className).toContain("text-attention");
+  });
+
+  it("reads normally, no different from any other field, once a venue is set", async () => {
+    const user = userEvent.setup();
+    render(
+      <ConsentPanel
+        rows={[]}
+        role="global_admin"
+        confirmable={[{ ...confirmable, venue: "Kotak Securities, BKC" }]}
+      />,
+    );
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
+
+    const value = screen.getByText("Kotak Securities, BKC");
+    expect(value.className).not.toContain("text-attention");
+  });
+
+  it("does not block Generate Confirmation on a missing venue", async () => {
+    // Same shape as "sends the blanks through" above — the button is never
+    // disabled client-side, so this proves specifically that a null venue on
+    // the confirmable session reaches the click same as any other, rather
+    // than the earlier venue check having moved somewhere this suite cannot see.
+    const user = userEvent.setup();
+    render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable]} />);
+    await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
+    await user.click(screen.getByRole("button", { name: /generate confirmation/i }));
+    expect(vi.mocked(generateConfirmation)).toHaveBeenCalled();
+  });
+});
+
+/**
  * Part 3 — Send Photo Guide, restored to match V7.
  *
  * It offers the sessions Part 2 shows as Confirmed, and it is the only place

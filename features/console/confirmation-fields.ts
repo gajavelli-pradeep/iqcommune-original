@@ -8,12 +8,18 @@
  * nobody notices has stopped working.
  *
  * Part 1 of the consent panel showed a placeholder wherever a value was absent
- * — "Pending from SPOC" for a venue, an em dash for the headcount, "[to be
- * scheduled]" for a date — and generated the document anyway. The PDF carries
- * its own fallbacks (`venue ?? "To be confirmed"`), so nothing downstream ever
- * objected, and the practitioner was asked to consent to a session with no
- * venue, no headcount and no date. A confirmation states the terms; terms with
- * holes are not terms.
+ * — an em dash for the headcount, "[to be scheduled]" for a date — and
+ * generated the document anyway. The PDF carries its own fallbacks, so nothing
+ * downstream ever objected, and the practitioner was asked to consent to a
+ * session with no headcount and no date. A confirmation states the terms;
+ * terms with holes are not terms.
+ *
+ * Venue is the one exception (client, 2026-08-18: strict instruction) — a
+ * venue is routinely still being arranged with the SPOC after the module,
+ * date and payout are already agreed, and this document is not the thing
+ * blocking that. It shows "Not specified — pending from SPOC" instead, in the
+ * same attention colour as any other still-outstanding line, and generation
+ * proceeds without it.
  */
 
 /** The embedded session row, as the assignment query returns it. */
@@ -63,7 +69,7 @@ export function missingConfirmationFields(
   const missing: string[] = [];
 
   if (blank(session.module)) missing.push("Module confirmed for");
-  if (blank(session.venue)) missing.push("Venue");
+  // Venue is deliberately not checked here — see the module doc comment.
   if (blank(session.city)) missing.push("City");
   if (blank(session.state)) missing.push("State");
   if (blank(session.audience)) missing.push("Audience type");
