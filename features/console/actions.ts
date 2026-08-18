@@ -1416,16 +1416,28 @@ export async function deleteConfirmationRecord(assignmentId: string): Promise<Ac
   if (readError) throw new Error(`assignment read failed: ${readError.message}`);
   if (!assignment) return { ok: false, message: "That confirmation no longer exists." };
 
+  // Already gone — cancelled, or deleted by an earlier click. Both cancel
+  // reasons run this exact same reset on their last confirmation
+  // (`resetSessionForRematch`), so a row already showing Cancelled has
+  // nothing left for Delete to do: its session and request are already
+  // vacated. Said here rather than silently reporting success — the bug this
+  // guards was `deleteConfirmationRecord` returning `{ok: true}` and logging
+  // a "deleted" entry for a row (and session) it never actually touched.
+  if (assignment.deleted_at) {
+    return {
+      ok: false,
+      message: "This confirmation was already cancelled or deleted — there is nothing further to remove.",
+    };
+  }
+
   const reference = assignment.confirmation_reference as string;
   const sessionId = assignment.session_id as string;
 
-  if (!assignment.deleted_at) {
-    const { error } = await supabase
-      .from("session_practitioners")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", assignmentId);
-    if (error) throw new Error(`delete failed: ${error.message}`);
-  }
+  const { error } = await supabase
+    .from("session_practitioners")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", assignmentId);
+  if (error) throw new Error(`delete failed: ${error.message}`);
 
   await recordActivity({
     actorEmail: actor,

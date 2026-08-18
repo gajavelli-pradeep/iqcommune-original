@@ -467,7 +467,7 @@ function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: Consol
         />
       ) : null}
 
-      {can(role, "purge") ? <DeleteConfirmationRecord row={row} /> : null}
+      {can(role, "purge") && row.confirmationStatus !== "Cancelled" ? <DeleteConfirmationRecord row={row} /> : null}
     </>
   );
 }
@@ -485,6 +485,12 @@ function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: Consol
  * `RowAction`'s own Undo window (10s) stands in for the source's native
  * confirm() prompt: the click is reversible until it elapses, same safety net
  * every other destructive action in this console already gets.
+ *
+ * Hidden once the row already reads Cancelled, not merely disabled — a
+ * confirmation cancelled by either reason has already had its session and
+ * request fully reset (`resetSessionForRematch`), so there is nothing left
+ * for this to do, and offering it anyway was the reported bug: the click
+ * looked like it did nothing (client, 2026-08-18).
  */
 function DeleteConfirmationRecord({ row }: { row: ConsentRow }) {
   return (
