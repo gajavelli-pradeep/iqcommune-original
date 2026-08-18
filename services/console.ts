@@ -624,7 +624,7 @@ export interface ConsentRow {
 }
 
 const CONSENT_SELECT =
-  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, deleted_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue )";
+  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, deleted_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue, deleted_at )";
 
 /**
  * When each assignment was last sent its consent request and its photo guide.
@@ -714,12 +714,18 @@ export async function listConsents(): Promise<ConsentRow[]> {
     .from("session_practitioners")
     .select(CONSENT_SELECT)
     // `deleted_at` is deliberately NOT filtered here, and this is the one read
-    // that does not filter it. It is what cancelling a confirmation sets, and a
-    // cancelled one has to stay on this table — reading as Cancelled, and able
-    // to be put back — or an admin who cancels the wrong practitioner watches
-    // the row vanish with no way to undo it. Every other reader (payouts, the
-    // photo queue, ratings, `recordConsent`) still excludes them, which is what
-    // makes a cancelled practitioner drop out of the rest of the console.
+    // that does not filter it at the query level. It is what cancelling a
+    // confirmation sets, and a cancelled one has to stay on this table — reading
+    // as Cancelled, and able to be put back — or an admin who cancels the wrong
+    // practitioner watches the row vanish with no way to undo it. Every other
+    // reader (payouts, the photo queue, ratings, `recordConsent`) still excludes
+    // them, which is what makes a cancelled practitioner drop out of the rest of
+    // the console.
+    //
+    // That "able to be put back" reasoning only holds while the session it
+    // belongs to is still live — see the `deleted_at`-on-`sessions` filter
+    // below, applied in JS rather than here for exactly the row that no longer
+    // qualifies.
     //
     // Only generated confirmations appear here — an assignment carries a
     // reference from the moment it is matched, but the document does not exist
@@ -736,44 +742,57 @@ export async function listConsents(): Promise<ConsentRow[]> {
     liveCountBySession([...new Set((data ?? []).map((row) => row.session_id as string))]),
   ]);
 
-  return (data ?? []).map((row) => {
-    const sent = sends.get(row.id as string);
-    const cancelled = Boolean(row.deleted_at);
-    const practitioner = one<{ full_name: string }>(row.practitioners);
-    const session = one<{
-      reference: string;
-      session_date: string | null;
-      status: string;
-      module: string | null;
-      venue: string | null;
-    }>(row.sessions);
-    return {
-      id: row.id,
-      sessionId: row.session_id,
-      reference: row.confirmation_reference,
-      session: session?.reference ?? "—",
-      sessionDate: date(session?.session_date ?? null),
-      practitioner: practitioner?.full_name ?? "—",
-      grossPayout: money(row.gross_payout, row.currency),
-      status: row.consent_given_at ? "Received" : "Pending",
-      recordedOn: date(row.consent_given_at),
-      confirmationStatus: cancelled ? "Cancelled" : (session?.status ?? "—"),
-      // A cancelled row is not one of the live ones, so it can never be the last
-      // of them — which keeps the control from offering to re-cancel it.
-      onlyLiveOnSession: !cancelled && live.get(row.session_id as string) === 1,
-      issuedOn: date(row.confirmation_generated_at),
-      // `issuedOn` is already formatted for display, so the period filter gets
-      // its own sortable value rather than parsing a rendered date back.
-      issuedMonth: (row.confirmation_generated_at as string | null)?.slice(0, 7) ?? "",
-      requestSentAt: sent?.requested ?? null,
-      requestSentLabel: sent?.requested ? sinceLabel(sent.requested, new Date()) : null,
-      guideSentAt: sent?.guided ?? null,
-      module: session?.module ?? "—",
-      // V7 prints the venue in Part 3's summary, where an em dash reads as
-      // "not settled yet" — which is the truth until the SPOC confirms one.
-      venue: session?.venue ?? "—",
-    };
-  });
+  return (data ?? [])
+    .filter((row) => {
+      // A confirmation cancelled or deleted alongside its session (the last
+      // one on it) has nothing left to restore onto — `setConfirmationStatus`'s
+      // Pending/Confirmed options both write through `setSessionStatus`, which
+      // itself refuses a `deleted_at` session. Keeping such a row visible only
+      // to have "put it back" silently fail is worse than not showing it, so
+      // this is the one case that does drop out — a cancelled confirmation
+      // whose session is still live (other practitioners still on it) stays,
+      // exactly as the comment above still promises.
+      const session = one<{ deleted_at: string | null }>(row.sessions);
+      return !session?.deleted_at;
+    })
+    .map((row) => {
+      const sent = sends.get(row.id as string);
+      const cancelled = Boolean(row.deleted_at);
+      const practitioner = one<{ full_name: string }>(row.practitioners);
+      const session = one<{
+        reference: string;
+        session_date: string | null;
+        status: string;
+        module: string | null;
+        venue: string | null;
+      }>(row.sessions);
+      return {
+        id: row.id,
+        sessionId: row.session_id,
+        reference: row.confirmation_reference,
+        session: session?.reference ?? "—",
+        sessionDate: date(session?.session_date ?? null),
+        practitioner: practitioner?.full_name ?? "—",
+        grossPayout: money(row.gross_payout, row.currency),
+        status: row.consent_given_at ? "Received" : "Pending",
+        recordedOn: date(row.consent_given_at),
+        confirmationStatus: cancelled ? "Cancelled" : (session?.status ?? "—"),
+        // A cancelled row is not one of the live ones, so it can never be the last
+        // of them — which keeps the control from offering to re-cancel it.
+        onlyLiveOnSession: !cancelled && live.get(row.session_id as string) === 1,
+        issuedOn: date(row.confirmation_generated_at),
+        // `issuedOn` is already formatted for display, so the period filter gets
+        // its own sortable value rather than parsing a rendered date back.
+        issuedMonth: (row.confirmation_generated_at as string | null)?.slice(0, 7) ?? "",
+        requestSentAt: sent?.requested ?? null,
+        requestSentLabel: sent?.requested ? sinceLabel(sent.requested, new Date()) : null,
+        guideSentAt: sent?.guided ?? null,
+        module: session?.module ?? "—",
+        // V7 prints the venue in Part 3's summary, where an em dash reads as
+        // "not settled yet" — which is the truth until the SPOC confirms one.
+        venue: session?.venue ?? "—",
+      };
+    });
 }
 
 /**
