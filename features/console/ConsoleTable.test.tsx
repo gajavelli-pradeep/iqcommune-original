@@ -80,9 +80,22 @@ describe("ConsoleTable", () => {
     // instead of wrapping, which is what dragged some tables wide enough to
     // need the horizontal scroll in the first place.
     renderTable("user");
-    const cell = screen.getByText("Priya Sharma").closest("td")!;
+    const cell = screen.getByText("Priya Sharma");
     expect(cell.className).toContain("max-w-[30ch]");
     expect(cell.className).toContain("break-words");
+  });
+
+  it("gives the cap's 30 characters to text alone, not to the cell's own padding too", () => {
+    // Client, 2026-08-18: `max-width` on a padded element counts that padding
+    // against the budget, so the cap on the `<td>` itself was really giving
+    // text closer to 25 real characters — tight enough that an ordinary word
+    // regularly missed the line it should have fit on. The cap has to live on
+    // a wrapper with no padding of its own, or "30 characters" is a lie. The
+    // padding itself stays on the `<td>` — only the width cap moves.
+    renderTable("user");
+    const cell = screen.getByText("Priya Sharma").closest("td")!;
+    expect(cell.className).not.toContain("max-w-[30ch]");
+    expect(cell.className).toContain("px-4");
   });
 
   it("never wraps a header, even one longer than most data values", () => {

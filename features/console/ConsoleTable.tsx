@@ -62,14 +62,28 @@ export function ConsoleTable<Row>({
   }
 
   // `max-w-[30ch]` (client, 2026-08-18): a long value — an email, a venue
-  // name — used to stretch its whole column instead of wrapping, which is
-  // what dragged some tables wide enough to need the horizontal scroll in the
-  // first place. `ch` is genuinely "characters", not an approximation of one.
-  // `break-words` only matters for a single unbroken run past 30 characters
-  // (an email, a reference) — ordinary text wraps at its own word boundaries
-  // regardless.
-  const cellClass = (column: ColumnDef<Row>) =>
-    `max-w-[30ch] break-words px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
+  // name, a bundle's module name built from several real ones joined
+  // together — used to stretch its whole column instead of wrapping, which
+  // is what dragged some tables wide enough to need the horizontal scroll in
+  // the first place. `ch` is genuinely "characters", not an approximation of
+  // one; `break-words` only matters for a single unbroken run past 30
+  // characters (an email, a reference) — ordinary text wraps at its own word
+  // boundaries regardless.
+  //
+  // The cap lives on an inner wrapper, not the `<td>` itself. `max-width` on
+  // a border-box element counts its own padding against the budget, so
+  // `max-w-[30ch]` on a `px-4`-padded cell was really giving text closer to
+  // 25 real characters — tight enough that an ordinary word regularly missed
+  // the line it should have fit on, which is what turned a bundle's name into
+  // one word a line instead of several. The wrapper carries no padding of its
+  // own, so 30ch here is the 30 characters the rule actually promises — for
+  // every column, automatically, from this one place.
+  const cellClass = "px-4 py-3 align-top text-base";
+  const cellNode = (column: ColumnDef<Row>, node: ReactNode) => (
+    <div className={`max-w-[30ch] break-words text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`}>
+      {node}
+    </div>
+  );
 
   return (
     // Tables are the one place horizontal scroll is correct rather than a bug: a
@@ -113,8 +127,8 @@ export function ConsoleTable<Row>({
               label: rowLabel?.(row) ?? rowKey(row),
               cells: visible.map((column) => ({
                 key: column.key,
-                className: cellClass(column),
-                node: column.render(row),
+                className: cellClass,
+                node: cellNode(column, column.render(row)),
               })),
               detail: expand(row),
             }))}
@@ -127,8 +141,8 @@ export function ConsoleTable<Row>({
               key: rowKey(row),
               cells: visible.map((column) => ({
                 key: column.key,
-                className: cellClass(column),
-                node: column.render(row),
+                className: cellClass,
+                node: cellNode(column, column.render(row)),
               })),
             }))}
           />
