@@ -254,8 +254,9 @@ function AutoField({
 const CONFIRMATION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
 
 /**
- * The five things the select can show — three resting states and two actions
- * (client delivery, latest folder, 2026-08-17).
+ * What the select offers to pick FROM — two resting states and two actions
+ * (client delivery, latest folder, 2026-08-17; bare "Cancelled" removed from
+ * the list itself on 2026-08-18).
  *
  * "Cancelled by client" and "Cancelled by practitioner" are not themselves
  * values a row rests on; picking either opens the matching dialog and, once
@@ -263,14 +264,14 @@ const CONFIRMATION_STATUS_VALUES = ["Pending", "Confirmed", "Cancelled"];
  * same relationship "Completed" already has to "Confirmed" below, one step
  * over. Two action-only entries rather than one "Cancelled" that then asks
  * which reason, because the delivered spec puts both directly on the select.
+ *
+ * Bare "Cancelled" is deliberately absent from this list: it was already
+ * disabled here, unreachable by mouse or keyboard, existing only so the select
+ * had something to rest on once a row got there. An admin never picks it —
+ * they reach Cancelled through one of the two reasons above — so the render
+ * below adds it back in, on its own, only for a row already at rest there.
  */
-const CONFIRMATION_OPTIONS = [
-  "Pending",
-  "Confirmed",
-  "Cancelled",
-  "Cancelled by client",
-  "Cancelled by practitioner",
-] as const;
+const CONFIRMATION_OPTIONS = ["Pending", "Confirmed", "Cancelled by client", "Cancelled by practitioner"] as const;
 
 type CancelReason = "client" | "practitioner";
 
@@ -407,17 +408,15 @@ function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: Consol
         // Confirmed still DISPLAYS — a confirmed session must read as one — but
         // it is not offered as a choice, so the value list and the option list
         // are deliberately different. Cancelled is the same idea one step
-        // further: it displays on its own AND sits in the option list, since
-        // unlike Confirmed it has nowhere else to collapse into — but the two
-        // reason-specific entries beneath it are actions, not places the select
-        // itself ever rests.
+        // further: it displays on its own but is not in `CONFIRMATION_OPTIONS`
+        // at all — the option below adds it back only for a row already there.
         value={CONFIRMATION_STATUS_VALUES.includes(status) ? status : "Pending"}
         disabled={pending || Boolean(held)}
         onChange={(event) => {
           const next = event.target.value;
           if (next === "Cancelled by client") return chooseCancel("client");
           if (next === "Cancelled by practitioner") return chooseCancel("practitioner");
-          if (next === "Cancelled") return; // Resting-only; see the option list below.
+          if (next === "Cancelled") return; // Resting-only; see the option below.
           const previous = status;
           setStatus(next);
           setNotice(null);
@@ -428,15 +427,21 @@ function ConfirmationStatusSelect({ row, role }: { row: ConsentRow; role: Consol
         className={selectClass({ tone: "inline", className: "min-w-[110px]" })}
       >
         {CONFIRMATION_OPTIONS.map((option) => (
-          // Disabled rather than left reachable: the select can only ever come
-          // to rest on "Cancelled" (via one of the two actions below it or
-          // Pending/Confirmed), so offering it as a third thing to pick FROM
-          // would be a choice with no effect — keyboard and mouse both skip a
-          // disabled option, which a hidden one would not guarantee.
-          <option key={option} value={option} disabled={option === "Cancelled"}>
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
+        {status === "Cancelled" ? (
+          // Not one of the choices above — an admin only ever reaches
+          // Cancelled through one of the two reasons, never by picking it
+          // directly. Rendered — disabled, so it stays unreachable by mouse or
+          // keyboard — only for a row already at rest here, so the closed
+          // control still reads "Cancelled" instead of falling back to
+          // Pending, the first real option in the list.
+          <option value="Cancelled" disabled>
+            Cancelled
+          </option>
+        ) : null}
       </select>
       {row.confirmationStatus === "Completed" ? (
         <span className="mt-0.5 block text-3xs text-ink-faint">Delivered</span>
