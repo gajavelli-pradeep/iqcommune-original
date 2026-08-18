@@ -93,7 +93,23 @@ export function ConsoleTable<Row>({
     // ten-column console table cannot reflow to 320px without losing columns.
     // ScrollRegion makes that overflow keyboard-reachable (audit A11Y-3).
     <ScrollRegion ariaLabel={caption} axis="x" className="bg-surface">
-      <table className="w-full min-w-[720px] border-collapse text-left">
+      {/* `w-max`, not `w-full` and not the bare default (client, 2026-08-18,
+          confirmed with a real DevTools measurement — a cell measured
+          104.96px wide against a 30ch cap that should allow roughly 250-270px
+          at this font size): dropping `w-full` alone left the table at
+          `width: auto`, and `auto` on a table means shrink-to-fit-available-
+          space, not grow-to-natural-size. This table's absolute minimum
+          possible width — every column wrapped down to its narrowest single
+          word — was still smaller than the visible page, so the browser just
+          settled at the available space and never actually grew large enough
+          for any column to reach its own `max-w-[30ch]`; nothing overflowed,
+          so nothing forced real scrolling either. `w-max` is what forces the
+          table to always render at its natural, unsqueezed full size —
+          every column getting up to its own cap — handing whatever does not
+          fit on screen to the region's `overflow-x: auto` instead of
+          shrinking every column to make do. `min-w-[720px]` stays as the
+          floor for a table with too few columns to reach that on its own. */}
+      <table className="w-max min-w-[720px] border-collapse text-left">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-border">
