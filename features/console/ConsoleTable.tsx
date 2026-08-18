@@ -70,20 +70,23 @@ export function ConsoleTable<Row>({
   // characters (an email, a reference) — ordinary text wraps at its own word
   // boundaries regardless.
   //
-  // The cap lives on an inner wrapper, not the `<td>` itself. `max-width` on
-  // a border-box element counts its own padding against the budget, so
-  // `max-w-[30ch]` on a `px-4`-padded cell was really giving text closer to
-  // 25 real characters — tight enough that an ordinary word regularly missed
-  // the line it should have fit on, which is what turned a bundle's name into
-  // one word a line instead of several. The wrapper carries no padding of its
-  // own, so 30ch here is the 30 characters the rule actually promises — for
-  // every column, automatically, from this one place.
-  const cellClass = "px-4 py-3 align-top text-base";
-  const cellNode = (column: ColumnDef<Row>, node: ReactNode) => (
-    <div className={`max-w-[30ch] break-words text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`}>
-      {node}
-    </div>
-  );
+  // Both on the `<td>` itself, not on a wrapper nested inside it. A wrapper
+  // worked for most cells but not the first column of an expandable row,
+  // whose value sits inside the row's own `w-full` toggle button — that
+  // button has no width of its own to report, so the table's column-width
+  // measurement was not reliably reaching a cap nested a level below it. The
+  // `<td>` is the one element every table layout genuinely measures, on every
+  // row shape, so the cap belongs there regardless of what is inside it.
+  //
+  // `box-content` is what makes that safe to do: `max-width` on a border-box
+  // element (this app's default) counts its own padding against the budget,
+  // so `max-w-[30ch]` on a `px-4`-padded cell was really giving text closer
+  // to 25 real characters — tight enough that an ordinary word regularly
+  // missed the line it should have fit on. `box-content` switches this one
+  // element back to sizing `max-width` against content alone, padding added
+  // on top, so 30ch here is the 30 characters the rule actually promises.
+  const cellClass = (column: ColumnDef<Row>) =>
+    `max-w-[30ch] box-content break-words px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
 
   return (
     // Tables are the one place horizontal scroll is correct rather than a bug: a
@@ -127,8 +130,8 @@ export function ConsoleTable<Row>({
               label: rowLabel?.(row) ?? rowKey(row),
               cells: visible.map((column) => ({
                 key: column.key,
-                className: cellClass,
-                node: cellNode(column, column.render(row)),
+                className: cellClass(column),
+                node: column.render(row),
               })),
               detail: expand(row),
             }))}
@@ -141,8 +144,8 @@ export function ConsoleTable<Row>({
               key: rowKey(row),
               cells: visible.map((column) => ({
                 key: column.key,
-                className: cellClass,
-                node: cellNode(column, column.render(row)),
+                className: cellClass(column),
+                node: column.render(row),
               })),
             }))}
           />
