@@ -290,30 +290,42 @@ describe("the status cell says what this confirmation is", () => {
     // Including Confirmed, and on a row whose consent has not come back —
     // consent sometimes arrives on paper, and a session with a real agreement
     // behind it must not be stuck Pending because of how the agreement arrived.
-    // Bare "Cancelled" is not among them: it is where the select comes to rest
-    // afterwards, not a place to pick it from.
     show({ status: "Received", confirmationStatus: "Confirmed" });
     for (const option of ["Pending", "Confirmed", "Cancelled by client", "Cancelled by practitioner"]) {
       expect(screen.getByRole("option", { name: option }), option).toBeEnabled();
     }
-    expect(screen.getByRole("option", { name: "Cancelled" })).toBeDisabled();
+    // Not just unreachable — gone (client, 2026-08-18). A row that isn't
+    // Cancelled has nothing to rest that value on, so nothing offers it.
+    expect(screen.queryByRole("option", { name: "Cancelled" })).not.toBeInTheDocument();
   });
 
-  it("speaks the same five entries whatever the row is at", () => {
-    // A list that grows or shrinks by row makes a state look like it does not
-    // exist yet, and leaves an admin counting options to work out where a
-    // confirmation stands.
-    for (const confirmationStatus of ["Pending", "Confirmed", "Cancelled"]) {
+  it("adds a disabled, resting-only Cancelled only once the row is actually there", () => {
+    // A list that grows or shrinks for no reason makes a state look like it
+    // does not exist yet — so the four real choices stay fixed across every
+    // row, and the fifth, unreachable entry appears only for the one row it
+    // describes, never before.
+    for (const confirmationStatus of ["Pending", "Confirmed"]) {
       cleanup();
       show({ status: "Received", confirmationStatus });
-      // Scoped to the select: the "Issued in" filter above it is also options.
       expect(
         within(statusSelect())
           .getAllByRole("option")
           .map((option) => option.textContent),
         confirmationStatus,
-      ).toEqual(["Pending", "Confirmed", "Cancelled", "Cancelled by client", "Cancelled by practitioner"]);
+      ).toEqual(["Pending", "Confirmed", "Cancelled by client", "Cancelled by practitioner"]);
     }
+
+    cleanup();
+    show({ status: "Received", confirmationStatus: "Cancelled" });
+    const options = within(statusSelect()).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Pending",
+      "Confirmed",
+      "Cancelled by client",
+      "Cancelled by practitioner",
+      "Cancelled",
+    ]);
+    expect(options[options.length - 1]).toBeDisabled();
   });
 
   it("reads Confirmed for a delivered session, with Delivered beneath", () => {
