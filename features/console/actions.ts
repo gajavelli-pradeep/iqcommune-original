@@ -361,7 +361,13 @@ export async function setSessionRequestStatus(id: string, status: string): Promi
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("session_requests")
-    .update({ status: "New" })
+    // Same clearing `resetSessionForRematch` does on its own path back to New
+    // (client, 2026-08-18) — a request at New reads as unmatched everywhere it
+    // can arrive there, not only through a cancellation. Left behind, the old
+    // practitioner and payout would still be showing when the request is
+    // picked up again, and `matchSessionRequest` would silently accept them as
+    // already-agreed terms nobody actually agreed to this time.
+    .update({ status: "New", assigned_practitioner_id: null, agreed_gross_payout: null })
     .eq("id", id)
     .is("deleted_at", null);
   if (error) throw new Error(`status update failed: ${error.message}`);
@@ -1190,7 +1196,13 @@ async function resetSessionForRematch(
   if (requestId) {
     const { error: requestError } = await supabase
       .from("session_requests")
-      .update({ status: "New" })
+      // The old match goes with the session it belonged to (client,
+      // 2026-08-18) — a request back at New reads as unmatched, not as
+      // "matched to a practitioner it no longer has a live session with".
+      // Clearing both is what actually makes it that: `matchSessionRequest`
+      // refuses to run without both filled in again, so leaving either behind
+      // would let a stale payout survive into whoever gets picked next.
+      .update({ status: "New", assigned_practitioner_id: null, agreed_gross_payout: null })
       .eq("id", requestId)
       .is("deleted_at", null);
     if (requestError) throw new Error(`request reset failed: ${requestError.message}`);
