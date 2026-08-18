@@ -49,10 +49,22 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
       </div>
     ),
   },
-  { key: "module", header: "Module", render: (row) => <span className="text-ink-muted">{row.module}</span> },
+  {
+    key: "module",
+    header: "Module",
+    // Widths below (client, 2026-08-18): one collapsed row left this table's
+    // columns bunched tight against `min-w-[720px]`'s floor with a large gap
+    // after Status, since none of them claimed more than their own content
+    // needed. `ColumnDef.width` is `ConsoleTable`'s existing per-column
+    // opt-in — set only here, it changes only this table's spacing, not the
+    // shared component or any other tab's columns.
+    width: "300px",
+    render: (row) => <span className="text-ink-muted">{row.module}</span>,
+  },
   {
     key: "city",
     header: "City",
+    width: "175px",
     render: (row) => (
       <span className="text-ink-muted">
         {row.city}
@@ -63,11 +75,13 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
   {
     key: "appliedOn",
     header: "Applied on",
+    width: "160px",
     render: (row) => <span className="text-xs text-ink-faint">{row.appliedOn}</span>,
   },
   {
     key: "status",
     header: "Status",
+    width: "150px",
     render: (row) => {
       const meta = PRACTITIONER_STATUS[row.status as keyof typeof PRACTITIONER_STATUS];
       // An unrecognised status is shown as itself rather than hidden: a value
