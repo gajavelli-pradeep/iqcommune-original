@@ -156,9 +156,10 @@ function AutoField({
   canOverride?: boolean;
   /**
    * The field is showing a stand-in rather than a real answer — Venue's own
-   * "pending from SPOC" (client, 2026-08-18). Painted the same attention
-   * colour as every other "still needs something" line in this panel, rather
-   * than reading like an ordinary filled-in value.
+   * "pending from SPOC" (client, 2026-08-18). Painted `ink-faint`, this
+   * panel's own placeholder/tertiary tone, rather than the ordinary value
+   * colour — tried `attention` first, but that reads as a warning, and a
+   * venue still being arranged with the SPOC is not one.
    */
   placeholder?: boolean;
 }) {
@@ -231,7 +232,7 @@ function AutoField({
           </button>
         </div>
       ) : (
-        <div className={`mt-px font-medium ${placeholder ? "text-attention" : "text-ink"}`}>{value}</div>
+        <div className={`mt-px font-medium ${placeholder ? "text-ink-faint" : "text-ink"}`}>{value}</div>
       )}
     </div>
   );
