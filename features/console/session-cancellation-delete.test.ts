@@ -148,7 +148,15 @@ describe("deleteConfirmationRecord", () => {
       sessions: [
         { id: SESSION_ID, reference: "IQC-S0001", session_request_id: REQUEST_ID, deleted_at: null, status: "Confirmed" },
       ],
-      session_requests: [{ id: REQUEST_ID, status: "Matched", deleted_at: null }],
+      session_requests: [
+        {
+          id: REQUEST_ID,
+          status: "Matched",
+          deleted_at: null,
+          assigned_practitioner_id: "prac-1",
+          agreed_gross_payout: 8500,
+        },
+      ],
       activity_log: [],
     });
 
@@ -160,6 +168,11 @@ describe("deleteConfirmationRecord", () => {
     expect(supabase.tables.sessions[0].deleted_at).toBeTruthy();
     expect(supabase.tables.sessions[0].status).toBe("Cancelled");
     expect(supabase.tables.session_requests[0].status).toBe("New");
+    // Reopened at New must read as genuinely unmatched (client, 2026-08-18) —
+    // not still carrying the practitioner and payout from the match it no
+    // longer has a live session behind.
+    expect(supabase.tables.session_requests[0].assigned_practitioner_id).toBeNull();
+    expect(supabase.tables.session_requests[0].agreed_gross_payout).toBeNull();
   });
 
   it("leaves the session alone when another confirmation is still live", async () => {
