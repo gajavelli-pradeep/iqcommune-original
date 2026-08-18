@@ -85,6 +85,31 @@ describe("ConsoleTable", () => {
     expect(cell.className).toContain("break-words");
   });
 
+  it("never wraps a header, even one longer than most data values", () => {
+    // Client, 2026-08-18: "Download Signed Agreement" (26 characters, under
+    // the 30ch cap) was still wrapping on the live site. The column's width
+    // came from the CELL's `ch`, measured in a plain, regular-weight font —
+    // narrower per character than the header's own bold, uppercase,
+    // letter-spaced one, so a header well under 30 characters still did not
+    // fit the budget its own column ended up with. `whitespace-nowrap`
+    // decouples the header from that entirely.
+    const longHeaderColumns: ReadonlyArray<ColumnDef<Row>> = [
+      { key: "name", header: "Download Signed Agreement", render: (row) => row.name },
+    ];
+    render(
+      <ConsoleTable
+        caption="Agreements"
+        columns={longHeaderColumns}
+        rows={ROWS}
+        role="global_admin"
+        rowKey={(row) => row.id}
+      />,
+    );
+    const header = screen.getByRole("columnheader", { name: "Download Signed Agreement" });
+    expect(header.className).toContain("whitespace-nowrap");
+    expect(header.className).not.toContain("max-w-[30ch]");
+  });
+
   it("says so when there is nothing to show", () => {
     render(
       <ConsoleTable

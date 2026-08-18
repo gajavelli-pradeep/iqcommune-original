@@ -85,7 +85,18 @@ export function ConsoleTable<Row>({
                 key={column.key}
                 scope="col"
                 style={column.width ? { width: column.width } : undefined}
-                className={`px-4 py-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint ${
+                // `whitespace-nowrap` (client, 2026-08-18): every header is
+                // short by design, and none should ever wrap — but the table's
+                // own auto layout sizes a column from both the header and its
+                // cells together, and `1ch` in the header's bold, uppercase,
+                // letter-spaced font is visually wider than `1ch` in a cell's
+                // plain one. A header well under 30 characters was still
+                // wrapping, because the column's width came from the CELL's
+                // narrower `ch` while the header needed more room than that
+                // budget gave it in its own, wider font. Keeping it on one
+                // line always is what a column heading is for; `cellClass`'s
+                // cap is for data values, never for the label above them.
+                className={`whitespace-nowrap px-4 py-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint ${
                   column.align === "right" ? "text-right" : ""
                 }`}
               >
