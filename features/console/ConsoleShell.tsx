@@ -420,9 +420,20 @@ export function ConsoleShell({
              It owns its own scroll in both modes — a menu taller than the
              screen with no scroll path is a menu whose last item cannot be
              reached. */
+          // `min-[900px]:z-[var(--z-sticky)]` (client, 2026-08-18): once the
+          // sidebar goes sticky at 900px it had no explicit stacking priority
+          // at all, unlike the header just above it — a horizontally-scrolled
+          // console table is `position: relative` for its own reasons (see
+          // ScrollRegion's doc comment) and, being later in the DOM, could
+          // paint over the sidebar rather than under it. `--z-sticky` is this
+          // token scale's own slot for "in-page sticky sub-bars", already
+          // below `--z-overlay`/`--z-toast` so a modal or toast still wins.
+          // Scoped to the same breakpoint the `sticky` class itself uses — the
+          // collapsed mobile menu below 900px is normal in-flow content with
+          // nothing to out-rank.
           className={`${
             menuOpen ? "block" : "hidden"
-          } max-h-[calc(100dvh-64px)] shrink-0 overflow-y-auto overscroll-y-contain border-b border-border bg-surface min-[900px]:sticky min-[900px]:top-16 min-[900px]:!block min-[900px]:h-[calc(100dvh-64px)] min-[900px]:w-[230px] min-[900px]:self-start min-[900px]:border-b-0 min-[900px]:border-r`}
+          } max-h-[calc(100dvh-64px)] shrink-0 overflow-y-auto overscroll-y-contain border-b border-border bg-surface min-[900px]:sticky min-[900px]:top-16 min-[900px]:z-[var(--z-sticky)] min-[900px]:!block min-[900px]:h-[calc(100dvh-64px)] min-[900px]:w-[230px] min-[900px]:self-start min-[900px]:border-b-0 min-[900px]:border-r`}
         >
           {/* What the header sheds on the way down: the search (hidden below
               900px) and the identity/actions (below 640px). They are offered

@@ -75,6 +75,16 @@ describe("ConsoleTable", () => {
     expect(screen.getAllByRole("columnheader")).toHaveLength(1);
   });
 
+  it("caps a cell's width at 30 characters and wraps the rest, rather than stretching the column", () => {
+    // Client, 2026-08-18: a long value used to stretch its whole column
+    // instead of wrapping, which is what dragged some tables wide enough to
+    // need the horizontal scroll in the first place.
+    renderTable("user");
+    const cell = screen.getByText("Priya Sharma").closest("td")!;
+    expect(cell.className).toContain("max-w-[30ch]");
+    expect(cell.className).toContain("break-words");
+  });
+
   it("says so when there is nothing to show", () => {
     render(
       <ConsoleTable
