@@ -78,23 +78,26 @@ describe("ConsoleTable", () => {
   it("caps a cell's width at 30 characters and wraps the rest, rather than stretching the column", () => {
     // Client, 2026-08-18: a long value used to stretch its whole column
     // instead of wrapping, which is what dragged some tables wide enough to
-    // need the horizontal scroll in the first place.
+    // need the horizontal scroll in the first place. Right on the `<td>`
+    // itself — the one element every table layout genuinely measures,
+    // regardless of what a given column happens to render inside it.
     renderTable("user");
-    const cell = screen.getByText("Priya Sharma");
+    const cell = screen.getByText("Priya Sharma").closest("td")!;
     expect(cell.className).toContain("max-w-[30ch]");
     expect(cell.className).toContain("break-words");
   });
 
   it("gives the cap's 30 characters to text alone, not to the cell's own padding too", () => {
-    // Client, 2026-08-18: `max-width` on a padded element counts that padding
-    // against the budget, so the cap on the `<td>` itself was really giving
-    // text closer to 25 real characters — tight enough that an ordinary word
-    // regularly missed the line it should have fit on. The cap has to live on
-    // a wrapper with no padding of its own, or "30 characters" is a lie. The
-    // padding itself stays on the `<td>` — only the width cap moves.
+    // Client, 2026-08-18: `max-width` on a border-box element (this app's
+    // default) counts its own padding against the budget, so `max-w-[30ch]`
+    // on a `px-4`-padded cell was really giving text closer to 25 real
+    // characters — tight enough that an ordinary word regularly missed the
+    // line it should have fit on. `box-content` switches the cell back to
+    // sizing `max-width` against its content alone, padding added on top, so
+    // 30ch is the 30 characters the rule actually promises.
     renderTable("user");
     const cell = screen.getByText("Priya Sharma").closest("td")!;
-    expect(cell.className).not.toContain("max-w-[30ch]");
+    expect(cell.className).toContain("box-content");
     expect(cell.className).toContain("px-4");
   });
 
@@ -121,6 +124,33 @@ describe("ConsoleTable", () => {
     const header = screen.getByRole("columnheader", { name: "Download Signed Agreement" });
     expect(header.className).toContain("whitespace-nowrap");
     expect(header.className).not.toContain("max-w-[30ch]");
+  });
+
+  it("caps the first column's width too, on an expandable table", () => {
+    // Client, 2026-08-18: reported working for every column except the
+    // first, on the one table shape the two-column test above never
+    // exercises — an expandable row, where the first cell's own value sits
+    // inside the row's expand-toggle button rather than directly in the
+    // `<td>`. A cap that lived on a wrapper nested inside that button was not
+    // reliably reaching the table's own column-width measurement, since the
+    // button (`w-full`) has no width of its own to report. Asserting on the
+    // `<td>` itself — where the cap actually lives now — proves this holds
+    // regardless of what a column renders inside the cell.
+    render(
+      <ConsoleTable
+        caption="Practitioners"
+        columns={COLUMNS}
+        rows={ROWS}
+        role="user"
+        rowKey={(row) => row.id}
+        expand={() => <p>Detail</p>}
+        rowLabel={(row) => row.name}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: /Show details for Priya Sharma/i });
+    const cell = toggle.closest("td")!;
+    expect(cell.className).toContain("max-w-[30ch]");
+    expect(cell.className).toContain("break-words");
   });
 
   it("says so when there is nothing to show", () => {
