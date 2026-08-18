@@ -258,6 +258,14 @@ describe("Delete this record", () => {
     render(<ConsentPanel rows={[row({})]} role="admin" confirmable={[]} />);
     expect(screen.queryByRole("button", { name: "Delete this record" })).not.toBeInTheDocument();
   });
+
+  it("is hidden once the row already reads Cancelled — the click had nothing left to do", () => {
+    // Cancelling a confirmation already runs the same reset this button would
+    // (`resetSessionForRematch`), so offering it afterwards looked like a
+    // click that did nothing — the reported bug (client, 2026-08-18).
+    show({ confirmationStatus: "Cancelled" });
+    expect(screen.queryByRole("button", { name: "Delete this record" })).not.toBeInTheDocument();
+  });
 });
 
 /**
