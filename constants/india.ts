@@ -11,39 +11,139 @@
  * India's HRA city grades, X and Y — and matching or pricing may want to read it
  * later. Joining them for the picker costs one line; separating them again
  * afterwards would cost a judgement call per city.
+ *
+ * Each city is paired with its state here, not kept as a bare name — the form's
+ * City field uses that pairing to fill State automatically once a listed city is
+ * chosen (client, 2026-08-18), and a mapping kept next to the names it describes
+ * cannot drift out of step with them the way two parallel lists could.
  */
 
+interface CityEntry {
+  name: string;
+  state: string;
+}
+
 /** The eight X-grade metros. */
-export const TIER_1_CITIES = [
-  "Ahmedabad",
-  "Bengaluru",
-  "Chennai",
-  "Delhi",
-  "Hyderabad",
-  "Kolkata",
-  "Mumbai",
-  "Pune",
-] as const;
+const TIER_1: readonly CityEntry[] = [
+  { name: "Ahmedabad", state: "Gujarat" },
+  { name: "Bengaluru", state: "Karnataka" },
+  { name: "Chennai", state: "Tamil Nadu" },
+  // "Delhi NCR" rather than the bare union territory name: the client's own
+  // list names it this way, and NCR's satellite towns — Noida, Gurugram,
+  // Faridabad — stay as their own tier-2 entries below rather than folding
+  // into it, so someone typing one of those still finds it.
+  { name: "Delhi NCR", state: "Delhi" },
+  { name: "Hyderabad", state: "Telangana" },
+  { name: "Kolkata", state: "West Bengal" },
+  { name: "Mumbai", state: "Maharashtra" },
+  { name: "Pune", state: "Maharashtra" },
+];
 
 /** Y-grade cities. */
-export const TIER_2_CITIES = [
-  "Agra", "Ajmer", "Aligarh", "Amravati", "Amritsar", "Asansol", "Aurangabad",
-  "Bareilly", "Belagavi", "Bhavnagar", "Bhiwandi", "Bhilai", "Bhopal",
-  "Bhubaneswar", "Bikaner", "Bilaspur", "Bokaro Steel City", "Chandigarh",
-  "Coimbatore", "Cuttack", "Dehradun", "Dhanbad", "Durgapur", "Erode",
-  "Faridabad", "Firozabad", "Ghaziabad", "Gorakhpur", "Guntur", "Gurugram",
-  "Guwahati", "Gwalior", "Hubballi-Dharwad", "Indore", "Jabalpur", "Jaipur",
-  "Jalandhar", "Jammu", "Jamnagar", "Jamshedpur", "Jhansi", "Jodhpur",
-  "Kakinada", "Kalaburagi", "Kannur", "Kanpur", "Karnal", "Kochi", "Kolhapur",
-  "Kollam", "Kota", "Kozhikode", "Kurnool", "Lucknow", "Ludhiana", "Madurai",
-  "Malappuram", "Mangaluru", "Mathura", "Meerut", "Moradabad", "Mysuru",
-  "Nagpur", "Nanded", "Nashik", "Nellore", "Noida", "Patna", "Prayagraj",
-  "Puducherry", "Raipur", "Rajahmundry", "Rajkot", "Ranchi", "Ratlam",
-  "Rourkela", "Salem", "Sangli", "Shimla", "Siliguri", "Solapur", "Srinagar",
-  "Surat", "Thiruvananthapuram", "Thrissur", "Tiruchirappalli", "Tirunelveli",
-  "Tiruppur", "Ujjain", "Vadodara", "Varanasi", "Vasai-Virar", "Vellore",
-  "Vijayawada", "Visakhapatnam", "Warangal",
-] as const;
+const TIER_2: readonly CityEntry[] = [
+  { name: "Agra", state: "Uttar Pradesh" },
+  { name: "Ajmer", state: "Rajasthan" },
+  { name: "Aligarh", state: "Uttar Pradesh" },
+  { name: "Amravati", state: "Maharashtra" },
+  { name: "Amritsar", state: "Punjab" },
+  { name: "Asansol", state: "West Bengal" },
+  { name: "Aurangabad", state: "Maharashtra" },
+  { name: "Bareilly", state: "Uttar Pradesh" },
+  { name: "Belagavi", state: "Karnataka" },
+  { name: "Bhavnagar", state: "Gujarat" },
+  { name: "Bhiwandi", state: "Maharashtra" },
+  { name: "Bhilai", state: "Chhattisgarh" },
+  { name: "Bhopal", state: "Madhya Pradesh" },
+  { name: "Bhubaneswar", state: "Odisha" },
+  { name: "Bikaner", state: "Rajasthan" },
+  { name: "Bilaspur", state: "Chhattisgarh" },
+  { name: "Bokaro Steel City", state: "Jharkhand" },
+  { name: "Chandigarh", state: "Chandigarh" },
+  { name: "Coimbatore", state: "Tamil Nadu" },
+  { name: "Cuttack", state: "Odisha" },
+  { name: "Dehradun", state: "Uttarakhand" },
+  { name: "Dhanbad", state: "Jharkhand" },
+  { name: "Durgapur", state: "West Bengal" },
+  { name: "Erode", state: "Tamil Nadu" },
+  { name: "Faridabad", state: "Haryana" },
+  { name: "Firozabad", state: "Uttar Pradesh" },
+  { name: "Ghaziabad", state: "Uttar Pradesh" },
+  { name: "Gorakhpur", state: "Uttar Pradesh" },
+  { name: "Guntur", state: "Andhra Pradesh" },
+  { name: "Gurugram", state: "Haryana" },
+  { name: "Guwahati", state: "Assam" },
+  { name: "Gwalior", state: "Madhya Pradesh" },
+  { name: "Hubballi-Dharwad", state: "Karnataka" },
+  { name: "Indore", state: "Madhya Pradesh" },
+  { name: "Jabalpur", state: "Madhya Pradesh" },
+  { name: "Jaipur", state: "Rajasthan" },
+  { name: "Jalandhar", state: "Punjab" },
+  { name: "Jammu", state: "Jammu and Kashmir" },
+  { name: "Jamnagar", state: "Gujarat" },
+  { name: "Jamshedpur", state: "Jharkhand" },
+  { name: "Jhansi", state: "Uttar Pradesh" },
+  { name: "Jodhpur", state: "Rajasthan" },
+  { name: "Kakinada", state: "Andhra Pradesh" },
+  { name: "Kalaburagi", state: "Karnataka" },
+  { name: "Kannur", state: "Kerala" },
+  { name: "Kanpur", state: "Uttar Pradesh" },
+  { name: "Karnal", state: "Haryana" },
+  { name: "Kochi", state: "Kerala" },
+  { name: "Kolhapur", state: "Maharashtra" },
+  { name: "Kollam", state: "Kerala" },
+  { name: "Kota", state: "Rajasthan" },
+  { name: "Kozhikode", state: "Kerala" },
+  { name: "Kurnool", state: "Andhra Pradesh" },
+  { name: "Lucknow", state: "Uttar Pradesh" },
+  { name: "Ludhiana", state: "Punjab" },
+  { name: "Madurai", state: "Tamil Nadu" },
+  { name: "Malappuram", state: "Kerala" },
+  { name: "Mangaluru", state: "Karnataka" },
+  { name: "Mathura", state: "Uttar Pradesh" },
+  { name: "Meerut", state: "Uttar Pradesh" },
+  { name: "Moradabad", state: "Uttar Pradesh" },
+  { name: "Mysuru", state: "Karnataka" },
+  { name: "Nagpur", state: "Maharashtra" },
+  { name: "Nanded", state: "Maharashtra" },
+  { name: "Nashik", state: "Maharashtra" },
+  { name: "Nellore", state: "Andhra Pradesh" },
+  { name: "Noida", state: "Uttar Pradesh" },
+  { name: "Patna", state: "Bihar" },
+  { name: "Prayagraj", state: "Uttar Pradesh" },
+  { name: "Puducherry", state: "Puducherry" },
+  { name: "Raipur", state: "Chhattisgarh" },
+  { name: "Rajahmundry", state: "Andhra Pradesh" },
+  { name: "Rajkot", state: "Gujarat" },
+  { name: "Ranchi", state: "Jharkhand" },
+  { name: "Ratlam", state: "Madhya Pradesh" },
+  { name: "Rourkela", state: "Odisha" },
+  { name: "Salem", state: "Tamil Nadu" },
+  { name: "Sangli", state: "Maharashtra" },
+  { name: "Shimla", state: "Himachal Pradesh" },
+  { name: "Siliguri", state: "West Bengal" },
+  { name: "Solapur", state: "Maharashtra" },
+  { name: "Srinagar", state: "Jammu and Kashmir" },
+  { name: "Surat", state: "Gujarat" },
+  { name: "Thiruvananthapuram", state: "Kerala" },
+  { name: "Thrissur", state: "Kerala" },
+  { name: "Tiruchirappalli", state: "Tamil Nadu" },
+  { name: "Tirunelveli", state: "Tamil Nadu" },
+  { name: "Tiruppur", state: "Tamil Nadu" },
+  { name: "Ujjain", state: "Madhya Pradesh" },
+  { name: "Vadodara", state: "Gujarat" },
+  { name: "Varanasi", state: "Uttar Pradesh" },
+  { name: "Vasai-Virar", state: "Maharashtra" },
+  { name: "Vellore", state: "Tamil Nadu" },
+  { name: "Vijayawada", state: "Andhra Pradesh" },
+  { name: "Visakhapatnam", state: "Andhra Pradesh" },
+  { name: "Warangal", state: "Telangana" },
+];
+
+/** The tier-1 city names, metros first — for the picker and the HRA grade. */
+export const TIER_1_CITIES: readonly string[] = TIER_1.map((city) => city.name);
+
+/** The tier-2 city names — for the picker and the HRA grade. */
+export const TIER_2_CITIES: readonly string[] = TIER_2.map((city) => city.name);
 
 /**
  * What the city picker offers, metros first.
@@ -53,6 +153,29 @@ export const TIER_2_CITIES = [
  * first keystroke narrows them.
  */
 export const CITIES: readonly string[] = [...TIER_1_CITIES, ...TIER_2_CITIES];
+
+/**
+ * City name → its state, for the form's autofill. Built from the same list the
+ * picker offers, so a city the datalist suggests always has an answer here —
+ * and a city typed in free-hand, not being one of these, correctly has none.
+ */
+export const CITY_STATE: Readonly<Record<string, string>> = Object.fromEntries(
+  [...TIER_1, ...TIER_2].map((city) => [city.name, city.state]),
+);
+
+/**
+ * The reverse of `CITY_STATE` — a state's listed cities, for the same autofill
+ * the other direction (client, 2026-08-18): State picked first narrows City's
+ * suggestions to the ones actually in it, rather than all 104. A state with no
+ * entry (one of ours that no listed city happens to sit in, or a free-typed
+ * one) leaves City offering everything, same as today.
+ */
+export const STATE_CITIES: Readonly<Record<string, readonly string[]>> = [...TIER_1, ...TIER_2].reduce<
+  Record<string, string[]>
+>((byState, city) => {
+  (byState[city.state] ??= []).push(city.name);
+  return byState;
+}, {});
 
 /** The 28 states and 8 union territories, as one list — a form asks for one answer. */
 export const INDIAN_STATES = [

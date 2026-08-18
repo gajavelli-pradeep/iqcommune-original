@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
 import { CheckboxField, ComboField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
-import { CITIES, INDIAN_STATES } from "@/constants/india";
+import { CITIES, CITY_STATE, INDIAN_STATES, STATE_CITIES } from "@/constants/india";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
 import { Modal } from "@/components/ui/Modal";
@@ -189,6 +189,24 @@ export function ApplyModal({
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
+  /**
+   * Narrows the State suggestion to the one a recognised City implies, rather
+   * than setting the field for them (client, 2026-08-18) — the answer still has
+   * to be theirs, this only saves the scroll through 36 options when the city
+   * already said which one. A city outside the tier list (free-typed) has no
+   * entry here, so State keeps offering all of them, same as before.
+   */
+  const stateOptions = useMemo(() => {
+    const matched = CITY_STATE[form.city.trim()];
+    return matched ? [matched] : INDIAN_STATES;
+  }, [form.city]);
+
+  /** The same narrowing, the other direction — State picked first narrows City. */
+  const cityOptions = useMemo(() => {
+    const matched = STATE_CITIES[form.state.trim()];
+    return matched ?? CITIES;
+  }, [form.state]);
+
   function close() {
     onClose();
     setTimeout(() => {
@@ -365,7 +383,7 @@ export function ApplyModal({
               // a practitioner outside the tier lists is exactly who this form
               // is trying to reach, and the chevron alone reads as "pick one".
               hint="Sessions are in-person — city and state help us match you to local requests. Not listed? Just type it in."
-              options={CITIES}
+              options={cityOptions}
               value={form.city}
               onChange={(value) => set("city", value)}
               error={errors.city}
@@ -373,7 +391,7 @@ export function ApplyModal({
             <ComboField
               label="State"
               placeholder="Maharashtra"
-              options={INDIAN_STATES}
+              options={stateOptions}
               value={form.state}
               onChange={(value) => set("state", value)}
               error={errors.state}
