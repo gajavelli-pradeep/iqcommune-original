@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { selectClass } from "@/components/ui/control";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
 import { ConsoleSearch } from "./ConsoleSearch";
 import { CacheAllTabs, type TabRead } from "./panels/CacheAllTabs";
@@ -563,50 +564,61 @@ export function ConsoleShell({
         </nav>
 
         <main className="min-w-0 flex-1">
-          {/* V7 .page-hdr — title, subtitle, and the Export action. */}
-          <div className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-5 sm:px-7">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-body text-ink">{current.title}</h1>
-              <p className="mt-px text-base text-ink-faint">{current.subtitle}</p>
-            </div>
-            {/* V7 .page-hdr-r — present only on the tabs that declare one. */}
-            {current.headerAction &&
-            (!current.headerAction.requires || can(role, current.headerAction.requires)) ? (
-              <div className="flex shrink-0 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => router.refresh()}
-                  className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-                >
-                  {current.headerAction.label}
-                </button>
+          {/* Client, 2026-08-18: the whole content area scrolls sideways
+              together — header, filters, and table — rather than the table
+              owning its own separate scrollbar under just itself. The
+              sidebar stays fixed because it is this region's sibling, not
+              its child; `bordered={false}` because a border and rounded
+              corners around a whole page read as a stray box, not as this
+              component's own chrome. `ConsoleTable`'s own `w-max` still does
+              the real work of giving this region something genuine to
+              overflow. */}
+          <ScrollRegion ariaLabel={`${current.title} content`} axis="x" bordered={false}>
+            {/* V7 .page-hdr — title, subtitle, and the Export action. */}
+            <div className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-5 sm:px-7">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-body text-ink">{current.title}</h1>
+                <p className="mt-px text-base text-ink-faint">{current.subtitle}</p>
               </div>
-            ) : null}
-          </div>
+              {/* V7 .page-hdr-r — present only on the tabs that declare one. */}
+              {current.headerAction &&
+              (!current.headerAction.requires || can(role, current.headerAction.requires)) ? (
+                <div className="flex shrink-0 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => router.refresh()}
+                    className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                  >
+                    {current.headerAction.label}
+                  </button>
+                </div>
+              ) : null}
+            </div>
 
-          <div className="p-4 sm:p-7">
-            {/* Panels arrive as server-rendered nodes, so they cannot be handed
-                the focus target as a prop from here — they were built before
-                this component ran. Context reaches them because they render
-                inside it.
+            <div className="p-4 sm:p-7">
+              {/* Panels arrive as server-rendered nodes, so they cannot be handed
+                  the focus target as a prop from here — they were built before
+                  this component ran. Context reaches them because they render
+                  inside it.
 
-                `key={current.id}` forces a remount on every tab switch. Every
-                simple-row tab renders through the same `CachedPanel` component
-                type now (see `loadPanels.tsx`) — without a key, React reconciles
-                tab B's props onto tab A's fiber instead of remounting, so tab
-                B's first render briefly runs with tab A's still-cached state
-                and can feed one tab's rows into another tab's panel. */}
-            <RowFocusContext.Provider
-              key={current.id}
-              value={focus?.tab === current.id ? focus : null}
-            >
-              {panels?.[current.id] ?? (
-                <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
-                  This panel is not built yet.
-                </p>
-              )}
-            </RowFocusContext.Provider>
-          </div>
+                  `key={current.id}` forces a remount on every tab switch. Every
+                  simple-row tab renders through the same `CachedPanel` component
+                  type now (see `loadPanels.tsx`) — without a key, React reconciles
+                  tab B's props onto tab A's fiber instead of remounting, so tab
+                  B's first render briefly runs with tab A's still-cached state
+                  and can feed one tab's rows into another tab's panel. */}
+              <RowFocusContext.Provider
+                key={current.id}
+                value={focus?.tab === current.id ? focus : null}
+              >
+                {panels?.[current.id] ?? (
+                  <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
+                    This panel is not built yet.
+                  </p>
+                )}
+              </RowFocusContext.Provider>
+            </div>
+          </ScrollRegion>
         </main>
       </div>
     </div>

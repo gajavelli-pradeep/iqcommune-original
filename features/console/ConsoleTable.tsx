@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import { FocusableRows } from "./FocusableRows";
-import { ScrollRegion } from "@/components/ui/ScrollRegion";
-
 import { ExpandableRows } from "./ExpandableRows";
 import { can, type Capability, type ConsoleRole } from "./roles";
 
@@ -89,85 +87,85 @@ export function ConsoleTable<Row>({
     `max-w-[30ch] box-content break-words px-4 py-3 align-top text-base text-ink ${column.align === "right" ? "text-right tabular-nums" : ""}`;
 
   return (
-    // Tables are the one place horizontal scroll is correct rather than a bug: a
-    // ten-column console table cannot reflow to 320px without losing columns.
-    // ScrollRegion makes that overflow keyboard-reachable (audit A11Y-3).
-    <ScrollRegion ariaLabel={caption} axis="x" className="bg-surface">
-      {/* `w-max`, not `w-full` and not the bare default (client, 2026-08-18,
-          confirmed with a real DevTools measurement — a cell measured
-          104.96px wide against a 30ch cap that should allow roughly 250-270px
-          at this font size): dropping `w-full` alone left the table at
-          `width: auto`, and `auto` on a table means shrink-to-fit-available-
-          space, not grow-to-natural-size. This table's absolute minimum
-          possible width — every column wrapped down to its narrowest single
-          word — was still smaller than the visible page, so the browser just
-          settled at the available space and never actually grew large enough
-          for any column to reach its own `max-w-[30ch]`; nothing overflowed,
-          so nothing forced real scrolling either. `w-max` is what forces the
-          table to always render at its natural, unsqueezed full size —
-          every column getting up to its own cap — handing whatever does not
-          fit on screen to the region's `overflow-x: auto` instead of
-          shrinking every column to make do. `min-w-[720px]` stays as the
-          floor for a table with too few columns to reach that on its own. */}
-      <table className="w-max min-w-[720px] border-collapse text-left">
-        <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr className="border-b border-border">
-            {visible.map((column) => (
-              <th
-                key={column.key}
-                scope="col"
-                style={column.width ? { width: column.width } : undefined}
-                // `whitespace-nowrap` (client, 2026-08-18): every header is
-                // short by design, and none should ever wrap — but the table's
-                // own auto layout sizes a column from both the header and its
-                // cells together, and `1ch` in the header's bold, uppercase,
-                // letter-spaced font is visually wider than `1ch` in a cell's
-                // plain one. A header well under 30 characters was still
-                // wrapping, because the column's width came from the CELL's
-                // narrower `ch` while the header needed more room than that
-                // budget gave it in its own, wider font. Keeping it on one
-                // line always is what a column heading is for; `cellClass`'s
-                // cap is for data values, never for the label above them.
-                className={`whitespace-nowrap px-4 py-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint ${
-                  column.align === "right" ? "text-right" : ""
-                }`}
-              >
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        {expand ? (
-          <ExpandableRows
-            colSpan={visible.length}
-            rows={rows.map((row) => ({
-              key: rowKey(row),
-              label: rowLabel?.(row) ?? rowKey(row),
-              cells: visible.map((column) => ({
-                key: column.key,
-                className: cellClass(column),
-                node: column.render(row),
-              })),
-              detail: expand(row),
-            }))}
-          />
-        ) : (
-          // Flat rows, but still findable: global search has to be able to
-          // point at a row here too, not just on the expandable tables.
-          <FocusableRows
-            rows={rows.map((row) => ({
-              key: rowKey(row),
-              cells: visible.map((column) => ({
-                key: column.key,
-                className: cellClass(column),
-                node: column.render(row),
-              })),
-            }))}
-          />
-        )}
-      </table>
-    </ScrollRegion>
+    // No `ScrollRegion` of its own (client, 2026-08-18): the whole console
+    // page now scrolls sideways together — see `ConsoleShell`'s own region,
+    // wrapping the page header alongside every panel's content — rather than
+    // each table owning a separate scrollbar under just itself. `w-max` still
+    // does the real work either way: it forces the table to its natural,
+    // unsqueezed full size — every column getting up to its own 30-character
+    // cap — so there is always something genuine for the ancestor region to
+    // actually overflow, wherever that ancestor now lives. Confirmed with a
+    // real DevTools measurement (a cell measured 104.96px wide against a 30ch
+    // cap that should allow roughly 250-270px): dropping `w-full` alone was
+    // not enough, since `width: auto` on a table means shrink-to-fit
+    // available space, not grow-to-natural-size, and this table's absolute
+    // minimum possible width — every column wrapped to its narrowest single
+    // word — was still smaller than the visible page, so nothing ever
+    // overflowed and nothing forced real scrolling. `min-w-[720px]` stays as
+    // the floor for a table with too few columns to reach that on its own.
+    // `bg-surface` here, not on an ancestor (client, 2026-08-18): it used to
+    // live on this table's own `ScrollRegion` wrapper; removing that wrapper
+    // for the whole-page horizontal scroll dropped the table's background
+    // along with it, since `ConsoleShell`'s outer region boxes the page
+    // header too and can't paint a color scoped to just the table.
+    <table className="w-max min-w-[720px] border-collapse bg-surface text-left">
+      <caption className="sr-only">{caption}</caption>
+      <thead>
+        <tr className="border-b border-border">
+          {visible.map((column) => (
+            <th
+              key={column.key}
+              scope="col"
+              style={column.width ? { width: column.width } : undefined}
+              // `whitespace-nowrap` (client, 2026-08-18): every header is
+              // short by design, and none should ever wrap — but the table's
+              // own auto layout sizes a column from both the header and its
+              // cells together, and `1ch` in the header's bold, uppercase,
+              // letter-spaced font is visually wider than `1ch` in a cell's
+              // plain one. A header well under 30 characters was still
+              // wrapping, because the column's width came from the CELL's
+              // narrower `ch` while the header needed more room than that
+              // budget gave it in its own, wider font. Keeping it on one
+              // line always is what a column heading is for; `cellClass`'s
+              // cap is for data values, never for the label above them.
+              className={`whitespace-nowrap px-4 py-3 text-2xs font-semibold uppercase tracking-caps text-ink-faint ${
+                column.align === "right" ? "text-right" : ""
+              }`}
+            >
+              {column.header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      {expand ? (
+        <ExpandableRows
+          colSpan={visible.length}
+          rows={rows.map((row) => ({
+            key: rowKey(row),
+            label: rowLabel?.(row) ?? rowKey(row),
+            cells: visible.map((column) => ({
+              key: column.key,
+              className: cellClass(column),
+              node: column.render(row),
+            })),
+            detail: expand(row),
+          }))}
+        />
+      ) : (
+        // Flat rows, but still findable: global search has to be able to
+        // point at a row here too, not just on the expandable tables.
+        <FocusableRows
+          rows={rows.map((row) => ({
+            key: rowKey(row),
+            cells: visible.map((column) => ({
+              key: column.key,
+              className: cellClass(column),
+              node: column.render(row),
+            })),
+          }))}
+        />
+      )}
+    </table>
   );
 }
 
