@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { controlClass } from "@/components/ui/control";
+import { controlClass, selectClass } from "@/components/ui/control";
 
 import {
   deleteSessionRequest,
@@ -28,6 +28,11 @@ import type { AssignablePractitioner, SessionRequestRow } from "@/services/conso
 
 const SEC_TITLE = "mb-3.5 text-2xs font-semibold uppercase tracking-caps text-ink-faint";
 const FIELD = controlClass({ tone: "inline", className: "min-w-[118px]" });
+// Separate from `FIELD` because it feeds two `<select>`s (client, 2026-08-18):
+// `controlClass` alone left the assignee and status dropdowns without the
+// hover-edge/answered-fill states every other console select has, since
+// those states are `selectClass`-only.
+const SELECT = selectClass({ tone: "inline", className: "min-w-[118px]" });
 const HINT = "mt-1 text-3xs text-ink-faint";
 
 function Kv({ label, value }: { label: string; value: React.ReactNode }) {
@@ -163,7 +168,7 @@ export function RequestDetail({
                 setAssignee(next);
                 save(() => updateSessionRequestTerms(row.id, { assignedPractitionerId: next || null }));
               }}
-              className={`${FIELD} mb-2.5 cursor-pointer`}
+              className={`${SELECT} mb-2.5`}
             >
               <option value="">— Not yet assigned —</option>
               {local.map((practitioner) => (
@@ -236,7 +241,7 @@ export function RequestDetail({
                 setStatus(next);
                 save(() => setSessionRequestStatus(row.id, next));
               }}
-              className={`${FIELD} cursor-pointer`}
+              className={SELECT}
             >
               {["New", "Matched", "Cancelled"].map((option) => (
                 <option key={option} value={option}>

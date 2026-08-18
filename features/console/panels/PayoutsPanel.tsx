@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { controlClass } from "@/components/ui/control";
+import { controlClass, selectClass } from "@/components/ui/control";
 
 import { setInvoiceReference, setPayoutStatus } from "../actions";
 import { ConsoleTable, PersonCell, type ColumnDef } from "../ConsoleTable";
@@ -21,6 +21,10 @@ import type { PayoutRow } from "@/services/console";
  */
 
 const FIELD = controlClass({ tone: "inline" });
+// Separate from `FIELD` (client, 2026-08-18): `controlClass` alone left the
+// Payment status dropdown without the hover-edge/answered-fill states every
+// other console select has, since those states are `selectClass`-only.
+const SELECT = selectClass({ tone: "inline" });
 
 /** The invoice reference cell — saved on blur, not on every keystroke. */
 function InvoiceReference({ row }: { row: PayoutRow }) {
@@ -99,7 +103,7 @@ function PayoutStatus({ row }: { row: PayoutRow }) {
             }
           });
         }}
-        className={`${FIELD} cursor-pointer`}
+        className={SELECT}
       >
         <option value="Pending">Pending</option>
         <option value="Paid">Paid</option>
