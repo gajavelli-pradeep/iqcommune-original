@@ -19,7 +19,6 @@ vi.mock("../actions", () => ({
   setSessionRequestStatus: vi.fn(async () => ({ ok: true })),
   deleteSessionRequest: vi.fn(async () => ({ ok: true })),
   sendRequestFollowUp: vi.fn(async () => ({ ok: true })),
-  sendRequestCancellation: vi.fn(async () => ({ ok: true })),
   composeDraft: vi.fn(async () => ({ to: "a@b.com", subject: "s", body: "b" })),
 }));
 
@@ -114,5 +113,24 @@ describe("matching a request offers only its own city", () => {
     show(request({ city: "Bengaluru" }), [practitioner("Sai Kumar", "Bengaluru")]);
 
     expect(screen.getByText(/based in Bengaluru/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * "Send cancellation message" removed from the request screen entirely
+ * (client, 2026-08-18) — cancelling is now Session Consent Part 2's job, once
+ * a session actually exists to cancel. Its hint text points there instead of
+ * naming a status this card no longer offers a cancel button for.
+ */
+describe("cancellation is not offered from this screen", () => {
+  it("has no send-cancellation control", () => {
+    show(request({}), []);
+    expect(screen.queryByRole("button", { name: /cancellation/i })).not.toBeInTheDocument();
+  });
+
+  it("points the status hint at Session Consent instead of describing a cancel action here", () => {
+    show(request({}), []);
+    expect(screen.getByText(/Cancellations are handled from Session Consent, Part 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/falls through/)).not.toBeInTheDocument();
   });
 });

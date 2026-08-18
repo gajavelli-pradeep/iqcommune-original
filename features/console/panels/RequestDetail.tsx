@@ -6,7 +6,6 @@ import { controlClass } from "@/components/ui/control";
 
 import {
   deleteSessionRequest,
-  sendRequestCancellation,
   sendRequestFollowUp,
   setSessionRequestStatus,
   updateSessionRequestTerms,
@@ -246,8 +245,8 @@ export function RequestDetail({
               ))}
             </select>
             <p className={`${HINT} mb-3`}>
-              Set to Matched once you’ve filled in the practitioner and payout on the left — that creates
-              the session. Set to Cancelled if the session falls through.
+              Set to Matched once you’ve filled in the practitioner and payout on the left. Cancellations
+              are handled from Session Consent, Part 2, once a session exists.
             </p>
 
             {error ? (
@@ -256,37 +255,28 @@ export function RequestDetail({
               </p>
             ) : null}
 
-            <div className="flex flex-col gap-1.5">
-              <RowAction
-                action={sendRequestFollowUp.bind(null, row.id)}
-                draft={{ kind: "request-follow-up", id: row.id }}
-                // V7's own label (line 1833). This read "Send follow-up to
-                // client", then "Send update to client" for a day, and is now
-                // back in step with the prototype — no departure left to track.
-                //
-                // The message stopped being a chase when the delivered
-                // console-messages document rewrote it: it reports that a
-                // practitioner is being aligned rather than asking for
-                // anything, which is what "status update" says and "follow-up"
-                // did not.
-                label="Send status update to client"
-                pendingMessage={`Sending an update to ${row.name}…`}
-                variant="dark"
-                icon={
-                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                }
-              />
-              <RowAction
-                action={sendRequestCancellation.bind(null, row.id)}
-                draft={{ kind: "request-cancellation", id: row.id }}
-                label="Send cancellation message"
-                pendingMessage={`Sending a cancellation to ${row.name}…`}
-                variant="ghost-block"
-              />
-            </div>
+            <RowAction
+              action={sendRequestFollowUp.bind(null, row.id)}
+              draft={{ kind: "request-follow-up", id: row.id }}
+              // V7's own label (line 1833). This read "Send follow-up to
+              // client", then "Send update to client" for a day, and is now
+              // back in step with the prototype — no departure left to track.
+              //
+              // The message stopped being a chase when the delivered
+              // console-messages document rewrote it: it reports that a
+              // practitioner is being aligned rather than asking for
+              // anything, which is what "status update" says and "follow-up"
+              // did not.
+              label="Send status update to client"
+              pendingMessage={`Sending an update to ${row.name}…`}
+              variant="dark"
+              icon={
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              }
+            />
 
             {row.status === "New" && mayPurge ? (
               <div className="mt-3.5 border-t border-dashed border-border-strong pt-3.5">
