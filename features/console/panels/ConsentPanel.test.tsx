@@ -561,13 +561,16 @@ describe("Venue, still pending from SPOC", () => {
     confirmationGenerated: false,
   };
 
-  it("reads as not specified, in the attention colour, when no venue is on file", async () => {
+  it("reads as not specified, in the placeholder grey, when no venue is on file", async () => {
+    // ink-faint (#6F7180) rather than attention — the client's own correction
+    // (2026-08-18): a venue still being arranged with the SPOC is not a
+    // warning, and attention's red-adjacent tone read as one.
     const user = userEvent.setup();
     render(<ConsentPanel rows={[]} role="global_admin" confirmable={[confirmable]} />);
     await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
 
     const value = screen.getByText("Not specified — pending from SPOC");
-    expect(value.className).toContain("text-attention");
+    expect(value.className).toContain("text-ink-faint");
   });
 
   it("reads normally, no different from any other field, once a venue is set", async () => {
@@ -582,7 +585,7 @@ describe("Venue, still pending from SPOC", () => {
     await user.selectOptions(screen.getByLabelText("Select confirmed session"), "a1");
 
     const value = screen.getByText("Kotak Securities, BKC");
-    expect(value.className).not.toContain("text-attention");
+    expect(value.className).not.toContain("text-ink-faint");
   });
 
   it("does not block Generate Confirmation on a missing venue", async () => {
