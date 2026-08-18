@@ -369,7 +369,17 @@ export function ConsoleShell({
                 id="viewing-as"
                 value={role}
                 onChange={(event) => router.push(roleHref(event.target.value))}
-                className={selectClass({ tone: "inline", size: "sm", className: "hidden w-auto sm:block" })}
+                // `sm:flex`, not `sm:block` (client, 2026-08-18): now that
+                // every tone carries `form-select`, the browser lays this
+                // select out internally as a flex row — the chosen label
+                // beside the arrow it draws via `::picker-icon`. `block`
+                // overrode that row with a plain block box, which is what
+                // dropped the arrow onto its own line under the label.
+                className={selectClass({
+                  tone: "inline",
+                  size: "sm",
+                  className: "hidden w-auto items-center sm:flex",
+                })}
               >
                 {CONSOLE_ROLES.map((value) => (
                   <option key={value} value={value}>
