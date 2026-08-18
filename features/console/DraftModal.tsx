@@ -118,6 +118,10 @@ export function DraftModal({
   }, [kind, id]);
 
   const chrome = DRAFT_CHROME[kind];
+  // Named once the draft has loaded and says who; `chrome.title` covers the
+  // brief window before that, and any kind with nothing to name.
+  const title =
+    draft?.recipientName && chrome.titleWithName ? chrome.titleWithName(draft.recipientName) : chrome.title;
   // A real second recipient must be as complete as the first before Send is
   // live — an empty subject sent silently would be a mail nobody meant to send.
   // Not required when there is nobody on file to notify: that tab carries only
@@ -181,7 +185,7 @@ export function DraftModal({
       open
       onClose={onClose}
       variant="console"
-      title={chrome.title}
+      title={title}
       description={draft ? `Send to ${draft.to}` : "Preparing the draft…"}
       footer={
         // The footer belongs to whichever tab is open. It used to be the email

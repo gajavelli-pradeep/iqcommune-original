@@ -2154,7 +2154,7 @@ async function assignmentDetails(id: string): Promise<{
  */
 async function requestorForSession(
   sessionId: string,
-): Promise<{ email: string; phone: string | null; firstName: string } | null> {
+): Promise<{ email: string; phone: string | null; firstName: string; fullName: string } | null> {
   const supabase = createAdminClient();
   const { data: session } = await supabase
     .from("sessions")
@@ -2166,7 +2166,7 @@ async function requestorForSession(
 
   const { data: request } = await supabase
     .from("session_requests")
-    .select("first_name, email, phone")
+    .select("first_name, last_name, email, phone")
     .eq("id", session.session_request_id as string)
     .is("deleted_at", null)
     .maybeSingle();
@@ -2175,6 +2175,9 @@ async function requestorForSession(
     email: request.email as string,
     phone: (request.phone as string | null) ?? null,
     firstName: request.first_name as string,
+    // The dialog title names the requester in full (client, 2026-08-18), the
+    // same name every other console list already shows for them.
+    fullName: `${request.first_name as string} ${request.last_name as string}`.trim(),
   };
 }
 
@@ -2217,6 +2220,8 @@ async function draftMessage(
   linkId?: string;
   /** A second, genuinely dispatched recipient — see `Draft.notify`. */
   notify?: { label: string; to: string | null; subject: string; body: string };
+  /** The requester's full name, for the dialog title — see `Draft.recipientName`. */
+  recipientName?: string;
 } | null> {
   const supabase = createAdminClient();
 
@@ -2410,6 +2415,7 @@ async function draftMessage(
 
     return {
       phone: requestor.phone,
+      recipientName: requestor.fullName,
       message: sessionCancelled(
         requestor.email,
         requestor.firstName,
@@ -2445,6 +2451,7 @@ async function draftMessage(
 
     return {
       phone: requestor.phone,
+      recipientName: requestor.fullName,
       message: sessionRematchNotice(requestor.email, requestor.firstName, details.module),
       whatsapp: whatsapp.sessionRematchNotice(requestor.firstName, details.module).body,
     };
@@ -2539,6 +2546,7 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
     phone: draft.phone ?? null,
     linkId: draft.linkId,
     notify: draft.notify,
+    recipientName: draft.recipientName,
   };
 }
 
