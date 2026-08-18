@@ -43,8 +43,17 @@ export const ScrollRegion = forwardRef<
     onReachEnd?: () => void;
     className?: string;
     children: ReactNode;
+    /**
+     * The visible border and rounded corners, on by default — right for a
+     * region that boxes one piece of content, like a table. Off for the one
+     * region that boxes an entire page's worth of content instead (client,
+     * 2026-08-18: the console's header block and table scrolling sideways
+     * together, not just the table) — a border and rounded corners around a
+     * whole page read as a stray box, not as this component's own chrome.
+     */
+    bordered?: boolean;
   }
->(function ScrollRegion({ ariaLabel, axis = "y", onReachEnd, className, children }, ref) {
+>(function ScrollRegion({ ariaLabel, axis = "y", onReachEnd, className, children, bordered = true }, ref) {
   const handleScroll = onReachEnd
     ? (event: UIEvent<HTMLDivElement>) => {
         const el = event.currentTarget;
@@ -77,7 +86,9 @@ export const ScrollRegion = forwardRef<
             // of reaching the page underneath it. Stating `auto` outright is
             // what actually guarantees the chain.
             "overflow-x-auto overscroll-x-contain overscroll-y-auto"
-      } relative rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
+      } relative ${
+        bordered ? "rounded-lg border border-border " : ""
+      }focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold${
         className ? ` ${className}` : ""
       }`}
     >
