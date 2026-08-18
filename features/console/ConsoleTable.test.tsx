@@ -101,6 +101,26 @@ describe("ConsoleTable", () => {
     expect(cell.className).toContain("px-4");
   });
 
+  it("forces the table to its natural full size instead of shrinking to fit the screen", () => {
+    // Client, 2026-08-18: confirmed with a real DevTools measurement — a cell
+    // measured 104.96px wide against a 30ch cap that should allow roughly
+    // 250-270px at this font size. `w-full` was the first suspect (pins the
+    // table to exactly the ScrollRegion's width) but dropping it to the bare
+    // default was not enough: `width: auto` on a table means shrink-to-fit
+    // available space, not grow-to-natural-size, and this table's absolute
+    // minimum width (every column wrapped to its narrowest word) was still
+    // smaller than the visible page — so it just settled there and never
+    // grew large enough for any column to reach its own cap. `w-max` is what
+    // forces the table to always render at its natural, unsqueezed size,
+    // handing the excess to the region's `overflow-x: auto` instead of
+    // shrinking every column to make do.
+    renderTable("user");
+    const table = screen.getByRole("table");
+    expect(table.className).not.toContain("w-full");
+    expect(table.className).toContain("w-max");
+    expect(table.className).toContain("min-w-[720px]");
+  });
+
   it("never wraps a header, even one longer than most data values", () => {
     // Client, 2026-08-18: "Download Signed Agreement" (26 characters, under
     // the 30ch cap) was still wrapping on the live site. The column's width
