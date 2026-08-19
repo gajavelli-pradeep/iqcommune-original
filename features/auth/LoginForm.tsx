@@ -8,6 +8,8 @@ import { TextField } from "@/components/ui/Field";
 import { FormError } from "@/components/ui/FormError";
 import { useFocusWhen } from "@/hooks/useFocusWhen";
 
+import { ForgotPasswordForm } from "./ForgotPasswordForm";
+
 /**
  * Console sign-in form (audit C5). Controlled fields drive a server action; on
  * success the action redirects (its thrown NEXT_REDIRECT navigates), so the only
@@ -18,7 +20,12 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [forgotPassword, setForgotPassword] = useState(false);
   const errorRef = useFocusWhen<HTMLParagraphElement>(Boolean(error));
+
+  if (forgotPassword) {
+    return <ForgotPasswordForm onBack={() => setForgotPassword(false)} />;
+  }
 
   return (
     <form
@@ -55,6 +62,14 @@ export function LoginForm() {
         autoComplete="current-password"
         placeholder="Your password"
       />
+
+      <button
+        type="button"
+        onClick={() => setForgotPassword(true)}
+        className="mb-4 -mt-2 block text-sm font-medium text-ink-muted underline underline-offset-2 hover:text-ink"
+      >
+        Forgot password?
+      </button>
 
       {error ? (
         <div ref={errorRef} tabIndex={-1} className="outline-none">
