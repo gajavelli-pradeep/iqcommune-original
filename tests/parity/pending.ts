@@ -98,6 +98,20 @@ export const BRAND_TAGLINE_CASING: PendingUnit = {
 export const LANDING_PENDING: PendingUnit[] = [
   BRAND_TAGLINE_CASING,
   {
+    unit: "Deviation · two of the gallery's four city badges, dropped on request",
+    reason:
+      "The client asked for the Bengaluru and Pune badges removed from the illustrative gallery " +
+      "placeholders (features/landing/sections/Gallery.tsx, slides 4 and 6) — reviewed and " +
+      "confirmed the `city` field only ever drew that one badge (GalleryCarousel.tsx), nothing " +
+      "else reads it. Mumbai and Delhi's spec lines (1548, 1591) still render — the badges kept " +
+      "and the city-form placeholders elsewhere both still say 'Mumbai'/'Delhi' — this is only " +
+      "the two whose one occurrence in the whole spec was the badge that is now gone. Matched by " +
+      "exact equality, not substring: `containing` would also swallow a future, unrelated mention " +
+      "of either city elsewhere on the page.",
+    kind: "deviation",
+    matches: (text) => text === "Bengaluru" || text === "Pune",
+  },
+  {
     unit: "Deviation · State is a pick-only select, not a free-text example",
     reason:
       "The client's 2026-08-19 change makes State a real <select>, restricted to every Indian " +
