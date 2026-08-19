@@ -37,10 +37,8 @@ import {
 import { nextReference } from "@/services/references";
 
 import {
-  maskLink,
   withLink,
   withReference,
-  PREVIEW_ID,
   REFERENCE_PLACEHOLDER,
   type Draft,
   type DraftKind,
@@ -1611,7 +1609,19 @@ export async function inviteTeamMember(
   const expiresAt = new Date(Date.now() + INVITE_TTL_HOURS * 3600_000).toISOString();
   const { data: invite, error } = await supabase
     .from("admin_invites")
-    .insert({ email: address, role: consoleRole, invited_by: actor ?? null, expires_at: expiresAt })
+    .insert({
+      // Created under the id the dialog showed a link to, so the link the
+      // admin read is the link that works — same reasoning as the agreement
+      // insert above. Shape-checked rather than trusted: it arrives from the
+      // client, and the only thing it may be is a uuid. Anything else falls
+      // back to the database's own default, which costs the preview's link
+      // and nothing else.
+      ...(isUuid(draft?.linkId) ? { id: draft!.linkId } : {}),
+      email: address,
+      role: consoleRole,
+      invited_by: actor ?? null,
+      expires_at: expiresAt,
+    })
     .select("id")
     .single();
   if (error) throw new Error(`invite failed: ${error.message}`);
@@ -2328,12 +2338,19 @@ async function draftMessage(
     const role = separator === -1 ? "admin" : id.slice(0, separator);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return null;
     const roleLabel = ROLE_WORD[role] ?? ROLE_WORD.admin;
-    const message = adminInvite(address, PREVIEW_ID, roleLabel);
+
+    // The link, real rather than masked (client, 2026-08-19 — matches the
+    // agreement draft's own approach, and its reasoning, exactly): a uuid is
+    // chosen here, not allocated, so an admin who opens this dialog and closes
+    // it again still leaves no trace. `linkId` travels back with the edit, and
+    // `inviteTeamMember` creates the invite row under this same id, so the
+    // link the admin read in the preview is the link that works.
+    const inviteId = randomUUID();
+    const message = adminInvite(address, inviteId, roleLabel);
     return {
-      message: { ...message, body: maskLink(message.body) },
-      // Masked for the same reason: the invite row, and its one-time link, are
-      // created by the send.
-      whatsapp: maskLink(whatsapp.adminInvite(PREVIEW_ID, roleLabel).body),
+      message,
+      whatsapp: whatsapp.adminInvite(inviteId, roleLabel).body,
+      linkId: inviteId,
     };
   }
 

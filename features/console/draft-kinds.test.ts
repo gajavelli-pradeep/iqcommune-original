@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { LINK_PLACEHOLDER, maskLink, withLink } from "./draft-kinds";
+import { LINK_PLACEHOLDER, withLink } from "./draft-kinds";
 
 /**
  * The agreement and the invite carry a one-time link to a row that does not
- * exist until the send. The draft therefore shows a placeholder and the real
- * link is put back on the way out.
- *
- * Both directions matter and fail in opposite ways: a mask that misses leaks a
- * live token into a preview that may be abandoned, and a substitution that
- * misses ships an email whose only purpose was to carry the link.
+ * exist until the send — both mint a real id in the dialog itself, so the
+ * link previewed is the link that goes out. `withLink` is what still matters
+ * to test: an admin can edit the body, so the real token has to land wherever
+ * the draft happened to put its own, not just where a placeholder would be.
  */
 
 const LIVE = "https://iqcommune.com/onboarding?t=eyJhbGciOiJIUzI1NiJ9.abc-123_XY";
@@ -22,38 +20,6 @@ const LIVE = "https://iqcommune.com/onboarding?t=eyJhbGciOiJIUzI1NiJ9.abc-123_XY
 const PREVIOUS = "https://iqcommune.com/onboarding?t=eyJhbGciOiJIUzI1NiJ9.zzz-999_QQ";
 
 const countOf = (haystack: string, needle: string) => haystack.split(needle).length - 1;
-
-describe("maskLink", () => {
-  it("takes the token out of a composed body", () => {
-    const body = `Hi Vikram,\n\nSign here:\n\n${LIVE}\n\n- Team iqcommune`;
-
-    const masked = maskLink(body);
-
-    expect(masked).not.toContain(LIVE);
-    expect(masked).not.toContain("?t=");
-    expect(masked).toContain(LINK_PLACEHOLDER);
-    // Only the URL goes; the copy around it is what the admin came to read.
-    expect(masked).toContain("Hi Vikram,");
-    expect(masked).toContain("- Team iqcommune");
-  });
-
-  it("leaves a body with no link alone", () => {
-    const body = "Hi Vikram,\n\nWelcome aboard.\n\n- Team iqcommune";
-    expect(maskLink(body)).toBe(body);
-  });
-
-  it("takes out every token, not just the first", () => {
-    // No template writes two links today, so this pins a guard rather than a
-    // fix. What it guards is a live token surviving into a preview, and that
-    // should not depend on a fact about the current templates.
-    const body = `Sign: ${LIVE}\n\nOr from your phone: ${PREVIOUS}`;
-
-    const masked = maskLink(body);
-
-    expect(masked).not.toContain("?t=");
-    expect(countOf(masked, LINK_PLACEHOLDER)).toBe(2);
-  });
-});
 
 describe("withLink", () => {
   it("puts the real link exactly where the placeholder sat", () => {
@@ -83,12 +49,6 @@ describe("withLink", () => {
 
     expect(sent).not.toContain(LINK_PLACEHOLDER);
     expect(sent.match(new RegExp(LIVE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))).toHaveLength(2);
-  });
-
-  it("round-trips: mask then restore returns the original body", () => {
-    const original = `Hi Vikram,\n\nSign here:\n\n${LIVE}\n\n- Team iqcommune`;
-
-    expect(withLink(maskLink(original), LIVE)).toBe(original);
   });
 
   it("replaces a link the draft already showed, rather than adding a second", () => {
