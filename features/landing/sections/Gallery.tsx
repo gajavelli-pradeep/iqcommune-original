@@ -36,12 +36,12 @@ import { listPublishedPhotos, type GalleryPhoto } from "@/services/gallery";
  */
 const PLACEHOLDERS: readonly GallerySlide[] = [
   { caption: "Deep in a foundations session" },
-  { caption: "Full house for equity investing", city: "Mumbai" },
+  { caption: "Full house for equity investing" },
   { caption: "Wrapping up on a high note" },
-  { caption: "Working through a retirement plan", city: "Bengaluru" },
+  { caption: "Working through a retirement plan" },
   { caption: "Building out a portfolio, live" },
-  { caption: "Great question from the back row", city: "Pune" },
-  { caption: "Foundations, session two", city: "Delhi" },
+  { caption: "Great question from the back row" },
+  { caption: "Foundations, session two" },
   { caption: "Finance, explained by someone still in it" },
   { caption: "Pan-India reach — metros to tier 2 cities" },
   { caption: "No funnel. No upsell. Just knowledge shared." },
