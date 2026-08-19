@@ -1,6 +1,7 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 /**
  * Shared sticky site header — used by all eight public pages.
@@ -30,6 +31,7 @@ export function SiteHeader({
   strapline = "Insight Quotient - Unleashed",
   compact = false,
   markSize,
+  homeHref = "/",
 }: {
   /**
    * Inner width. The public pages are 1100px, but each emailed page sets its
@@ -37,6 +39,12 @@ export function SiteHeader({
    * values across the five, which one shared default silently flattened.
    */
   width?: string;
+  /**
+   * Where the logo lockup goes — each page's own top, not always the main
+   * landing page. The practitioner page passes `/practitioners`; every other
+   * caller keeps the default.
+   */
+  homeHref?: string;
   /** One or two short lines identifying a sub-site, e.g. ["Practitioner", "Network"]. */
   badge?: readonly string[];
   /**
@@ -74,6 +82,20 @@ export function SiteHeader({
   const mark = markSize ?? (compact ? 34 : 38);
   // V7 pairs the smaller marks with an 8px radius and the 38px one with 9px.
   const markRadius = mark < 37 ? "rounded-lg" : "rounded-[9px]";
+
+  function scrollHome(event: MouseEvent<HTMLAnchorElement>) {
+    // A modified click (new tab, save-as, ...) or a different page entirely
+    // needs the browser's own handling — only a plain click on this page is
+    // ours to intercept.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
+    if (window.location.pathname !== homeHref) return;
+    event.preventDefault();
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
   return (
     <header className="sticky top-0 z-[var(--z-header)] border-b border-border bg-surface/95 px-8 backdrop-blur-[12px]">
       <div
@@ -88,10 +110,18 @@ export function SiteHeader({
               and the strapline to the live site — but both resolve to the same
               place from inside the app, and its strapline href is the
               `iqcommune.vercel.app` preview origin, which must not ship as an
-              external link from production. One link to `/` renders identically
-              and keeps a single accessible name for the whole lockup. */}
-          <Link
-            href="/"
+              external link from production. One link to this page's own home
+              renders identically and keeps a single accessible name for the
+              whole lockup.
+
+              `href` still points at `homeHref` — keyboard users, middle-click,
+              "open in new tab", and a JS failure all fall back to a normal
+              navigation. The click handler only intercepts the plain case, to
+              smooth-scroll back to the hero instead of the no-op a same-route
+              `next/link` navigation would otherwise be. */}
+          <a
+            href={homeHref}
+            onClick={scrollHome}
             className="flex shrink-0 items-center gap-2.5"
             aria-label="iqcommune — home"
           >
@@ -123,7 +153,7 @@ export function SiteHeader({
                 </span>
               ) : null}
             </span>
-          </Link>
+          </a>
 
           {badge && badgeStyle === "lockup" ? (
             <span className="hidden shrink-0 flex-col gap-0.5 border-l border-border-strong pl-3.5 sm:flex">
