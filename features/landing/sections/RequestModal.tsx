@@ -530,7 +530,7 @@ export function RequestModal({
               // that a dropdown cannot has to be said out loud. Only on City:
               // the state list is all 36 and complete, while the city list is
               // 104 of thousands and always will be.
-              hint="Not listed? Just type it in."
+              hint="we will keep adding more cities."
               options={cityOptions}
               value={form.city}
               onChange={(value) => set("city", value)}

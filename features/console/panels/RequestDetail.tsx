@@ -65,21 +65,28 @@ export function RequestDetail({
   /**
    * Only the practitioners who can actually take this request.
    *
-   * Sessions are delivered in person, so matching is done by city — a request
-   * for Bengaluru is offered practitioners based in Bengaluru and nobody else.
-   * Filtered here rather than in the query because the panel reads one list and
-   * hands the same array to every request, each with its own city.
+   * Matched by state, not city (client, 2026-08-19 — was city until now).
+   * Compared with case and padding stripped, same reasoning as the city match
+   * this replaces: no aliases, no guessing which two spellings mean one place.
    *
-   * Compared with case and padding stripped: practitioner cities were free text
-   * until the picker landed and still hold whatever was typed, so "bengaluru "
-   * and "Bengaluru" are one place. Nothing cleverer than that — no aliases, no
-   * "Bangalore" against "Bengaluru" — because a guess about which two names mean
-   * one city is how someone ends up matched to a session a flight away.
+   * Falls back to city when either side has no state recorded: `state` on a
+   * practitioner is null for any record older than migration 0017, and a
+   * request predating the state field carries the same gap. Neither side can
+   * be compared to a state it doesn't have, so falling back to the
+   * finer-grained field that both are more likely to carry is closer to the
+   * old behaviour than either matching nothing or matching everything.
+   *
+   * Filtered here rather than in the query because the panel reads one list
+   * and hands the same array to every request, each with its own state.
    */
   const local = useMemo(() => {
-    const wanted = row.city.trim().toLowerCase();
-    return practitioners.filter((practitioner) => practitioner.city.trim().toLowerCase() === wanted);
-  }, [practitioners, row.city]);
+    const wantedState = row.state?.trim().toLowerCase();
+    if (wantedState) {
+      return practitioners.filter((practitioner) => practitioner.state?.trim().toLowerCase() === wantedState);
+    }
+    const wantedCity = row.city.trim().toLowerCase();
+    return practitioners.filter((practitioner) => practitioner.city.trim().toLowerCase() === wantedCity);
+  }, [practitioners, row.city, row.state]);
 
   /**
    * Runs one change and surfaces whatever comes back.
@@ -157,7 +164,9 @@ export function RequestDetail({
 
             <label className="mb-[3px] block text-2xs text-ink-muted" htmlFor={`${row.id}-assignee`}>
               Practitioner who agreed
-              <span className="text-ink-faint"> — based in {row.city}</span>
+              {/* Names whichever field `local` actually matched on — state when
+                  the request has one, city when it falls back (see `local`). */}
+              <span className="text-ink-faint"> — based in {row.state ?? row.city}</span>
             </label>
             <select
               id={`${row.id}-assignee`}
@@ -186,7 +195,7 @@ export function RequestDetail({
               // admin would go looking for the fault instead of for a
               // practitioner.
               <p className="mb-2.5 -mt-1.5 text-3xs text-attention">
-                No empanelled practitioner is based in {row.city}.
+                No empanelled practitioner is based in {row.state ?? row.city}.
               </p>
             ) : null}
 

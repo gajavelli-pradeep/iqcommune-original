@@ -178,7 +178,7 @@ for (const form of FORMS) {
     const dialog = await openForm(page, form);
 
     for (const [label, expected] of [
-      [/^City/, ["Mumbai", "Bengaluru", "Coimbatore", "Siliguri"]],
+      [/^City/, ["Mumbai", "Bengaluru", "Coimbatore", "Varanasi"]],
       [/^State$/, ["Maharashtra", "Kerala", "Ladakh", "Puducherry"]],
     ] as const) {
       const field = dialog.getByLabel(label).first();
@@ -211,7 +211,7 @@ for (const form of FORMS) {
 
     // Being able to type it is no use if nothing says so — the chevron reads as
     // "pick one from here".
-    await expect(dialog.getByText(/Not listed\? Just type it in\./)).toBeVisible();
+    await expect(dialog.getByText(/we will keep adding more cities\./)).toBeVisible();
   });
 }
 

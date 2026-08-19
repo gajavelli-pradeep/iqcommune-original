@@ -343,6 +343,8 @@ export interface AssignablePractitioner {
    * its own city. Narrowing it here would mean one read per request.
    */
   city: string;
+  /** `null` for a practitioner whose record predates the state field (0017). */
+  state: string | null;
 }
 
 export async function listAssignablePractitioners(): Promise<AssignablePractitioner[]> {
@@ -350,7 +352,7 @@ export async function listAssignablePractitioners(): Promise<AssignablePractitio
   const [{ data, error }, ratings] = await Promise.all([
     supabase
       .from("practitioners")
-      .select("id, full_name, city")
+      .select("id, full_name, city, state")
       .eq("status", "Empanelled")
       .is("deleted_at", null)
       .order("full_name")
@@ -365,6 +367,7 @@ export async function listAssignablePractitioners(): Promise<AssignablePractitio
     name: row.full_name,
     averageRating: ratings.get(row.id) ?? null,
     city: row.city,
+    state: row.state,
   }));
 }
 
