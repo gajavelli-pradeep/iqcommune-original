@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { minCommitmentFor } from "@/constants/group-sizes";
 import type { SessionRequestInput } from "@/lib/schemas/session-request";
 
 /**
@@ -34,6 +35,7 @@ export async function createSessionRequest(
       organisation_name: input.organisationName || null,
       topic: input.topic,
       group_size: input.groupSize || null,
+      min_commitment: minCommitmentFor(input.groupSize),
       preferred_window: input.preferredWindow || null,
       venue_details: input.venueDetails || null,
       notes: input.notes || null,
