@@ -98,6 +98,19 @@ export const BRAND_TAGLINE_CASING: PendingUnit = {
 export const LANDING_PENDING: PendingUnit[] = [
   BRAND_TAGLINE_CASING,
   {
+    unit: "Deviation · State is a pick-only select, not a free-text example",
+    reason:
+      "The client's 2026-08-19 change makes State a real <select>, restricted to every Indian " +
+      "state (features/landing/sections/RequestModal.tsx, features/practitioners/" +
+      "ApplyModalBody.tsx). V7's 'e.g. Maharashtra' placeholder was written for a free-text " +
+      "field that no longer exists here — a select's placeholder is its empty option's label " +
+      "('Select your state'), not a typed example, so the literal V7 string cannot render. " +
+      "City stays a ComboField (searchable, still restricted to the 80 listed cities by the " +
+      "schema) — its 'e.g. Mumbai' placeholder is unchanged and needs no declaration.",
+    kind: "deviation",
+    matches: containing("e.g. Maharashtra"),
+  },
+  {
     unit: "State · submission receipts",
     reason:
       "Renders only after a successful POST, which this gate cannot perform. Proven to render " +

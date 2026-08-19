@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { checkboxClass, checkboxLabelClass, comboClass, controlClass, selectClass } from "./control";
 
@@ -224,6 +225,183 @@ export function ComboField({
           <option key={option} value={option} />
         ))}
       </datalist>
+    </Shell>
+  );
+}
+
+/**
+ * A pick-only field with the search a long list needs — City's answer to a
+ * real conflict (client, 2026-08-19): the client wanted both "only the 80
+ * listed cities" and "easy to search among 80", and no native control gives
+ * both at once. A `<select>` cannot live-filter as you type; a
+ * `ComboField`'s datalist can, but the panel it opens is drawn by the browser
+ * and cannot be styled at all — confirmed against the running app, not assumed.
+ *
+ * So this is the hand-built combobox `ComboField`'s own comment warns costs
+ * more than a datalist: keyboard navigation, the open/closed state, and the
+ * ARIA a datalist gives for free are all owed here instead. Built once City
+ * needed the two guarantees together, not as a first reach.
+ *
+ * The restriction lives in `onBlur`, not in what can be typed: leaving the
+ * field on text that matches no option clears it, exactly like a `<select>`
+ * that was never offered that option in the first place. A row is committed
+ * on click (`onMouseDown`, ahead of the blur it would otherwise race) or on
+ * Enter against the highlighted row.
+ *
+ * The list is portalled to `document.body`, positioned from the input's own
+ * measured rect, rather than sitting `absolute` inside this field (client,
+ * 2026-08-19): every form this renders in lives inside `Modal`, whose panel
+ * is `overflow-hidden` around a scrollable body — the exact shape that clips
+ * an absolutely positioned child the moment it would extend past either
+ * boundary. `Modal` itself escapes that the same way, with its own portal.
+ */
+export function SearchSelectField({
+  options,
+  ...props
+}: BaseProps & { options: readonly string[] }) {
+  const id = useId();
+  const listboxId = `${id}-listbox`;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  // Only the live search draft — the field's own value is the source of
+  // truth otherwise, so the input displays `query` while open and `value`
+  // once closed (below) rather than syncing the two through an effect.
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const displayed = open ? query : props.value;
+
+  // Tracks the input's on-screen position while the list is open — the
+  // modal body it lives in scrolls independently of the page, so this is not
+  // a one-time measurement. `true` on the listener registers it for every
+  // scrolling ancestor, not only `window`.
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const box = inputRef.current?.getBoundingClientRect();
+      if (box) setRect({ top: box.bottom + 4, left: box.left, width: box.width });
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return needle ? options.filter((option) => option.toLowerCase().includes(needle)) : options;
+  }, [options, query]);
+
+  function commit(value: string) {
+    props.onChange(value);
+    setOpen(false);
+  }
+
+  return (
+    <Shell id={id} label={props.label} hint={props.hint} error={props.error} optional={props.optional}>
+      <div className="relative">
+        <input
+          ref={inputRef}
+          id={id}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={open && filtered[activeIndex] ? `${id}-option-${activeIndex}` : undefined}
+          value={displayed}
+          placeholder={props.placeholder}
+          autoComplete="off"
+          aria-invalid={props.error ? true : undefined}
+          aria-describedby={props.error ? `${id}-error` : undefined}
+          data-filled={props.value ? "" : undefined}
+          onChange={(event) => {
+            const next = event.target.value;
+            setQuery(next);
+            setOpen(true);
+            setActiveIndex(0);
+            // Committed the instant it exactly matches, not only on blur or a
+            // click — typing the whole name is itself an answer, and this is
+            // what lets a value set programmatically (a form reset, a test)
+            // reach the field without also simulating a blur.
+            if (options.includes(next)) props.onChange(next);
+          }}
+          onFocus={() => {
+            setQuery(props.value);
+            setOpen(true);
+          }}
+          onBlur={() => {
+            // A row's own `onMouseDown` commits before this fires (see below),
+            // so reaching here means the typed text was never clicked. An
+            // exact match still counts as an answer — someone who typed the
+            // whole name correctly should not have to click it too — anything
+            // else is not a real one, exactly as a `<select>` could never
+            // have offered it.
+            commit(options.includes(query) ? query : "");
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setOpen(true);
+              setActiveIndex((index) => Math.min(index + 1, filtered.length - 1));
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActiveIndex((index) => Math.max(index - 1, 0));
+            } else if (event.key === "Enter" && open && filtered[activeIndex]) {
+              event.preventDefault();
+              commit(filtered[activeIndex]);
+            } else if (event.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+          className={comboClass({ invalid: Boolean(props.error) })}
+        />
+        {open && filtered.length > 0 && rect
+          ? createPortal(
+              <ul
+                id={listboxId}
+                role="listbox"
+                style={{ top: rect.top, left: rect.left, width: rect.width }}
+                // Fixed, not absolute — positioned against the viewport from
+                // the measured rect above, since the portal has escaped any
+                // ancestor that `left`/`top` could otherwise resolve against.
+                // `--z-toast` (400), not `--z-overlay` (300): this field lives
+                // inside the modal, which already claims `--z-overlay` for
+                // itself, and the list has to paint above that, not tie with
+                // it. Capped the same way the native picker is (globals.css):
+                // a long city name must wrap inside the panel, never widen it
+                // past the viewport.
+                className="fixed z-[var(--z-toast)] max-h-60 max-w-[min(22rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-border-strong bg-surface p-1 shadow-card-soft"
+              >
+                {filtered.map((option, index) => (
+                  <li
+                    key={option}
+                    id={`${id}-option-${index}`}
+                    role="option"
+                    aria-selected={option === props.value}
+                    // `onMouseDown`, not `onClick`: it fires before the input's
+                    // own `onBlur`, so the click commits the row instead of
+                    // racing the blur handler that would otherwise clear the
+                    // field first.
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      commit(option);
+                    }}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    className={`cursor-pointer rounded-md px-2.5 py-2 text-md ${
+                      index === activeIndex ? "bg-gold-light text-gold-dark" : "text-ink"
+                    }`}
+                  >
+                    {option}
+                  </li>
+                ))}
+              </ul>,
+              document.body,
+            )
+          : null}
+      </div>
     </Shell>
   );
 }

@@ -302,7 +302,9 @@ describe("session offline draft", () => {
       lastName: "L".repeat(80),
       email: `${"a".repeat(50)}@example.com`,
       city: "C".repeat(80),
-      state: "S".repeat(80),
+      // Not a real state, but this stress-test never reaches the schema — it
+      // only measures the mailto's length at the schema's own field maxima.
+      state: "S".repeat(80) as SessionRequestInput["state"],
       organisationName: "O".repeat(160),
       topic: "T".repeat(160),
       groupSize: "G".repeat(40),

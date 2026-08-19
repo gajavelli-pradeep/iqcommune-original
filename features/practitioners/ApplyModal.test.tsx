@@ -253,7 +253,9 @@ describe("ApplyModal", () => {
       jobTitle: "J".repeat(120),
       experience: "13 – 18 years",
       city: "C".repeat(80),
-      state: "S".repeat(80),
+      // Not a real state, but this stress-test never reaches the schema — it
+      // only measures the mailto's length at the schema's own field maxima.
+      state: "S".repeat(80) as ApplicationInput["state"],
       address: "A".repeat(400),
       tshirtSize: "3XL",
       modules: [...MODULES],
@@ -283,7 +285,9 @@ describe("ApplyModal", () => {
       jobTitle: "J".repeat(120),
       experience: "13 – 18 years",
       city: "C".repeat(80),
-      state: "S".repeat(80),
+      // Not a real state, but this stress-test never reaches the schema — it
+      // only measures the mailto's length at the schema's own field maxima.
+      state: "S".repeat(80) as ApplicationInput["state"],
       address: "A".repeat(400),
       tshirtSize: "3XL",
       modules: [...MODULES],

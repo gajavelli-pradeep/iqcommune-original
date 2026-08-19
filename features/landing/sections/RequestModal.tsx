@@ -3,7 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
-import { CheckboxField, ComboField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { CheckboxField, SearchSelectField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { CITIES, CITY_STATE, INDIAN_STATES, STATE_CITIES } from "@/constants/india";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
@@ -263,7 +263,9 @@ const EMPTY: SessionRequestInput = {
   email: "",
   phone: "",
   city: "",
-  state: "",
+  // "" is not a real state; the schema's `z.enum` correctly rejects it as
+  // unanswered — same cast trick used for the console's enum-typed fields.
+  state: "" as SessionRequestInput["state"],
   organisationName: "",
   topic: "",
   groupSize: "",
@@ -519,29 +521,31 @@ export function RequestModal({
             error={errors.phone}
           />
 
-          {/* Suggested, not restricted: sessions are meant to reach past the
-              cities a tier list remembers, so both of these accept a place that
-              is not on the list. */}
+          {/* City is pick-only AND searchable (client, 2026-08-19): 80 cities
+              is too many for tap/scroll alone, but no native control gives
+              both search and a styled list — a `<select>` cannot live-filter,
+              and a `ComboField`'s datalist panel cannot be styled at all.
+              `SearchSelectField` is the hand-built combobox that closes that
+              gap; the restriction is still enforced by the schema, exactly
+              as a rejected `<select>` value would be.
+              State stays a plain `<select>` — 36 options is short enough that
+              a dropdown alone is easy to scan. */}
           <div className="grid gap-x-4 sm:grid-cols-2">
-            <ComboField
+            <SearchSelectField
               label="City"
               placeholder="e.g. Mumbai"
-              // The chevron says "pick one", so the one thing this field can do
-              // that a dropdown cannot has to be said out loud. Only on City:
-              // the state list is all 36 and complete, while the city list is
-              // 104 of thousands and always will be.
-              hint="we will keep adding more cities."
+              hint="Can't find your city? Select a nearest city within your state & we will take it from there."
               options={cityOptions}
               value={form.city}
               onChange={(value) => set("city", value)}
               error={errors.city}
             />
-            <ComboField
+            <SelectField
               label="State"
-              placeholder="e.g. Maharashtra"
-              options={stateOptions}
+              placeholder="Select your state"
+              options={stateOptions.map((state) => ({ value: state, label: state }))}
               value={form.state}
-              onChange={(value) => set("state", value)}
+              onChange={(value) => set("state", value as SessionRequestInput["state"])}
               error={errors.state}
             />
           </div>

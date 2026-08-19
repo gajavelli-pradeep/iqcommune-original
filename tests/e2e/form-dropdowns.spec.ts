@@ -160,65 +160,95 @@ for (const form of FORMS) {
 }
 
 /**
- * City and State suggest without restricting, on every form that asks.
- *
- * The list is the easy half. The half worth guarding is that it stays a
- * suggestion: a practitioner in a town no tier list remembers must still be
- * able to type it, and the moment either field becomes a `<select>` — the
- * obvious "tidy-up" — that stops being true silently, because the form still
- * submits and only the unusual answer is lost.
- *
- * The suggestion panel itself is drawn by the browser and cannot be opened or
- * read from a test, so what is asserted is the contract behind it: the input is
- * wired to a datalist, the datalist holds the places, and an off-list answer
- * survives being typed.
+ * City is searchable AND pick-only (client, 2026-08-19): neither a native
+ * `<select>` (tried first) nor a `ComboField` datalist (tried second, but its
+ * suggestion panel cannot be styled at all) gave both, so it is now
+ * `SearchSelectField` — a hand-built combobox with its own styled listbox.
+ * The restriction is enforced by validation, not by what can be typed:
+ * anything not an exact match from the list is rejected on submit.
  */
 for (const form of FORMS) {
-  test(`${form.name}: city and state suggest without restricting`, async ({ page }) => {
+  test(`${form.name}: city opens a styled, searchable list of options`, async ({ page }) => {
     const dialog = await openForm(page, form);
+    const field = dialog.getByRole("combobox", { name: /^City/ });
+    await field.scrollIntoViewIfNeeded();
+    await field.click();
 
-    for (const [label, expected] of [
-      [/^City/, ["Mumbai", "Bengaluru", "Coimbatore", "Varanasi"]],
-      [/^State$/, ["Maharashtra", "Kerala", "Ladakh", "Puducherry"]],
-    ] as const) {
-      const field = dialog.getByLabel(label).first();
-      await field.scrollIntoViewIfNeeded();
-
-      // A text input, not a select — the whole point is that it takes anything.
-      expect(await field.evaluate((el) => el.tagName), `${label} is an input`).toBe("INPUT");
-
-      const listed = await field.evaluate((el: HTMLInputElement) => {
-        const list = el.list;
-        return list ? [...list.options].map((option) => option.value) : null;
-      });
-      expect(listed, `${label} is wired to a datalist`).not.toBeNull();
-      for (const place of expected) {
-        expect(listed, `${label} offers ${place}`).toContain(place);
-      }
-
-      // The tail: somewhere no tier list carries, typed by hand and kept.
-      await field.fill("Kodaikanal");
-      expect(await field.inputValue(), `${label} keeps an off-list answer`).toBe("Kodaikanal");
-
-      // …and it is treated as a real answer, not tolerated as a stray one.
-      const offList = await field.evaluate((el: HTMLInputElement) => ({
-        inList: [...(el.list?.options ?? [])].some((option) => option.value === el.value),
-        filled: el.hasAttribute("data-filled"),
-      }));
-      expect(offList.inList, "the check is only meaningful off-list").toBe(false);
-      expect(offList.filled, `${label} treats an off-list answer as answered`).toBe(true);
+    const listbox = dialog.getByRole("listbox");
+    await expect(listbox).toBeVisible();
+    for (const city of ["Mumbai", "Bengaluru", "Coimbatore", "Varanasi"]) {
+      await expect(listbox.getByRole("option", { name: city, exact: true })).toBeVisible();
     }
 
-    // Being able to type it is no use if nothing says so — the chevron reads as
-    // "pick one from here".
-    await expect(dialog.getByText(/we will keep adding more cities\./)).toBeVisible();
+    // Typing filters the list down, rather than just widening what a plain
+    // datalist would have suggested.
+    await field.fill("Coim");
+    await expect(listbox.getByRole("option", { name: "Coimbatore" })).toBeVisible();
+    await expect(listbox.getByRole("option", { name: "Mumbai" })).not.toBeVisible();
+
+    await listbox.getByRole("option", { name: "Coimbatore" }).click();
+    await expect(field).toHaveValue("Coimbatore");
+
+    // Says what to do about a town the list forgot.
+    await expect(dialog.getByText(/Select a nearest city within your state/)).toBeVisible();
+  });
+
+  test(`${form.name}: a city not on the list is cleared, not silently kept`, async ({ page }) => {
+    // The restriction lives in the field itself now, not only in the
+    // schema — leaving unmatched text in the box would look like a real,
+    // held answer right up until submit rejected it.
+    const dialog = await openForm(page, form);
+    const field = dialog.getByRole("combobox", { name: /^City/ });
+
+    await field.fill("Kodaikanal");
+    await field.blur();
+    await expect(field).toHaveValue("");
+
+    await dialog.locator('button[type="submit"]').last().click();
+    await expect(dialog.getByText(/Select a city from the list/)).toBeVisible();
   });
 }
 
 /**
- * A rejected city or state looks rejected, and keeps looking rejected.
+ * State is pick-only too (client, 2026-08-19 — same change as City above, on
+ * the same request). A real `<select>`, restricted to every Indian state: no
+ * off-list value can reach the form at all.
+ */
+for (const form of FORMS) {
+  test(`${form.name}: state is a real select, restricted to the list`, async ({ page }) => {
+    const dialog = await openForm(page, form);
+    const field = dialog.getByLabel(/^State$/).first();
+    await field.scrollIntoViewIfNeeded();
+
+    expect(await field.evaluate((el) => el.tagName), "State is a select").toBe("SELECT");
+
+    const options = await field.evaluate((el: HTMLSelectElement) =>
+      [...el.options].map((option) => option.value),
+    );
+    for (const place of ["Maharashtra", "Kerala", "Ladakh", "Puducherry"]) {
+      expect(options, `State offers ${place}`).toContain(place);
+    }
+
+    await field.selectOption("Maharashtra");
+    expect(await field.inputValue(), "State holds the picked value").toBe("Maharashtra");
+  });
+
+  test(`${form.name}: an unpicked state is rejected, not silently allowed through`, async ({ page }) => {
+    const dialog = await openForm(page, form);
+    await dialog.locator('button[type="submit"]').last().click();
+
+    await expect(dialog.getByText(/Select a state from the list/)).toBeVisible();
+  });
+}
+
+/**
+ * A rejected field looks rejected, and keeps looking rejected.
  *
- * Every other state in this file paints the control gold, and the error rules
+ * First name, not City or State: both became real `<select>`s (client,
+ * 2026-08-19) and can no longer receive a stray space at all — this failure
+ * mode only exists for a free-text field, which First name still is.
+ *
+ * Every other field in this file paints the control gold, and the error rules
  * are the weakest selectors in the recipe — so the error is the one treatment
  * that can be quietly outranked. Two ways it was:
  *
@@ -231,7 +261,7 @@ for (const form of FORMS) {
  * the recipe, since the classes are all present and correct.
  */
 for (const form of FORMS) {
-  test(`${form.name}: a rejected city or state looks rejected`, async ({ page }) => {
+  test(`${form.name}: a rejected field looks rejected`, async ({ page }) => {
     const dialog = await openForm(page, form);
     const pause = () => page.waitForTimeout(300);
 
@@ -248,31 +278,31 @@ for (const form of FORMS) {
       return { red: resolve("--color-red"), redLight: resolve("--color-red-light") };
     });
 
-    const city = dialog.getByLabel(/^City/).first();
+    const firstName = dialog.getByLabel(/^First name/).first();
     // A single space: truthy, so the field reads as filled, and `.trim().min(1)`
     // rejects it. Exactly where "answered" and "wrong" collide.
-    await city.fill(" ");
+    await firstName.fill(" ");
     await dialog.locator('button[type="submit"]').last().click();
-    await expect(dialog.getByText(/City is required/)).toBeVisible();
+    await expect(dialog.getByText(/First name is required/)).toBeVisible();
 
-    await city.scrollIntoViewIfNeeded();
-    const rejected = await style(city);
+    await firstName.scrollIntoViewIfNeeded();
+    const rejected = await style(firstName);
     expect(rejected.border, "a rejected field takes the error edge").toBe(red);
     expect(rejected.background, "…and the error fill, not the plain one").toBe(redLight);
 
     // The two states that used to erase it.
-    await city.hover();
+    await firstName.hover();
     await pause();
-    expect((await style(city)).border, "hovering a rejected field does not gild it").toBe(red);
+    expect((await style(firstName)).border, "hovering a rejected field does not gild it").toBe(red);
 
-    await city.focus();
+    await firstName.focus();
     await pause();
-    expect((await style(city)).border, "focusing it keeps the error edge").toBe(red);
+    expect((await style(firstName)).border, "focusing it keeps the error edge").toBe(red);
 
     // The message is tied to the control, not just sitting near it.
-    const describedBy = await city.getAttribute("aria-describedby");
+    const describedBy = await firstName.getAttribute("aria-describedby");
     expect(describedBy, "the error is announced, not only coloured").toBeTruthy();
-    await expect(page.locator(`#${describedBy}`)).toHaveText(/City is required/);
+    await expect(page.locator(`#${describedBy}`)).toHaveText(/First name is required/);
   });
 }
 

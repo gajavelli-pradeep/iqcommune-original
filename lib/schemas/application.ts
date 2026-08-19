@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CITIES, INDIAN_STATES } from "@/constants/india";
 import { MODULES } from "@/constants/modules";
 
 /** Practitioner empanelment application — shared by the modal and its route. */
@@ -26,8 +27,13 @@ export const applicationSchema = z.object({
   phone: required("Phone number").regex(/^[\d+\-()\s]{7,20}$/, "Enter a valid phone number"),
   jobTitle: required("Current job title").max(120),
   experience: z.enum(EXPERIENCE_BANDS, { message: "Select your years of experience" }),
-  city: required("City").max(80),
-  state: required("State").max(80),
+  // Client, 2026-08-19: pick-only from the 80 listed cities/every state.
+  // Re-checked here, not just in the UI — a `<select>` only stops what the
+  // browser renders; the API is a POST anyone can call directly.
+  city: z.string().refine((value) => (CITIES as readonly string[]).includes(value), {
+    message: "Select a city from the list",
+  }),
+  state: z.enum(INDIAN_STATES, { message: "Select a state from the list" }),
   address: required("Communication address").max(400),
   tshirtSize: z.enum(TSHIRT_SIZES, { message: "Select a t-shirt size" }),
   modules: z.array(z.enum(MODULES)).min(1, "Choose at least one module"),
