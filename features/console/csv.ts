@@ -11,11 +11,15 @@
  * untrusted input that reaches this file unvalidated. Excel/Sheets treat a
  * cell starting with =, +, -, or @ as a formula, so `=cmd|'/c calc'!A1` typed
  * into a notes field becomes code execution the moment an admin opens the
- * export. A leading apostrophe forces text interpretation in both, and is
- * itself untouched by RFC 4180 quoting, so it has to be applied first.
+ * export. Tab and carriage return are in the same OWASP-documented trigger
+ * set — different spreadsheet parsers disagree on which of the six actually
+ * fire, so all six are neutralised rather than only the two that happen to
+ * be visible ASCII. A leading apostrophe forces text interpretation in both
+ * Excel and Sheets, and is itself untouched by RFC 4180 quoting, so it has
+ * to be applied first.
  */
 function escapeCsvValue(value: string): string {
-  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   if (/[",\n]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
   return safe;
 }
