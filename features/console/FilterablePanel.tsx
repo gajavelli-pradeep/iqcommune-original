@@ -1,9 +1,15 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
 import { ConsoleTable, type ColumnDef } from "./ConsoleTable";
+import { usePublishExport } from "./ExportContext";
 import { PeriodFilter, matchesPeriod, yearsIn } from "./PeriodFilter";
 import { useRowFocus } from "./RowFocusContext";
 import type { ConsoleRole } from "./roles";
+
+export interface CsvColumn<Row> {
+  header: string;
+  value: (row: Row) => string;
+}
 /**
  * A console panel with the V7 toolbar above the table: a clickable pending
  * stat-card, a status filter-pill row, and an optional period (month/year)
@@ -34,6 +40,8 @@ export function FilterablePanel<Row>({
   periodLabel = "Applied in:",
   expand,
   rowLabel,
+  csvFilename,
+  csvColumns,
 }: {
   rows: readonly Row[];
   columns: ReadonlyArray<ColumnDef<Row>>;
@@ -53,6 +61,14 @@ export function FilterablePanel<Row>({
   expand?: (row: Row) => ReactNode;
   /** Names a row for the expand control's screen-reader text. */
   rowLabel?: (row: Row) => string;
+  /** Base filename for the header's Export button, e.g. "practitioners.csv".
+   *  Both this and `csvColumns` must be given for Export to appear active —
+   *  a tab that supplies neither leaves the header's button with nothing to
+   *  export. */
+  csvFilename?: string;
+  /** Plain-text columns for CSV — independent of `columns`, whose `render`
+   *  returns JSX (avatars, pills, buttons) that has no plain-text form. */
+  csvColumns?: ReadonlyArray<CsvColumn<Row>>;
 }) {
   const [status, setStatus] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
@@ -97,6 +113,21 @@ export function FilterablePanel<Row>({
         return true;
       }),
     [rows, pendingOnly, status, month, year, statusOf, isPending, periodOf],
+  );
+  // Exports whatever is currently on screen, not the tab's full row set —
+  // the whole point of publishing after `filtered` rather than after `rows`.
+  usePublishExport(
+    useMemo(
+      () =>
+        csvFilename && csvColumns
+          ? {
+              filename: csvFilename,
+              headers: csvColumns.map((column) => column.header),
+              rows: filtered.map((row) => csvColumns.map((column) => column.value(row))),
+            }
+          : null,
+      [csvFilename, csvColumns, filtered],
+    ),
   );
   // V7 draws these small; the coarse-pointer minimums are added without
   // changing the drawn size on a mouse. `min-w-11` catches the short labels

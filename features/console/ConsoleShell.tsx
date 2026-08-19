@@ -8,6 +8,8 @@ import { selectClass } from "@/components/ui/control";
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
 import { ConsoleSearch } from "./ConsoleSearch";
+import { downloadCsv } from "./csv";
+import { ExportProvider, type ExportPayload } from "./ExportContext";
 import { CacheAllTabs, type TabRead } from "./panels/CacheAllTabs";
 import { RowFocusContext } from "./RowFocusContext";
 import { CONSOLE_ROLES, can, tabsFor, type ConsoleRole } from "./roles";
@@ -264,6 +266,18 @@ export function ConsoleShell({
   }, {});
 
   const current = tabs.find((tab) => tab.id === active) ?? tabs[0];
+
+  /** The current tab's exportable rows, published by whichever `FilterablePanel`
+   *  is mounted — `null` for a tab with no Export button, or before its panel's
+   *  first render lands. Keyed to `current.id` so a stale export from the
+   *  previous tab can never survive the switch even for a frame. */
+  const [exportData, setExportDataRaw] = useState<ExportPayload | null>(null);
+  const [exportTab, setExportTab] = useState(current.id);
+  const setExport = (payload: ExportPayload | null) => {
+    setExportTab(current.id);
+    setExportDataRaw(payload);
+  };
+  const currentExport = exportTab === current.id ? exportData : null;
 
   // The notification bell's target. V7's bell is a `showToast('3 notifications
   // pending')` placeholder; a bell that lights up and goes nowhere is worse
@@ -618,8 +632,12 @@ export function ConsoleShell({
                 <div className="flex shrink-0 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => router.refresh()}
-                    className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                    disabled={!currentExport}
+                    onClick={() =>
+                      currentExport &&
+                      downloadCsv(currentExport.filename, currentExport.headers, currentExport.rows)
+                    }
+                    className="rounded-full border border-border-strong px-4 py-1.5 text-base text-ink-muted transition-colors hover:border-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {current.headerAction.label}
                   </button>
@@ -643,11 +661,13 @@ export function ConsoleShell({
                 key={current.id}
                 value={focus?.tab === current.id ? focus : null}
               >
-                {panels?.[current.id] ?? (
-                  <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
-                    This panel is not built yet.
-                  </p>
-                )}
+                <ExportProvider setExport={setExport}>
+                  {panels?.[current.id] ?? (
+                    <p className="rounded-lg border border-border bg-surface px-6 py-8 text-center text-base text-ink-muted">
+                      This panel is not built yet.
+                    </p>
+                  )}
+                </ExportProvider>
               </RowFocusContext.Provider>
             </div>
           </ScrollRegion>
