@@ -75,6 +75,15 @@ const supabaseHostname = (() => {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Dev-only (Next's own logging.md): without this, every Server Action
+  // prints its full arguments to the terminal — practitioner emails, the
+  // signed onboarding link's token, a status update's whole request body.
+  // None of that is this app's own logging (see `lib/logger.ts`, which never
+  // takes raw PII); it's Next's built-in call trace, and this is the one
+  // documented switch for it.
+  logging: {
+    serverFunctions: false,
+  },
   images: {
     remotePatterns: [
       {
