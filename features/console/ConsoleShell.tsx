@@ -31,6 +31,20 @@ const SHORT_ROLE: Record<ConsoleRole, string> = {
   global_admin: "Global Admin",
 };
 
+/**
+ * First letters of the first two words — "Lekkala Ganesh" → "LG" — the same
+ * convention `PersonCell`/`PractitionersPanel` already use for a name-bearing
+ * avatar elsewhere in the console.
+ */
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 /** Sidebar icon per tab id (V7 `.sb-item svg`). */
 const TAB_ICONS: Record<string, ReactNode> = {
   practitioners: (
@@ -102,6 +116,7 @@ export function ConsoleShell({
   role,
   actualRole,
   email,
+  name = null,
   panels,
   counts,
   search = [],
@@ -110,6 +125,13 @@ export function ConsoleShell({
 }: {
   role: ConsoleRole;
   email: string;
+  /**
+   * The signed-in account's name, for the header's initials — `null` for any
+   * account created before the invite flow started collecting one. Falls
+   * back to the email's own first two characters (see the DP below), same as
+   * every such account has always shown.
+   */
+  name?: string | null;
   /**
    * The signed-in role, when it differs from the one being rendered — a Global
    * Admin previewing a narrower console. Only they get the switch.
@@ -416,7 +438,7 @@ export function ConsoleShell({
             aria-hidden
             className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-ink text-xs font-semibold text-surface"
           >
-            {email.slice(0, 2).toUpperCase()}
+            {name ? initials(name) : email.slice(0, 2).toUpperCase()}
           </span>
         </div>
       </header>

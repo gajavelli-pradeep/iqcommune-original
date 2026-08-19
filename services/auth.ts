@@ -26,6 +26,7 @@ export async function createInvitedAccount(
   email: string,
   password: string,
   role: ConsoleRole,
+  fullName: string,
 ): Promise<CreatedAccount> {
   const supabase = createAdminClient();
 
@@ -36,6 +37,12 @@ export async function createInvitedAccount(
     // would strand the account behind a link nobody sent.
     email_confirm: true,
     app_metadata: { role },
+    // `user_metadata`, not `app_metadata` (client, 2026-08-19): a name is the
+    // account's own to hold, unlike the role above — it changes nothing about
+    // what the account can do. `listTeam()` (services/console.ts) already
+    // reads `user_metadata.full_name` for the Team & Access table; this is
+    // what starts giving it something other than the email's local-part.
+    user_metadata: { full_name: fullName },
   });
 
   if (error) {
