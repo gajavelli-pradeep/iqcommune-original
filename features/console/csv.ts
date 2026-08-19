@@ -5,10 +5,19 @@
  * a comma, quote, or newline), and an embedded quote doubles. Column headers
  * are quoted by the same rule — a header can carry a comma too ("City, State"
  * would otherwise misparse in Excel).
+ *
+ * Formula-injection guard: several of these columns are free text a
+ * requester or practitioner typed themselves (notes, organisation, venue) —
+ * untrusted input that reaches this file unvalidated. Excel/Sheets treat a
+ * cell starting with =, +, -, or @ as a formula, so `=cmd|'/c calc'!A1` typed
+ * into a notes field becomes code execution the moment an admin opens the
+ * export. A leading apostrophe forces text interpretation in both, and is
+ * itself untouched by RFC 4180 quoting, so it has to be applied first.
  */
 function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
+  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  if (/[",\n]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
+  return safe;
 }
 
 export function toCsv(headers: readonly string[], rows: ReadonlyArray<readonly string[]>): string {
