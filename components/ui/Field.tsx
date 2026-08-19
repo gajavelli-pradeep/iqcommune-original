@@ -297,6 +297,13 @@ export function SearchSelectField({
 
   function commit(value: string) {
     props.onChange(value);
+    // Kept in step with the committed value (client, 2026-08-19): `onBlur`
+    // firing after a click-commit — a real cross-browser inconsistency even
+    // with the `preventDefault()` guard below — re-checked a `query` this
+    // never updated, saw it match nothing, and wiped the selection that had
+    // just been made. Now that blur re-check lands on the same value that was
+    // just committed and is a harmless no-op instead.
+    setQuery(value);
     setOpen(false);
   }
 
