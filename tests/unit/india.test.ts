@@ -6,7 +6,7 @@ import { CITIES, CITY_STATE, INDIAN_STATES, STATE_CITIES, TIER_1_CITIES, TIER_2_
  * `CITY_STATE`/`STATE_CITIES` back the form's autofill (client, 2026-08-18) —
  * every city needs a real, correctly-spelled state, or the field it narrows
  * either shows nothing or silently offers the wrong answer. Hand-entered data
- * for 104 cities is exactly where a typo hides; these exist to catch one.
+ * for 80 cities is exactly where a typo hides; these exist to catch one.
  */
 
 describe("city/state data", () => {
