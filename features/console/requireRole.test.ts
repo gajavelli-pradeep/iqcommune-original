@@ -29,9 +29,9 @@ import { redirect } from "next/navigation";
 
 import { BackendUnavailableError, getConsoleSession, requireRole } from "./requireRole";
 
-function userResult(role: string | undefined, email = "a@example.com") {
+function userResult(role: string | undefined, email = "a@example.com", fullName?: string) {
   return {
-    data: { user: { app_metadata: { role }, email } },
+    data: { user: { app_metadata: { role }, email, user_metadata: { full_name: fullName } } },
     error: null,
   };
 }
@@ -47,8 +47,19 @@ describe("requireRole", () => {
     await expect(requireRole("admin")).resolves.toEqual({
       role: "admin",
       email: "a@example.com",
+      name: null,
     });
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("reads the account's name from user_metadata when one is on file", async () => {
+    getUser.mockResolvedValue(userResult("admin", "a@example.com", "Lekkala Ganesh"));
+
+    await expect(requireRole("admin")).resolves.toEqual({
+      role: "admin",
+      email: "a@example.com",
+      name: "Lekkala Ganesh",
+    });
   });
 
   it("redirects to /login when getUser resolves with an error", async () => {
@@ -99,6 +110,7 @@ describe("getConsoleSession", () => {
     await expect(getConsoleSession()).resolves.toEqual({
       role: "global_admin",
       email: "a@example.com",
+      name: null,
     });
   });
 

@@ -31,11 +31,38 @@ describe("AccountSetupForm", () => {
     expect(screen.queryByLabelText(/Role/)).not.toBeInTheDocument();
   });
 
+  /** Fills the two name fields — every password test needs these to pass first. */
+  async function fillName(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText("First name"), "Priya");
+    await user.type(screen.getByLabelText("Last name"), "Sharma");
+  }
+
+  it("rejects a missing first name", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupForm invite={INVITE} token="test-token" />);
+
+    await user.type(screen.getByLabelText("Last name"), "Sharma");
+    await user.click(screen.getByRole("button", { name: "Activate account" }));
+
+    expect(screen.getByText("First name is required.")).toBeInTheDocument();
+  });
+
+  it("rejects a missing last name", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupForm invite={INVITE} token="test-token" />);
+
+    await user.type(screen.getByLabelText("First name"), "Priya");
+    await user.click(screen.getByRole("button", { name: "Activate account" }));
+
+    expect(screen.getByText("Last name is required.")).toBeInTheDocument();
+  });
+
   it("rejects a password under eight characters", async () => {
     const user = userEvent.setup();
     mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
     render(<AccountSetupForm invite={INVITE} token="test-token" />);
 
+    await fillName(user);
     await user.type(screen.getByLabelText("Create a password"), "short");
     await user.type(screen.getByLabelText("Confirm password"), "short");
     await user.click(screen.getByRole("button", { name: "Activate account" }));
@@ -48,6 +75,7 @@ describe("AccountSetupForm", () => {
     mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
     render(<AccountSetupForm invite={INVITE} token="test-token" />);
 
+    await fillName(user);
     await user.type(screen.getByLabelText("Create a password"), "a-long-enough-password");
     await user.type(screen.getByLabelText("Confirm password"), "a-different-password");
     await user.click(screen.getByRole("button", { name: "Activate account" }));
@@ -62,6 +90,7 @@ describe("AccountSetupForm", () => {
     mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z" }, error: null });
     render(<AccountSetupForm invite={INVITE} token="test-token" />);
 
+    await fillName(user);
     const create = screen.getByLabelText("Create a password");
     const confirm = screen.getByLabelText("Confirm password");
 
@@ -85,14 +114,24 @@ describe("AccountSetupForm", () => {
 
   it("confirms activation once both passwords agree", async () => {
     const user = userEvent.setup();
-    mockFetch(201, { data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" }, error: null });
+    const fetchMock = mockFetch(201, {
+      data: { at: "2026-07-21T18:41:43.000Z", submittedAt: "2026-07-21T18:41:43.000Z" },
+      error: null,
+    });
     render(<AccountSetupForm invite={INVITE} token="test-token" />);
 
+    await fillName(user);
     await user.type(screen.getByLabelText("Create a password"), "a-long-enough-password");
     await user.type(screen.getByLabelText("Confirm password"), "a-long-enough-password");
     await user.click(screen.getByRole("button", { name: "Activate account" }));
 
     expect(screen.getByRole("heading", { name: "Account activated" })).toBeInTheDocument();
+    // The name typed in is what actually reached the request — not just a
+    // field that gated submission and was then dropped on the floor.
+    const [, options] = fetchMock.mock.calls[0];
+    const body = JSON.parse(options.body as string);
+    expect(body.firstName).toBe("Priya");
+    expect(body.lastName).toBe("Sharma");
   });
 
   it("masks both password fields", () => {

@@ -16,9 +16,9 @@ export const metadata: Metadata = {
  *  error-boundaries rule (rightly) flags JSX constructed inside a try block,
  *  since a component's own render errors would not be caught by it anyway. */
 async function loadAdminConsole() {
-  const { role, email } = await requireRole("admin");
+  const { role, email, name } = await requireRole("admin");
   const { panels, counts, search, failedTabs, tabReads } = await loadConsolePanels(role);
-  return { role, email, panels, counts, search, failedTabs, tabReads };
+  return { role, email, name, panels, counts, search, failedTabs, tabReads };
 }
 
 export default async function AdminConsole() {

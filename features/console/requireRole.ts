@@ -54,6 +54,11 @@ async function getVerifiedUser(supabase: Awaited<ReturnType<typeof createServerS
 export async function requireRole(allowed: ConsoleRole): Promise<{
   role: ConsoleRole;
   email: string;
+  // `user_metadata`, unlike the role above, is safe to read here (client,
+  // 2026-08-19): it's cosmetic, not a permission — the header's initials, not
+  // what the account can do. `null` for any account created before this
+  // shipped, or by a path that never set it.
+  name: string | null;
 }> {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await getVerifiedUser(supabase);
@@ -67,11 +72,19 @@ export async function requireRole(allowed: ConsoleRole): Promise<{
   // shown a downgraded console it might mistake for the whole picture.
   if (role !== allowed) redirect(ROLE_ROUTES[role]);
 
-  return { role, email: data.user.email ?? "" };
+  return {
+    role,
+    email: data.user.email ?? "",
+    name: (data.user.user_metadata?.full_name as string | undefined) ?? null,
+  };
 }
 
 /** The signed-in console session, or a redirect to /login. Role-agnostic. */
-export async function getConsoleSession(): Promise<{ role: ConsoleRole; email: string }> {
+export async function getConsoleSession(): Promise<{
+  role: ConsoleRole;
+  email: string;
+  name: string | null;
+}> {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await getVerifiedUser(supabase);
 
@@ -79,7 +92,11 @@ export async function getConsoleSession(): Promise<{ role: ConsoleRole; email: s
   const role = toConsoleRole(data.user.app_metadata?.role);
   if (!role) redirect("/login");
 
-  return { role, email: data.user.email ?? "" };
+  return {
+    role,
+    email: data.user.email ?? "",
+    name: (data.user.user_metadata?.full_name as string | undefined) ?? null,
+  };
 }
 
 /**

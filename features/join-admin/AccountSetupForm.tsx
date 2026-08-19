@@ -28,11 +28,16 @@ export type { AdminInvite };
 const MINIMUM_LENGTH = 8;
 
 /** Keyed by the field at fault, so each message renders against its own box. */
-type FormErrors = Partial<Record<"password" | "confirmation", string>>;
+type FormErrors = Partial<Record<"firstName" | "lastName" | "password" | "confirmation", string>>;
 
 export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token: string }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  // First and last name (client, 2026-08-19): unlike email and role, these are
+  // not on the invite — nobody types a colleague's name when inviting them, so
+  // the person accepting is the one who supplies it, same as the password.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   // Client-side password validation; `submitError` is the network/route path,
   // now shared (audit H8).
   const [errors, setErrors] = useState<FormErrors>({});
@@ -87,6 +92,12 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
             setErrors(next);
             focusFirstError(formRef.current);
           };
+          if (!firstName.trim()) {
+            return fail({ firstName: "First name is required." });
+          }
+          if (!lastName.trim()) {
+            return fail({ lastName: "Last name is required." });
+          }
           if (password.length < MINIMUM_LENGTH) {
             return fail({ password: `Password must be at least ${MINIMUM_LENGTH} characters.` });
           }
@@ -94,10 +105,35 @@ export function AccountSetupForm({ invite, token }: { invite: AdminInvite; token
             return fail({ confirmation: "Passwords don't match — check and try again." });
           }
           setErrors({});
-          const receipt = await submit("/api/invites", { password });
+          const receipt = await submit("/api/invites", {
+            password,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          });
           if (receipt) setActivated(true);
         }}
       >
+        {/* Full-width and stacked, per the client's reference (client,
+            2026-08-19), sitting right below the read-only Email/Role grid
+            above. Unlike Email and Role, these are real inputs: the invite
+            only ever carried an address, so the person accepting is who
+            supplies a name. */}
+        <TextField
+          label="First name"
+          placeholder="e.g. Priya"
+          autoComplete="given-name"
+          value={firstName}
+          onChange={setFirstName}
+          error={errors.firstName}
+        />
+        <TextField
+          label="Last name"
+          placeholder="e.g. Sharma"
+          autoComplete="family-name"
+          value={lastName}
+          onChange={setLastName}
+          error={errors.lastName}
+        />
         <TextField
           type="password"
           label="Create a password"

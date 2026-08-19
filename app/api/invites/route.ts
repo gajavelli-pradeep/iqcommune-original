@@ -23,6 +23,11 @@ const bodySchema = z.object({
   // privileged admin accounts — a product/policy change that needs client
   // sign-off, tracked in flaws.md, not applied unilaterally against the clone.
   password: z.string().min(8, "Password must be at least 8 characters."),
+  // Not on the invite — nobody types a colleague's name when inviting them,
+  // so the person accepting supplies it, same as the password (client,
+  // 2026-08-19).
+  firstName: z.string().trim().min(1, "First name is required."),
+  lastName: z.string().trim().min(1, "Last name is required."),
 });
 
 export async function POST(request: Request) {
@@ -70,7 +75,8 @@ export async function POST(request: Request) {
     // made, the invite stays open and a retry hits the duplicate-email guard,
     // which is a conflict the person can understand. The other order would burn
     // the invite and leave them with no account and no way back.
-    const account = await createInvitedAccount(invite.email, parsed.data.password, role);
+    const fullName = `${parsed.data.firstName} ${parsed.data.lastName}`.trim();
+    const account = await createInvitedAccount(invite.email, parsed.data.password, role, fullName);
     const receipt = await consumeInvite(token.payload.id);
     log.info(traceId, "invited account created", { userId: account.userId, role: invite.role });
     log.info(traceId, "invite recorded", { id: token.payload.id });
