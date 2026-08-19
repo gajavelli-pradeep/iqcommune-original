@@ -11,9 +11,12 @@
  * with. The write still happens on Send, exactly as it did.
  *
  * Two of them embed a one-time link to a row that does not exist until that
- * write: the agreement and the console invite. Their preview shows the link
- * masked (see `LINK_PLACEHOLDER`) and the real one is put back in its place
- * when the message is sent.
+ * write: the agreement and the console invite. Both mint a real id in the
+ * dialog rather than waiting for the send (client, 2026-08-19 — the invite
+ * used to show `LINK_PLACEHOLDER` instead; the agreement never did), so the
+ * link the admin reads in the preview is the link that works — nothing is
+ * written by opening or closing the dialog, only the id is settled early. The
+ * write still happens on Send, exactly as it did.
  */
 export type DraftKind =
   | "request-follow-up"
@@ -50,13 +53,6 @@ export const LINK_PLACEHOLDER = "[a secure one-time link is inserted here when y
 export const REFERENCE_PLACEHOLDER = "[reference assigned when you send]";
 
 /**
- * Stands in for the row the send is about to create, purely so the template can
- * render a body worth previewing. Never reaches an inbox — `maskLink` strips
- * the URL it produces, and the send mints the real one against the real id.
- */
-export const PREVIEW_ID = "00000000-0000-4000-8000-000000000000";
-
-/**
  * The shape of a tokenised link, wherever one appears in a body.
  *
  * Matched by shape rather than by equality: `buildLink` mints a fresh token on
@@ -64,18 +60,6 @@ export const PREVIEW_ID = "00000000-0000-4000-8000-000000000000";
  * call would hand back to compare against.
  */
 const TOKENISED_LINK = /https?:\/\/\S+\?t=\S+/g;
-
-/**
- * Any tokenised URL the template produced, swapped for the placeholder.
- *
- * Every one of them, not merely the first. No template writes two links today,
- * so this is a guard rather than a fix — but the failure it guards against is a
- * live token surviving into a preview, and "the templates only have one" is a
- * fact about today that this function should not be relying on.
- */
-export function maskLink(body: string): string {
-  return body.replace(TOKENISED_LINK, LINK_PLACEHOLDER);
-}
 
 /**
  * The real link, put where the body is expecting one.
