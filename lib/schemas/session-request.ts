@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CITIES, INDIAN_STATES } from "@/constants/india";
+
 /**
  * One schema, used by the modal and by the route that receives it — DoD check 6.
  *
@@ -27,8 +29,13 @@ export const sessionRequestSchema = z.object({
   // Deliberately permissive: Indian numbers arrive with +91, spaces and dashes,
   // and rejecting a real customer to enforce a format is the worse error.
   phone: required("Phone number").regex(/^[\d+\-()\s]{7,20}$/, "Enter a valid phone number"),
-  city: required("City").max(80),
-  state: required("State").max(80),
+  // Client, 2026-08-19: pick-only from the 80 listed cities/every state.
+  // Re-checked here, not just in the UI — a `<select>` only stops what the
+  // browser renders; the API is a POST anyone can call directly.
+  city: z.string().refine((value) => (CITIES as readonly string[]).includes(value), {
+    message: "Select a city from the list",
+  }),
+  state: z.enum(INDIAN_STATES, { message: "Select a state from the list" }),
   organisationName: z.string().trim().max(160).optional(),
   topic: required("Topic of interest"),
   groupSize: z.string().trim().max(40).optional(),

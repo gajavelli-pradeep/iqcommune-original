@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { EmailTypoHint } from "@/components/ui/EmailTypoHint";
-import { CheckboxField, ComboField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
+import { CheckboxField, SearchSelectField, SelectField, TextField, TextareaField } from "@/components/ui/Field";
 import { CITIES, CITY_STATE, INDIAN_STATES, STATE_CITIES } from "@/constants/india";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
@@ -39,7 +39,9 @@ const EMPTY: ApplicationInput = {
   // below — the schema's `z.enum` correctly rejects "" as unanswered.
   experience: "" as ApplicationInput["experience"],
   city: "",
-  state: "",
+  // Same cast trick as `experience` above: "" is not a real state, and the
+  // schema's `z.enum` correctly rejects it as unanswered.
+  state: "" as ApplicationInput["state"],
   address: "",
   tshirtSize: "" as ApplicationInput["tshirtSize"],
   modules: [],
@@ -372,28 +374,31 @@ export function ApplyModal({
             error={errors.experience}
           />
 
-          {/* Suggested, not restricted: a practitioner in a town on nobody's
-              tier list is exactly who this network wants to reach, so both of
-              these accept a place that is not on the list. */}
+          {/* City is pick-only AND searchable (client, 2026-08-19): 80 cities
+              is too many for tap/scroll alone, but no native control gives
+              both search and a styled list — a `<select>` cannot live-filter,
+              and a `ComboField`'s datalist panel cannot be styled at all.
+              `SearchSelectField` is the hand-built combobox that closes that
+              gap; the restriction is still enforced by the schema, exactly
+              as a rejected `<select>` value would be.
+              State stays a plain `<select>` — 36 options is short enough that
+              a dropdown alone is easy to scan. */}
           <div className="grid gap-x-4 sm:grid-cols-2">
-            <ComboField
+            <SearchSelectField
               label="City you're based in"
               placeholder="Mumbai"
-              // The second sentence carries the same weight as the first here:
-              // a practitioner outside the tier lists is exactly who this form
-              // is trying to reach, and the chevron alone reads as "pick one".
-              hint="Sessions are in-person — city and state help us match you to local requests. we will keep adding more cities."
+              hint="Sessions are in-person — city and state help us match you to local requests. Can't find your city? Select a nearest city within your state & we will take it from there."
               options={cityOptions}
               value={form.city}
               onChange={(value) => set("city", value)}
               error={errors.city}
             />
-            <ComboField
+            <SelectField
               label="State"
-              placeholder="Maharashtra"
-              options={stateOptions}
+              placeholder="Select your state"
+              options={stateOptions.map((state) => ({ value: state, label: state }))}
               value={form.state}
-              onChange={(value) => set("state", value)}
+              onChange={(value) => set("state", value as ApplicationInput["state"])}
               error={errors.state}
             />
           </div>
