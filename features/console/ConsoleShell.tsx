@@ -9,6 +9,7 @@ import { ScrollRegion } from "@/components/ui/ScrollRegion";
 
 import { ConsoleSearch } from "./ConsoleSearch";
 import { CacheAllTabs, type TabRead } from "./panels/CacheAllTabs";
+import { ProfileMenu } from "./ProfileMenu";
 import { RowFocusContext } from "./RowFocusContext";
 import { CONSOLE_ROLES, can, tabsFor, type ConsoleRole } from "./roles";
 import type { RowFocus, SearchHit } from "./search";
@@ -30,20 +31,6 @@ const SHORT_ROLE: Record<ConsoleRole, string> = {
   admin: "Admin",
   global_admin: "Global Admin",
 };
-
-/**
- * First letters of the first two words — "Lekkala Ganesh" → "LG" — the same
- * convention `PersonCell`/`PractitionersPanel` already use for a name-bearing
- * avatar elsewhere in the console.
- */
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 /** Sidebar icon per tab id (V7 `.sb-item svg`). */
 const TAB_ICONS: Record<string, ReactNode> = {
@@ -434,12 +421,7 @@ export function ConsoleShell({
               <span aria-hidden className="absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full border-[1.5px] border-surface bg-gold" />
             ) : null}
           </button>
-          <span
-            aria-hidden
-            className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-ink text-xs font-semibold text-surface"
-          >
-            {name ? initials(name) : email.slice(0, 2).toUpperCase()}
-          </span>
+          <ProfileMenu name={name} email={email} />
         </div>
       </header>
 

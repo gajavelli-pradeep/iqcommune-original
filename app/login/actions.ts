@@ -51,3 +51,29 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export interface ActionResult {
+  error?: string;
+}
+
+/**
+ * Sets a new password. Reached two ways: a signed-in admin going straight to
+ * `/reset-password` from the profile menu (there's already a session, no
+ * email needed), or someone who followed a "Forgot password?" recovery link
+ * through `/auth/confirm`, which establishes the same kind of session. Either
+ * way, no session means this reports the link as expired rather than leaking
+ * why.
+ */
+export async function updatePassword(password: string): Promise<ActionResult> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "This reset link has expired or was already used." };
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  return {};
+}
