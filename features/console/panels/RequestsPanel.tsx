@@ -1,7 +1,7 @@
 "use client";
 
 import { type ColumnDef } from "../ConsoleTable";
-import { FilterablePanel } from "../FilterablePanel";
+import { FilterablePanel, type CsvColumn } from "../FilterablePanel";
 import { REQUEST_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
 import { RequestDetail } from "./RequestDetail";
@@ -99,6 +99,30 @@ const COLUMNS: ReadonlyArray<ColumnDef<SessionRequestRow>> = [
   },
 ];
 
+/** Plain-text columns for the header's CSV export — independent of `COLUMNS`,
+ *  whose `render` returns JSX (status pills, the assignment sub-line) with no
+ *  plain-text form. Includes email, phone, venue and notes: not on screen,
+ *  but exactly what a follow-up call needs and the table has no room for. */
+const CSV_COLUMNS: ReadonlyArray<CsvColumn<SessionRequestRow>> = [
+  { header: "Requester", value: (row) => row.name },
+  { header: "Organisation", value: (row) => row.organisation ?? "" },
+  { header: "Email", value: (row) => row.email },
+  { header: "Phone", value: (row) => row.phone },
+  { header: "Topic", value: (row) => row.topic },
+  { header: "Audience type", value: (row) => row.audience },
+  { header: "City", value: (row) => row.city },
+  { header: "State", value: (row) => row.state ?? "" },
+  { header: "Group size", value: (row) => row.groupSize ?? "" },
+  { header: "Min. commitment", value: (row) => (row.minCommitment ? String(row.minCommitment) : "") },
+  { header: "Preferred dates", value: (row) => row.preferredDates ?? "" },
+  { header: "Venue", value: (row) => row.venue ?? "" },
+  { header: "Notes", value: (row) => row.notes ?? "" },
+  { header: "Received", value: (row) => row.receivedOn },
+  { header: "Status", value: (row) => row.status },
+  { header: "Assigned to", value: (row) => row.assignedTo ?? "" },
+  { header: "Session reference", value: (row) => row.sessionReference ?? "" },
+];
+
 export function RequestsPanel({
   rows,
   role,
@@ -123,6 +147,8 @@ export function RequestsPanel({
       periodOf={(row) => row.receivedOn}
       periodLabel="Received in:"
       expand={(row) => <RequestDetail row={row} role={role} practitioners={practitioners} />}
+      csvFilename="session-requests.csv"
+      csvColumns={CSV_COLUMNS}
     />
   );
 }

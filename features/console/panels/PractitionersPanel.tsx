@@ -1,7 +1,7 @@
 "use client";
 
 import { type ColumnDef } from "../ConsoleTable";
-import { FilterablePanel, type StatusOption } from "../FilterablePanel";
+import { FilterablePanel, type CsvColumn, type StatusOption } from "../FilterablePanel";
 import { PRACTITIONER_STATUS, StatusPill } from "../StatusPill";
 import type { ConsoleRole } from "../roles";
 import { PractitionerProfile } from "./PractitionerProfile";
@@ -91,6 +91,31 @@ const COLUMNS: ReadonlyArray<ColumnDef<PractitionerRow>> = [
   },
 ];
 
+/** Plain-text columns for the header's CSV export — independent of `COLUMNS`,
+ *  whose `render` returns JSX (avatars, status pills) with no plain-text form.
+ *  Matches every field the row carries, table columns and detail-card-only
+ *  fields (address, T-shirt size, experience, reference, rating, notes)
+ *  alike — an export that drops what only the expanded card shows isn't a
+ *  full export. */
+const CSV_COLUMNS: ReadonlyArray<CsvColumn<PractitionerRow>> = [
+  { header: "Name", value: (row) => row.name },
+  { header: "Role", value: (row) => row.role },
+  { header: "Organisation", value: (row) => row.organisation ?? "" },
+  { header: "Module", value: (row) => row.module },
+  { header: "City", value: (row) => row.city },
+  { header: "State", value: (row) => row.state ?? "" },
+  { header: "Communication address", value: (row) => row.address ?? "" },
+  { header: "T-shirt size", value: (row) => row.tshirtSize ?? "" },
+  { header: "Experience", value: (row) => row.experience ?? "" },
+  { header: "Email", value: (row) => row.email },
+  { header: "Phone", value: (row) => row.phone ?? "" },
+  { header: "Applied on", value: (row) => row.appliedOn },
+  { header: "Reference", value: (row) => row.reference ?? "" },
+  { header: "Average rating", value: (row) => (row.averageRating !== null ? String(row.averageRating) : "") },
+  { header: "Status", value: (row) => row.status },
+  { header: "Notes", value: (row) => row.notes ?? "" },
+];
+
 /** The pipeline stages shown as filter pills (V7 `.filter-bar`). */
 const STATUSES: readonly StatusOption[] = [
   { value: "Applied", label: "Applied" },
@@ -126,6 +151,8 @@ export function PractitionersPanel({
       periodOf={(row) => row.appliedOn}
       periodLabel="Applied in:"
       expand={(row) => <PractitionerProfile row={row} role={role} />}
+      csvFilename="practitioners.csv"
+      csvColumns={CSV_COLUMNS}
     />
   );
 }
