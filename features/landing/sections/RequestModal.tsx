@@ -7,6 +7,7 @@ import { CheckboxField, SearchSelectField, SelectField, TextField, TextareaField
 import { CITIES, CITY_STATE, INDIAN_STATES, STATE_CITIES } from "@/constants/india";
 import { focusFirstError } from "@/components/ui/focus-first-error";
 import { FormError } from "@/components/ui/FormError";
+import { GROUP_SIZES } from "@/constants/group-sizes";
 import { Modal } from "@/components/ui/Modal";
 import { suggestEmailDomain } from "@/lib/email/suggest-domain";
 import { MODULES } from "@/constants/modules";
@@ -59,12 +60,6 @@ const TOPIC_OPTIONS = [
   ...BUNDLES,
   { value: "Not sure — help me choose", label: "Not sure — help me choose" },
 ];
-
-const GROUP_SIZES = [
-  { value: "5-8", label: "5 – 8 people", minimum: 5 },
-  { value: "9-15", label: "9 – 15 people", minimum: 9 },
-  { value: "16-25", label: "16 – 25 people", minimum: 16 },
-] as const;
 
 /** Everything that varies by audience, in one table instead of six branches. */
 const AUDIENCE_RULES: Record<
