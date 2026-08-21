@@ -30,8 +30,8 @@ import type { EmailMessage } from "./send";
  * organisation — "the iqcommune practitioner network", "your empanelment with
  * iqcommune" — and is left alone.
  */
-const SIGN_OFF = "Warm regards,\nTeam iqcommune";
-const SIGN_OFF_TEAM = "Team iqcommune";
+const SIGN_OFF = "Warm regards,\nHello Commune";
+const SIGN_OFF_TEAM = "Hello Commune";
 
 /**
  * Plain-text templates — plus, where a template carries a link worth turning

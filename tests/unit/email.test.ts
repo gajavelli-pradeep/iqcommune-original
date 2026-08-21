@@ -420,11 +420,11 @@ describe("email sender routing", () => {
 
     await sendEmail("trace", templates.sessionRequestCancelled("a@b.com", "Asha", MODULE), noPersistence);
     expect(sent?.sender?.name).toBe("Session Commune");
-    expect(sent?.textContent).toContain("Warm regards,\nTeam iqcommune");
+    expect(sent?.textContent).toContain("Warm regards,\nHello Commune");
 
     await sendEmail("trace", templates.practitionerWelcome("a@b.com", "Vikram", PRACTITIONER_REF), noPersistence);
     expect(sent?.sender?.name).toBe("Practitioner Commune");
-    expect(sent?.textContent).toContain("Warm regards,\nTeam iqcommune");
+    expect(sent?.textContent).toContain("Warm regards,\nHello Commune");
   });
 
   it("keeps the two cancellations saying different things", () => {
@@ -497,7 +497,7 @@ describe("email sender routing", () => {
     const message = templates.ratingRequest("a@b.com", "Asha", ID, RATED_SESSION);
     expect(message.body).toContain(`the session on ${MODULE} with Vikram Rao`);
     expect(message.body).not.toContain("never with the practitioner directly");
-    expect(message.body.endsWith("Thank you for your time.\n\nTeam iqcommune")).toBe(true);
+    expect(message.body.endsWith("Thank you for your time.\n\nHello Commune")).toBe(true);
   });
 
   it("agrees the article with the role in the console invite", () => {
@@ -556,7 +556,7 @@ describe("email sender routing", () => {
       expect(message.subject).toContain("iqcommune");
       // The rating request is the document's own exception to the signature it
       // states on its first page; every other body carries the two-line block.
-      expect(message.body.endsWith("Warm regards,\nTeam iqcommune")).toBe(message !== rating);
+      expect(message.body.endsWith("Warm regards,\nHello Commune")).toBe(message !== rating);
     }
   });
 
@@ -571,7 +571,7 @@ describe("email sender routing", () => {
     ];
 
     for (const body of bodies) {
-      expect(body).toContain("Team iqcommune");
+      expect(body).toContain("Hello Commune");
       expect(body).not.toContain("Session Commune");
       expect(body).not.toContain("Practitioner Commune");
     }
@@ -635,7 +635,7 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     // Asserted as the whole two-line block, not just the first word: "Regards,"
     // is a substring of "Warm regards," so a `toContain` on the old value would
     // have passed against the new one and pinned nothing at all.
-    expect(message.body).toContain("Warm regards,\nTeam iqcommune");
+    expect(message.body).toContain("Warm regards,\nHello Commune");
     expect(message.body).not.toContain("\nRegards,");
 
     // The HTML version carries the same client-approved wording — only the
@@ -646,7 +646,7 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     expect(message.html).toContain("<p>Dear Ananya,</p>");
     // The rich half signs off the same way as the plain one, or a recipient
     // whose client renders HTML reads a different sign-off from one who does not.
-    expect(message.html).toContain("Warm regards,<br>Team iqcommune");
+    expect(message.html).toContain("Warm regards,<br>Hello Commune");
   });
 
   it("admin notification for a new application names the applicant, modules and a console link", () => {
@@ -753,7 +753,7 @@ describe("submission acknowledgment emails match the client's exact copy", () =>
     // Client copy, 2026-08-12, generalised to every template on 2026-08-13.
     // Once the lone exception, now the house signature — still asserted here
     // because this is the template whose approved wording set it.
-    expect(message.body).toContain("Regards,\nTeam iqcommune");
+    expect(message.body).toContain("Regards,\nHello Commune");
     expect(message.body).not.toContain("The Session Commune Team");
   });
 
