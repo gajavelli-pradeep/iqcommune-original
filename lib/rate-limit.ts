@@ -50,8 +50,11 @@ export async function checkRateLimit(identifier: string): Promise<RateLimitResul
  * by the last trusted proxy; the LEFT-most entry is attacker-controlled, so
  * keying the limiter on it lets anyone mint a fresh bucket per request and
  * defeat the limit entirely. Never trust the left-most XFF value.
+ *
+ * Takes anything with a `headers.get()` — a `Request` in a route handler, or
+ * `next/headers`'s `headers()` result in a server action, which has no `Request`.
  */
-export function clientIdentifier(request: Request): string {
+export function clientIdentifier(request: { headers: Pick<Headers, "get"> }): string {
   const realIp = request.headers.get("x-real-ip")?.trim();
   if (realIp) return realIp;
 

@@ -1,8 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { log, newTraceId } from "@/lib/logger";
+import { checkRateLimit, clientIdentifier } from "@/lib/rate-limit";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { ROLE_ROUTES, toConsoleRole } from "@/features/console/roles";
 
@@ -18,9 +20,21 @@ export interface SignInResult {
  * On success the account's `app_metadata.role` decides the route — the same
  * fail-closed `toConsoleRole` the API and `requireRole` use, so an account with
  * no console role can authenticate but lands nowhere it should not.
+ *
+ * Rate-limited by IP, same as `/api/password-reset` — a server action has no
+ * `Request` to read headers from, so `clientIdentifier` reads the forwarded-for
+ * header directly via `next/headers` instead.
  */
 export async function signIn(email: string, password: string): Promise<SignInResult> {
   const traceId = newTraceId();
+
+  const ip = clientIdentifier({ headers: await headers() });
+  const { allowed, enforced } = await checkRateLimit(`login:${ip}`);
+  if (!enforced) log.warn(traceId, "rate limiting not enforced — no Upstash credentials");
+  if (!allowed) {
+    return { error: "Too many attempts. Please try again shortly." };
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
