@@ -58,7 +58,7 @@ describe("Hero", () => {
       "Portfolio Managers",
       "Certified Financial Planners",
       "Wealth Advisors & RMs",
-      "Fund & Product Specialists / MFDS",
+      "Fund Specialists / MFDs",
       "Corporate Finance Professionals",
     ]) {
       expect(screen.getByText(role)).toBeInTheDocument();

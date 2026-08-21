@@ -50,7 +50,7 @@ const ROLES = [
     ),
   },
   {
-    title: "Fund & Product Specialists / MFDS",
+    title: "Fund Specialists / MFDs",
     sub: "Structuring funds & investment products",
     path: (
       <>
