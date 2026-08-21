@@ -40,7 +40,7 @@ const ROLES = [
     path: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
   },
   {
-    title: "Wealth Managers",
+    title: "Wealth Advisors & RMs",
     sub: "Serving HNI clients day-to-day",
     path: (
       <>
@@ -50,7 +50,7 @@ const ROLES = [
     ),
   },
   {
-    title: "Fund & Product Specialists",
+    title: "Fund & Product Specialists / MFDS",
     sub: "Structuring funds & investment products",
     path: (
       <>
