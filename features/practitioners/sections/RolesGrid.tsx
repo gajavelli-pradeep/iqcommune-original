@@ -35,7 +35,7 @@ const ROLES: ReadonlyArray<{ title: string; description: string; icon: React.Rea
     ),
   },
   {
-    title: "Fund & Product Specialists",
+    title: "Fund & Product Specialists / MFDS",
     description:
       "Deep expertise in specific instruments — fixed income, derivatives, structured products — actively working with these today, whether in a firm or independently.",
     icon: (
