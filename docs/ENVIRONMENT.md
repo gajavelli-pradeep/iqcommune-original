@@ -71,8 +71,8 @@ is resolved separately by `senderNameFor()`, and since 2026-08-10 it differs by 
 | `platform` | `BREVO_SENDER_NAME`, else `iqcommune` | — |
 
 These names apply to the **envelope only**. Since 2026-08-13 every body signs
-"- Hello Commune" regardless of stream (client decision, superseding the per-stream sign-off of
-2026-08-10), so a session email arrives from "Session Commune" and signs "Hello Commune". The two
+"- Team iqcommune" regardless of stream (client decision, superseding the per-stream sign-off of
+2026-08-10), so a session email arrives from "Session Commune" and signs "Team iqcommune". The two
 differ by design: the envelope routes the reply, the signature is the house name. "iqcommune"
 elsewhere in the copy names the organisation ("the iqcommune practitioner network") and stays.
 
