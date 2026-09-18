@@ -64,7 +64,12 @@ async function loadPanel<T>(
   try {
     const rows = await load();
     return { rows, failed: false, count: rows.length, hits: index?.(rows) ?? [] };
-  } catch {
+  } catch (error) {
+    // A silently swallowed read failure is undebuggable — nothing reached the
+    // server log the first time this happened, and the console's own
+    // resilience feature (CachedPanel's IndexedDB fallback) hid it from the
+    // UI too, showing stale cached data with no hint anything was wrong.
+    console.error("[loadPanel] read failed:", error);
     return { rows: null, failed: true, count: 0, hits: [] };
   }
 }
