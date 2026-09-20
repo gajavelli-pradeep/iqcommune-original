@@ -2632,7 +2632,12 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   // Every popup can attach saved files; only the welcome starts with any (and
   // only it can offer the practitioner's signed agreement).
   const welcome = kind === "practitioner-welcome";
-  const plan = await attachmentPlan(welcome ? pipelineId(id).id : null, actor);
+  // A failed read (0022 not applied yet, storage down) must not take the whole
+  // dialog with it: the message can still be sent, just without files.
+  const plan = await attachmentPlan(welcome ? pipelineId(id).id : null, actor).catch((cause) => {
+    console.error("[composeDraft] attachment library unavailable:", cause);
+    return { attachments: [], attachedIds: [] };
+  });
   return {
     attachments: plan.attachments,
     attachedIds: welcome ? plan.attachedIds : [],

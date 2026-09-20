@@ -31,6 +31,8 @@ vi.mock("../actions", () => ({
     subject: "Your session confirmation",
     body: "Hi Priya,",
     recipientName: "Suresh Patel",
+    attachments: [],
+    attachedIds: [],
   })),
 }));
 

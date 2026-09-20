@@ -2,10 +2,10 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { DraftAttachment } from "@/features/console/draft-kinds";
 import {
   EXTENSION,
   MAX_UPLOAD_BYTES,
+  type DraftAttachment,
   canDeleteAttachment,
   sniffType,
 } from "@/lib/email/attachment-rules";

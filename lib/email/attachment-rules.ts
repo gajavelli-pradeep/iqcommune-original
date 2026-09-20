@@ -64,3 +64,21 @@ export function unattachedMentions(
   const text = norm(body);
   return files.filter((f) => !attachedIds.includes(f.id) && text.includes(norm(f.mention)));
 }
+
+/** One file the dialog can attach. */
+export interface DraftAttachment {
+  /** A library row id, or `agreement:<uuid>` for the practitioner's contract. */
+  id: string;
+  label: string;
+  /** What an email body would call it, to warn when it names a removed file. */
+  mention: string;
+  contentType: string;
+  /** 0 when unknown (the agreement is not measured until it is sent). */
+  sizeBytes: number;
+  /** `agreement` is removed from this email only; `library` files are saved and
+   *  deleting one removes it from every future email. */
+  kind: "agreement" | "library";
+  previewUrl: string;
+  /** Whether the signed-in admin may delete it (library files only). */
+  canDelete: boolean;
+}
