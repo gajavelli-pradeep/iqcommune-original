@@ -125,6 +125,31 @@ export interface DraftOverride {
    */
   notifySubject?: string;
   notifyBody?: string;
+  /**
+   * The files the admin left attached (`Draft.attachments` ids). Absent means
+   * "the defaults for this kind" — the welcome's agreement and flyers, nothing
+   * for every other email — so a caller with no dialog behind it still sends
+   * what the dialog would have offered.
+   */
+  attachmentIds?: string[];
+}
+
+/** One file the dialog can attach. */
+export interface DraftAttachment {
+  /** A library row id, or `agreement:<uuid>` for the practitioner's contract. */
+  id: string;
+  label: string;
+  /** What an email body would call it, to warn when it names a removed file. */
+  mention: string;
+  contentType: string;
+  /** 0 when unknown (the agreement is not measured until it is sent). */
+  sizeBytes: number;
+  /** `agreement` is removed from this email only; `library` files are saved and
+   *  deleting one removes it from every future email. */
+  kind: "agreement" | "library";
+  previewUrl: string;
+  /** Whether the signed-in admin may delete it (library files only). */
+  canDelete: boolean;
 }
 
 /** A composed message, ready to show. */
@@ -170,6 +195,10 @@ export interface Draft extends DraftOverride {
    * title is fixed and has no use for it.
    */
   recipientName?: string;
+  /** Every file that can be attached to this email. */
+  attachments: DraftAttachment[];
+  /** Ids of `attachments` that start attached. */
+  attachedIds: string[];
 }
 
 /**

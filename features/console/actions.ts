@@ -35,12 +35,19 @@ import {
   missingConfirmationFields,
 } from "./confirmation-fields";
 import { nextReference } from "@/services/references";
+import {
+  listLibrary,
+  resolveAttachments,
+  signedAgreementFor,
+  softDeleteLibraryFile,
+} from "@/services/email-attachments";
 
 import {
   withLink,
   withReference,
   REFERENCE_PLACEHOLDER,
   type Draft,
+  type DraftAttachment,
   type DraftKind,
   type DraftOverride,
 } from "./draft-kinds";
@@ -312,7 +319,7 @@ export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Pr
   const composed = await draftMessage("request-follow-up", id);
   if (!composed) throw new Error("that request no longer exists");
 
-  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "request.followed_up",
@@ -331,7 +338,7 @@ export async function sendRequestCancellation(id: string, draft?: DraftOverride)
   const composed = await draftMessage("request-cancellation", id);
   if (!composed) throw new Error("that request no longer exists");
 
-  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "request.cancellation_sent",
@@ -604,7 +611,7 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     // Both stand-ins can be resolved now: the agreement exists, so the link and
     // its IQC-AGR reference are both real. The practitioner's IQC-EMP number is
     // deliberately not used here — it is not allocated until they sign.
-    dispatchEmail(
+    await dispatchDrafted(
       newTraceId(),
       applyDraft(
         onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
@@ -646,7 +653,7 @@ export async function rejectApplication(rowId: string, draft?: DraftOverride): P
     .maybeSingle();
   if (error) throw new Error(`rejection failed: ${error.message}`);
 
-  if (data && composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  if (data && composed) await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "application.rejected",
@@ -662,7 +669,7 @@ export async function rejectApplication(rowId: string, draft?: DraftOverride): P
  * waiting for a webhook that will never arrive.
  */
 export async function empanelPractitioner(rowId: string, draft?: DraftOverride): Promise<void> {
-  const { email: actor } = await requireCapability("mutate");
+  const { email: actor, role } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") {
     throw new Error("send the agreement first — there is no practitioner record to empanel yet");
@@ -705,7 +712,10 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
       .eq("id", data.application_id);
   }
 
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  if (composed) {
+    const attachmentIds = await welcomeAttachmentIds(id, draft?.attachmentIds, { role, email: actor });
+    await dispatchDrafted(newTraceId(), { ...applyDraft(composed.message, draft), attachmentIds });
+  }
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.empanelled",
@@ -737,12 +747,15 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
 
 /** "Send welcome message" — the welcome email on its own, no status change. */
 export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): Promise<void> {
-  const { email: actor } = await requireCapability("mutate");
+  const { email: actor, role } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
 
   const composed = await draftMessage("practitioner-welcome", rowId);
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  if (composed) {
+    const attachmentIds = await welcomeAttachmentIds(id, draft?.attachmentIds, { role, email: actor });
+    await dispatchDrafted(newTraceId(), { ...applyDraft(composed.message, draft), attachmentIds });
+  }
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.welcomed",
@@ -769,7 +782,7 @@ export async function deactivatePractitioner(rowId: string, draft?: DraftOverrid
     .is("deleted_at", null);
   if (error) throw new Error(`deactivate failed: ${error.message}`);
 
-  if (composed) dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  if (composed) await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.deactivated",
@@ -1129,7 +1142,7 @@ export async function setSessionStatus(
     .maybeSingle();
   if (error) throw new Error(`session status update failed: ${error.message}`);
 
-  if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
+  if (cancellation) await dispatchDrafted(newTraceId(), applyDraft(cancellation.message, draft));
 
   await recordActivity({
     actorEmail: actor,
@@ -1352,7 +1365,7 @@ export async function setConfirmationStatus(
     (ref) => (ref ? `Reset to New — session ${ref} was cancelled.` : "Reset to New — its session was cancelled."),
   );
 
-  if (cancellation) dispatchEmail(newTraceId(), applyDraft(cancellation.message, draft));
+  if (cancellation) await dispatchDrafted(newTraceId(), applyDraft(cancellation.message, draft));
 
   // The second, real recipient — "one Send button dispatches both" (client
   // delivery, latest folder, 2026-08-17). Only on the client-cancelled path:
@@ -1363,7 +1376,7 @@ export async function setConfirmationStatus(
   const notifyTo = cancellation?.notify?.to;
   if (cancellation?.notify && notifyTo) {
     const notify = cancellation.notify;
-    dispatchEmail(
+    await dispatchDrafted(
       newTraceId(),
       applyDraft(
         {
@@ -2544,14 +2557,63 @@ function applyDraft(
   draft?: DraftOverride,
   link?: string,
   reference?: string,
-): EmailMessage {
+): DraftedMessage {
   if (!draft) return message;
   let body = link ? withLink(draft.body, link) : draft.body;
   if (reference) body = withReference(body, reference);
   // The subject carries the reference too, and the admin never saw the real one
   // — so it is substituted there as well, or the sent subject keeps the stand-in.
   const subject = reference ? withReference(draft.subject, reference) : draft.subject;
-  return { ...message, subject, body, html: undefined };
+  return {
+    ...message,
+    subject,
+    body,
+    html: undefined,
+    // Library ids only (uuids). The agreement id is not accepted from the
+    // client here — only the welcome sends add it, checked against that
+    // practitioner's own contract (`welcomeAttachmentIds`).
+    attachmentIds: draft.attachmentIds?.filter(isUuid),
+  };
+}
+
+/** A drafted message plus the file ids still to be turned into bytes. */
+type DraftedMessage = EmailMessage & { attachmentIds?: string[] };
+
+/**
+ * Fetches the chosen files, then queues the send.
+ *
+ * The bytes are read before `after()` on purpose: the send itself runs in a
+ * background task where a failure is visible only in `email_log`. A file that
+ * cannot be read fails here instead, while the admin is still in the dialog.
+ */
+async function dispatchDrafted(traceId: string, message: DraftedMessage): Promise<void> {
+  const { attachmentIds, ...rest } = message;
+  if (!attachmentIds?.length) return dispatchEmail(traceId, rest);
+  dispatchEmail(traceId, { ...rest, attachments: await resolveAttachments(attachmentIds) });
+}
+
+/** The welcome's files: the ones the dialog left attached, or the defaults. */
+async function welcomeAttachmentIds(
+  practitionerId: string,
+  chosen: readonly string[] | undefined,
+  actor: { role: string; email: string },
+): Promise<string[]> {
+  const plan = await attachmentPlan(practitionerId, actor);
+  const known = new Set(plan.attachments.map((a) => a.id));
+  return (chosen ?? plan.attachedIds).filter((id) => known.has(id));
+}
+
+/** Everything that can be attached, and what starts attached. */
+async function attachmentPlan(
+  practitionerId: string | null,
+  actor: { role: string; email: string },
+): Promise<{ attachments: DraftAttachment[]; attachedIds: string[] }> {
+  const { files, welcomeDefaultIds } = await listLibrary(actor);
+  const agreement = practitionerId ? await signedAgreementFor(practitionerId) : null;
+  return {
+    attachments: agreement ? [agreement, ...files] : files,
+    attachedIds: [...(agreement ? [agreement.id] : []), ...welcomeDefaultIds],
+  };
 }
 
 
@@ -2563,11 +2625,17 @@ export async function composeDraft(kind: DraftKind, id: string): Promise<Draft |
   // The invite is team management, not a pipeline mutation — previewing it must
   // demand the same capability as sending it, or an admin could read a draft of
   // something they are not allowed to send.
-  await requireCapability(kind === "admin-invite" ? "manageTeam" : "mutate");
+  const actor = await requireCapability(kind === "admin-invite" ? "manageTeam" : "mutate");
   const draft = await draftMessage(kind, id);
   if (!draft) return null;
   const { to, subject, body } = draft.message;
+  // Every popup can attach saved files; only the welcome starts with any (and
+  // only it can offer the practitioner's signed agreement).
+  const welcome = kind === "practitioner-welcome";
+  const plan = await attachmentPlan(welcome ? pipelineId(id).id : null, actor);
   return {
+    attachments: plan.attachments,
+    attachedIds: welcome ? plan.attachedIds : [],
     to,
     subject,
     body,
@@ -2693,7 +2761,7 @@ async function sendForAssignment(
   const composed = await draftMessage(kind, assignmentId);
   if (!composed) return { ok: false, message: missing };
 
-  dispatchEmail(newTraceId(), applyDraft(composed.message, draft));
+  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
   await recordActivity({ actorEmail: actor, action, entityType: "assignment", entityRef: assignmentId });
   // Part 2 derives its next step from the entry just written, so without this
   // the send is real and the table still offers to send it. Every other action
@@ -2820,3 +2888,19 @@ export async function clearSignedAgreement(agreementId: string): Promise<void> {
 // link that skipped the promotion, the status move and the draft the admin
 // actually edited. "Resend agreement link" goes through
 // `generateAndSendAgreement`, which does all of it.
+
+/**
+ * Delete a saved file (removes it from every future email). Permission is
+ * checked in the service: a global admin any file, anyone else only their own.
+ */
+export async function deleteEmailAttachment(id: string): Promise<void> {
+  const actor = await requireCapability("mutate");
+  if (!isUuid(id)) throw new Error("that file no longer exists");
+  await softDeleteLibraryFile(id, actor);
+  await recordActivity({
+    actorEmail: actor.email,
+    action: "email-attachment.deleted",
+    entityType: "email-attachment",
+    entityRef: id,
+  });
+}
