@@ -12,4 +12,15 @@ create table if not exists public.app_settings (
   updated_at        timestamptz not null default now()
 );
 
+-- Drift repair: a table of this name may already exist without these columns
+-- (`create table if not exists` skips it), and the console then fails to save
+-- with "Could not find the 'updated_by_email' column ... in the schema cache".
+alter table public.app_settings
+  add column if not exists value            jsonb,
+  add column if not exists updated_by_email text,
+  add column if not exists updated_at       timestamptz not null default now();
+
 alter table public.app_settings enable row level security;
+
+-- Let the API notice the change now rather than on its next refresh.
+notify pgrst, 'reload schema';

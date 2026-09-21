@@ -21,7 +21,9 @@ export async function isGalleryVisible(): Promise<boolean> {
       .eq("key", GALLERY_KEY)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data?.value !== false;
+    // A `value` column that predates 0023 may be text, so "off" can come back as
+    // the string "false" rather than the boolean.
+    return !(data?.value === false || data?.value === "false");
   } catch (cause) {
     console.error("[settings] gallery visibility read failed, showing it:", cause);
     return true;
