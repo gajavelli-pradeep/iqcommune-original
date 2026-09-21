@@ -25,7 +25,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const READY = { to: "vikram@example.com", subject: "How was your session?", body: "Hi Vikram,\n\nPlease rate it." };
+const READY = {
+  to: "vikram@example.com",
+  subject: "How was your session?",
+  body: "Hi Vikram,\n\nPlease rate it.",
+  attachments: [],
+  attachedIds: [],
+};
 
 describe("DraftModal", () => {
   it("shows the composed message before anything is sent", async () => {
@@ -60,7 +66,11 @@ describe("DraftModal", () => {
 
     await user.click(screen.getByRole("button", { name: /click to send/i }));
 
-    expect(onSend).toHaveBeenCalledWith({ subject: "A better subject", body: "Rewritten entirely." });
+    expect(onSend).toHaveBeenCalledWith({
+      subject: "A better subject",
+      body: "Rewritten entirely.",
+      attachmentIds: [],
+    });
   });
 
   it("will not send an empty subject or an empty body", async () => {

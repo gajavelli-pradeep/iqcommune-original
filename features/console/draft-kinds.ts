@@ -125,7 +125,18 @@ export interface DraftOverride {
    */
   notifySubject?: string;
   notifyBody?: string;
+  /**
+   * The files the admin left attached (`Draft.attachments` ids). Absent means
+   * "the defaults for this kind" — the welcome's agreement and flyers, nothing
+   * for every other email — so a caller with no dialog behind it still sends
+   * what the dialog would have offered.
+   */
+  attachmentIds?: string[];
 }
+
+import type { DraftAttachment } from "@/lib/email/attachment-rules";
+
+export type { DraftAttachment };
 
 /** A composed message, ready to show. */
 export interface Draft extends DraftOverride {
@@ -170,6 +181,10 @@ export interface Draft extends DraftOverride {
    * title is fixed and has no use for it.
    */
   recipientName?: string;
+  /** Every file that can be attached to this email. */
+  attachments: DraftAttachment[];
+  /** Ids of `attachments` that start attached. */
+  attachedIds: string[];
 }
 
 /**

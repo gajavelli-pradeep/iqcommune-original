@@ -62,6 +62,26 @@ export interface EmailMessage {
    * name inferred from a subject line changes the moment the copy does.
    */
   template: string;
+  /** Files sent with the message, bytes already fetched (base64 — Brevo
+   *  fetches nothing itself, the bucket is private). */
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  name: string;
+  /** Base64 file bytes. */
+  content: string;
+}
+
+/**
+ * Brevo rejects a transactional message over ~4 MB in total. Base64 inflates
+ * bytes by 4/3, so the guard is on the encoded size; callers get a named
+ * failure instead of a provider 400 hidden in a background task.
+ */
+export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+export function attachmentsTooLarge(attachments: EmailAttachment[] | undefined): boolean {
+  return (attachments ?? []).reduce((n, a) => n + a.content.length, 0) > MAX_ATTACHMENT_BYTES;
 }
 
 /** The env var holding each stream's From address. */
@@ -183,6 +203,8 @@ export function replyToFor(stream: EmailStream = "platform"): string | undefined
 
 const ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 const TIMEOUT_MS = 8000;
+/** A multi-megabyte upload needs longer than a text-only POST. */
+const TIMEOUT_WITH_ATTACHMENTS_MS = 25000;
 /** Attempts after the first. Three calls is the most a request should wait through. */
 const MAX_RETRIES = 2;
 const BACKOFF_MS = [400, 1200];
@@ -223,7 +245,10 @@ async function attempt(
   apiKey: string,
 ): Promise<EmailResult> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(
+    () => controller.abort(),
+    message.attachments?.length ? TIMEOUT_WITH_ATTACHMENTS_MS : TIMEOUT_MS,
+  );
 
   try {
     const response = await deps.fetch(ENDPOINT, {
@@ -236,6 +261,7 @@ async function attempt(
         subject: message.subject,
         textContent: message.body,
         ...(message.html ? { htmlContent: message.html } : {}),
+        ...(message.attachments?.length ? { attachment: message.attachments } : {}),
       }),
       signal: controller.signal,
     });
@@ -317,6 +343,7 @@ export async function sendEmail(
       // is live before the mailboxes are — so it is the half worth checking.
       replyTo: replyTo ?? "(same as from)",
       hasHtml: Boolean(message.html),
+      attachments: (message.attachments ?? []).map((a) => a.name),
       ...(inspectable ? { to: message.to, body: message.body } : {}),
     });
     return finish(result("dry-run"));
@@ -334,6 +361,14 @@ export async function sendEmail(
         errorMessage: !apiKey ? "BREVO_API_KEY is unset" : "no sender address for this stream",
       }),
     );
+  }
+
+  if (attachmentsTooLarge(message.attachments)) {
+    log.error(traceId, "email not sent — attachments exceed the provider limit", {
+      template: message.template,
+      stream,
+    });
+    return finish(result("rejected", { errorCode: "ATTACHMENTS_TOO_LARGE" }));
   }
 
   // 3. Already done? Only a *successful* recent attempt counts — a previous

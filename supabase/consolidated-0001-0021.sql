@@ -1,9 +1,12 @@
--- iqcommune V7 — consolidated schema (migrations 0001-0018)
+-- iqcommune V7 — consolidated schema (migrations 0001-0021)
 --
--- Generated from supabase/migrations/*.sql. Same end state as replaying them in
--- order, with one deliberate difference: every enum is CREATEd with its final
--- value set, and the ALTER TYPE ... ADD VALUE statements that used to add those
--- values later are commented out.
+-- Generated from supabase/migrations/*.sql, then hand-extended with the drift
+-- repair described below — the tracked migration files alone don't have it,
+-- since it exists to correct databases that drifted from what those files
+-- describe. Otherwise the same end state as replaying them in order, with one
+-- deliberate difference: every enum is CREATEd with its final value set, and
+-- the ALTER TYPE ... ADD VALUE statements that used to add those values later
+-- are commented out.
 --
 -- That change is what makes this safe to paste into the Supabase SQL editor,
 -- which runs a pasted script as a single transaction. Postgres refuses to let a
@@ -11,9 +14,28 @@
 -- it, and 0008 does exactly that ("update ... set status = 'Applied'"). Replayed
 -- one file at a time it is fine; pasted as one script it fails halfway.
 --
--- FOR A FRESH, EMPTY PROJECT ONLY. Every CREATE here is "if not exists", so on a
--- database that already has a table of the same name this silently skips it and
--- leaves the old shape in place — it reports success and changes nothing.
+-- SELF-HEALING for a project whose tables already exist in an older or partial
+-- shape — including one where an earlier paste of an even older version of
+-- this script died partway through and left some tables missing entirely.
+-- `CREATE TABLE IF NOT EXISTS` alone would silently skip a pre-existing table
+-- and leave it missing whatever columns this schema has since gained; every
+-- table here is immediately followed by an idempotent
+-- `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for its own full column set (see
+-- the comment above the first one, on session_requests, for why every column
+-- is added nullable). A table that's freshly created by this same script has
+-- every column already, so its repair block is just a no-op — this is safe to
+-- run on a genuinely fresh, empty project too.
+--
+-- Every guarded `add constraint` also catches check_violation (and
+-- unique_violation for the one composite-unique constraint) alongside
+-- duplicate_object: a row that already violates a new rule must not block the
+-- rest of the script, the same "skip rather than fail" spirit as every
+-- `if not exists` above. A constraint skipped this way genuinely isn't added —
+-- it won't enforce on future writes either, until the violating rows are found
+-- and fixed and the script is run again.
+--
+-- Re-running the whole script again after a partial or full success is safe:
+-- every statement in it is idempotent.
 --
 -- After this runs you still need: an admin account (scripts/create-admin.mjs),
 -- the app's environment variables pointed at this project, and any data brought
@@ -94,6 +116,32 @@ create or replace trigger session_requests_updated_at
   before update on session_requests
   for each row execute function set_updated_at();
 
+-- Drift repair: a table that already existed when this CREATE TABLE ran (a
+-- prior partial paste of this same script, or a hand-created table) keeps its
+-- old shape — CREATE TABLE IF NOT EXISTS is a no-op there. Added nullable
+-- even where the column above is NOT NULL: a populated table can't safely
+-- gain a NOT NULL column without a default, which this repair can't know how
+-- to backfill for columns like these.
+alter table session_requests
+  add column if not exists status            session_request_status not null default 'New',
+  add column if not exists audience          audience_type,
+  add column if not exists first_name        text,
+  add column if not exists last_name         text,
+  add column if not exists email             text,
+  add column if not exists phone             text,
+  add column if not exists city              text,
+  add column if not exists state             text,
+  add column if not exists organisation_name text,
+  add column if not exists topic             text,
+  add column if not exists group_size        text,
+  add column if not exists preferred_window  text,
+  add column if not exists venue_details     text,
+  add column if not exists notes             text,
+  add column if not exists spoc_confirmed    boolean not null default false,
+  add column if not exists created_at        timestamptz not null default now(),
+  add column if not exists updated_at        timestamptz not null default now(),
+  add column if not exists deleted_at        timestamptz;
+
 -- Reads are "newest open requests first", so the index matches the query.
 create index if not exists session_requests_triage_idx
   on session_requests (status, created_at desc)
@@ -118,6 +166,17 @@ create table if not exists gallery_photos (
 create or replace trigger gallery_photos_updated_at
   before update on gallery_photos
   for each row execute function set_updated_at();
+
+-- Drift repair (see session_requests above for why).
+alter table gallery_photos
+  add column if not exists storage_path text,
+  add column if not exists caption      text,
+  add column if not exists city         text,
+  add column if not exists sort_order   integer not null default 0,
+  add column if not exists published    boolean not null default false,
+  add column if not exists created_at   timestamptz not null default now(),
+  add column if not exists updated_at   timestamptz not null default now(),
+  add column if not exists deleted_at   timestamptz;
 
 create index if not exists gallery_photos_public_idx
   on gallery_photos (sort_order, created_at desc)
@@ -160,6 +219,24 @@ create table if not exists photo_submissions (
 create or replace trigger photo_submissions_updated_at
   before update on photo_submissions
   for each row execute function set_updated_at();
+
+-- Drift repair (see session_requests above for why). session_id/practitioner_id
+-- are repaired later, where 0009 already adds them — sessions/practitioners
+-- don't exist yet at this point in the script.
+alter table photo_submissions
+  add column if not exists status              photo_submission_status not null default 'Pending',
+  add column if not exists submitter_name      text,
+  add column if not exists submitter_email     text,
+  add column if not exists organisation_name   text,
+  add column if not exists session_date        date,
+  add column if not exists module_taught       text,
+  add column if not exists storage_keys        text[] not null default '{}',
+  add column if not exists participant_consent boolean,
+  add column if not exists consented_at        timestamptz not null default now(),
+  add column if not exists expiry_date         date not null default (current_date + interval '30 days'),
+  add column if not exists created_at          timestamptz not null default now(),
+  add column if not exists updated_at          timestamptz not null default now(),
+  add column if not exists deleted_at          timestamptz;
 
 create index if not exists photo_submissions_review_idx
   on photo_submissions (status, created_at desc)
@@ -251,6 +328,33 @@ create or replace trigger practitioner_applications_updated_at
   before update on practitioner_applications
   for each row execute function set_updated_at();
 
+-- Drift repair (see session_requests above for why). admin_notes is repaired
+-- here too even though 0008 adds it later — that statement is already
+-- `add column if not exists`, so this is just belt-and-braces, not a conflict.
+alter table practitioner_applications
+  add column if not exists status                practitioner_application_status not null default 'New',
+  add column if not exists first_name             text,
+  add column if not exists last_name              text,
+  add column if not exists email                  text,
+  add column if not exists phone                  text,
+  add column if not exists job_title              text,
+  add column if not exists city                   text,
+  add column if not exists state                  text,
+  add column if not exists experience_band        text,
+  add column if not exists address                text,
+  add column if not exists tshirt_size             text,
+  add column if not exists modules                text[],
+  add column if not exists teaching_frequency      text,
+  add column if not exists motivation              text,
+  add column if not exists consent_disclosure      boolean,
+  add column if not exists consent_no_cross_sell   boolean,
+  add column if not exists consent_employer        boolean,
+  add column if not exists consented_at            timestamptz not null default now(),
+  add column if not exists created_at              timestamptz not null default now(),
+  add column if not exists updated_at              timestamptz not null default now(),
+  add column if not exists deleted_at              timestamptz,
+  add column if not exists admin_notes             text;
+
 create index if not exists practitioner_applications_triage_idx
   on practitioner_applications (status, created_at desc)
   where deleted_at is null;
@@ -291,6 +395,23 @@ create or replace trigger practitioners_updated_at
   before update on practitioners
   for each row execute function set_updated_at();
 
+-- Drift repair (see session_requests above for why). phone is repaired here
+-- too even though 0021 adds it later via its own `add column if not exists`.
+alter table practitioners
+  add column if not exists status         practitioner_status not null default 'Empanelled',
+  add column if not exists reference      text unique,
+  add column if not exists full_name      text,
+  add column if not exists role           text,
+  add column if not exists organisation   text,
+  add column if not exists city           text,
+  add column if not exists state          text,
+  add column if not exists email          text,
+  add column if not exists application_id uuid references practitioner_applications (id),
+  add column if not exists created_at     timestamptz not null default now(),
+  add column if not exists updated_at     timestamptz not null default now(),
+  add column if not exists deleted_at     timestamptz,
+  add column if not exists phone          text;
+
 create index if not exists practitioners_email_idx on practitioners (lower(email));
 
 -- ── AGREEMENTS ──────────────────────────────────────────────────────────────
@@ -329,6 +450,24 @@ create table if not exists practitioner_agreements (
 create or replace trigger practitioner_agreements_updated_at
   before update on practitioner_agreements
   for each row execute function set_updated_at();
+
+-- Drift repair (see session_requests above for why).
+alter table practitioner_agreements
+  add column if not exists practitioner_id    uuid references practitioners (id),
+  add column if not exists reference          text unique,
+  add column if not exists issued_on          date not null default current_date,
+  add column if not exists modules            text[] not null default '{}',
+  add column if not exists version            text not null default 'v7',
+  add column if not exists signed_at          timestamptz,
+  add column if not exists signed_name        text,
+  add column if not exists signed_designation text,
+  add column if not exists signature_data     text,
+  add column if not exists signature_mode     text,
+  add column if not exists signed_ip          text,
+  add column if not exists signed_pdf_path    text,
+  add column if not exists created_at         timestamptz not null default now(),
+  add column if not exists updated_at         timestamptz not null default now(),
+  add column if not exists deleted_at         timestamptz;
 
 create index if not exists practitioner_agreements_practitioner_idx
   on practitioner_agreements (practitioner_id, issued_on desc)
@@ -372,6 +511,25 @@ create or replace trigger sessions_updated_at
   before update on sessions
   for each row execute function set_updated_at();
 
+-- Drift repair (see session_requests above for why).
+alter table sessions
+  add column if not exists status             session_status not null default 'Scheduled',
+  add column if not exists reference          text unique,
+  add column if not exists session_request_id uuid references session_requests (id),
+  add column if not exists module             text,
+  add column if not exists session_date       date,
+  add column if not exists start_time         time,
+  add column if not exists duration_minutes   integer,
+  add column if not exists venue              text,
+  add column if not exists city               text,
+  add column if not exists state              text,
+  add column if not exists audience           audience_type,
+  add column if not exists participants       text,
+  add column if not exists spoc_name          text,
+  add column if not exists created_at         timestamptz not null default now(),
+  add column if not exists updated_at         timestamptz not null default now(),
+  add column if not exists deleted_at         timestamptz;
+
 create index if not exists sessions_schedule_idx
   on sessions (session_date desc, status)
   where deleted_at is null;
@@ -409,6 +567,40 @@ create or replace trigger session_practitioners_updated_at
   before update on session_practitioners
   for each row execute function set_updated_at();
 
+-- Drift repair (see session_requests above for why). The four assignment /
+-- payout-settlement columns are repaired here too even though 0010/0014
+-- already add them later via their own `add column if not exists`.
+alter table session_practitioners
+  add column if not exists session_id              uuid references sessions (id),
+  add column if not exists practitioner_id         uuid references practitioners (id),
+  add column if not exists agreement_id            uuid references practitioner_agreements (id),
+  add column if not exists gross_payout            numeric(12, 2),
+  add column if not exists currency                text not null default 'INR',
+  add column if not exists confirmation_reference  text unique,
+  add column if not exists confirmation_issued_on  date not null default current_date,
+  add column if not exists consent_given_at        timestamptz,
+  add column if not exists consent_ip              text,
+  add column if not exists created_at              timestamptz not null default now(),
+  add column if not exists updated_at              timestamptz not null default now(),
+  add column if not exists deleted_at              timestamptz,
+  add column if not exists assigned_practitioner_id uuid references practitioners (id),
+  add column if not exists agreed_gross_payout      numeric(12, 2),
+  add column if not exists min_commitment           integer,
+  add column if not exists confirmation_generated_at timestamptz,
+  add column if not exists invoice_reference        text,
+  add column if not exists paid_on                  date;
+
+do $$ begin
+  alter table session_practitioners
+    add constraint session_practitioners_session_id_practitioner_id_key
+    unique (session_id, practitioner_id);
+-- The constraint's backing index collides as duplicate_table, not
+-- duplicate_object, if it already exists. unique_violation is the same
+-- "existing data doesn't satisfy this" case as check_violation elsewhere —
+-- a pre-existing duplicate (session_id, practitioner_id) pair must not block
+-- the rest of the script.
+exception when duplicate_object or duplicate_table or unique_violation then null; end $$;
+
 create index if not exists session_practitioners_practitioner_idx
   on session_practitioners (practitioner_id)
   where deleted_at is null;
@@ -425,6 +617,22 @@ create table if not exists session_ratings (
   submitted_at            timestamptz not null default now(),
   submitted_ip            text
 );
+
+-- Drift repair (see session_requests above for why). recorded_by is repaired
+-- here too even though 0013 already adds it later via its own
+-- `add column if not exists`.
+alter table session_ratings
+  add column if not exists session_practitioner_id uuid unique references session_practitioners (id),
+  add column if not exists rating                  smallint,
+  add column if not exists comments                text,
+  add column if not exists submitted_at             timestamptz not null default now(),
+  add column if not exists submitted_ip             text,
+  add column if not exists recorded_by              text;
+
+do $$ begin
+  alter table session_ratings
+    add constraint session_ratings_rating_check check (rating between 1 and 5);
+exception when duplicate_object or check_violation then null; end $$;
 
 -- ── ADMIN INVITES ───────────────────────────────────────────────────────────
 
@@ -452,6 +660,22 @@ create table if not exists admin_invites (
 create or replace trigger admin_invites_updated_at
   before update on admin_invites
   for each row execute function set_updated_at();
+
+-- Drift repair (see session_requests above for why). Deliberately excludes
+-- token_hash: it isn't defined in any tracked migration and contradicts
+-- ADR 0004's HMAC-link design (docs/adr/0004-tokenised-link-contract.md) — if
+-- your live admin_invites has it, that's separate live-only drift to resolve
+-- on its own, typically `alter table admin_invites drop column token_hash;`
+-- once you've confirmed nothing still depends on it.
+alter table admin_invites
+  add column if not exists email       text,
+  add column if not exists role        admin_role not null default 'admin',
+  add column if not exists invited_by  text,
+  add column if not exists expires_at  timestamptz,
+  add column if not exists consumed_at timestamptz,
+  add column if not exists created_at  timestamptz not null default now(),
+  add column if not exists updated_at  timestamptz not null default now(),
+  add column if not exists deleted_at  timestamptz;
 
 create index if not exists admin_invites_open_idx
   on admin_invites (email)
@@ -578,13 +802,19 @@ do $$ begin
   alter table practitioner_applications
     add constraint tshirt_size_domain
     check (tshirt_size in ('XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'));
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table practitioner_applications
     add constraint experience_band_domain
     check (experience_band in ('5 – 8 years', '9 – 12 years', '13 – 18 years', '18+ years'));
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table practitioner_applications
@@ -593,7 +823,10 @@ do $$ begin
       'Once a month', 'Once in 2 months', 'Once a quarter',
       'Flexible — depends on my schedule'
     ));
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table practitioner_applications
@@ -606,17 +839,26 @@ do $$ begin
       'Asset Allocation & Portfolio Construction',
       'Investment Solutions & Portfolio Strategies'
     ]::text[]);
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table session_practitioners
     add constraint currency_iso check (char_length(currency) = 3);
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table session_practitioners
     add constraint gross_payout_nonneg check (gross_payout >= 0);
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- 0006_activity_log.sql
@@ -646,6 +888,15 @@ create table if not exists activity_log (
   detail       text,
   created_at   timestamptz not null default now()
 );
+
+-- Drift repair (see session_requests above for why).
+alter table activity_log
+  add column if not exists actor_email text,
+  add column if not exists action      text,
+  add column if not exists entity_type text,
+  add column if not exists entity_ref  text,
+  add column if not exists detail      text,
+  add column if not exists created_at  timestamptz not null default now();
 
 create index if not exists activity_log_recent_idx on activity_log (created_at desc);
 create index if not exists activity_log_entity_idx on activity_log (entity_type, entity_ref);
@@ -870,12 +1121,18 @@ alter table session_requests
 do $$ begin
   alter table session_requests
     add constraint agreed_gross_payout_nonneg check (agreed_gross_payout >= 0);
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 do $$ begin
   alter table session_requests
     add constraint min_commitment_positive check (min_commitment > 0);
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 -- The panel groups by assignee and the Session Details tab joins back through
 -- it; without this both seq-scan once the table grows.
@@ -1062,7 +1319,10 @@ do $$ begin
       or (caption is not null and length(btrim(caption)) > 0
           and city is not null and length(btrim(city)) > 0)
     );
-exception when duplicate_object then null; end $$;
+-- check_violation alongside duplicate_object: a row already in the table that
+-- doesn't satisfy this rule must not block the rest of the script — see the
+-- header note on this.
+exception when duplicate_object or check_violation then null; end $$;
 
 -- The tab reads drafts and live photos as two separate lists.
 create index if not exists gallery_photos_stage_idx
@@ -1103,6 +1363,20 @@ create table if not exists public.email_log (
   created_at    timestamptz not null default now()
 );
 
+-- Drift repair (see session_requests above for why).
+alter table public.email_log
+  add column if not exists trace_id            text,
+  add column if not exists template             text,
+  add column if not exists recipient            text,
+  add column if not exists stream               text,
+  add column if not exists status               text,
+  add column if not exists ok                   boolean,
+  add column if not exists error_code           text,
+  add column if not exists error_message        text,
+  add column if not exists retry_count          integer not null default 0,
+  add column if not exists provider_message_id  text,
+  add column if not exists created_at           timestamptz not null default now();
+
 -- The duplicate check: "has this template gone to this address recently?".
 -- Ordered so the newest row for a pair is the first one read.
 create index if not exists email_log_dedupe_idx
@@ -1138,6 +1412,162 @@ alter table public.email_log enable row level security;
 -- make executed contracts reachable by path.
 insert into storage.buckets (id, name, public)
 values ('agreements', 'agreements', false)
+on conflict (id) do nothing;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- 0019_empanelment_reference_at_signature.sql
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- The empanelment reference is issued when someone is empanelled, not before.
+--
+-- `practitioners.reference` was allocated the moment an admin generated the
+-- agreement — the row has to exist for the agreement to point at, and it was
+-- given its IQC-EMP number on the way past. So an applicant who never signed
+-- still consumed one, and the agreement email quoted a number that identified
+-- an empanelment that had not happened.
+--
+-- The client's agreement JSON is explicit that these are two different things:
+-- the Agreement Reference Number (IQC-AGR) is "assigned earlier by the admin
+-- when the agreement is issued" and is what the onboarding page shows, while
+-- the Empanelment Reference Number (IQC-EMP) is "generated once the
+-- practitioner submits the signed agreement".
+--
+-- The console already described it this way — `services/console.ts` documents
+-- the column as "Assigned at empanelment — null before it, never invented" —
+-- so this makes the schema agree with the sentence that was already there.
+--
+-- Nullable, not removed: the column keeps its UNIQUE index, and Postgres treats
+-- NULLs as distinct, so any number of unsigned practitioners can sit without
+-- one while every issued number stays unique.
+--
+-- Idempotent: dropping a NOT NULL that is already dropped is a no-op in
+-- Postgres, so re-running this changes nothing.
+alter table public.practitioners
+  alter column reference drop not null;
+
+comment on column public.practitioners.reference is
+  'IQC-EMP number, allocated when the signature empanels the practitioner. Null while an agreement is out but unsigned — never invented, and never allocated to someone who has not signed.';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- 0020_session_duration_valid.sql
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- A session lasts three hours or six. The database now says so too.
+--
+-- `duration_minutes` has exactly one writer in the application:
+-- `generateConfirmation` stores `input.durationHours * 60`, having already
+-- refused any `durationHours` outside `[3, 6]`. The code can therefore only
+-- ever produce 180 or 360.
+--
+-- IQC-S0005 was holding 186. Nothing in the codebase can write that number, so
+-- it arrived from outside the application — a hand edit or an import. It was
+-- not inert: both surfaces that show a duration divide by 60 and print the
+-- result, so the practitioner's consent page and their confirmation PDF each
+-- read "3.1 hours" on a document stating the terms they are asked to agree to.
+--
+-- The application guard could not have caught it, because the application was
+-- never the thing that wrote it. Only the database can refuse a write the
+-- database itself receives, which is the whole argument for putting the rule
+-- here rather than adding a second copy of it in TypeScript.
+--
+-- NULL stays legal. The column is empty for every session until its
+-- confirmation is generated, which is most of them at any moment.
+--
+-- Idempotent: the drop precedes the add, so re-running replaces the constraint
+-- with an identical one rather than failing on a name that already exists.
+--
+-- Already applied to the live database on 2026-08-15, ahead of this file — the
+-- constraint was written to fix IQC-S0005 and is recorded here so the repo
+-- describes the schema that actually exists.
+alter table public.sessions
+  drop constraint if exists sessions_duration_minutes_valid;
+
+-- Guarded like every other check constraint above: a row already holding a
+-- duration outside 180/360 (the exact case this constraint exists to catch,
+-- per IQC-S0005 below) must not block the rest of the script.
+do $$ begin
+  alter table public.sessions
+    add constraint sessions_duration_minutes_valid
+    check (duration_minutes is null or duration_minutes in (180, 360));
+exception when duplicate_object or check_violation then null; end $$;
+
+comment on column public.sessions.duration_minutes is
+  'Session length: 180 (single module) or 360 (bundled, two modules), or null before the confirmation is generated. Constrained because a value the application cannot write still reached this column once.';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- 0021_practitioner_phone.sql
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- The practitioner's phone number, carried onto the practitioner record.
+--
+-- Every applicant gives one: `practitioner_applications.phone` is NOT NULL and
+-- the apply form has always collected it. What it never did was travel — when
+-- an application becomes a practitioner, the insert carries name, role, city,
+-- state and email, and leaves the number behind. So the console could show a
+-- practitioner's email everywhere and their number nowhere, and the WhatsApp
+-- half of the draft dialog had no one to send to.
+--
+-- Exactly the case `state` was in one migration ago (0017), whose comment reads
+-- "carried onto the practitioner rather than left on the application", and this
+-- follows it rather than inventing a second way to reach the same value. A
+-- practitioner created without an application — there is nothing preventing one
+-- — has no application to read through at all, which is the other half of why
+-- the value belongs here.
+--
+-- Nullable, not NOT NULL: the backfill below can only reach practitioners whose
+-- application still exists, and a column that rejects the rest would fail on
+-- the way in. Null means "no number on file", which the dialog reads as "offer
+-- no WhatsApp button" rather than opening the app on nothing.
+--
+-- Idempotent: `add column if not exists`, and the backfill only writes rows
+-- where the column is still null, so re-running changes nothing and never
+-- overwrites a number an admin has since corrected.
+alter table public.practitioners
+  add column if not exists phone text;
+
+update public.practitioners as p
+set phone = a.phone
+from public.practitioner_applications as a
+where p.application_id = a.id
+  and p.phone is null
+  and a.phone is not null;
+
+comment on column public.practitioners.phone is
+  'Contact number as given on the application. Null where the practitioner predates this column and their application is gone, or where they were created without one.';
+
+-- ===== 0022_email_attachments =====
+-- Reusable email attachments (V8 welcome flyers + admin uploads).
+--
+-- One row per saved file; the bytes live in the private `email-attachments`
+-- bucket and are read with the service role at send time (Brevo gets base64,
+-- never a URL). Additive and idempotent: 0001-0021 are untouched.
+--
+-- Deletes are soft (deleted_at) so a mistaken delete is recoverable by SQL.
+-- uploaded_by_email is null for the seeded flyers: only a global admin may
+-- delete those. default_for_welcome marks the files the welcome email
+-- attaches automatically (the practitioner's signed agreement is added in
+-- code, not stored here).
+
+create table if not exists public.email_attachments (
+  id                  uuid primary key default gen_random_uuid(),
+  label               text not null,
+  file_name           text not null,
+  storage_path        text not null unique,
+  content_type        text not null check (content_type in ('application/pdf', 'image/png', 'image/jpeg')),
+  size_bytes          integer not null check (size_bytes > 0),
+  uploaded_by_email   text,
+  default_for_welcome boolean not null default false,
+  created_at          timestamptz not null default now(),
+  deleted_at          timestamptz
+);
+
+create index if not exists email_attachments_live_idx
+  on public.email_attachments (created_at) where deleted_at is null;
+
+alter table public.email_attachments enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('email-attachments', 'email-attachments', false)
 on conflict (id) do nothing;
 
 commit;

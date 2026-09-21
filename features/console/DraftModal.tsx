@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 
 import { Modal } from "@/components/ui/Modal";
+import { unattachedMentions } from "@/lib/email/attachment-rules";
 import { waLink } from "@/lib/whatsapp/link";
 
-import { composeDraft, recordWhatsAppOpened } from "./actions";
+import { composeDraft, listDraftAttachments, recordWhatsAppOpened } from "./actions";
+import { AttachmentPanel, PaperclipButton } from "./AttachmentPanel";
 import {
   DRAFT_CHROME,
   LINK_PLACEHOLDER,
   REFERENCE_PLACEHOLDER,
   type Draft,
+  type DraftAttachment,
   type DraftKind,
   type DraftOverride,
 } from "./draft-kinds";
@@ -86,6 +89,9 @@ export function DraftModal({
   const [notifyBody, setNotifyBody] = useState("");
   const [channel, setChannel] = useState<Channel>("email");
   const [copy, setCopy] = useState<CopyState>("idle");
+  const [files, setFiles] = useState<DraftAttachment[]>([]);
+  const [attachedIds, setAttachedIds] = useState<string[]>([]);
+  const [attachOpen, setAttachOpen] = useState(false);
 
   // Mounted only while open (see `RowAction`), so every open starts from these
   // initial values. That is why there is no reset here: clearing state
@@ -103,6 +109,8 @@ export function DraftModal({
         setDraft(composed);
         setSubject(composed.subject);
         setBody(composed.body);
+        setFiles(composed.attachments);
+        setAttachedIds(composed.attachedIds);
         if (composed.notify) {
           setNotifySubject(composed.notify.subject);
           setNotifyBody(composed.notify.body);
@@ -127,6 +135,9 @@ export function DraftModal({
   // Not required when there is nobody on file to notify: that tab carries only
   // an explanatory line, which is not something to fill in.
   const notifyReady = !draft?.notify?.to || (notifySubject.trim().length > 0 && notifyBody.trim().length > 0);
+  // The text names a file that is no longer attached — the recipient would look
+  // for something that is not there.
+  const missing = unattachedMentions(body, files, attachedIds);
   const ready =
     Boolean(draft) && subject.trim().length > 0 && body.trim().length > 0 && notifyReady;
 
@@ -235,6 +246,7 @@ export function DraftModal({
                   // points at, and the send creates it under that id so the two
                   // agree.
                   linkId: draft?.linkId,
+                  attachmentIds: attachedIds,
                   // Only when there is someone to send it to — a session with
                   // nobody assigned has an explanatory tab, not a second draft.
                   notifySubject: draft?.notify?.to ? notifySubject.trim() : undefined,
@@ -306,13 +318,16 @@ export function DraftModal({
               <span className="font-medium text-ink">To:</span> {draft.to}
             </div>
 
-            <p className="mb-1.5 flex items-center gap-[5px] text-2xs text-ink-faint">
-              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-              Click into the text below to edit before sending
-            </p>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="flex items-center gap-[5px] text-2xs text-ink-faint">
+                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Click into the text below to edit before sending
+              </p>
+              <PaperclipButton count={attachedIds.length} open={attachOpen} onToggle={() => setAttachOpen((v) => !v)} />
+            </div>
 
             <div className="mb-3 flex items-baseline gap-1.5 border-b border-border pb-2.5">
               <label htmlFor="draft-subject" className="shrink-0 text-base font-semibold text-ink">
@@ -338,6 +353,22 @@ export function DraftModal({
               rows={14}
               className="block w-full resize-y rounded-lg border border-border bg-surface-soft p-4 text-base leading-[1.85] text-ink-muted focus:border-gold focus:bg-surface focus:outline-none"
             />
+
+            {missing.length ? (
+              <p role="status" className="mt-2 rounded-lg border border-gold-border bg-gold-light px-3 py-2 text-xs leading-[1.5] text-gold-dark">
+                {missing.map((f) => `The text mentions ${f.label} but it is no longer attached.`).join(" ")}
+              </p>
+            ) : null}
+
+            {attachOpen ? (
+              <AttachmentPanel
+                files={files}
+                attachedIds={attachedIds}
+                onAttachedChange={setAttachedIds}
+                onFilesChange={setFiles}
+                refresh={() => listDraftAttachments(kind, id)}
+              />
+            ) : null}
 
             {!ready ? (
               <p role="alert" className="mt-2 text-xs text-red">

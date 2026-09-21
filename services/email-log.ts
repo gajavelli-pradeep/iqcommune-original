@@ -81,7 +81,11 @@ export async function alreadySent(
       .select("id")
       .eq("template", template)
       .eq("recipient", recipient)
-      .eq("ok", true)
+      // Only what reached the provider. `ok` is also true for a dry run (nothing
+      // went out) and for an earlier "duplicate" skip — counting those made one
+      // test send block the real one, and every blocked retry re-armed the
+      // window, so the email never left while the console said it was sent.
+      .in("status", ["sent", "queued"])
       .gte("created_at", since)
       .limit(1);
     if (error) throw new Error(error.message);

@@ -285,7 +285,15 @@ export async function listSessionRequests(): Promise<SessionRequestRow[]> {
     // type level and a `+` erases the literal type, so every column comes back
     // as an error type.
     .select(
-      "id, first_name, last_name, organisation_name, email, phone, topic, audience, city, state, group_size, min_commitment, preferred_window, venue_details, notes, status, created_at, assigned_practitioner_id, agreed_gross_payout, practitioners ( full_name ), sessions ( reference, deleted_at )",
+      // `practitioners` is named explicitly: session_requests carries two FKs
+      // into practitioners (assigned_practitioner_id, and the unused legacy
+      // assigned_to), and PostgREST refuses an ambiguous embed rather than
+      // guessing which one this means.
+      // `sessions` is named explicitly too: sessions carries two FKs into
+      // session_requests (session_request_id, the V7 column this app uses, and
+      // request_id, an unused legacy one) — the same ambiguity as practitioners
+      // above, just on the other side of this join.
+      "id, first_name, last_name, organisation_name, email, phone, topic, audience, city, state, group_size, min_commitment, preferred_window, venue_details, notes, status, created_at, assigned_practitioner_id, agreed_gross_payout, practitioners!session_requests_assigned_practitioner_id_fkey ( full_name ), sessions!sessions_session_request_id_fkey ( reference, deleted_at )",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -508,7 +516,14 @@ export async function listSessions(): Promise<SessionRow[]> {
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, reference, module, session_date, city, state, spoc_name, audience, participants, status, session_requests ( first_name, last_name, organisation_name ), session_practitioners ( id, gross_payout, currency, deleted_at, practitioners ( full_name ), session_ratings ( rating, recorded_by ) )",
+      // `practitioners` inside the embed is named explicitly: session_practitioners
+      // carries two FKs into practitioners (practitioner_id, the confirmed
+      // assignment this reads, and assigned_practitioner_id, a candidate one),
+      // and PostgREST refuses an ambiguous embed rather than guessing which.
+      // `session_requests` is named explicitly too: sessions carries two FKs
+      // into session_requests (session_request_id, the V7 column this app
+      // uses, and request_id, an unused legacy one).
+      "id, reference, module, session_date, city, state, spoc_name, audience, participants, status, session_requests!sessions_session_request_id_fkey ( first_name, last_name, organisation_name ), session_practitioners ( id, gross_payout, currency, deleted_at, practitioners!session_practitioners_practitioner_id_fkey ( full_name ), session_ratings ( rating, recorded_by ) )",
     )
     .is("deleted_at", null)
     // The delivery view: a Pending session has nothing to report yet.
@@ -626,8 +641,12 @@ export interface ConsentRow {
   venue: string;
 }
 
+// `practitioners` is named explicitly: session_practitioners carries two FKs
+// into practitioners (practitioner_id, the confirmed assignment this reads,
+// and assigned_practitioner_id, a candidate one), and PostgREST refuses an
+// ambiguous embed rather than guessing which.
 const CONSENT_SELECT =
-  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, deleted_at, practitioners ( full_name ), sessions ( reference, session_date, status, module, venue, deleted_at )";
+  "id, session_id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, deleted_at, practitioners!session_practitioners_practitioner_id_fkey ( full_name ), sessions ( reference, session_date, status, module, venue, deleted_at )";
 
 /**
  * When each assignment was last sent its consent request and its photo guide.
@@ -833,7 +852,11 @@ async function listAssignments(generated: boolean): Promise<ConfirmableSession[]
   const query = supabase
     .from("session_practitioners")
     .select(
-      "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners ( full_name, practitioner_agreements ( reference, deleted_at ) ), sessions ( reference, module, session_date, city, state, venue, participants, spoc_name, audience, start_time, duration_minutes, deleted_at )",
+      // `practitioners` is named explicitly: session_practitioners carries two
+      // FKs into practitioners (practitioner_id, the confirmed assignment this
+      // reads, and assigned_practitioner_id, a candidate one), and PostgREST
+      // refuses an ambiguous embed rather than guessing which.
+      "id, confirmation_reference, confirmation_generated_at, gross_payout, currency, consent_given_at, practitioners!session_practitioners_practitioner_id_fkey ( full_name, practitioner_agreements ( reference, deleted_at ) ), sessions ( reference, module, session_date, city, state, venue, participants, spoc_name, audience, start_time, duration_minutes, deleted_at )",
     )
     .is("deleted_at", null)
     .limit(500);
@@ -943,7 +966,11 @@ export async function listPayouts(): Promise<PayoutRow[]> {
   const { data, error } = await supabase
     .from("session_practitioners")
     .select(
-      "id, confirmation_reference, gross_payout, currency, invoice_reference, paid_on, sessions!inner ( reference, session_date, status, deleted_at ), practitioners ( full_name )",
+      // `practitioners` is named explicitly: session_practitioners carries two
+      // FKs into practitioners (practitioner_id, the confirmed assignment this
+      // reads, and assigned_practitioner_id, a candidate one), and PostgREST
+      // refuses an ambiguous embed rather than guessing which.
+      "id, confirmation_reference, gross_payout, currency, invoice_reference, paid_on, sessions!inner ( reference, session_date, status, deleted_at ), practitioners!session_practitioners_practitioner_id_fkey ( full_name )",
     )
     .is("deleted_at", null)
     // A withdrawn session owes nobody anything, delivered or not.
@@ -1050,9 +1077,13 @@ const SUBMISSION_SELECT =
   "sessions ( id, reference, module, city, session_date, status, deleted_at )";
 
 /** Completed sessions, to find the ones still owing photos. */
+// `practitioners` is named explicitly: session_practitioners carries two FKs
+// into practitioners (practitioner_id, the confirmed assignment this reads,
+// and assigned_practitioner_id, a candidate one), and PostgREST refuses an
+// ambiguous embed rather than guessing which.
 const PENDING_SELECT =
   "id, reference, module, city, session_date, status, " +
-  "session_practitioners ( deleted_at, practitioners ( full_name, reference ) ), " +
+  "session_practitioners ( deleted_at, practitioners!session_practitioners_practitioner_id_fkey ( full_name, reference ) ), " +
   "photo_submissions ( id, deleted_at )";
 
 export interface SubmissionRow {

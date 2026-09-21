@@ -23,7 +23,7 @@ import { recordActivity } from "@/services/console";
  * to rendering, and the unsigned one says so on its face.
  */
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const traceId = newTraceId();
   // Redirects to /login when there is no session, so an unauthenticated request
   // never reaches the document.
@@ -83,7 +83,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new Response(pdf as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      // `?inline=1` is the draft dialog's preview; the button still downloads.
+      "Content-Disposition": `${new URL(request.url).searchParams.has("inline") ? "inline" : "attachment"}; filename="${filename}"`,
       // A signed contract must not sit in a shared cache.
       "Cache-Control": "private, no-store",
     },
