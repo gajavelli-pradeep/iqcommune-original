@@ -94,7 +94,22 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The draft dialog previews attachments in an <iframe>. The blanket DENY /
+      // `frame-ancestors 'none'` above blocks even our own page framing a PDF
+      // (images pass because <img> ignores frame headers). Later rules override
+      // the same key, so these two byte-serving routes — and only these — allow
+      // same-origin framing. The CSP is just that one directive: the global
+      // `object-src 'none'` would also stop the browser's PDF viewer rendering.
+      ...["/api/agreements/:id/pdf", "/api/email-attachments/:id"].map((source) => ({
+        source,
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      })),
+    ];
   },
 };
 
