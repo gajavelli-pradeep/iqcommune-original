@@ -2963,7 +2963,13 @@ export async function setHomeGalleryVisible(visible: boolean): Promise<ActionRes
     await setGalleryVisible(visible, email);
   } catch (cause) {
     console.error("[settings] gallery visibility write failed:", cause);
-    return { ok: false, message: "Could not save the setting. Has migration 0023 been applied?" };
+    // Global Admin only, so the database's own reason is safe to show — and it
+    // is the difference between "table missing", "schema cache stale" and
+    // "permission denied", which need three different fixes.
+    return {
+      ok: false,
+      message: `Could not save the setting: ${cause instanceof Error ? cause.message : "unknown error"}`,
+    };
   }
   await recordActivity({
     actorEmail: email,
