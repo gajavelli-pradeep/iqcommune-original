@@ -116,6 +116,73 @@ export function PaperclipButton({
   );
 }
 
+/** Zoom stops for an image preview; `null` fits the whole picture in view. */
+const ZOOM_STEPS = [null, 1, 1.5, 2, 3] as const;
+
+const ZOOM_BTN =
+  "flex size-11 items-center justify-center rounded-full text-sm font-semibold text-ink transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-40 pointer-fine:size-8";
+
+/**
+ * An image preview with room around the picture and zoom.
+ *
+ * The picture sits inside padding on a card, so a flyer that fills its own
+ * frame no longer touches the edges. "Fit" shows the whole thing; the other
+ * stops scale it against the card's width and the card scrolls to pan.
+ */
+function ImageViewer({ file }: { file: DraftAttachment }) {
+  const [step, setStep] = useState(0);
+  const zoom = ZOOM_STEPS[step];
+  const go = (next: number) => setStep(Math.min(ZOOM_STEPS.length - 1, Math.max(0, next)));
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "+" || event.key === "=") setStep((n) => Math.min(ZOOM_STEPS.length - 1, n + 1));
+      else if (event.key === "-") setStep((n) => Math.max(0, n - 1));
+      else if (event.key === "0") setStep(0);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="flex max-h-[86dvh] w-[min(880px,92vw)] flex-col rounded-[10px] bg-surface shadow-xl">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-6 sm:p-10">
+        {/* eslint-disable-next-line @next/next/no-img-element -- an authenticated, private, one-off preview; next/image would proxy it through the optimiser */}
+        <img
+          src={file.previewUrl}
+          alt={file.label}
+          onDoubleClick={() => go(step === 0 ? 3 : 0)}
+          // Dynamic by nature: the width is the zoom level.
+          style={zoom ? { width: `${zoom * 100}%`, maxWidth: "none" } : undefined}
+          className={`mx-auto block rounded-md ${
+            zoom ? "h-auto" : "max-h-[calc(86dvh-10rem)] w-auto max-w-full object-contain"
+          }`}
+        />
+      </div>
+      <div className="flex items-center justify-center gap-1 border-t border-border px-4 py-2">
+        <button type="button" onClick={() => go(step - 1)} disabled={step === 0} aria-label="Zoom out" className={ZOOM_BTN}>
+          −
+        </button>
+        <span aria-live="polite" className="min-w-14 text-center text-xs font-semibold text-ink-muted">
+          {zoom ? `${Math.round(zoom * 100)}%` : "Fit"}
+        </span>
+        <button
+          type="button"
+          onClick={() => go(step + 1)}
+          disabled={step === ZOOM_STEPS.length - 1}
+          aria-label="Zoom in"
+          className={ZOOM_BTN}
+        >
+          +
+        </button>
+        <button type="button" onClick={() => setStep(0)} disabled={step === 0} className={`${ZOOM_BTN} px-3 !w-auto`}>
+          Fit
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** The nearest ancestor that actually scrolls — the dialog scrolls its overlay. */
 function scrollParent(node: HTMLElement | null): HTMLElement | null {
   for (let el = node?.parentElement ?? null; el; el = el.parentElement) {
@@ -410,9 +477,13 @@ export function AttachmentPanel({
             if (event.target === event.currentTarget) setPreview(null);
           }}
           onKeyDown={(event) => {
+            // Keep Tab inside the overlay: cycle through its own buttons.
             if (event.key !== "Tab") return;
             event.preventDefault();
-            event.currentTarget.querySelector("button")?.focus();
+            const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+            const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+            const next = (at + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+            buttons[next]?.focus();
           }}
           className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-scrim p-4"
         >
@@ -423,12 +494,7 @@ export function AttachmentPanel({
               className="h-[86dvh] w-[min(880px,92vw)] rounded-[10px] bg-surface shadow-xl"
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- an authenticated, private, one-off preview; next/image would proxy it through the optimiser
-            <img
-              src={preview.previewUrl}
-              alt={preview.label}
-              className="max-h-[86dvh] max-w-[92vw] rounded-[10px] bg-surface object-contain shadow-xl"
-            />
+            <ImageViewer key={preview.id} file={preview} />
           )}
           <button
             type="button"
