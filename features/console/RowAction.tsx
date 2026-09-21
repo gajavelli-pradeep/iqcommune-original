@@ -72,12 +72,15 @@ export function RowAction({
   const [drafting, setDrafting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
 
   /** Runs the action and keeps whatever it had to say about itself. */
   const run = (edited?: DraftOverride) => async () => {
     setError(null);
+    setSent(null);
     const result = await action(edited);
     if (result && !result.ok) setError(result.message);
+    else if (result?.message) setSent(result.message);
   };
 
   const focus =
@@ -144,6 +147,12 @@ export function RowAction({
       {error ? (
         <p role="alert" className="mt-1 max-w-[200px] text-3xs text-red">
           {error}
+        </p>
+      ) : null}
+
+      {sent ? (
+        <p role="status" className="mt-1 max-w-[200px] text-3xs text-green">
+          {sent}
         </p>
       ) : null}
 

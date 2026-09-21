@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 
-import { dispatchEmail } from "@/lib/email/dispatch";
 import { buildLink } from "@/lib/email/links";
 import { sendEmail, type EmailMessage } from "@/lib/email/send";
 import {
@@ -79,7 +78,7 @@ import { toConsoleRole } from "./roles";
  * step in the flow, and logging it as a server error buries the real ones.
  * Actions that only ever succeed or fault keep returning `void` and throwing.
  */
-export type ActionResult = { ok: true } | { ok: false; message: string };
+export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };
 
 /**
  * A session status change that succeeded, and may still have something to say.
@@ -314,12 +313,13 @@ export async function matchSessionRequest(id: string): Promise<ActionResult> {
  * `request-follow-up` slug: both are identifiers, and the slug in particular is
  * written into `activity_log` rows that already exist.
  */
-export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Promise<void> {
+export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const composed = await draftMessage("request-follow-up", id);
   if (!composed) throw new Error("that request no longer exists");
 
-  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
+  const sent = await sendDraftedNow(applyDraft(composed.message, draft));
+  if (!sent.ok) return sent;
   await recordActivity({
     actorEmail: actor,
     action: "request.followed_up",
@@ -330,21 +330,24 @@ export async function sendRequestFollowUp(id: string, draft?: DraftOverride): Pr
     // the copy without changing which thing is actually missing.
     detail: draft ? `${composed.detail} (edited before sending)` : composed.detail,
   });
+  return sent;
 }
 
 /** "Send cancellation message" — tells the client, without changing the status. */
-export async function sendRequestCancellation(id: string, draft?: DraftOverride): Promise<void> {
+export async function sendRequestCancellation(id: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const composed = await draftMessage("request-cancellation", id);
   if (!composed) throw new Error("that request no longer exists");
 
-  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
+  const sent = await sendDraftedNow(applyDraft(composed.message, draft));
+  if (!sent.ok) return sent;
   await recordActivity({
     actorEmail: actor,
     action: "request.cancellation_sent",
     entityType: "request",
     entityRef: id,
   });
+  return sent;
 }
 
 /** The request panel's status select — the three V7 offers. */
@@ -491,7 +494,7 @@ export async function setApplicationStage(rowId: string, stage: string): Promise
  * Idempotent — a second click resends the link for the existing agreement
  * rather than issuing a second one.
  */
-export async function generateAndSendAgreement(rowId: string, draft?: DraftOverride): Promise<void> {
+export async function generateAndSendAgreement(rowId: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const supabase = createAdminClient();
   const { table, id } = pipelineId(rowId);
@@ -607,12 +610,12 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
   }
 
   const contact = await practitionerContact(supabase, practitionerId);
+  let sent: ActionResult = { ok: true };
   if (contact) {
     // Both stand-ins can be resolved now: the agreement exists, so the link and
     // its IQC-AGR reference are both real. The practitioner's IQC-EMP number is
     // deliberately not used here — it is not allocated until they sign.
-    await dispatchDrafted(
-      newTraceId(),
+    sent = await sendDraftedNow(
       applyDraft(
         onboardingLink(contact.email, contact.firstName, agreementId, agreementReference),
         draft,
@@ -630,10 +633,12 @@ export async function generateAndSendAgreement(rowId: string, draft?: DraftOverr
     detail: openAgreement ? "Resent the existing agreement link." : "Generated and sent the empanelment agreement.",
   });
   revalidateConsole();
+  // The agreement exists either way; only the email may have failed.
+  return sent.ok ? sent : { ok: false, message: `Agreement created, but the email was not sent. ${sent.message}` };
 }
 
 /** "Send rejection message" — sets the stage and tells the applicant. */
-export async function rejectApplication(rowId: string, draft?: DraftOverride): Promise<void> {
+export async function rejectApplication(rowId: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "application") throw new Error("only an application can be rejected");
@@ -653,7 +658,8 @@ export async function rejectApplication(rowId: string, draft?: DraftOverride): P
     .maybeSingle();
   if (error) throw new Error(`rejection failed: ${error.message}`);
 
-  if (data && composed) await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
+  const sent: ActionResult =
+    data && composed ? await sendDraftedNow(applyDraft(composed.message, draft)) : { ok: true };
   await recordActivity({
     actorEmail: actor,
     action: "application.rejected",
@@ -661,6 +667,7 @@ export async function rejectApplication(rowId: string, draft?: DraftOverride): P
     entityRef: id,
   });
   revalidateConsole();
+  return sent.ok ? sent : { ok: false, message: `Rejected, but the email was not sent. ${sent.message}` };
 }
 
 /**
@@ -668,7 +675,7 @@ export async function rejectApplication(rowId: string, draft?: DraftOverride): P
  * hatch for a practitioner who signed on paper, so the pipeline is not stuck
  * waiting for a webhook that will never arrive.
  */
-export async function empanelPractitioner(rowId: string, draft?: DraftOverride): Promise<void> {
+export async function empanelPractitioner(rowId: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor, role } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") {
@@ -712,9 +719,10 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
       .eq("id", data.application_id);
   }
 
+  let welcome: ActionResult | null = null;
   if (composed) {
     const attachmentIds = await welcomeAttachmentIds(id, draft?.attachmentIds, { role, email: actor });
-    await dispatchDrafted(newTraceId(), { ...applyDraft(composed.message, draft), attachmentIds });
+    welcome = await sendDraftedNow({ ...applyDraft(composed.message, draft), attachmentIds });
   }
   await recordActivity({
     actorEmail: actor,
@@ -730,10 +738,10 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
   // sends nothing, so an admin who marked someone Empanelled by hand would
   // still be offered a welcome that had already gone.
   //
-  // Only when a message was actually composed — a draft that came back empty
-  // sent nothing, and logging a welcome nobody received is the failure this is
-  // here to prevent, pointed the other way.
-  if (composed) {
+  // Only when a message actually went out — a draft that came back empty, a dry
+  // run or a refusal sent nothing, and logging a welcome nobody received is the
+  // failure this is here to prevent, pointed the other way.
+  if (welcome?.ok) {
     await recordActivity({
       actorEmail: actor,
       action: "practitioner.welcomed",
@@ -743,31 +751,38 @@ export async function empanelPractitioner(rowId: string, draft?: DraftOverride):
     });
   }
   revalidateConsole();
+  if (welcome && !welcome.ok) {
+    return { ok: false, message: `Marked empanelled, but the welcome was not sent. ${welcome.message}` };
+  }
+  return welcome ?? { ok: true };
 }
 
 /** "Send welcome message" — the welcome email on its own, no status change. */
-export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): Promise<void> {
+export async function sendWelcomeMessage(rowId: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor, role } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") throw new Error("this applicant is not empanelled yet");
 
   const composed = await draftMessage("practitioner-welcome", rowId);
-  if (composed) {
-    const attachmentIds = await welcomeAttachmentIds(id, draft?.attachmentIds, { role, email: actor });
-    await dispatchDrafted(newTraceId(), { ...applyDraft(composed.message, draft), attachmentIds });
+  if (!composed) return { ok: false, message: "That practitioner no longer exists." };
+  const attachmentIds = await welcomeAttachmentIds(id, draft?.attachmentIds, { role, email: actor });
+  const result = await sendDraftedNow({ ...applyDraft(composed.message, draft), attachmentIds });
+  // The Agreements column reads this entry to decide between the button and the
+  // Sent pill, so it is written only once the email really went out — otherwise
+  // a dry run or a refusal would show "Sent" and hide the button that retries.
+  if (result.ok) {
+    await recordActivity({
+      actorEmail: actor,
+      action: "practitioner.welcomed",
+      entityType: "practitioner",
+      entityRef: id,
+    });
+    revalidateConsole();
   }
-  await recordActivity({
-    actorEmail: actor,
-    action: "practitioner.welcomed",
-    entityType: "practitioner",
-    entityRef: id,
-  });
-  // The Agreements column reads that entry to decide between the button and the
-  // Sent pill, so without this the send lands and the row goes on offering it.
-  revalidateConsole();
+  return result;
 }
 
-export async function deactivatePractitioner(rowId: string, draft?: DraftOverride): Promise<void> {
+export async function deactivatePractitioner(rowId: string, draft?: DraftOverride): Promise<ActionResult> {
   const { email: actor } = await requireCapability("mutate");
   const { table, id } = pipelineId(rowId);
   if (table !== "practitioner") throw new Error("only an empanelled practitioner can be deactivated");
@@ -782,7 +797,7 @@ export async function deactivatePractitioner(rowId: string, draft?: DraftOverrid
     .is("deleted_at", null);
   if (error) throw new Error(`deactivate failed: ${error.message}`);
 
-  if (composed) await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
+  const sent: ActionResult = composed ? await sendDraftedNow(applyDraft(composed.message, draft)) : { ok: true };
   await recordActivity({
     actorEmail: actor,
     action: "practitioner.deactivated",
@@ -790,6 +805,7 @@ export async function deactivatePractitioner(rowId: string, draft?: DraftOverrid
     entityRef: id,
   });
   revalidateConsole();
+  return sent.ok ? sent : { ok: false, message: `Deactivated, but the email was not sent. ${sent.message}` };
 }
 
 /** "Reactivate" — the deactivation is a pause, not a deletion, so it reverses. */
@@ -1142,7 +1158,9 @@ export async function setSessionStatus(
     .maybeSingle();
   if (error) throw new Error(`session status update failed: ${error.message}`);
 
-  if (cancellation) await dispatchDrafted(newTraceId(), applyDraft(cancellation.message, draft));
+  const sent: ActionResult = cancellation
+    ? await sendDraftedNow(applyDraft(cancellation.message, draft))
+    : { ok: true };
 
   await recordActivity({
     actorEmail: actor,
@@ -1162,6 +1180,7 @@ export async function setSessionStatus(
       warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
     };
   }
+  if (!sent.ok) return { ok: true, warning: `Status changed, but the email was not sent. ${sent.message}` };
   return { ok: true };
 }
 
@@ -1365,7 +1384,11 @@ export async function setConfirmationStatus(
     (ref) => (ref ? `Reset to New — session ${ref} was cancelled.` : "Reset to New — its session was cancelled."),
   );
 
-  if (cancellation) await dispatchDrafted(newTraceId(), applyDraft(cancellation.message, draft));
+  let unsent: string | null = null;
+  if (cancellation) {
+    const first = await sendDraftedNow(applyDraft(cancellation.message, draft));
+    if (!first.ok) unsent = first.message;
+  }
 
   // The second, real recipient — "one Send button dispatches both" (client
   // delivery, latest folder, 2026-08-17). Only on the client-cancelled path:
@@ -1376,8 +1399,7 @@ export async function setConfirmationStatus(
   const notifyTo = cancellation?.notify?.to;
   if (cancellation?.notify && notifyTo) {
     const notify = cancellation.notify;
-    await dispatchDrafted(
-      newTraceId(),
+    const second = await sendDraftedNow(
       applyDraft(
         {
           to: notifyTo,
@@ -1391,6 +1413,7 @@ export async function setConfirmationStatus(
           : undefined,
       ),
     );
+    if (!second.ok) unsent ??= second.message;
   }
 
   await recordActivity({
@@ -1410,6 +1433,7 @@ export async function setConfirmationStatus(
       warning: "Session cancelled, but no email was sent — this session has no linked request to write to.",
     };
   }
+  if (unsent) return { ok: true, warning: `Session cancelled, but an email was not sent. ${unsent}` };
   return { ok: true };
 }
 
@@ -2580,16 +2604,22 @@ function applyDraft(
 type DraftedMessage = EmailMessage & { attachmentIds?: string[] };
 
 /**
- * Fetches the chosen files, then queues the send.
- *
- * The bytes are read before `after()` on purpose: the send itself runs in a
- * background task where a failure is visible only in `email_log`. A file that
- * cannot be read fails here instead, while the admin is still in the dialog.
+ * Sends now and reports what really happened, for sends whose outcome the admin
+ * must see. `dispatchEmail` runs after the response, so the console said "sent"
+ * for a dry run, a duplicate skip and a Brevo refusal alike.
  */
-async function dispatchDrafted(traceId: string, message: DraftedMessage): Promise<void> {
+async function sendDraftedNow(message: DraftedMessage): Promise<ActionResult> {
   const { attachmentIds, ...rest } = message;
-  if (!attachmentIds?.length) return dispatchEmail(traceId, rest);
-  dispatchEmail(traceId, { ...rest, attachments: await resolveAttachments(attachmentIds) });
+  try {
+    const attachments = attachmentIds?.length ? await resolveAttachments(attachmentIds) : undefined;
+    const outcome = await sendEmail(newTraceId(), attachments ? { ...rest, attachments } : rest);
+    // `delivered`, not `ok`: a dry run is ok and sends nothing.
+    return outcome.delivered
+      ? { ok: true, message: `Sent to ${message.to}.` }
+      : { ok: false, message: outcome.message };
+  } catch (cause) {
+    return { ok: false, message: cause instanceof Error ? cause.message : "The email could not be sent." };
+  }
 }
 
 /** The welcome's files: the ones the dialog left attached, or the defaults. */
@@ -2773,7 +2803,10 @@ async function sendForAssignment(
   const composed = await draftMessage(kind, assignmentId);
   if (!composed) return { ok: false, message: missing };
 
-  await dispatchDrafted(newTraceId(), applyDraft(composed.message, draft));
+  const sent = await sendDraftedNow(applyDraft(composed.message, draft));
+  // Part 2 derives its next step from this entry, so it records a send only when
+  // the email really went out — otherwise the row would say "sent" for nothing.
+  if (!sent.ok) return sent;
   await recordActivity({ actorEmail: actor, action, entityType: "assignment", entityRef: assignmentId });
   // Part 2 derives its next step from the entry just written, so without this
   // the send is real and the table still offers to send it. Every other action
@@ -2785,7 +2818,7 @@ async function sendForAssignment(
   // — the same practitioner, the same button, one screen apart — and an admin
   // reading the stale half sends a second email to someone who already has one.
   revalidateConsole();
-  return { ok: true };
+  return sent;
 }
 
 /**
