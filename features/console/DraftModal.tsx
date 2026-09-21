@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { unattachedMentions } from "@/lib/email/attachment-rules";
 import { waLink } from "@/lib/whatsapp/link";
 
-import { composeDraft, recordWhatsAppOpened } from "./actions";
+import { composeDraft, listDraftAttachments, recordWhatsAppOpened } from "./actions";
 import { AttachmentPanel, PaperclipButton } from "./AttachmentPanel";
 import {
   DRAFT_CHROME,
@@ -366,7 +366,7 @@ export function DraftModal({
                 attachedIds={attachedIds}
                 onAttachedChange={setAttachedIds}
                 onFilesChange={setFiles}
-                refresh={async () => (await composeDraft(kind, id))?.attachments ?? files}
+                refresh={() => listDraftAttachments(kind, id)}
               />
             ) : null}
 

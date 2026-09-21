@@ -50,6 +50,7 @@ const toDraftAttachment = (
   contentType: row.content_type,
   sizeBytes: row.size_bytes,
   kind: "library",
+  isDefault: row.default_for_welcome,
   previewUrl: `/api/email-attachments/${row.id}`,
   canDelete: canDeleteAttachment(actor.role, row.uploaded_by_email, actor.email),
 });
@@ -84,12 +85,14 @@ export async function signedAgreementFor(practitionerId: string): Promise<DraftA
   if (!data) return null;
   return {
     id: `${AGREEMENT_PREFIX}${data.id}`,
-    label: "Signed agreement",
+    // The name the recipient sees on the attachment (see `agreementBytes`).
+    label: `${data.reference}-empanelment-agreement.pdf`,
     mention: "agreement",
     contentType: "application/pdf",
     // Not known without rendering; the UI shows the type instead of a size.
     sizeBytes: 0,
     kind: "agreement",
+    isDefault: false,
     previewUrl: `/api/agreements/${data.id}/pdf?inline=1`,
     canDelete: true,
   };

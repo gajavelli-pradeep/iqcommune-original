@@ -2621,6 +2621,13 @@ async function attachmentPlan(
  * What the draft dialog shows before anything is sent. Nothing is written here
  * — an admin opening a dialog and closing it again must leave no trace.
  */
+/** Just the attachable files, for the dialog's list after an upload or delete. */
+export async function listDraftAttachments(kind: DraftKind, id: string): Promise<DraftAttachment[]> {
+  const actor = await requireCapability("mutate");
+  const plan = await attachmentPlan(kind === "practitioner-welcome" ? pipelineId(id).id : null, actor);
+  return plan.attachments;
+}
+
 export async function composeDraft(kind: DraftKind, id: string): Promise<Draft | null> {
   // The invite is team management, not a pipeline mutation — previewing it must
   // demand the same capability as sending it, or an admin could read a draft of

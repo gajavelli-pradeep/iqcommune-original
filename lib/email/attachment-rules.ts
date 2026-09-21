@@ -78,6 +78,8 @@ export interface DraftAttachment {
   /** `agreement` is removed from this email only; `library` files are saved and
    *  deleting one removes it from every future email. */
   kind: "agreement" | "library";
+  /** Saved file the welcome email attaches by default (the V8 flyers). */
+  isDefault: boolean;
   previewUrl: string;
   /** Whether the signed-in admin may delete it (library files only). */
   canDelete: boolean;

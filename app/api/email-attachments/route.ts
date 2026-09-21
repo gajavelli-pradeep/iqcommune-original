@@ -1,7 +1,11 @@
+import { MAX_UPLOAD_BYTES } from "@/lib/email/attachment-rules";
 import { requireCapability } from "@/features/console/requireRole";
 import { log, newTraceId } from "@/lib/logger";
 import { addLibraryFile } from "@/services/email-attachments";
 import { recordActivity } from "@/services/console";
+
+/** The file plus multipart framing. */
+const MAX_REQUEST_BYTES = MAX_UPLOAD_BYTES + 64 * 1024;
 
 /**
  * Saves a dropped/picked file to the reusable library.
@@ -17,6 +21,11 @@ export async function POST(request: Request) {
     ({ email: actor } = await requireCapability("mutate"));
   } catch {
     return Response.json({ error: "You cannot upload files." }, { status: 403 });
+  }
+
+  // Before the body is read: `formData()` buffers all of it.
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_REQUEST_BYTES) {
+    return Response.json({ error: "That file is over 2 MB." }, { status: 413 });
   }
 
   const form = await request.formData().catch(() => null);

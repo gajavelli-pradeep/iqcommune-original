@@ -436,6 +436,17 @@ button:disabled {
     }
   }
 
+  /* The attachment count badge, nudged when the number changes (V8 .bump). */
+  @keyframes attach-bump {
+    50% {
+      transform: scale(1.32);
+    }
+  }
+
+  .animate-attach-bump {
+    animation: attach-bump 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
   .animate-fade-up {
     animation: fade-up var(--duration-slow) ease both;
   }
