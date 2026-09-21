@@ -24,3 +24,16 @@ alter table public.app_settings enable row level security;
 
 -- Let the API notice the change now rather than on its next refresh.
 notify pgrst, 'reload schema';
+
+-- Verify (run by hand; a migration should not return rows). Expect four
+-- columns: key, value, updated_by_email, updated_at.
+--
+--   select column_name, data_type
+--   from information_schema.columns
+--   where table_schema = 'public' and table_name = 'app_settings'
+--   order by ordinal_position;
+--
+-- If the console still says it "could not find the 'updated_by_email' column",
+-- the table predates this migration and the API cache is stale. Run the two
+-- statements above (the `alter table ... add column if not exists` and the
+-- `notify pgrst, 'reload schema'`), wait a few seconds, and try again.
