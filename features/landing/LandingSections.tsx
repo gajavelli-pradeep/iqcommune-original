@@ -62,7 +62,10 @@ function Anchor({ id, children }: { id: string; children: React.ReactNode }) {
   );
 }
 
-export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
+export function LandingSections({ gallery }: { gallery: React.ReactNode | null }) {
+  // No gallery (switched off in Settings): drop the drawer link with it, or it
+  // would point at a section that is not there.
+  const mobileLinks = gallery ? MOBILE_LINKS : MOBILE_LINKS.filter((link) => link.href !== "#sessions");
   return (
     // Resolved here rather than in the modal: this is the last server component
     // in the chain, so the address is read once on the server and handed down as
@@ -81,7 +84,7 @@ export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
       <div className="flex min-h-dvh flex-col">
         <SiteHeader
           right={<RequestSessionButton variant="nav" />}
-          menu={<MobileNav links={MOBILE_LINKS} action={<RequestSessionButton variant="gold" className="w-full justify-center px-5 py-3 text-md" />} />}
+          menu={<MobileNav links={mobileLinks} action={<RequestSessionButton variant="gold" className="w-full justify-center px-5 py-3 text-md" />} />}
         />
         <main className="flex-1">
           <Hero />
@@ -117,9 +120,11 @@ export function LandingSections({ gallery }: { gallery: React.ReactNode }) {
             the pure Gallery in its designed placeholder state — identical
             chrome, so no layout shift when the real photos arrive.
           */}
-          <Anchor id="sessions">
-            <Suspense fallback={<Gallery photos={[]} />}>{gallery}</Suspense>
-          </Anchor>
+          {gallery ? (
+            <Anchor id="sessions">
+              <Suspense fallback={<Gallery photos={[]} />}>{gallery}</Suspense>
+            </Anchor>
+          ) : null}
         </main>
         <SiteFooter />
       </div>

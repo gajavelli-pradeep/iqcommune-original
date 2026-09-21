@@ -338,18 +338,20 @@ export function ConsoleShell({
             priority
             className="shrink-0 rounded-lg"
           />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="flex items-baseline leading-none">
-              <span className="text-4xl font-bold tracking-display text-gold">iq</span>
-              <span className="text-4xl font-light tracking-display text-ink">commune</span>
-            </span>
-            {/* 9px here — V7 `.logo-tag` runs the console's strapline smaller
-                still than the 9.5px marketing one. The `Admin`/`Console` lockup
-                beside it keeps `text-2xs` (10px), which is its own spec size. */}
-            <span className="hidden truncate text-[9px] font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-              Insight Quotient - Unleashed
-            </span>
-          </div>
+          {/* The wordmark image (client V8) in the old text block's footprint:
+              ~162px wide (the 9px strapline set the width) from 360px, ~108px
+              (the 22px wordmark) below — the same width the truncating identity
+              had, so the controls beside it stay where they were. It carries its
+              own strapline, so the text one is gone. */}
+          <Image
+            src="/iqcommune-wordmark.png"
+            alt="iqcommune"
+            width={351}
+            height={80}
+            priority
+            className="h-auto w-[108px] shrink min-w-0 min-[360px]:w-[162px]"
+          />
+          <span className="sr-only">Insight Quotient - Unleashed</span>
           <span aria-hidden className="hidden h-8 w-px bg-border-strong sm:block" />
           <span className="hidden flex-col gap-0.5 sm:flex">
             <span className="text-2xs font-semibold uppercase leading-none tracking-caps text-gold-dark">
