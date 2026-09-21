@@ -2,6 +2,8 @@ import "server-only";
 
 import type { ReactNode } from "react";
 
+import { isGalleryVisible } from "@/services/settings";
+
 import {
   ACTIVITY_RETENTION_DAYS,
   listActivity,
@@ -133,7 +135,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
   // Read once here rather than per row, and degrade to an empty list rather
   // than failing the panel — an admin with no select is still better than a
   // panel that will not load.
-  const [assignable, confirmable, team, masterData] = await Promise.all([
+  const [assignable, confirmable, team, masterData, galleryVisible] = await Promise.all([
     listAssignablePractitioners().catch(() => []),
     listConfirmableSessions().catch(() => []),
     // Every console role sees WHO is on the team — V7 leaves the table
@@ -142,6 +144,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     // table rather than a read-only one, which reads as a broken panel.
     listTeam().catch(() => []),
     listMasterData().catch(() => []),
+    isGalleryVisible(),
   ]);
 
   const [practitioners, agreements, requests, confirmations, sessions, photos, payouts, gallery, activity] =
@@ -234,7 +237,7 @@ export async function loadConsolePanels(role: ConsoleRole): Promise<LoadedConsol
     photos: <CachedPanel tabId="photos" role={role} rows={photos.rows} failed={photos.failed} />,
     payouts: <CachedPanel tabId="payouts" role={role} rows={payouts.rows} failed={payouts.failed} />,
     gallery: <CachedPanel tabId="gallery" role={role} rows={gallery.rows} failed={gallery.failed} />,
-    settings: <SettingsPanel role={role} team={team} masterData={masterData} />,
+    settings: <SettingsPanel role={role} team={team} masterData={masterData} galleryVisible={galleryVisible} />,
   };
   const counts: Record<string, number> = {
     practitioners: practitioners.count,

@@ -7,7 +7,7 @@ import { checkboxClass, controlClass, selectClass } from "@/components/ui/contro
 import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import { useDeferredSend } from "@/hooks/useDeferredSend";
 
-import { inviteTeamMember, removeTeamMember } from "../actions";
+import { inviteTeamMember, removeTeamMember, setHomeGalleryVisible } from "../actions";
 import { ConsoleTable, type ColumnDef } from "../ConsoleTable";
 import { DownloadIcon } from "../DownloadLink";
 import { DraftModal } from "../DraftModal";
@@ -507,14 +507,78 @@ function Permissions() {
   );
 }
 
+/** Global Admin: show or hide "Sessions in the room" on the public home page. */
+function HomePageSections({ initial }: { initial: boolean }) {
+  const [visible, setVisible] = useState(initial);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function toggle() {
+    const next = !visible;
+    setMessage(null);
+    startTransition(async () => {
+      const result = await setHomeGalleryVisible(next);
+      if (result.ok) setVisible(next);
+      setMessage({ ok: result.ok, text: result.message ?? "Saved." });
+    });
+  }
+
+  return (
+    <section>
+      <h2 className={SECTION_TITLE}>Home page sections</h2>
+      <p className={SECTION_NOTE}>Choose what visitors see on the public home page.</p>
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-3">
+        <div className="min-w-0">
+          <p id="home-gallery-label" className="text-sm font-medium text-ink">
+            Sessions in the room
+          </p>
+          <p className="text-xs text-ink-faint">
+            “Where it actually happens.” — the photo gallery, and its menu link.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={visible}
+          aria-labelledby="home-gallery-label"
+          disabled={pending}
+          onClick={toggle}
+          className="flex min-h-11 shrink-0 items-center gap-2 rounded-full px-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-50"
+        >
+          <span className="text-xs font-semibold text-ink-muted">{visible ? "On" : "Off"}</span>
+          <span
+            aria-hidden
+            className={`relative h-6 w-11 rounded-full transition-colors ${visible ? "bg-green" : "bg-border-strong"}`}
+          >
+            <span
+              className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow transition-transform ${
+                visible ? "translate-x-5" : ""
+              }`}
+            />
+          </span>
+        </button>
+      </div>
+      <p
+        aria-live="polite"
+        role={message && !message.ok ? "alert" : undefined}
+        className={`mt-2 text-xs empty:hidden ${message?.ok ? "text-green" : "text-red"}`}
+      >
+        {message?.text}
+      </p>
+    </section>
+  );
+}
+
 export function SettingsPanel({
   role,
   team,
   masterData,
+  galleryVisible,
 }: {
   role: ConsoleRole;
   team: readonly TeamMemberRow[];
   masterData: readonly MasterDataRow[];
+  galleryVisible: boolean;
 }) {
   return (
     <>
@@ -524,6 +588,8 @@ export function SettingsPanel({
           describes the permission boundary, so it sits with the role that
           administers it rather than the roles it constrains. */}
       {can(role, "override") ? <Permissions /> : null}
+      {/* Last on the tab, Global Admin only (client). */}
+      {can(role, "manageTeam") ? <HomePageSections initial={galleryVisible} /> : null}
     </>
   );
 }

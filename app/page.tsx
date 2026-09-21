@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { BRAND_TITLE } from "@/constants/brand";
 import { LandingSections } from "@/features/landing/LandingSections";
 import { GallerySection } from "@/features/landing/sections/Gallery";
+import { isGalleryVisible } from "@/services/settings";
 
 export const metadata: Metadata = {
   // The home page is the brand's own page, so it carries the brand line rather
@@ -16,6 +17,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function HomePage() {
-  return <LandingSections gallery={<GallerySection />} />;
+export default async function HomePage() {
+  // A global admin can hide "Sessions in the room" from Settings. Off drops the
+  // section and its nav link together; a failed read shows it (services/settings).
+  const showGallery = await isGalleryVisible();
+  return <LandingSections gallery={showGallery ? <GallerySection /> : null} />;
 }

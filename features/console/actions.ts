@@ -34,6 +34,7 @@ import {
   missingConfirmationFields,
 } from "./confirmation-fields";
 import { nextReference } from "@/services/references";
+import { setGalleryVisible } from "@/services/settings";
 import {
   listLibrary,
   resolveAttachments,
@@ -2948,4 +2949,30 @@ export async function deleteEmailAttachment(id: string): Promise<void> {
     entityType: "email-attachment",
     entityRef: id,
   });
+}
+
+/**
+ * Show or hide "Sessions in the room" on the home page. Global Admin only
+ * (`manageTeam`, the tier Settings' other controls sit at). The home page is
+ * prerendered, so it is revalidated here or the change would wait for a deploy.
+ */
+export async function setHomeGalleryVisible(visible: boolean): Promise<ActionResult> {
+  const { email } = await requireCapability("manageTeam");
+  if (typeof visible !== "boolean") return { ok: false, message: "That setting is not valid." };
+  try {
+    await setGalleryVisible(visible, email);
+  } catch (cause) {
+    console.error("[settings] gallery visibility write failed:", cause);
+    return { ok: false, message: "Could not save the setting. Has migration 0023 been applied?" };
+  }
+  await recordActivity({
+    actorEmail: email,
+    action: "settings.gallery_visibility",
+    entityType: "settings",
+    entityRef: "landing.gallery_visible",
+    detail: visible ? "Home page gallery shown." : "Home page gallery hidden.",
+  });
+  revalidatePath("/");
+  revalidateConsole();
+  return { ok: true, message: visible ? "The gallery is now shown on the home page." : "The gallery is now hidden on the home page." };
 }

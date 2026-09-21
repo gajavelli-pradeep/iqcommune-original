@@ -78,7 +78,6 @@ export function SiteHeader({
    */
   markSize?: number;
 }) {
-  const wordmark = compact ? "text-4xl" : "text-4xl sm:text-6xl";
   const mark = markSize ?? (compact ? 34 : 38);
   // V7 pairs the smaller marks with an 8px radius and the 38px one with 9px.
   const markRadius = mark < 37 ? "rounded-lg" : "rounded-[9px]";
@@ -135,24 +134,28 @@ export function SiteHeader({
               priority
               className={`shrink-0 ${markRadius}`}
             />
-            <span className="flex flex-col gap-[3px]">
-              <span className="flex items-baseline leading-none">
-                <span className={`${wordmark} font-bold tracking-display text-gold`}>iq</span>
-                <span className={`${wordmark} font-light tracking-display text-ink`}>commune</span>
-              </span>
-              {/* Shown from 360px up to match V7, which keeps the strapline on
-                  every phone. Hidden only below 360px, where the lockup plus the
-                  waitlist button overflows the viewport — the 320px P1 this
-                  guard exists for. */}
-              {/* 9.5px, not the 10px `text-2xs` the badge lockup beside it uses:
-                  V7 sizes the strapline half a pixel smaller on every page that
-                  carries one, and at this length the difference is ~9px of width. */}
-              {strapline ? (
-                <span className="hidden text-[9.5px] font-medium uppercase leading-none tracking-caps text-ink-faint min-[360px]:block">
-                  {strapline}
-                </span>
-              ) : null}
-            </span>
+            {/* The wordmark image (client V8) stands where the text lockup was
+                and takes the same footprint, sized by WIDTH so the header and
+                what sits beside it do not move: the old block was as wide as its
+                strapline (~171px, 9.5px caps) from 360px up, and as wide as the
+                22px "iqcommune" (~108px) below that — the 320px overflow guard
+                the strapline was hidden for. The image carries its own strapline,
+                so the text one is gone; pages that asked for none (`strapline`
+                null) keep the narrow width at every size. Decorative: the link
+                already carries the name. */}
+            <Image
+              src="/iqcommune-wordmark.png"
+              alt=""
+              width={351}
+              height={80}
+              priority
+              className={`h-auto shrink-0 ${
+                strapline ? "w-[108px] min-[360px]:w-[171px]" : "w-[108px]"
+              }`}
+            />
+            {/* The strapline is painted inside the image; the text stays for
+                screen readers, search and the text-level parity gate. */}
+            {strapline ? <span className="sr-only">{strapline}</span> : null}
           </a>
 
           {badge && badgeStyle === "lockup" ? (
