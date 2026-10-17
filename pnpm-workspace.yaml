@@ -1,3 +1,10 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+auditConfig:
+  ignoreGhsas:
+    # braces <=3.0.3: no patched release exists (3.0.3 is the latest). Reached
+    # only via eslint-config-next > fast-glob (dev-time lint globbing, never
+    # user input). Remove when braces ships a fix.
+    - GHSA-vfj7-8cjw-p6xm
