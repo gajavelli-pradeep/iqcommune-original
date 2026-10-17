@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 // Deferred (audit H8): the modal body pulls the zod barrel, and this provider
-// ships on first paint. Loading it on open keeps zod out of the /practitioners
+// ships on first paint. Loading it on open keeps zod out of the /network
 // bundle.
 const ApplyModal = dynamic(() => import("./ApplyModalBody").then((m) => m.ApplyModal));
 

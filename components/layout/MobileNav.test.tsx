@@ -16,7 +16,7 @@ import { MobileNav } from "./MobileNav";
 
 const LINKS = [
   { href: "#who-its-for", label: "Who it's for" },
-  { href: "/practitioners", label: "For practitioners" },
+  { href: "/network", label: "For practitioners" },
 ] as const;
 
 const setup = () =>

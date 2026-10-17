@@ -62,4 +62,4 @@ Practitioners are working finance professionals with a minimum of 5 years of act
 ## Pages
 
 - [Home](https://www.iqcommune.com/) — for people who want to attend a session: how it works, who it's for, training topics, bundled sessions, FAQs, and the waitlist signup.
-- [Practitioner Network](https://www.iqcommune.com/practitioners) — for working finance professionals who want to teach: eligibility, the application process, compensation, disclosure terms, and FAQs.
+- [Practitioner Network](https://www.iqcommune.com/network) — for working finance professionals who want to teach: eligibility, the application process, compensation, disclosure terms, and FAQs.

@@ -9,7 +9,7 @@ import { PRACTITIONERS_PENDING } from "./pending-practitioners";
 import { claims, type PendingUnit } from "./pending";
 
 /**
- * F4 content-parity gate for P2 `/practitioners`.
+ * F4 content-parity gate for P2 `/network`.
  *
  * Same contract as the landing page's: every visible V7 string must render, and
  * anything missing must be declared against the unit that will deliver it. The
@@ -26,7 +26,7 @@ function report(label: string, items: readonly string[]): string {
     .join("\n");
 }
 
-describe("content parity — P2 `/practitioners` against iqcommune-empanelment.html", () => {
+describe("content parity — P2 `/network` against iqcommune-empanelment.html", () => {
   const specStrings = extractSpecEntries(readSpec("iqcommune-empanelment.html"));
   const { container } = render(<PractitionerSections />);
   // The application form only exists once its dialog is open, so the gate opens

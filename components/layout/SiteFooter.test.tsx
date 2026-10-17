@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { SiteFooter } from "./SiteFooter";
 
 describe("SiteFooter", () => {
-  it("points the practitioner call-to-action at /practitioners", () => {
+  it("points the practitioner call-to-action at /network", () => {
     render(<SiteFooter />);
     expect(
       screen.getByRole("link", {
         name: /Teach what you practise — join the iqcommune practitioner network/,
       }),
-    ).toHaveAttribute("href", "/practitioners");
+    ).toHaveAttribute("href", "/network");
   });
 
   it("shows the contact address as plain text, not a link", () => {

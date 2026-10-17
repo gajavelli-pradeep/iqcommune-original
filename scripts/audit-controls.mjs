@@ -51,7 +51,7 @@ const V7_FAMILIES = {
   },
 };
 
-const PUBLIC_ROUTES = ["/", "/practitioners", "/login"];
+const PUBLIC_ROUTES = ["/", "/network", "/login"];
 const CONSOLE_TABS = ["confirmations", "sessions", "payouts", "settings", "gallery"];
 
 const measure = (page) =>

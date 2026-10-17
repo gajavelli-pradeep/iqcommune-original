@@ -51,7 +51,7 @@ export function PractitionerSections() {
     >
       <div className="flex min-h-dvh flex-col">
       <SiteHeader
-        homeHref="/practitioners"
+        homeHref="/network"
         badge={["Practitioner", "Network"] as const}
         menu={
           <MobileNav

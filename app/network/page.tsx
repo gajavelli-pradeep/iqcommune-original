@@ -8,6 +8,6 @@ export const metadata: Metadata = {
     "Teach what you practise. iqcommune connects working finance professionals with small, in-person groups who want to learn from someone still in the field.",
 };
 
-export default function PractitionersPage() {
+export default function NetworkPage() {
   return <PractitionerSections />;
 }

@@ -42,7 +42,7 @@ const MOBILE_LINKS: readonly NavLink[] = [
   { href: "#tools", label: "Free calculators" },
   { href: "#sessions", label: "Sessions in the room" },
   { href: "#faqs", label: "FAQs" },
-  { href: "/practitioners", label: "For practitioners" },
+  { href: "/network", label: "For practitioners" },
 ];
 
 /**

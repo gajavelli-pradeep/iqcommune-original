@@ -65,7 +65,7 @@ export function SiteFooter({
               and floats vertically centred beside the block. Inline keeps it
               trailing the last word at every width. */}
           <Link
-            href="/practitioners"
+            href="/network"
             /* `tap-44`, not padding: the link is inline by the reasoning
                above, so `min-block-size` cannot touch it, and on one line it
                draws only 31px tall. The pseudo-element adds the hit area

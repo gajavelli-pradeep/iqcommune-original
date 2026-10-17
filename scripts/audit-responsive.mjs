@@ -27,7 +27,7 @@ const WIDTHS = [320, 360, 375, 390, 414, 768, 1024, 1280, 1440, 1600, 1920];
  */
 const PUBLIC_PAGES = [
   { path: "/", name: "Landing" },
-  { path: "/practitioners", name: "Practitioners" },
+  { path: "/network", name: "Practitioners" },
   { path: "/login", name: "Login" },
   ...(process.env.PREVIEW_LINKS ?? "")
     .split("\n")

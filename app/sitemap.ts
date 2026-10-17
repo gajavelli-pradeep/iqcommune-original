@@ -11,6 +11,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteUrl();
   return [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/practitioners`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/network`, changeFrequency: "monthly", priority: 0.8 },
   ];
 }
