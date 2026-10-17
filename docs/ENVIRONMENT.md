@@ -103,7 +103,7 @@ it has verified, so repointing it to change what the website displays would brea
 mail.
 
 **Changing any of the three needs a redeploy, not just an env edit.** `/`, `/login` and
-`/practitioners` are statically prerendered, so anything resolved on them — the footer address, and
+`/network` are statically prerendered, so anything resolved on them — the footer address, and
 both `mailto:` fallback recipients — is fixed at build time; the six emailed link pages are
 server-rendered per request and pick up a change on restart. Set the variable and redeploy, and every
 surface agrees. This is the same rule as the senders above and is Vercel's model for env vars anyway

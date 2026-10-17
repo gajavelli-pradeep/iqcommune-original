@@ -41,7 +41,7 @@ export function SiteHeader({
   width?: string;
   /**
    * Where the logo lockup goes — each page's own top, not always the main
-   * landing page. The practitioner page passes `/practitioners`; every other
+   * landing page. The practitioner page passes `/network`; every other
    * caller keeps the default.
    */
   homeHref?: string;

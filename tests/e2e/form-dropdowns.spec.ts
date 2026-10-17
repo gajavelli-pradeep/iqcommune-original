@@ -18,7 +18,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const FORMS = [
   { name: "waitlist", url: "/", trigger: /Join the Waitlist/ },
-  { name: "practitioner application", url: "/practitioners", trigger: /Apply to Join the Network/ },
+  { name: "practitioner application", url: "/network", trigger: /Apply to Join the Network/ },
 ] as const;
 
 const style = (locator: Locator) =>

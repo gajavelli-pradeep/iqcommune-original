@@ -4,7 +4,7 @@ import { expect, type Page } from "@playwright/test";
  * Shared browser audits.
  *
  * Extracted at their second use, when /rate and /consent needed the same
- * interrogation as /practitioners. The contrast helper in particular is worth
+ * interrogation as /network. The contrast helper in particular is worth
  * having once: it took three attempts to make trustworthy, and a second copy
  * would drift from the corrections.
  */

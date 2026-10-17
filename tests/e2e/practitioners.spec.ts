@@ -8,7 +8,7 @@ import { clippedContent, contrastFailures, horizontalOverflow } from "./audit";
  * Every defect found on P1 by opening it (an undefined colour token rendering
  * invisible text, labels wrapping, 22px tap targets) was invisible to the unit
  * suite and to the parity gate. This runs the same interrogation against
- * /practitioners, and stays as a permanent gate rather than a one-off look.
+ * /network, and stays as a permanent gate rather than a one-off look.
  */
 
 const TIERS = [
@@ -18,7 +18,7 @@ const TIERS = [
   { w: 640, h: 320, name: "640x320 landscape phone" },
 ];
 
-test.describe("/practitioners", () => {
+test.describe("/network", () => {
   test("loads with no console errors", async ({ page }) => {
     const problems: string[] = [];
     page.on("console", (message) => {
@@ -26,14 +26,14 @@ test.describe("/practitioners", () => {
     });
     page.on("pageerror", (error) => problems.push(String(error)));
 
-    await page.goto("/practitioners");
+    await page.goto("/network");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
   test("meets AA contrast against composited backdrops", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/practitioners");
+    await page.goto("/network");
     const failures = await contrastFailures(page);
     expect(
       failures,
@@ -44,7 +44,7 @@ test.describe("/practitioners", () => {
   for (const tier of TIERS) {
     test(`holds together at ${tier.name}`, async ({ page }) => {
       await page.setViewportSize({ width: tier.w, height: tier.h });
-      await page.goto("/practitioners");
+      await page.goto("/network");
 
       const overflow = await horizontalOverflow(page);
       expect(overflow.over, `overflow: ${overflow.scrollWidth} > ${overflow.clientWidth}`).toBe(false);
@@ -64,7 +64,7 @@ test.describe("/practitioners", () => {
   }
 
   test("perks toggle reveals the hidden perks", async ({ page }) => {
-    await page.goto("/practitioners");
+    await page.goto("/network");
     const toggle = page.getByRole("button", { name: /Show more/ });
     const hidden = page.getByText("Max 25 participants per session. Curated.");
 
@@ -78,7 +78,7 @@ test.describe("/practitioners", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/practitioners");
+    await page.goto("/network");
 
     // Both the hero and the closing CTA carry this label; the hero opens first.
     const opener = page.getByRole("button", { name: "Apply to Join the Network", exact: true }).first();
@@ -113,7 +113,7 @@ test.describe("/practitioners", () => {
       isMobile: true,
     });
     const page = await context.newPage();
-    await page.goto("/practitioners");
+    await page.goto("/network");
 
     const small = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>("a,button")]

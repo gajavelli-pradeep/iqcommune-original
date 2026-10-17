@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 /**
  * Security headers (audit C1). Set here rather than in `proxy.ts` so the two
- * marketing pages (`/`, `/practitioners`) stay statically rendered — a
+ * marketing pages (`/`, `/network`) stay statically rendered — a
  * nonce-based CSP would force every route dynamic (Next CSP guide, "Static vs
  * Dynamic Rendering"). This app ships no third-party scripts, no
  * `dangerouslySetInnerHTML` and no injection sinks, so `'unsafe-inline'` on
@@ -92,6 +92,11 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  // The practitioner page moved to /network. Permanent (308) so old emails,
+  // bookmarks and search results keep landing on it; never remove this rule.
+  async redirects() {
+    return [{ source: "/practitioners/:path*", destination: "/network/:path*", permanent: true }];
   },
   async headers() {
     return [
